@@ -1,0 +1,48 @@
+# ==================================
+# PRODUCTION Backend Dockerfile
+# ==================================
+# Multi-stage build for optimized production image
+
+# Stage 1: Dependencies
+FROM node:18-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Stage 2: Builder (if needed for build step)
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+# If you have a build step, add it here
+# RUN npm run build
+
+# Stage 3: Runner (Production)
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+ENV PORT 5001
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 backend
+
+# Copy dependencies from deps stage
+COPY --from=deps --chown=backend:nodejs /app/node_modules ./node_modules
+# Copy app code
+COPY --chown=backend:nodejs . .
+
+USER backend
+
+EXPOSE 5001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \  
+    CMD node -e "require('http').get('http://localhost:5001/health', (r) => {if(r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+CMD ["node", "src/server.js"]
