@@ -56,6 +56,20 @@ TwinMind is a cutting-edge AI platform that creates personalized digital twins c
 - **Free**: 50 messages/month, Normal & Therapist modes
 - **Pro**: Unlimited messages, all 4 modes, unlimited memory
 
+## 🚀 Deployment
+
+We have a comprehensive deployment guide available.
+
+👉 **[Read the Deployment Guide](DEPLOYMENT_GUIDE.md)**
+
+### Quick Start (Production)
+
+1.  **Backend**: Deploy `/backend` to Railway/Render. Set `NODE_ENV=production`.
+2.  **Web**: Deploy `/web` to Vercel. Set `NEXT_PUBLIC_API_URL`.
+3.  **Mobile**: Deploy `/mobile/build/web` to Firebase Hosting.
+
+See `DEPLOYMENT_GUIDE.md` for detailed step-by-step instructions.
+
 ---
 
 ## 🛠 Tech Stack
