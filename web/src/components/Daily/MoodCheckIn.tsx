@@ -24,14 +24,16 @@ export default function MoodCheckIn({ isOpen, onClose }: MoodCheckInProps) {
     const [note, setNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const { addMoodEntry } = useDailyStore();
+    const [lastEntry, setLastEntry] = useState<any>(null); // Added this state based on the instruction's usage
 
     const handleSubmit = async () => {
         if (selectedMood === null) return;
 
         try {
             setSubmitting(true);
-            const entry = await apiClient.submitMoodCheckIn(selectedMood, note || undefined);
-            addMoodEntry(entry);
+            const data = await apiClient.submitMoodCheckIn(selectedMood, note || undefined) as any; // Changed variable name and added type assertion
+            setLastEntry(data || { id: Date.now().toString(), mood: selectedMood, created_at: new Date().toISOString() }); // Added this line, using selectedMood for mood
+            addMoodEntry(data); // Changed 'entry' to 'data'
             onClose();
             setSelectedMood(null);
             setNote('');
@@ -80,8 +82,8 @@ export default function MoodCheckIn({ isOpen, onClose }: MoodCheckInProps) {
                                     key={mood.value}
                                     onClick={() => setSelectedMood(mood.value)}
                                     className={`w-full p-4 rounded-xl border-2 transition-all ${selectedMood === mood.value
-                                            ? `border-transparent bg-gradient-to-r ${mood.color} text-white shadow-lg`
-                                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                                        ? `border-transparent bg-gradient-to-r ${mood.color} text-white shadow-lg`
+                                        : 'border-gray-200 hover:border-gray-300 bg-white'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
@@ -121,8 +123,8 @@ export default function MoodCheckIn({ isOpen, onClose }: MoodCheckInProps) {
                             onClick={handleSubmit}
                             disabled={selectedMood === null || submitting}
                             className={`w-full py-3 rounded-xl font-semibold transition-all ${selectedMood === null
-                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
                                 }`}
                         >
                             {submitting ? 'Submitting...' : 'Submit Check-In'}

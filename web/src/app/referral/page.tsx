@@ -20,7 +20,7 @@ export default function ReferralPage() {
                 apiClient.getReferralCode(),
                 apiClient.getReferralStats(),
             ]);
-            setReferralCode(code.code);
+            setReferralCode((code as any)?.code || '');
             setStats(statsData);
         } catch (error) {
             console.error('Failed to load referral data:', error);

@@ -15,8 +15,8 @@ export default function DailyChallenges() {
 
     const loadChallenges = async () => {
         try {
-            const data = await apiClient.getDailyChallenges();
-            setChallenges(data);
+            const data = await apiClient.getDailyChallenges() as any;
+            setChallenges(data || []);
         } catch (error) {
             console.error('Failed to load challenges:', error);
         }
@@ -79,8 +79,8 @@ export default function DailyChallenges() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
                         className={`p-4 rounded-xl border-2 transition-all ${challenge.completed
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-200 bg-white hover:border-purple-300'
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 bg-white hover:border-purple-300'
                             }`}
                     >
                         <div className="flex items-start gap-4">
@@ -111,8 +111,8 @@ export default function DailyChallenges() {
                                 onClick={() => !challenge.completed && handleComplete(challenge.id)}
                                 disabled={challenge.completed}
                                 className={`p-2 rounded-full transition-all ${challenge.completed
-                                        ? 'text-green-500 cursor-default'
-                                        : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50'
+                                    ? 'text-green-500 cursor-default'
+                                    : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50'
                                     }`}
                             >
                                 {challenge.completed ? (

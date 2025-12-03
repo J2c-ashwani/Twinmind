@@ -181,8 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
             }
           }
           return ChatMessage.fromJson(m);
-          return ChatMessage.fromJson(m);
-        }).toList().cast<ChatMessage>().reversed.toList();  // Reverse to show Newest First (Index 0) for reverse ListView
+        }).toList().cast<ChatMessage>();  // API returns [Oldest...Newest], perfect for reverse ListView
         _isLoading = false;
       });
       _scrollToBottom();

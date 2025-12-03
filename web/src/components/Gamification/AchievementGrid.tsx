@@ -15,8 +15,8 @@ export default function AchievementGrid() {
 
     const loadAchievements = async () => {
         try {
-            const data = await apiClient.getAchievements();
-            setAchievements(data);
+            const data = await apiClient.getAchievements() as any;
+            setAchievements(data || []);
         } catch (error) {
             console.error('Failed to load achievements:', error);
         }

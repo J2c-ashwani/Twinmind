@@ -26,8 +26,8 @@ export default function TwinMatchModal({ isOpen, onClose }: TwinMatchModalProps)
 
         setIsLoading(true);
         try {
-            const result = await apiClient.compareTwins(identifier);
-            setComparison(result);
+            const result = await apiClient.compareTwins(identifier) as any;
+            setComparison(result || {});
         } catch (error: any) {
             alert(error.message || 'Failed to compare. Make sure your friend has completed their personality profile!');
         } finally {

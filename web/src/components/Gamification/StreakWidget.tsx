@@ -24,8 +24,8 @@ export default function StreakWidget() {
 
     const loadStreak = async () => {
         try {
-            const data = await apiClient.getGamificationStatus();
-            const dailyStreak = data.streaks.find((s: Streak) => s.streak_type === 'daily_checkin');
+            const data = await apiClient.getGamificationStatus() as any;
+            const dailyStreak = data?.streaks?.find((s: Streak) => s.streak_type === 'daily_checkin');
             setStreak(dailyStreak || null);
         } catch (error) {
             console.error('Failed to load streak:', error);

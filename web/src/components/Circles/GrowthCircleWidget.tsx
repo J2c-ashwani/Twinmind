@@ -26,8 +26,8 @@ export default function GrowthCircleWidget({ onInviteClick }: CircleWidgetProps)
 
     const loadCircle = async () => {
         try {
-            const data = await apiClient.getMyCircle();
-            if (data.circle) {
+            const data = await apiClient.getMyCircle() as any;
+            if (data?.circle) {
                 setCircle(data.circle);
                 const progressData = await apiClient.getCircleProgress(data.circle.id);
                 setProgress(progressData);
@@ -58,14 +58,14 @@ export default function GrowthCircleWidget({ onInviteClick }: CircleWidgetProps)
         console.log('=== CREATE CIRCLE BUTTON CLICKED ===');
         try {
             console.log('Calling apiClient.createCircle()...');
-            const data = await apiClient.createCircle();
+            const data = await apiClient.createCircle('My Growth Circle') as any;
             console.log('Circle create response:', data);
 
-            if (data.circle) {
+            if (data?.circle) {
                 setCircle(data.circle);
                 console.log('Circle set, fetching progress...');
                 // Reload to get progress
-                const progressData = await apiClient.getCircleProgress(data.circle.id);
+                const progressData = await apiClient.getCircleProgress(data.circle.id) as any;
                 console.log('Progress data:', progressData);
                 setProgress(progressData);
                 console.log('✅ Circle created successfully!');

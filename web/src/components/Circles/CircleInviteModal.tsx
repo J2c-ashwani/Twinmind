@@ -21,10 +21,10 @@ export default function CircleInviteModal({ isOpen, onClose, circleId, circleNam
         console.log('Generating invite for circle:', circleId);
         setIsLoading(true);
         try {
-            const data = await apiClient.createCircleInvitation(circleId);
+            const data = await apiClient.createCircleInvitation(circleId) as any;
             console.log('Invite generated:', data);
-            setInviteCode(data.invitation.invitation_code);
-            setInviteLink(data.invite_link);
+            setInviteCode(data?.invitation?.invitation_code || data?.invitation_code || '');
+            setInviteLink(data?.invite_link || '');
         } catch (error) {
             console.error('Failed to generate invite:', error);
         } finally {

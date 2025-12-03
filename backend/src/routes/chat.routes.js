@@ -43,8 +43,12 @@ router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => 
         const { message, mode = 'normal', conversation_id } = req.body;
         const userId = req.userId;
 
+        // Validate message length
         if (!message || message.trim().length === 0) {
-            return res.status(400).json({ error: 'Message is required' });
+            return res.status(400).json({ error: 'Message cannot be empty' });
+        }
+        if (message.length > 5000) {
+            return res.status(400).json({ error: 'Message too long. Maximum 5000 characters.' });
         }
 
         // Ensure conversation_id exists or handle legacy/default

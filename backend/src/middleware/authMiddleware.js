@@ -13,12 +13,6 @@ export const authenticateUser = async (req, res, next) => {
 
         const token = authHeader.split(' ')[1];
 
-        // Dev mode bypass
-        if (process.env.NODE_ENV === 'development' && token === 'dev-token') {
-            req.userId = 'dev-user-123';
-            return next();
-        }
-
         // Verify JWT with Supabase
         const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 

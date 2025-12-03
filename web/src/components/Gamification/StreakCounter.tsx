@@ -14,8 +14,8 @@ export default function StreakCounter() {
 
     const loadStreaks = async () => {
         try {
-            const data = await apiClient.getStreaks();
-            setStreaks(data);
+            const data = await apiClient.getStreaks() as any;
+            setStreaks(data || []);
         } catch (error) {
             console.error('Failed to load streaks:', error);
         }
@@ -97,8 +97,8 @@ export default function StreakCounter() {
                         <div
                             key={i}
                             className={`flex-1 h-12 rounded-lg ${i < dailyStreak.current_streak
-                                    ? `bg-gradient-to-br ${getStreakColor(dailyStreak.current_streak)}`
-                                    : 'bg-gray-100'
+                                ? `bg-gradient-to-br ${getStreakColor(dailyStreak.current_streak)}`
+                                : 'bg-gray-100'
                                 }`}
                         ></div>
                     ))}

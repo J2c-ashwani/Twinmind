@@ -30,8 +30,8 @@ export default function MemoryTimeline() {
     const loadMemories = async () => {
         try {
             setLoading(true);
-            const data = await apiClient.getMemoryTimeline(50);
-            setMemories(data);
+            const data = await apiClient.getMemoryTimeline(50) as any;
+            setMemories(data || []);
         } catch (error) {
             console.error('Failed to load memories:', error);
         } finally {
@@ -77,8 +77,8 @@ export default function MemoryTimeline() {
                         key={type}
                         onClick={() => setFilter(type)}
                         className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${filter === type
-                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                     >
                         {type === 'all' ? 'All' : type.replace('_', ' ')}
@@ -186,8 +186,8 @@ export default function MemoryTimeline() {
                                                     <div
                                                         key={i}
                                                         className={`w-2 h-2 rounded-full ${i < memory.emotional_significance
-                                                                ? `bg-gradient-to-r ${getSignificanceColor(memory.emotional_significance)}`
-                                                                : 'bg-gray-200'
+                                                            ? `bg-gradient-to-r ${getSignificanceColor(memory.emotional_significance)}`
+                                                            : 'bg-gray-200'
                                                             }`}
                                                     ></div>
                                                 ))}

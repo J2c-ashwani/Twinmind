@@ -29,8 +29,8 @@ export default function YearInPixels() {
 
     const loadYearData = async () => {
         try {
-            const data = await apiClient.getYearCalendar();
-            setYearData(data);
+            const data = await apiClient.getYearCalendar() as any;
+            setYearData(data || {});
         } catch (error) {
             console.error('Failed to load year data:', error);
         } finally {

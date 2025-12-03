@@ -23,8 +23,8 @@ export default function WeeklyMotivationCard() {
 
     const loadCard = async () => {
         try {
-            const data = await apiClient.getWeeklyMotivationCard();
-            setCard(data.card);
+            const data = await apiClient.getWeeklyMotivationCard() as any;
+            setCard(data?.card || null);
         } catch (error) {
             console.error('Failed to load card:', error);
         } finally {
@@ -35,8 +35,8 @@ export default function WeeklyMotivationCard() {
     const generateCard = async () => {
         setIsGenerating(true);
         try {
-            const data = await apiClient.generateMotivationCard();
-            setCard(data.card);
+            const data = await apiClient.generateMotivationCard() as any;
+            setCard(data?.card || null);
         } catch (error) {
             console.error('Failed to generate card:', error);
         } finally {

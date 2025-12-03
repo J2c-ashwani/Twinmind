@@ -42,13 +42,13 @@ export default function EnhancedChatInterface() {
                 currentConversationId,
                 input,
                 undefined
-            );
+            ) as any;
 
             addMessage({
-                id: response.id,
-                content: response.content,
+                id: response?.id || Date.now().toString(),
+                content: response?.content || response?.message || '',
                 sender_type: 'ai',
-                created_at: response.created_at,
+                created_at: response?.created_at || new Date().toISOString(),
                 conversation_id: currentConversationId,
             });
         } catch (error) {
@@ -106,15 +106,15 @@ export default function EnhancedChatInterface() {
                         >
                             <div
                                 className={`max-w-[70%] rounded-2xl px-4 py-3 ${message.sender_type === 'user'
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                        : 'bg-white text-gray-900 shadow-md'
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                    : 'bg-white text-gray-900 shadow-md'
                                     }`}
                             >
                                 <p className="whitespace-pre-wrap">{message.content}</p>
                                 <p
                                     className={`text-xs mt-1 ${message.sender_type === 'user'
-                                            ? 'text-white/70'
-                                            : 'text-gray-500'
+                                        ? 'text-white/70'
+                                        : 'text-gray-500'
                                         }`}
                                 >
                                     {new Date(message.created_at).toLocaleTimeString([], {
@@ -186,8 +186,8 @@ export default function EnhancedChatInterface() {
                         onClick={handleSend}
                         disabled={!input.trim()}
                         className={`p-3 rounded-full transition-all ${input.trim()
-                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
-                                : 'bg-gray-200 text-gray-400'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
+                            : 'bg-gray-200 text-gray-400'
                             }`}
                     >
                         <Send className="w-5 h-5" />

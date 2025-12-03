@@ -144,14 +144,14 @@ export async function generateChatResponse(userId, userMessage, mode = 'normal',
  */
 export async function getChatHistory(userId, options = {}) {
     try {
-        const { limit = 50, mode = null } = options;
+        const { limit = 50, offset = 0, mode = null } = options;
 
         let query = supabaseAdmin
             .from('chat_history')
             .select('*')
             .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(limit);
+            .order('created_at', { ascending: true })  // Oldest first
+            .range(offset, offset + limit - 1);  // Pagination support
 
         if (mode) {
             query = query.eq('mode', mode);
@@ -165,7 +165,8 @@ export async function getChatHistory(userId, options = {}) {
 
         if (error) throw error;
 
-        return data?.reverse() || [];
+        // Return in ascending order (oldest first) as expected by clients
+        return data || [];
 
     } catch (error) {
         logger.error('Error fetching chat history:', error);

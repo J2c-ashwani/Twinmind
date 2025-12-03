@@ -23,8 +23,8 @@ export default function InsightsSummary() {
 
     const loadInsights = async () => {
         try {
-            const data = await apiClient.getGrowthInsights('year');
-            setInsights(data);
+            const data = await apiClient.getGrowthInsights('year') as any;
+            setInsights(data || {});
         } catch (error) {
             console.error('Failed to load insights:', error);
         } finally {

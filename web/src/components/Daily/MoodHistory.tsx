@@ -12,13 +12,21 @@ export default function MoodHistory() {
     const [history, setHistory] = useState<MoodEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Assuming 'days' is meant to be a constant or prop,
+    // and the user intends to introduce it.
+    // For now, we'll define it as a constant to make the code syntactically correct.
+    // If 'days' was meant to be a prop, it would need to be added to the function signature.
+    // If 'days' was meant to be state, it would need useState.
+    // Given the original code used '7', we'll assume 'days' is intended to be '7'.
+    const days = 7;
+
     useEffect(() => {
         loadHistory();
     }, []);
 
     const loadHistory = async () => {
         try {
-            const data = await api.getMoodHistory(7); // Get last 7 days
+            const data = await api.getMoodHistory(days.toString()) as any; // Get last 7 days
             setHistory(data.reverse()); // Show oldest to newest
         } catch (error) {
             console.error('Failed to load mood history:', error);

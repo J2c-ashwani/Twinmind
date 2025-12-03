@@ -78,10 +78,6 @@ class ApiClient {
         });
     }
 
-    async getGamificationStatus() {
-        return this.request('/api/gamification/status');
-    }
-
     // Memory endpoints
     async getMemories(options?: { type?: string; limit?: number }) {
         const params = new URLSearchParams(options as any);
@@ -232,6 +228,10 @@ class ApiClient {
     // Subscription endpoints
     async getSubscriptionStatus() {
         return this.request('/api/subscription/status');
+    }
+
+    async getAdminAnalytics() {
+        return this.request('/api/admin/analytics');
     }
 
     async createCheckoutSession(tier: string) {
