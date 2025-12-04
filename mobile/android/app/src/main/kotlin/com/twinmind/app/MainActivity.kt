@@ -1,4 +1,4 @@
-package com.example.twinmind
+package com.twinmind.app
 
 import io.flutter.embedding.android.FlutterActivity
 

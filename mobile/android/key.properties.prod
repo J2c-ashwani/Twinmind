@@ -1,0 +1,4 @@
+storePassword=twinmind123
+keyPassword=twinmind123
+keyAlias=upload
+storeFile=upload-keystore.jks

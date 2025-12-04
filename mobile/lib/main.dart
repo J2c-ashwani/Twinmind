@@ -11,21 +11,38 @@ import 'screens/settings_screen.dart';
 import 'screens/subscription_screen.dart';
 import 'services/auth_service.dart';
 
+import 'dart:async';
+
 Future<void> main() async {
-  print('TwinMind App Starting...');
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Supabase with session persistence
-  await Supabase.initialize(
-    url: 'https://lhwtfjgtripwikxwookp.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
-    authOptions: const FlutterAuthClientOptions(
-      authFlowType: AuthFlowType.pkce,  // More secure
-      // Session persists in localStorage (web) or SharedPreferences (mobile)
-    ),
-  );
-  
-  runApp(const TwinMindApp());
+  runZonedGuarded(() async {
+    print('TwinMind App Starting...');
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Initialize Supabase with session persistence
+    await Supabase.initialize(
+      url: 'https://lhwtfjgtripwikxwookp.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,  // More secure
+        // Session persists in localStorage (web) or SharedPreferences (mobile)
+      ),
+    );
+    
+    // Global Flutter Error Handler
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      print('🔴 Flutter Error: ${details.exception}');
+      print('Stack trace: ${details.stack}');
+      // TODO: Send to Crashlytics in future
+    };
+
+    runApp(const TwinMindApp());
+  }, (error, stack) {
+    // Global Async Error Handler
+    print('🔴 Global Async Error: $error');
+    print('Stack trace: $stack');
+    // TODO: Send to Crashlytics in future
+  });
 }
 
 class TwinMindApp extends StatelessWidget {
