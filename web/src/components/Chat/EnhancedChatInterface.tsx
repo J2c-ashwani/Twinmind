@@ -59,9 +59,42 @@ export default function EnhancedChatInterface() {
     };
 
     const handleVoiceSend = async (audioBlob: Blob, duration: number) => {
-        // Upload audio and send
+        if (!currentConversationId) return;
+
         setShowVoiceRecorder(false);
-        // Implementation for voice upload
+
+        // Optimistic update
+        const tempId = Date.now().toString();
+        addMessage({
+            id: tempId,
+            content: '🎤 Voice Message',
+            sender_type: 'user',
+            created_at: new Date().toISOString(),
+            conversation_id: currentConversationId,
+        });
+        setTyping(true);
+
+        try {
+            const response = await apiClient.sendVoiceMessage(
+                audioBlob,
+                duration,
+                currentConversationId
+            ) as any;
+
+            // Update with real response
+            addMessage({
+                id: response?.id || Date.now().toString(),
+                content: response?.content || response?.message || '',
+                sender_type: 'ai',
+                created_at: response?.created_at || new Date().toISOString(),
+                conversation_id: currentConversationId,
+            });
+        } catch (error) {
+            console.error('Failed to send voice message:', error);
+            // Optionally remove optimistic message or show error
+        } finally {
+            setTyping(false);
+        }
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -88,6 +121,12 @@ export default function EnhancedChatInterface() {
                 </div>
                 <button className="p-2 hover:bg-gray-100 rounded-full">
                     <MoreVertical className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={() => setShowVoiceRecorder(true)}
+                    className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                    <Mic className="w-6 h-6" />
                 </button>
             </div>
 
@@ -146,17 +185,24 @@ export default function EnhancedChatInterface() {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Voice Recorder */}
-            {showVoiceRecorder && (
-                <div className="px-6 pb-4">
-                    <VoiceRecorder
-                        onSend={handleVoiceSend}
-                        onCancel={() => setShowVoiceRecorder(false)}
-                    />
-                </div>
-            )}
+            {/* Voice Recorder Modal */}
+            <AnimatePresence>
+                {showVoiceRecorder && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                    >
+                        <VoiceRecorder
+                            onSend={handleVoiceSend}
+                            onCancel={() => setShowVoiceRecorder(false)}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {/* Input */}
+            {/* Input Area */}
             <div className="bg-white border-t px-6 py-4">
                 <div className="flex items-end gap-3">
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -197,3 +243,4 @@ export default function EnhancedChatInterface() {
         </div>
     );
 }
+

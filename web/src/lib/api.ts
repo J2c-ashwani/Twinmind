@@ -50,6 +50,7 @@ export const api = {
     generatePersonality: (token: string) =>
         apiCall('/api/personality/generate', {
             method: 'POST',
+            body: {},
             token,
         }),
 
@@ -59,10 +60,32 @@ export const api = {
     regeneratePersonality: (token: string) =>
         apiCall('/api/personality/regenerate', {
             method: 'POST',
+            body: {},
             token,
         }),
 
     // Chat endpoints
+    sendVoiceMessage: async (conversationId: string | null, audioBlob: Blob, mode: string, token: string) => {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'voice.webm');
+        formData.append('mode', mode);
+        if (conversationId) formData.append('conversationId', conversationId);
+
+        const response = await fetch(`${API_URL}/api/voice/message`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.error || `API error: ${response.status}`);
+        }
+        return response.json();
+    },
+
     sendMessage: (message: string, mode: string, token: string, conversationId?: string) =>
         apiCall('/api/chat/message', {
             method: 'POST',
@@ -71,7 +94,7 @@ export const api = {
         }),
 
     getChatHistory: (token: string, mode?: string, conversationId?: string) => {
-        let url = `/api/chat/history?limit=50`;
+        let url = `/api/chat/history?limit=100`;
         if (mode) url += `&mode=${mode}`;
         if (conversationId) url += `&conversation_id=${conversationId}`;
         return apiCall(url, { token });
@@ -100,6 +123,7 @@ export const api = {
     cancelSubscription: (token: string) =>
         apiCall('/api/subscription/cancel', {
             method: 'POST',
+            body: {},
             token,
         }),
 
@@ -117,6 +141,7 @@ export const api = {
     completeChallenge: (challengeId: string, token: string) =>
         apiCall(`/api/daily/challenges/${challengeId}/complete`, {
             method: 'POST',
+            body: {},
             token,
         }),
 
@@ -126,6 +151,7 @@ export const api = {
     toggleFavoriteMemory: (memoryId: string, token: string) =>
         apiCall(`/api/memory/${memoryId}/favorite`, {
             method: 'POST',
+            body: {},
             token,
         }),
 

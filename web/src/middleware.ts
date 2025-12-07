@@ -10,18 +10,19 @@ export async function middleware(req: NextRequest) {
         data: { session },
     } = await supabase.auth.getSession()
 
-    // Protect routes
-    const protectedPaths = ['/chat', '/profile', '/dashboard', '/memories', '/growth']
-    const isProtected = protectedPaths.some(path => req.nextUrl.pathname.startsWith(path))
+    // Public paths that don't require authentication
+    const publicPaths = ['/', '/login', '/signup', '/privacy', '/terms', '/onboarding']
+    const isPublicPath = publicPaths.some(path => req.nextUrl.pathname === path) ||
+        req.nextUrl.pathname.startsWith('/api/')
 
-    if (!session && isProtected) {
+    // If no session and trying to access protected route, redirect to login
+    if (!session && !isPublicPath) {
         const redirectUrl = new URL('/login', req.url)
-        // Add the original URL as a query parameter to redirect back after login
         redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname)
         return NextResponse.redirect(redirectUrl)
     }
 
-    // If user is logged in and tries to access auth pages, redirect to chat
+    // If user is logged in and tries to access login/signup, redirect to chat
     if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/signup')) {
         return NextResponse.redirect(new URL('/chat', req.url))
     }

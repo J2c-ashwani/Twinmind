@@ -332,9 +332,55 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _handleVoiceSend(File audioFile, int duration) async {
     setState(() {
       _showVoiceRecorder = false;
+      _isLoading = true;
     });
-    // TODO: Implement voice upload
-    _showError('Voice messages coming soon! (Duration: ${duration}s)');
+
+    try {
+      // Upload voice file and get response
+      final response = await _api.sendVoiceMessage(
+        audioFile.path,
+        _currentMode,
+        _currentConversationId,
+      );
+
+      if (response != null && response['success'] == true) {
+        // Add user message (transcribed text)
+        setState(() {
+          _messages.insert(0, ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            message: response['userMessage'],
+            sender: 'user',
+            mode: _currentMode,
+            createdAt: DateTime.now(),
+          ));
+        });
+
+        // Add AI response with audio URL
+        setState(() {
+          _messages.insert(0, ChatMessage(
+            id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+            message: response['aiResponse'],
+            sender: 'ai',
+            mode: _currentMode,
+            createdAt: DateTime.now(),
+          ));
+        });
+
+        // Play AI voice response (optional - can add audio player later)
+        // For now, just show success
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('🎤 Voice message sent!')),
+        );
+      } else {
+        _showError('Failed to send voice message. Please try again.');
+      }
+    } catch (e) {
+      _showError('Error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _onEmojiSelected(Category? category, Emoji emoji) {
@@ -427,6 +473,32 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/notifications');
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.self_improvement),
+                      tooltip: 'Life Coach',
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/life-coach');
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.insights),
+                      tooltip: 'Insights',
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/insights');
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.history),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/memory-timeline');
+                      },
                     ),
                     IconButton(
                       onPressed: () => Navigator.pushNamed(context, '/profile'),

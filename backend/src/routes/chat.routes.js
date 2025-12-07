@@ -145,8 +145,21 @@ router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => 
                 targetConversationId // Pass conversation ID for context isolation
             );
 
-            // Extract actual message string from response object
-            const aiMessageString = typeof response === 'string' ? response : response.message;
+            // Robust message extraction - handle any nesting level
+            const extractMessageText = (obj) => {
+                if (typeof obj === 'string') return obj;
+                if (!obj) return '';
+                if (obj.message) return extractMessageText(obj.message);
+                if (obj.text) return extractMessageText(obj.text);
+                if (obj.content) return extractMessageText(obj.content);
+                if (obj.response) return extractMessageText(obj.response);
+                // Last resort
+                const str = String(obj);
+                return str === '[object Object]' ? JSON.stringify(obj) : str;
+            };
+
+            const aiMessageString = extractMessageText(response);
+            logger.info(`AI Response extracted: ${aiMessageString.substring(0, 100)}...`);
 
             // Update emotional metrics AFTER getting AI response (to detect memory callbacks)
             await updateEmotionalMetrics(
@@ -198,7 +211,7 @@ router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => 
 
 
             res.json({
-                message: response,
+                message: aiMessageString,  // Return string, not object
                 conversation_id: targetConversationId,
                 mode,
                 timestamp: new Date().toISOString(),

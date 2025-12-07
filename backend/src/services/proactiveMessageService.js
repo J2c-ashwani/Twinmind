@@ -1,5 +1,5 @@
-const logger = require('../config/logger');
-const { supabaseAdmin } = require('../config/supabase');
+import logger from '../config/logger.js';
+import { supabaseAdmin } from '../config/supabase.js';
 
 /**
  * Proactive Message Service
@@ -112,17 +112,15 @@ async function detectProactiveTriggers(userId) {
 
         if (contexts && contexts.length > 0) {
             const context = contexts[0];
-            const daysSinceM
+            const daysSinceMentioned = (now - new Date(context.last_mentioned)) / (1000 * 60 * 60 * 24);
 
-            entioned = (now - new Date(context.last_mentioned)) / (1000 * 60 * 60 * 24);
-
-            if (daysSinceM entioned >= 3) {
+            if (daysSinceMentioned >= 3) {
                 triggers.push({
                     type: 'follow_up',
                     condition: {
                         context_name: context.name,
                         context_type: context.context_type,
-                        days_since_mentioned: daysSinceM entioned
+                        days_since_mentioned: daysSinceMentioned
                     },
                     priority: 'high',
                     context_data: context
@@ -295,7 +293,7 @@ async function runProactiveMessageCheck() {
     }
 }
 
-module.exports = {
+export {
     detectProactiveTriggers,
     generateProactiveMessage,
     scheduleProactiveMessage,

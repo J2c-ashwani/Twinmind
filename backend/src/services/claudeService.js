@@ -11,29 +11,30 @@ class ClaudeService {
     /**
      * Generate chat response using Claude
      */
-    async generateChatResponse(prompt, conversationHistory = []) {
+    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
         if (!this.isEnabled) {
             throw new Error('Claude API key not configured');
         }
 
         try {
-            const messages = conversationHistory.map(msg => ({
-                role: msg.sender_type === 'user' ? 'user' : 'assistant',
-                content: msg.content,
-            }));
+            // Extract system prompt
+            const systemMsg = messagesArray.find(m => m.role === 'system');
+            const systemPrompt = systemMsg ? systemMsg.content : undefined;
 
-            messages.push({ role: 'user', content: prompt });
+            // Filter out system prompt for the messages array
+            const anthropicMessages = messagesArray.filter(m => m.role !== 'system');
 
             const response = await this.client.messages.create({
                 model: 'claude-3-haiku-20240307', // Free tier available
                 max_tokens: 2048,
-                messages,
+                system: systemPrompt,
+                messages: anthropicMessages,
             });
 
             return response.content[0].text;
         } catch (error) {
             console.error('Claude API error:', error);
-            throw new Error('Failed to generate AI response');
+            throw new Error('Failed to generate AI response: ' + error.message);
         }
     }
 

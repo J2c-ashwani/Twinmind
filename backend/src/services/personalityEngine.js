@@ -1,155 +1,129 @@
+// personalityEngine.js (Fully rewritten & optimized)
+
 import aiService from './aiService.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
 import { MODELS } from '../config/openai.js';
 
 /**
- * Personality Engine - Generates AI personality profiles from user answers
+ * ================================
+ * PERSONALITY GENERATION PROMPT
+ * ================================
+ * Produces a fully structured JSON personality model.
  */
+const PERSONALITY_GENERATION_PROMPT = `
+You are an expert psychologist and personality analyst. Based on the user's answers below, create a deeply accurate AI personality model.
 
-// Personality generation prompt template
-const PERSONALITY_GENERATION_PROMPT = `You are an expert psychologist and personality analyst. Based on the user's answers to personality questions, create a comprehensive AI personality model.
+Analyze the answers and output a JSON with the following structure:
 
-Analyze the following responses and create a detailed personality JSON that captures:
+{
+  "big_five": {
+    "openness": <1-100>,
+    "conscientiousness": <1-100>,
+    "extraversion": <1-100>,
+    "agreeableness": <1-100>,
+    "emotional_stability": <1-100>
+  },
+  "strengths": [...],
+  "weaknesses": [...],
+  "emotional_patterns": {
+    "typical_reactions": "",
+    "stress_response": "",
+    "triggers": [...],
+    "regulation_style": ""
+  },
+  "communication_style": {
+    "tone": "",
+    "formality": "",
+    "directness": "",
+    "expressiveness": "",
+    "conflict_handling": ""
+  },
+  "decision_making": {
+    "style": "",
+    "risk_tolerance": "",
+    "speed": "",
+    "information_needs": ""
+  },
+  "relationship_patterns": {
+    "social_needs": "",
+    "attachment_style": "",
+    "boundaries": "",
+    "connection_depth": ""
+  },
+  "core_values": [...],
+  "motivations": [...],
+  "thinking_patterns": {
+    "abstraction": "",
+    "scope": "",
+    "creativity": "",
+    "outlook": ""
+  },
+  "summary": "A short 2-3 sentence essence summary."
+}
 
-1. **Big Five Traits** (with scores 1-100):
-   - Openness
-   - Conscientiousness
-   - Extraversion
-   - Agreeableness
-   - Emotional Stability
-
-2. **Strengths**: List 5-7 key strengths based on their personality
-
-3. **Weaknesses**: List 3-5 areas for growth or potential blind spots
-
-4. **Emotional Patterns**:
-   - Typical emotional reactions
-   - Stress responses
-   - Emotional triggers
-   - Emotional regulation style
-
-5. **Communication Style**:
-   - Tone (formal, casual, warm, direct, etc.)
-   - Preferred interaction mode
-   - Conflict handling
-   - Expressiveness level
-
-6. **Decision-Making Style**:
-   - Analytical vs. Intuitive
-   - Risk tolerance
-   - Speed (quick vs. deliberate)
-   - Information needs
-
-7. **Relationship Patterns**:
-   - Social needs
-   - Attachment style
-   - Boundaries
-   - Connection style
-
-8. **Core Values**: Top 5 values that guide their life
-
-9. **Motivations**: What drives them (achievement, connection, autonomy, etc.)
-
-10. **Thinking Patterns**:
-    - Abstract vs. Concrete
-    - Big picture vs. Details
-    - Creative vs. Practical
-    - Optimistic vs. Realistic
+⚠️ Return ONLY valid JSON. No commentary, no markdown.
 
 User's Answers:
 {answers}
 
 Additional Context:
-- Name: {name}
-- Background: {background}
-
-Return ONLY a valid JSON object with this structure:
-{
-  "big_five": {
-    "openness": <score>,
-    "conscientiousness": <score>,
-    "extraversion": <score>,
-    "agreeableness": <score>,
-    "emotional_stability": <score>
-  },
-  "strengths": ["strength1", "strength2", ...],
-  "weaknesses": ["weakness1", "weakness2", ...],
-  "emotional_patterns": {
-    "typical_reactions": "description",
-    "stress_response": "description",
-    "triggers": ["trigger1", "trigger2", ...],
-    "regulation_style": "description"
-  },
-  "communication_style": {
-    "tone": "description",
-    "formality": "casual/formal/balanced",
-    "directness": "direct/diplomatic/balanced",
-    "expressiveness": "high/medium/low",
-    "conflict_handling": "description"
-  },
-  "decision_making": {
-    "style": "analytical/intuitive/balanced",
-    "risk_tolerance": "high/medium/low",
-    "speed": "quick/deliberate/situational",
-    "information_needs": "minimal/moderate/extensive"
-  },
-  "relationship_patterns": {
-    "social_needs": "high/medium/low",
-    "attachment_style": "secure/anxious/avoidant",
-    "boundaries": "strong/flexible/weak",
-    "connection_depth": "deep/varied/casual"
-  },
-  "core_values": ["value1", "value2", "value3", "value4", "value5"],
-  "motivations": ["motivation1", "motivation2", ...],
-  "thinking_patterns": {
-    "abstraction": "abstract/concrete/balanced",
-    "scope": "big_picture/details/balanced",
-    "creativity": "highly_creative/practical/balanced",
-    "outlook": "optimistic/realistic/pessimistic"
-  },
-  "summary": "2-3 sentence personality summary that captures their essence"
-}`;
+Name: {name}
+Background: {background}
+`;
 
 /**
- * Generate personality profile from user answers
+ * ============================
+ * GENERATE PERSONALITY PROFILE
+ * ============================
  */
 export async function generatePersonality(userId, answers, userData = {}) {
     try {
-        logger.info(`Generating personality for user ${userId}`);
+        logger.info(`🧠 Generating personality for user ${userId}`);
 
-        // Format answers for the prompt
-        const formattedAnswers = answers.map((a, idx) =>
-            `Q${idx + 1}: ${a.question}\nA: ${a.answer}\n`
-        ).join('\n');
+        // Format user answers
+        const formattedAnswers = answers
+            .map((a, i) => `Q${i + 1}: ${a.question}\nA: ${a.answer}`)
+            .join('\n\n');
 
         const prompt = PERSONALITY_GENERATION_PROMPT
             .replace('{answers}', formattedAnswers)
             .replace('{name}', userData.name || 'User')
-            .replace('{background}', userData.background || 'No additional context provided');
+            .replace('{background}', userData.background || 'Not provided');
 
-        // Call AI Service to generate personality
-        const systemPrompt = 'You are an expert psychologist. Return valid JSON only.';
-        const responseText = await aiService.generateChatResponse(prompt, [], systemPrompt);
+        const systemPrompt = "You are an expert psychologist. Return valid JSON only.";
 
-        // Clean response text (remove markdown code blocks if any)
-        let cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
+        // IMPORTANT: aiService expects: (prompt, conversationHistory, systemPrompt)
+        // Wait, aiService new signature is generateChatResponse(userMessage, history, systemPrompt)
+        // Or generateChatResponse(messagesArray...) ?
+        // aiService.js has: async generateChatResponse(userMessage, conversationHistory = [], systemPrompt = '', taskType = 'default')
+        // So passing (prompt, [], systemPrompt) is correct for the main entry point logic.
+        const rawResponse = await aiService.generateChatResponse(prompt, [], systemPrompt, 'personality_core');
 
-        // Extract JSON object if there's extra text
-        const firstBrace = cleanJson.indexOf('{');
-        const lastBrace = cleanJson.lastIndexOf('}');
+        // Note: aiService returns an object { provider, text, raw } OR just text if older version?
+        // New aiService returns { provider, text, raw }.
+        // BUT wait, aiService.js I wrote earlier returns an object:
+        // return { provider: provider.name, text: cleaned, raw };
+        // So rawResponse.text is what we want.
 
-        if (firstBrace !== -1 && lastBrace !== -1) {
-            cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+        let finalText = rawResponse.text || rawResponse; // Handle both object and string just in case
+        if (typeof finalText !== 'string') finalText = JSON.stringify(finalText);
+
+        // --- CLEAN JSON ---
+        let clean = finalText.replace(/```json|```/gi, '').trim();
+
+        const first = clean.indexOf('{');
+        const last = clean.lastIndexOf('}');
+        if (first !== -1 && last !== -1) {
+            clean = clean.substring(first, last + 1);
         }
 
-        const personalityJSON = JSON.parse(cleanJson);
+        const personalityJSON = JSON.parse(clean);
 
-        // Generate twin name and summary
         const twinName = `${userData.name || 'Your'} Twin`;
         const twinSummary = personalityJSON.summary || 'Your AI Digital Twin';
 
-        // Store in database
+        // --- UPSERT personality profile ---
         const { data, error } = await supabaseAdmin
             .from('personality_profiles')
             .upsert({
@@ -166,7 +140,7 @@ export async function generatePersonality(userId, answers, userData = {}) {
 
         if (error) throw error;
 
-        logger.info(`Personality generated successfully for user ${userId}`);
+        logger.info(`✅ Personality generated and saved for user ${userId}`);
 
         return {
             success: true,
@@ -176,13 +150,15 @@ export async function generatePersonality(userId, answers, userData = {}) {
         };
 
     } catch (error) {
-        logger.error('Error generating personality:', error);
+        logger.error('❌ Personality generation failed:', error);
         throw new Error(`Personality generation failed: ${error.message}`);
     }
 }
 
 /**
- * Get user's personality profile
+ * ============================
+ * GET PERSONALITY PROFILE
+ * ============================
  */
 export async function getPersonality(userId) {
     try {
@@ -194,48 +170,48 @@ export async function getPersonality(userId) {
 
         if (error && error.code !== 'PGRST116') throw error;
 
-        return data;
-
+        return data || null;
     } catch (error) {
-        logger.error('Error fetching personality:', error);
+        logger.error('❌ Error fetching personality:', error);
         throw error;
     }
 }
 
 /**
- * Update personality profile
+ * ============================
+ * REGENERATE PERSONALITY
+ * ============================
  */
 export async function regeneratePersonality(userId) {
     try {
-        // Fetch user's original answers
+        // 1. Fetch original answers
         const { data: answers, error: answersError } = await supabaseAdmin
             .from('personality_answers')
             .select(`
-        answer_text,
-        personality_questions (
-          question_text
-        )
-      `)
+                answer_text,
+                personality_questions(question_text)
+            `)
             .eq('user_id', userId);
 
         if (answersError) throw answersError;
 
-        const formattedAnswers = answers.map(a => ({
+        const formatted = answers.map(a => ({
             question: a.personality_questions.question_text,
             answer: a.answer_text
         }));
 
-        // Get user data
+        // 2. Fetch user info
         const { data: user } = await supabaseAdmin
             .from('users')
             .select('full_name')
             .eq('id', userId)
             .single();
 
-        return await generatePersonality(userId, formattedAnswers, { name: user?.full_name });
+        // 3. Regenerate
+        return await generatePersonality(userId, formatted, { name: user?.full_name });
 
     } catch (error) {
-        logger.error('Error regenerating personality:', error);
+        logger.error('❌ Error regenerating personality:', error);
         throw error;
     }
 }

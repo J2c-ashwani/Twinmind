@@ -108,6 +108,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               
               const SizedBox(height: 32),
+              _buildSectionHeader('Legal'),
+              _buildActionTile(
+                'Privacy Policy',
+                'How we protect your data',
+                Icons.privacy_tip_outlined,
+                () => Navigator.pushNamed(context, '/privacy'),
+              ),
+              _buildActionTile(
+                'Terms of Service',
+                'Rules for using TwinMind',
+                Icons.description_outlined,
+                () => Navigator.pushNamed(context, '/terms'),
+              ),
+              
+              const SizedBox(height: 32),
               const Center(
                 child: Text(
                   'Version 1.0.0',

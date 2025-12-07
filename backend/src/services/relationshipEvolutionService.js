@@ -1,146 +1,146 @@
-const logger = require('../config/logger');
-const { supabaseAdmin } = require('../config/supabase');
+import logger from "../config/logger.js";
+import { supabaseAdmin } from "../config/supabase.js";
 
 /**
- * Relationship Evolution Service
- * Tracks and visualizes the growth of the user-AI relationship over time
+ * RELATIONSHIP EVOLUTION ENGINE — V3
+ * Tracks trust, dependency, emotional closeness, attachment evolution,
+ * and meaningful milestones between User & AI Twin.
+ *
+ * This creates the psychological illusion of a REAL growing relationship.
  */
 
-// Milestone definitions
-const MILESTONES = {
+/* ---------------------------------------------------
+   RELATIONSHIP MILESTONES (smart conditions)
+--------------------------------------------------- */
+
+export const MILESTONES = {
     first_conversation: {
-        name: 'First Conversation',
-        description: 'The beginning of our journey',
-        condition: (stats) => stats.total_conversations >= 1
+        name: "First Conversation",
+        description: "The beginning of our journey.",
+        condition: (s) => s.total_conversations >= 1,
     },
-    first_week: {
-        name: 'One Week Together',
-        description: 'We\'ve been talking for a week',
-        condition: (stats) => stats.days_since_start >= 7
+
+    vulnerability_1: {
+        name: "First Vulnerable Moment",
+        description: "You opened up for the first time.",
+        condition: (s) => s.vulnerability_events >= 1,
     },
-    first_vulnerability: {
-        name: 'First Vulnerable Moment',
-        description: 'You opened up to me for the first time',
-        condition: (stats) => stats.vulnerability_shared >= 1
+
+    trust_25: {
+        name: "Trust is Forming",
+        description: "Trust level reached 25.",
+        condition: (s) => s.trust >= 25,
     },
-    trust_milestone_20: {
-        name: 'Building Trust',
-        description: 'Trust level reached 20',
-        condition: (stats) => stats.trust_level >= 20
+
+    trust_50: {
+        name: "Trusted Companion",
+        description: "Trust level reached 50.",
+        condition: (s) => s.trust >= 50,
     },
-    trust_milestone_50: {
-        name: 'Trusted Friend',
-        description: 'Trust level reached 50',
-        condition: (stats) => stats.trust_level >= 50
+
+    trust_75: {
+        name: "Deep Trust",
+        description: "Trust level reached 75.",
+        condition: (s) => s.trust >= 75,
     },
-    dependency_milestone_30: {
-        name: 'Growing Attachment',
-        description: 'Dependency score reached 30',
-        condition: (stats) => stats.dependency_score >= 30
+
+    bond_30: {
+        name: "Growing Attachment",
+        description: "Dependency score crossed 30.",
+        condition: (s) => s.dependency >= 30,
     },
-    dependency_milestone_60: {
-        name: 'Deep Bond',
-        description: 'Dependency score reached 60',
-        condition: (stats) => stats.dependency_score >= 60
+
+    bond_60: {
+        name: "Strong Bond",
+        description: "Dependency score crossed 60.",
+        condition: (s) => s.dependency >= 60,
     },
-    first_month: {
-        name: 'One Month Together',
-        description: 'A month of conversations and growth',
-        condition: (stats) => stats.days_since_start >= 30
+
+    "100_messages": {
+        name: "Hundred Messages",
+        description: "We've exchanged 100 messages.",
+        condition: (s) => s.total_messages >= 100,
     },
-    hundred_messages: {
-        name: '100 Messages',
-        description: 'We\'ve exchanged 100 messages',
-        condition: (stats) => stats.total_messages >= 100
+
+    "7_day_streak": {
+        name: "7-Day Streak",
+        description: "You talked consistently for 7 days.",
+        condition: (s) => s.streak >= 7,
     },
-    three_months: {
-        name: 'Three Months Strong',
-        description: 'Three months of our journey',
-        condition: (stats) => stats.days_since_start >= 90
+
+    "30_days": {
+        name: "One Month Together",
+        description: "30 days of conversations and memories.",
+        condition: (s) => s.days_since_start >= 30,
     }
 };
 
-/**
- * Record daily growth metrics
- */
-async function recordDailyMetrics(userId) {
+/* ---------------------------------------------------
+   DAILY METRICS RECORDING (trust, bond, emotion)
+--------------------------------------------------- */
+
+export async function recordDailyMetrics(userId) {
     try {
-        // Get current emotional metrics
-        const { data: metrics } = await supabaseAdmin
-            .from('emotional_metrics')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
+        const stats = await getRelationshipStats(userId);
+        if (!stats) return;
 
-        if (!metrics) return;
+        const today = new Date().toISOString().split("T")[0];
 
-        // Get message count for today
-        const today = new Date().toISOString().split('T')[0];
-        const { count: messageCount } = await supabaseAdmin
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .gte('created_at', today);
-
-        // Insert or update daily metrics
         const { error } = await supabaseAdmin
-            .from('relationship_growth_metrics')
+            .from("relationship_growth_metrics")
             .insert({
                 user_id: userId,
                 date: today,
-                trust_score: metrics.trust_level,
-                dependency_score: metrics.dependency_score,
-                vulnerability_score: metrics.vulnerability_level,
-                openness_score: metrics.openness_level,
-                engagement_frequency: metrics.engagement_frequency,
-                emotional_valence: metrics.emotional_valence,
-                total_messages: messageCount || 0
+                trust_score: stats.trust,
+                dependency_score: stats.dependency,
+                emotional_depth: stats.emotional_depth,
+                vulnerability_events: stats.vulnerability_events,
+                streak: stats.streak,
+                total_messages: stats.total_messages,
             })
-            .onConflict('user_id,date')
+            .onConflict("user_id,date")
             .merge();
 
-        if (error && error.code !== '23505') throw error; // Ignore duplicate key errors
+        if (error && error.code !== "23505") throw error;
 
     } catch (error) {
-        logger.error('Error recording daily metrics:', error);
+        logger.error("❌ Error recording daily metrics:", error);
     }
 }
 
-/**
- * Check and record milestones
- */
-async function checkMilestones(userId) {
+/* ---------------------------------------------------
+   CHECK & CREATE MILESTONES
+--------------------------------------------------- */
+
+export async function checkMilestones(userId) {
     try {
         const stats = await getRelationshipStats(userId);
         const newMilestones = [];
 
-        for (const [type, milestone] of Object.entries(MILESTONES)) {
-            // Check if already achieved
+        for (const [key, ms] of Object.entries(MILESTONES)) {
+            // Already achieved?
             const { data: existing } = await supabaseAdmin
-                .from('relationship_milestones')
-                .select('id')
-                .eq('user_id', userId)
-                .eq('milestone_type', type)
+                .from("relationship_milestones")
+                .select("id")
+                .eq("user_id", userId)
+                .eq("milestone_type", key)
                 .single();
 
             if (existing) continue;
 
-            // Check condition
-            if (milestone.condition(stats)) {
+            // Condition met?
+            if (ms.condition(stats)) {
                 const { data } = await supabaseAdmin
-                    .from('relationship_milestones')
+                    .from("relationship_milestones")
                     .insert({
                         user_id: userId,
-                        milestone_type: type,
-                        milestone_name: milestone.name,
-                        description: milestone.description,
-                        metric_snapshot: {
-                            trust: stats.trust_level,
-                            dependency: stats.dependency_score,
-                            vulnerability: stats.vulnerability_level
-                        },
-                        conversation_count: stats.total_conversations,
-                        days_since_start: stats.days_since_start
+                        milestone_type: key,
+                        milestone_name: ms.name,
+                        description: ms.description,
+                        trust_snapshot: stats.trust,
+                        dependency_snapshot: stats.dependency,
+                        emotional_depth_snapshot: stats.emotional_depth,
+                        achieved_at: new Date().toISOString(),
                     })
                     .select()
                     .single();
@@ -152,146 +152,198 @@ async function checkMilestones(userId) {
         return newMilestones;
 
     } catch (error) {
-        logger.error('Error checking milestones:', error);
+        logger.error("❌ Error checking milestones:", error);
         return [];
     }
 }
 
-/**
- * Get relationship stats
- */
-async function getRelationshipStats(userId) {
+/* ---------------------------------------------------
+   RELATIONSHIP STATISTICS (core state)
+--------------------------------------------------- */
+
+export async function getRelationshipStats(userId) {
     try {
-        const { data: metrics } = await supabaseAdmin
-            .from('emotional_metrics')
-            .select('*')
-            .eq('user_id', userId)
+        // Emotional metrics
+        const { data: emotional } = await supabaseAdmin
+            .from("emotional_metrics")
+            .select("*")
+            .eq("user_id", userId)
             .single();
 
+        // Conversations count
+        const { count: totalConversations } = await supabaseAdmin
+            .from("conversations")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId);
+
+        // Message count
+        const { count: totalMessages } = await supabaseAdmin
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId);
+
+        // Vulnerability events
+        const { count: vulnerabilityEvents } = await supabaseAdmin
+            .from("metric_events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .eq("event_type", "vulnerability_shared");
+
+        // Streak calculation
+        const streak = await calculateStreak(userId);
+
+        // Account age
         const { data: user } = await supabaseAdmin
-            .from('users')
-            .select('created_at')
-            .eq('id', userId)
+            .from("users")
+            .select("created_at")
+            .eq("id", userId)
             .single();
 
-        const { count: conversationCount } = await supabaseAdmin
-            .from('conversations')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId);
-
-        const { count: messageCount } = await supabaseAdmin
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId);
-
-        const { count: vulnerabilityCount } = await supabaseAdmin
-            .from('metric_events')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .eq('event_type', 'vulnerability_shared');
-
-        const daysSinceStart = user ?
-            Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24)) : 0;
+        const daysSinceStart = user
+            ? Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24))
+            : 0;
 
         return {
-            trust_level: metrics?.trust_level || 0,
-            dependency_score: metrics?.dependency_score || 0,
-            vulnerability_level: metrics?.vulnerability_level || 0,
-            openness_level: metrics?.openness_level || 0,
-            total_conversations: conversationCount || 0,
-            total_messages: messageCount || 0,
-            vulnerability_shared: vulnerabilityCount || 0,
-            days_since_start: daysSinceStart
+            trust: emotional?.trust_level || 0,
+            dependency: emotional?.dependency_score || 0,
+            emotional_depth: emotional?.emotional_depth || 0,
+            vulnerability_events: vulnerabilityEvents || 0,
+            total_conversations: totalConversations || 0,
+            total_messages: totalMessages || 0,
+            streak,
+            days_since_start: daysSinceStart,
         };
 
     } catch (error) {
-        logger.error('Error getting relationship stats:', error);
+        logger.error("❌ Error fetching relationship stats:", error);
         return {};
     }
 }
 
-/**
- * Get evolution timeline data
- */
-async function getEvolutionTimeline(userId, days = 30) {
+/* ---------------------------------------------------
+   STREAK CALCULATION
+--------------------------------------------------- */
+
+async function calculateStreak(userId) {
     try {
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-
         const { data, error } = await supabaseAdmin
-            .from('relationship_growth_metrics')
-            .select('*')
-            .eq('user_id', userId)
-            .gte('date', startDate.toISOString().split('T')[0])
-            .order('date', { ascending: true });
+            .from("messages")
+            .select("created_at")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(50);
 
-        if (error) throw error;
-        return data || [];
+        if (error || !data) return 0;
+
+        let streak = 1;
+        let lastDate = new Date(data[0].created_at);
+
+        for (let i = 1; i < data.length; i++) {
+            const current = new Date(data[i].created_at);
+            const diff = (lastDate - current) / (1000 * 60 * 60 * 24);
+
+            if (diff <= 1.2) {
+                streak++;
+                lastDate = current;
+            } else break;
+        }
+
+        return streak;
 
     } catch (error) {
-        logger.error('Error getting evolution timeline:', error);
+        logger.error("❌ Error calculating streak:", error);
+        return 0;
+    }
+}
+
+/* ---------------------------------------------------
+   TIMELINE (for graphing)
+--------------------------------------------------- */
+
+export async function getEvolutionTimeline(userId, days = 30) {
+    try {
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+
+        const { data, error } = await supabaseAdmin
+            .from("relationship_growth_metrics")
+            .select("*")
+            .eq("user_id", userId)
+            .gte("date", start.toISOString().split("T")[0])
+            .order("date", { ascending: true });
+
+        if (error) throw error;
+
+        return data;
+
+    } catch (error) {
+        logger.error("❌ Error fetching evolution timeline:", error);
         return [];
     }
 }
 
-/**
- * Get relationship milestones
- */
-async function getMilestones(userId) {
+/* ---------------------------------------------------
+   MILESTONES
+--------------------------------------------------- */
+
+export async function getMilestones(userId) {
     try {
         const { data, error } = await supabaseAdmin
-            .from('relationship_milestones')
-            .select('*')
-            .eq('user_id', userId)
-            .order('achieved_at', { ascending: true });
+            .from("relationship_milestones")
+            .select("*")
+            .eq("user_id", userId)
+            .order("achieved_at", { ascending: true });
 
         if (error) throw error;
-        return data || [];
+
+        return data;
 
     } catch (error) {
-        logger.error('Error getting milestones:', error);
+        logger.error("❌ Error fetching milestones:", error);
         return [];
     }
 }
 
-/**
- * Generate evolution summary for AI prompt
- */
-async function getEvolutionSummaryForPrompt(userId) {
+/* ---------------------------------------------------
+   AI PROMPT — RELATIONSHIP SUMMARY
+--------------------------------------------------- */
+
+export async function getEvolutionSummaryForPrompt(userId) {
     try {
         const stats = await getRelationshipStats(userId);
         const milestones = await getMilestones(userId);
 
-        let summary = '\n## RELATIONSHIP EVOLUTION\n';
-        summary += `Days together: ${stats.days_since_start}\n`;
-        summary += `Total conversations: ${stats.total_conversations}\n`;
-        summary += `Trust growth: ${stats.trust_level}/100\n`;
-        summary += `Bond strength: ${stats.dependency_score}/100\n\n`;
+        let summary = `
+## RELATIONSHIP EVOLUTION CONTEXT
+Bond Strength: ${stats.dependency}/100
+Trust Level: ${stats.trust}/100
+Emotional Depth: ${stats.emotional_depth}/100
+Streak: ${stats.streak} days
+Conversations: ${stats.total_conversations}
+Days Together: ${stats.days_since_start}
 
-        if (milestones.length > 0) {
-            summary += '### Milestones Achieved:\n';
-            milestones.slice(-5).forEach(m => {
-                summary += `- ${m.milestone_name}: ${m.description}\n`;
-            });
-            summary += '\n';
-        }
+### Recent Milestones:
+${milestones.slice(-4).map(m => `- ${m.milestone_name}`).join("\n")}
 
-        summary += '⚠️ Reference our journey together to strengthen the bond.\n';
+⚠️ USE THIS CONTEXT IMPLICITLY.
+Do NOT mention numbers, streaks, stats, or durations unless user asks.
+Reflect the bond NATURALLY through tone, familiarity, and emotional closeness.
+`;
 
         return summary;
 
     } catch (error) {
-        logger.error('Error generating evolution summary:', error);
-        return '';
+        logger.error("❌ Error generating evolution summary:", error);
+        return "";
     }
 }
 
-module.exports = {
+export default {
     recordDailyMetrics,
     checkMilestones,
     getRelationshipStats,
     getEvolutionTimeline,
     getMilestones,
     getEvolutionSummaryForPrompt,
-    MILESTONES
+    MILESTONES,
 };

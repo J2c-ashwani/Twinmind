@@ -9,19 +9,28 @@ class HuggingFaceService {
     /**
      * Generate chat response using Hugging Face
      */
-    async generateChatResponse(prompt, conversationHistory = []) {
+    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
         if (!this.isEnabled) {
             throw new Error('Hugging Face API key not configured');
         }
 
         try {
-            // Build conversation context
+            // Build conversation context string from messages array
             let context = '';
-            conversationHistory.forEach(msg => {
-                const role = msg.sender_type === 'user' ? 'User' : 'Assistant';
-                context += `${role}: ${msg.content}\n`;
+
+            messagesArray.forEach(msg => {
+                if (msg.role === 'system') {
+                    context += `System: ${msg.content}\n\n`;
+                } else {
+                    const role = msg.role === 'user' ? 'User' : 'Assistant';
+                    context += `${role}: ${msg.content}\n`;
+                }
             });
-            context += `User: ${prompt}\nAssistant:`;
+
+            // Append explicit Assistant prompt if not present at end (to trigger generation)
+            if (!context.trim().endsWith('Assistant:')) {
+                context += 'Assistant:';
+            }
 
             const response = await this.hf.textGeneration({
                 model: 'mistralai/Mistral-7B-Instruct-v0.2', // Free tier
@@ -36,7 +45,7 @@ class HuggingFaceService {
             return response.generated_text.split('Assistant:').pop().trim();
         } catch (error) {
             console.error('Hugging Face API error:', error);
-            throw new Error('Failed to generate AI response');
+            throw new Error('Failed to generate AI response: ' + error.message);
         }
     }
 

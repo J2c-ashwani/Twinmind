@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { apiClient } from '@/lib/api/client';
 import { motion } from 'framer-motion';
 import { TrendingUp, MessageCircle, Heart, Target, Sparkles } from 'lucide-react';
@@ -29,6 +30,10 @@ export default function WeeklyInsights() {
 
     const loadInsights = async () => {
         try {
+            const supabase = createClientComponentClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) apiClient.setToken(session.access_token);
+
             const data = await apiClient.getWeeklyInsights();
             setInsights(data);
         } catch (error) {

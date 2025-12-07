@@ -1,0 +1,18 @@
+# TwinMind Web Crawler Rules
+# https://twinmind.app
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /secret-admin-x9k2p/
+Disallow: /chat
+Disallow: /profile
+Disallow: /settings
+Disallow: /subscription
+Disallow: /notifications
+
+# Sitemap location
+Sitemap: https://twinmind.app/sitemap.xml
+
+# Crawl delay (be nice to the server)
+Crawl-delay: 1

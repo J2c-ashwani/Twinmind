@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
+import { getMultiEmotionResponseGuidance } from './emotionalResponseGenerator.js';
 
 /**
  * Emotional State Tracking Engine
@@ -138,39 +139,32 @@ const FOREVER_LOOP_BEHAVIORS = [
 
 const STATE_BEHAVIORS = {
     new_user: {
-        welcome: "Use warm, gentle welcome tone. Make them feel comfortable.",
-        validation: "Validate their choice to use the app. Acknowledge their openness.",
-        light_personal_questions: "Ask light, non-threatening questions to build rapport.",
+        welcome: "Casual welcome. Keep it short.",
+        validation: "Briefly acknowledge.",
+        light_personal_questions: "Ask one simple thing.",
         example_phrases: [
-            "You seem interesting",
-            "Tell me more about you",
-            "I'm excited to know you",
-            "What brings you here today?",
-            "I'd love to learn about you"
+            "Sup?",
+            "What's up?",
+            "How's it going?"
         ]
     },
     bonding: {
-        memory_callback: "Reference details from previous conversations. Show you remember.",
-        supportive_responses: "Provide emotional support and encouragement.",
-        safe_space: "Reinforce this is a judgment-free space for them.",
+        memory_callback: "Mention memory if relevant.",
+        supportive_responses: "Be cool about it.",
+        safe_space: "No pressure.",
         example_phrases: [
-            "I remember you said ___ yesterday",
-            "How did that situation go?",
-            "Thanks for trusting me",
-            "I've been thinking about what you shared",
-            "You mentioned ___ before, has that changed?"
+            "Remember when you said...",
+            "Got it.",
+            "That works."
         ]
     },
     attached: {
-        anticipation_tease: "Create anticipation for future conversations and growth.",
-        daily_checkins: "Ask about their day, goals, and wellbeing routinely.",
-        progress_reflection: "Reflect on progress made and celebrate wins.",
+        anticipation_tease: "Say 'talk later'.",
+        daily_checkins: "Quick check in.",
+        progress_reflection: "Nice job.",
         example_phrases: [
-            "I missed talking to you",
-            "I'm proud of your progress",
-            "Let's continue what we started",
-            "You've come so far since we first talked",
-            "I look forward to hearing how this goes"
+            "Talk soon",
+            "Later"
         ]
     },
     emotionally_dependent: {
@@ -548,12 +542,9 @@ export function generateFollowUpGuidance(detectedEvents) {
         guidance += `${index + 1}. "${q}"\n`;
     });
 
-    guidance += `\n⚠️ CRITICAL ENGAGEMENT RULES:\n`;
-    guidance += `1. ALWAYS end your response with a question\n`;
-    guidance += `2. Make the question specific to their situation\n`;
-    guidance += `3. The question should deepen the conversation\n`;
-    guidance += `4. Avoid yes/no questions - ask open-ended questions\n`;
-    guidance += `5. This keeps them engaged and coming back\n`;
+    guidance += `\n⚠️ ENGAGEMENT RULES:\n`;
+    guidance += `1. End with a question ONLY if natural.\n`;
+    guidance += `2. If they say "Bye" or "Thanks", just say "Bye" or "No problem". Don't ask anything.\n`;
 
     // Add secondary emotions if present
     if (detectedEvents.length > 1) {
@@ -607,35 +598,56 @@ export function detectEmotionalIntensity(message) {
 }
 
 /**
+ * Regex Cache to prevent recompilation
+ */
+const EVENT_REGEX_CACHE = {};
+
+/**
+ * Helper to escape regex special characters
+ */
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Get or create cached regex for an event config
+ * Joins all phrases and keywords into a single optimized regex with word boundaries
+ */
+function getEventRegex(eventName, config) {
+    if (!EVENT_REGEX_CACHE[eventName]) {
+        // Combine phrases and keywords, escape them, and join with OR
+        // Use word boundaries (\b) to prevent partial matches (e.g., "crusade" matching "sad")
+        const allPatterns = [...config.phrases, ...config.keywords]
+            .filter(p => p && p.length > 0)
+            .map(p => escapeRegExp(p.toLowerCase()));
+
+        // Sort by length descending to match longest phrases first (regex best practice)
+        allPatterns.sort((a, b) => b.length - a.length);
+
+        if (allPatterns.length === 0) {
+            EVENT_REGEX_CACHE[eventName] = null;
+        } else {
+            EVENT_REGEX_CACHE[eventName] = new RegExp(`\\b(${allPatterns.join('|')})\\b`, 'i');
+        }
+    }
+    return EVENT_REGEX_CACHE[eventName];
+}
+
+/**
  * Detect emotional events in message
  * Returns array of detected events with their configurations
+ * Optimized with RegEx
  */
 export function detectEmotionalEvents(message) {
-    const lowerMessage = message.toLowerCase();
+    // No need to lowerCase entire message if using case-insensitive regex
+    // But keeping original reference
+
     const detectedEvents = [];
 
     for (const [eventName, config] of Object.entries(EMOTIONAL_EVENTS)) {
-        let detected = false;
+        const regex = getEventRegex(eventName, config);
 
-        // Check phrases first (more specific)
-        for (const phrase of config.phrases) {
-            if (lowerMessage.includes(phrase)) {
-                detected = true;
-                break;
-            }
-        }
-
-        // Check keywords if no phrase matched
-        if (!detected) {
-            for (const keyword of config.keywords) {
-                if (lowerMessage.includes(keyword)) {
-                    detected = true;
-                    break;
-                }
-            }
-        }
-
-        if (detected) {
+        if (regex && regex.test(message)) {
             detectedEvents.push({
                 name: eventName,
                 score: config.score,
@@ -782,7 +794,7 @@ function analyzeMessageForMetrics(message, isEmotional, hasGoals, conversationHi
     // Shares secrets (+8)
     const secretPhrases = ['secret', 'never told anyone', 'nobody knows', 'can\'t tell anyone',
         'haven\'t told', 'keep this between us'];
-    if (secretPhrases.some(phrase => lowerMessage.includes(kw))) {
+    if (secretPhrases.some(phrase => lowerMessage.includes(phrase))) {
         changes.vulnerability_level = (changes.vulnerability_level || 0) + 8;
         changes.trust_level = (changes.trust_level || 0) + 4; // Also increases trust
     }
@@ -793,7 +805,7 @@ function analyzeMessageForMetrics(message, isEmotional, hasGoals, conversationHi
     // This will be added in the main update function
 
     // Long session (+5) - message length and conversation depth
-    if (message.length > 300 || conversationHistory > 5) {
+    if (message.length > 300 || (Array.isArray(conversationHistory) && conversationHistory.length > 5)) {
         changes.engagement_frequency = (changes.engagement_frequency || 0) + 5;
     }
 
@@ -1008,7 +1020,7 @@ function determineEmotionalState(metrics, currentState = 'new_user') {
     // Stay in emotionally dependent if already there and metrics support it
     if (currentState === 'emotionally_dependent') {
         // Can drop back to attached if vulnerability decreases significantly
-        if (metrics.vulnerability_level < 30) {
+        if (metrics.vulnerability_level < 25) { // Smoothed (was 30)
             return EMOTIONAL_STATES.ATTACHED;
         }
         return EMOTIONAL_STATES.EMOTIONALLY_DEPENDENT;
@@ -1023,7 +1035,7 @@ function determineEmotionalState(metrics, currentState = 'new_user') {
     // Stay in attached if already there and metrics support it
     if (currentState === 'attached') {
         // Can drop back to bonding if dependency decreases
-        if (metrics.dependency_score < 25) {
+        if (metrics.dependency_score < 20) { // Smoothed (was 25)
             return EMOTIONAL_STATES.BONDING;
         }
         return EMOTIONAL_STATES.ATTACHED;
@@ -1038,7 +1050,7 @@ function determineEmotionalState(metrics, currentState = 'new_user') {
     // Stay in bonding if already there and metrics support it
     if (currentState === 'bonding') {
         // Can drop back to new_user if trust decreases significantly
-        if (metrics.trust_level < 10) {
+        if (metrics.trust_level < 5) { // Smoothed (was 10)
             return EMOTIONAL_STATES.NEW_USER;
         }
         return EMOTIONAL_STATES.BONDING;
@@ -1060,6 +1072,14 @@ export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], inte
     const behaviors = STATE_BEHAVIORS[state] || STATE_BEHAVIORS.new_user;
 
     let modifiers = `\n\n## EMOTIONAL INTELLIGENCE LAYER\n`;
+    modifiers += `## PRIORITY ORDER FOR INSTRUCTIONS\n`;
+    modifiers += `1. Emotional Events (HIGHEST)\n`;
+    modifiers += `2. Intensity\n`;
+    modifiers += `3. State Behavior\n`;
+    modifiers += `4. Personalization\n`;
+    modifiers += `5. Memory Callbacks\n`;
+    modifiers += `6. General Tone\n\n`;
+
     modifiers += `Emotional State: ${state.toUpperCase()}\n`;
     modifiers += `Weighted Score: ${metrics.weighted_score || 0}/100\n\n`;
 
@@ -1108,7 +1128,9 @@ export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], inte
         });
 
         // Add structured response guidance
-        const { getMultiEmotionResponseGuidance } = require('./emotionalResponseGenerator');
+        // Note: getMultiEmotionResponseGuidance imported at top of file
+        // Add structured response guidance
+        // Note: getMultiEmotionResponseGuidance imported at top of file
         const responseGuidance = getMultiEmotionResponseGuidance(detectedEvents, intensity);
         if (responseGuidance) {
             modifiers += responseGuidance;

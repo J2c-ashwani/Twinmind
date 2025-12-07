@@ -34,34 +34,15 @@ class OpenRouterService {
     /**
      * Generate chat response
      */
-    async generateChatResponse(prompt, conversationHistory = [], systemPrompt = null) {
+    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
         if (!this.apiKey) {
             throw new Error('OpenRouter not configured');
         }
 
         try {
-            const messages = [];
-
-            // Add system prompt
-            if (systemPrompt) {
-                messages.push({ role: 'system', content: systemPrompt });
-            }
-
-            // Add conversation history
-            if (conversationHistory && conversationHistory.length > 0) {
-                conversationHistory.forEach((msg) => {
-                    messages.push({
-                        role: msg.role === 'user' ? 'user' : 'assistant',
-                        content: msg.content,
-                    });
-                });
-            }
-
-            // Add current prompt
-            messages.push({ role: 'user', content: prompt });
-
             const model = this.getCurrentModel();
 
+            // OpenRouter is OpenAI compatible, supports messages array directly
             const response = await fetch(`${this.baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -72,7 +53,7 @@ class OpenRouterService {
                 },
                 body: JSON.stringify({
                     model: model,
-                    messages: messages,
+                    messages: messagesArray,
                     temperature: 0.7,
                     max_tokens: 1000,
                 }),

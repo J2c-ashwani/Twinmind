@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Flame, TrendingUp } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface Streak {
     streak_type: string;
@@ -17,9 +18,19 @@ export default function StreakWidget() {
     const [streak, setStreak] = useState<Streak | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showFreezeModal, setShowFreezeModal] = useState(false);
+    const supabase = createClientComponentClient();
 
     useEffect(() => {
-        loadStreak();
+        const init = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                apiClient.setToken(session.access_token);
+                loadStreak();
+            } else {
+                setIsLoading(false);
+            }
+        };
+        init();
     }, []);
 
     const loadStreak = async () => {

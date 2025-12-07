@@ -22,7 +22,25 @@ interface Pricing {
 }
 
 export default function GeoPricingPage() {
-    const [pricing, setPricing] = useState<Pricing | null>(null);
+    // Fallback pricing in case API fails
+    const fallbackPricing: Pricing = {
+        country: 'India',
+        currency: 'INR',
+        symbol: '₹',
+        monthly: {
+            amount: 499,
+            display: '₹499',
+            usd: 5.99
+        },
+        yearly: {
+            amount: 3999,
+            display: '₹3,999',
+            usd: 47.88,
+            savings: '33%'
+        }
+    };
+
+    const [pricing, setPricing] = useState<Pricing>(fallbackPricing);
     const [isYearly, setIsYearly] = useState(true);
     const [loading, setLoading] = useState(true);
 
@@ -33,16 +51,20 @@ export default function GeoPricingPage() {
     const fetchPricing = async () => {
         try {
             const res = await fetch('/api/pricing');
-            const data = await res.json();
-            setPricing(data.pricing);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.pricing) {
+                    setPricing(data.pricing);
+                }
+            }
         } catch (error) {
-            console.error('Failed to fetch pricing:', error);
+            console.error('Failed to fetch pricing, using fallback:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading || !pricing) {
+    if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />

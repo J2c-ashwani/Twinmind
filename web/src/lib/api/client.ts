@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 class ApiClient {
     private baseUrl: string;
@@ -57,6 +57,28 @@ class ApiClient {
         });
     }
 
+    async sendVoiceMessage(conversationId: string | null, audioBlob: Blob, mode: string = 'normal') {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'voice.webm');
+        formData.append('mode', mode);
+        if (conversationId) formData.append('conversationId', conversationId);
+
+        const response = await fetch(`${this.baseUrl}/api/voice/message`, {
+            method: 'POST',
+            headers: {
+                ...(this.token && { Authorization: `Bearer ${this.token}` }),
+            },
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to send voice message');
+        }
+
+        return response.json();
+    }
+
     async sendMessage(conversationId: string | null, content: string, mode: string = 'normal') {
         return this.request('/api/chat/message', {
             method: 'POST',
@@ -69,7 +91,7 @@ class ApiClient {
     }
 
     async getChatHistory(limit?: number) {
-        return this.request(`/api/chat/history?limit=${limit || 50}`);
+        return this.request(`/api/chat/history?limit=${limit || 100}`);
     }
 
     async clearChatHistory() {
@@ -100,7 +122,82 @@ class ApiClient {
     async toggleMemoryFavorite(memoryId: string) {
         return this.request(`/api/memory/${memoryId}/favorite`, {
             method: 'POST',
+            body: JSON.stringify({})
         });
+    }
+
+    // Voice endpoints
+    async sendVoiceMessage(audioBlob: Blob, duration: number, conversationId: string) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob);
+        formData.append('duration', duration.toString());
+        formData.append('conversationId', conversationId);
+
+        // Note: We use fetch directly here because we need to send FormData
+        // and our request wrapper sets Content-Type to application/json
+        const headers: HeadersInit = {};
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        const response = await fetch(`${this.baseUrl}/api/voice/message`, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to send voice message');
+        }
+
+        return response.json();
+    }
+
+    // Life Coach endpoints
+    async getLifeCoachPrograms() {
+        return this.request('/api/life-coach/programs');
+    }
+
+    async startProgram(programId: string) {
+        return this.request('/api/life-coach/start', {
+            method: 'POST',
+            body: JSON.stringify({ programId }),
+        });
+    }
+
+    async getSession(programId: string) {
+        return this.request(`/api/life-coach/session/${programId}`);
+    }
+
+    async sendSessionMessage(programId: string, message: string, history: any[]) {
+        return this.request(`/api/life-coach/session/${programId}/message`, {
+            method: 'POST',
+            body: JSON.stringify({ message, history }),
+        });
+    }
+
+    async completeSession(programId: string, notes: string) {
+        return this.request(`/api/life-coach/session/${programId}/complete`, {
+            method: 'POST',
+            body: JSON.stringify({ notes }),
+        });
+    }
+
+    // Notification endpoints
+    async getNotifications() {
+        return this.request('/api/notifications');
+    }
+
+    async markNotificationRead(id: string) {
+        return this.request(`/api/notifications/${id}/read`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+    }
+
+    // Insights endpoints
+    async getWeeklyInsights() {
+        return this.request('/api/insights/weekly');
     }
 
     async getMemoryTimeline(limit?: number) {
@@ -146,11 +243,7 @@ class ApiClient {
         return this.request(`/api/daily/mood/history?days=${days || 30}`);
     }
 
-    // Insights endpoints
-    async getWeeklyInsights() {
-        return this.request('/api/insights/weekly');
-    }
-
+    // Additional Insights endpoints
     async getMonthlyInsights() {
         return this.request('/api/insights/monthly');
     }

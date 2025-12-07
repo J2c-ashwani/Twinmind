@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   emoji_picker_flutter
+  firebase_core
   flutter_sound
   permission_handler_windows
   share_plus

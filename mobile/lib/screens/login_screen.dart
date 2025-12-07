@@ -54,8 +54,8 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // Redirect based on whether onboarding is complete
         if (profile != null) {
-          // Has profile - go to chat
-          Navigator.pushReplacementNamed(context, '/chat');
+          // Has profile - go to main home screen
+          Navigator.pushReplacementNamed(context, '/home');
         } else {
           // No profile - needs onboarding
           Navigator.pushReplacementNamed(context, '/onboarding');

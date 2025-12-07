@@ -12,11 +12,12 @@ import GrowthCircleWidget from '@/components/Circles/GrowthCircleWidget';
 import CircleInviteModal from '@/components/Circles/CircleInviteModal';
 import WeeklyMotivationCard from '@/components/MotivationCard/WeeklyMotivationCard';
 import TwinMatchModal from '@/components/TwinMatch/TwinMatchModal';
-import { supabase } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { apiClient } from '@/lib/api/client'
 
 export default function DashboardPage() {
     const router = useRouter()
+    const supabase = createClientComponentClient()
     const [loading, setLoading] = useState(true)
     const [circleModalOpen, setCircleModalOpen] = useState(false)
     const [currentCircleId, setCurrentCircleId] = useState<string>('')

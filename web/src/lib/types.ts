@@ -81,6 +81,7 @@ export interface ChatMessage {
     sender: 'user' | 'ai'
     mode: string
     created_at: string
+    audio_url?: string
 }
 
 export interface TwinMode {

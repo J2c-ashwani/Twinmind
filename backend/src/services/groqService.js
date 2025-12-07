@@ -11,22 +11,15 @@ class GroqService {
     /**
      * Generate chat response (fallback for Gemini)
      */
-    async generateChatResponse(prompt, conversationHistory = []) {
+    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
         if (!this.isEnabled) {
             throw new Error('Groq API key not configured');
         }
 
         try {
-            const messages = [
-                ...conversationHistory.map(msg => ({
-                    role: msg.sender_type === 'user' ? 'user' : 'assistant',
-                    content: msg.content,
-                })),
-                { role: 'user', content: prompt },
-            ];
-
+            // Groq SDK is OpenAI-compatible, so messagesArray works directly
             const completion = await this.groq.chat.completions.create({
-                messages,
+                messages: messagesArray,
                 model: 'llama3-70b-8192', // Fast and free
                 temperature: 0.9,
                 max_tokens: 2048,

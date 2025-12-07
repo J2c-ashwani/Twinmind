@@ -1,14 +1,13 @@
 {
-  "IMPORTANT": "THIS IS A PLACEHOLDER FILE. YOU MUST REPLACE IT WITH YOUR ACTUAL google-services.json FROM FIREBASE CONSOLE.",
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "twinmind-placeholder",
-    "storage_bucket": "twinmind-placeholder.appspot.com"
+    "project_number": "598254902496",
+    "project_id": "twinmind-41472",
+    "storage_bucket": "twinmind-41472.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:598254902496:android:0bc27435ff8d3d410a4485",
         "android_client_info": {
           "package_name": "com.twinmind.app"
         }
@@ -16,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDummyKey"
+          "current_key": "AIzaSyByHT3qfvlWxD47ZpQL2UGy6L0rsdb_Thw"
         }
       ],
       "services": {

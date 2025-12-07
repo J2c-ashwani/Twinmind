@@ -1,45 +1,85 @@
+// memoryEngine.js (Fully rewritten)
+
 import aiService from './aiService.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
 
 /**
- * Memory Engine - Vector-based semantic memory storage and retrieval
+ * ======================================================
+ * MEMORY ENGINE — VECTOR MEMORY + SEMANTIC RETRIEVAL
+ * ======================================================
  */
 
 /**
- * Generate text embedding using AI Service
+ * Generate embedding safely through aiService
  */
 export async function generateEmbedding(text) {
     try {
-        const embedding = await aiService.generateEmbedding(text);
-        return embedding;
+        if (!text || text.trim().length === 0) {
+            throw new Error("Cannot generate embedding for empty text.");
+        }
 
-    } catch (error) {
-        logger.error('Error generating embedding:', error);
-        throw error;
+        const embedding = await aiService.generateEmbedding(text);
+
+        if (!embedding || !Array.isArray(embedding)) {
+            throw new Error("Invalid embedding returned by provider.");
+        }
+
+        return embedding;
+    } catch (err) {
+        logger.error("❌ Embedding generation error:", err);
+        throw err;
     }
 }
 
 /**
- * Store memory with vector embedding
+ * Prevent storing duplicate or meaningless memories
+ */
+async function isDuplicateMemory(userId, content) {
+    const { data, error } = await supabaseAdmin
+        .from("memory_vectors")
+        .select("content")
+        .eq("user_id", userId)
+        .order("id", { ascending: false })
+        .limit(3);
+
+    if (error) {
+        logger.error("Error checking duplicate memory:", error);
+        return false;
+    }
+
+    if (!data) return false;
+
+    return data.some(m => m.content.trim() === content.trim());
+}
+
+/**
+ * Store memory (embedding + metadata)
  */
 export async function storeMemory(userId, content, metadata = {}) {
     try {
-        logger.info(`Storing memory for user ${userId}`);
+        if (!content || content.trim().length === 0) return null;
 
-        // Generate embedding
+        // Prevent duplicate storage
+        const isDuplicate = await isDuplicateMemory(userId, content);
+        if (isDuplicate) {
+            logger.info("⚠️ Skipped duplicate memory.");
+            return null;
+        }
+
+        logger.info(`🧠 Storing memory for user ${userId}`);
+
         const embedding = await generateEmbedding(content);
 
-        // Store in database
         const { data, error } = await supabaseAdmin
-            .from('memory_vectors')
+            .from("memory_vectors")
             .insert({
                 user_id: userId,
-                content: content,
-                embedding: embedding,
+                content,
+                embedding,
                 metadata: {
                     ...metadata,
-                    stored_at: new Date().toISOString()
+                    stored_at: new Date().toISOString(),
                 }
             })
             .select()
@@ -47,109 +87,109 @@ export async function storeMemory(userId, content, metadata = {}) {
 
         if (error) throw error;
 
-        logger.info(`Memory stored successfully: ${data.id}`);
+        logger.info(`✨ Memory stored: ${data.id}`);
         return data;
-
-    } catch (error) {
-        logger.error('Error storing memory:', error);
-        throw error;
+    } catch (err) {
+        logger.error("❌ Error storing memory:", err);
+        throw err;
     }
 }
 
 /**
- * Retrieve relevant memories using semantic search
+ * Retrieve relevant memories using semantic search (Supabase RPC)
  */
 export async function retrieveMemories(userId, query, options = {}) {
     try {
         const {
-            limit = 20,
-            threshold = 0.7,
-            conversationId = null  // NEW: Scope to conversation context
+            limit = 15,
+            threshold = 0.70,
+            conversationId = null,
         } = options;
 
-        logger.info(`Retrieving memories for user ${userId}${conversationId ? ` in conversation ${conversationId}` : ''}`);
+        if (!query || query.trim().length === 0) return [];
 
-        // Generate query embedding
+        logger.info(`🔍 Retrieving memories for user ${userId}`);
+
         const queryEmbedding = await generateEmbedding(query);
 
-        // Call the match_memories function we defined in SQL
-        let { data, error } = await supabaseAdmin
-            .rpc('match_memories', {
-                query_embedding: queryEmbedding,
-                match_user_id: userId,
-                match_threshold: threshold,
-                match_count: limit
-            });
+        // Call SQL function match_memories
+        let { data, error } = await supabaseAdmin.rpc("match_memories", {
+            query_embedding: queryEmbedding,
+            match_user_id: userId,
+            match_threshold: threshold,
+            match_count: limit
+        });
 
         if (error) throw error;
+        if (!data) data = [];
 
-        // CRITICAL FIX: Filter memories by conversation_id if provided
-        if (conversationId && data) {
-            data = data.filter(memory => memory.conversation_id === conversationId);
-            logger.info(`Filtered to ${data.length} memories from current conversation`);
+        // Filter by conversation context
+        if (conversationId) {
+            data = data.filter(m => m.conversation_id === conversationId);
         }
 
-        logger.info(`Retrieved ${data?.length || 0} relevant memories`);
-        return data || [];
-
-    } catch (error) {
-        logger.error('Error retrieving memories:', error);
-        throw error;
+        logger.info(`📚 Retrieved ${data.length} memories`);
+        return data;
+    } catch (err) {
+        logger.error("❌ Memory retrieval error:", err);
+        return []; // Fail safe
     }
 }
 
 /**
- * Store chat message as memory
+ * Store chat memory (User or Twin)
  */
-export async function storeChatMemory(userId, message, sender, mode = 'normal') {
+export async function storeChatMemory(userId, message, sender, mode = "normal") {
     try {
-        const content = sender === 'user'
+        if (!message || !sender) return;
+
+        const formatted = sender === "user"
             ? `User said: ${message}`
             : `Twin responded: ${message}`;
 
-        return await storeMemory(userId, content, {
-            type: 'chat',
+        return await storeMemory(userId, formatted, {
+            type: "chat",
             sender,
             mode,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
 
-    } catch (error) {
-        logger.error('Error storing chat memory:', error);
-        throw error;
+    } catch (err) {
+        logger.error("❌ Error storing chat memory:", err);
     }
 }
 
 /**
- * Get memory count for user (for free tier limits)
+ * Count user memories (for limits / plans)
  */
 export async function getMemoryCount(userId) {
     try {
         const { count, error } = await supabaseAdmin
-            .from('memory_vectors')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId);
+            .from("memory_vectors")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId);
 
         if (error) throw error;
-        return count || 0;
 
-    } catch (error) {
-        logger.error('Error getting memory count:', error);
-        throw error;
+        return count || 0;
+    } catch (err) {
+        logger.error("❌ Error getting memory count:", err);
+        return 0;
     }
 }
 
 /**
- * Format memories for chat context
+ * Format memories into string for LLM context
  */
-export function formatMemoriesForContext(memories) {
-    if (!memories || memories.length === 0) {
-        return 'No previous memories available.';
-    }
+export function formatMemoriesForContext(memories = []) {
+    if (memories.length === 0) return null;
 
     return memories
-        .map((mem, idx) => `Memory ${idx + 1}: ${mem.content}`)
-        .join('\n');
+        .map(
+            (m, i) =>
+                `Memory ${i + 1}: ${m.content}`
+        )
+        .join("\n");
 }
 
 export default {

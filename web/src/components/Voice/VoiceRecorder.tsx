@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Send, X } from 'lucide-react';
+import { Mic, Square, Send, X, Play, Pause } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface VoiceRecorderProps {
@@ -14,13 +14,31 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
     const [duration, setDuration] = useState(0);
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [waveform, setWaveform] = useState<number[]>([]);
+    const [isPlaying, setIsPlaying] = useState(false);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const animationRef = useRef<number | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
+    // Timer logic
+    useEffect(() => {
+        if (isRecording) {
+            timerRef.current = setInterval(() => {
+                setDuration((prev) => prev + 1);
+            }, 1000);
+        } else {
+            if (timerRef.current) clearInterval(timerRef.current);
+        }
+
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [isRecording]);
+
+    // Clean up audio & recording on unmount
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -28,15 +46,25 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
             if (mediaRecorderRef.current && isRecording) {
                 mediaRecorderRef.current.stop();
             }
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
         };
-    }, [isRecording]);
+    }, []);
 
     const startRecording = async () => {
         try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Audio recording is not supported in this browser.');
+                return;
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
             // Set up audio analysis for waveform
-            const audioContext = new AudioContext();
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const audioContext = new AudioContextClass();
             const source = audioContext.createMediaStreamSource(stream);
             const analyser = audioContext.createAnalyser();
             analyser.fftSize = 256;
@@ -62,14 +90,9 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
 
             mediaRecorder.start();
             setIsRecording(true);
-
-            // Start timer
-            timerRef.current = setInterval(() => {
-                setDuration((prev) => prev + 1);
-            }, 1000);
         } catch (error) {
             console.error('Failed to start recording:', error);
-            alert('Microphone access denied');
+            alert(`Microphone access failed: ${error instanceof Error ? error.message : String(error)}. Check browser permissions.`);
         }
     };
 
@@ -77,8 +100,24 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
-            if (timerRef.current) clearInterval(timerRef.current);
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        }
+    };
+
+    const togglePlayback = () => {
+        if (!audioRef.current && audioBlob) {
+            const url = URL.createObjectURL(audioBlob);
+            const audio = new Audio(url);
+            audio.onended = () => setIsPlaying(false);
+            audioRef.current = audio;
+        }
+
+        if (isPlaying) {
+            audioRef.current?.pause();
+            setIsPlaying(false);
+        } else {
+            audioRef.current?.play();
+            setIsPlaying(true);
         }
     };
 
@@ -117,8 +156,14 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
         setDuration(0);
         setAudioBlob(null);
         setWaveform([]);
+        setIsPlaying(false);
+
         if (timerRef.current) clearInterval(timerRef.current);
         if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
     };
 
     const formatDuration = (seconds: number) => {
@@ -192,6 +237,16 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
                         exit={{ opacity: 0 }}
                         className="space-y-4"
                     >
+                        {/* Playback Controls */}
+                        <div className="flex justify-center pb-2">
+                            <button
+                                onClick={togglePlayback}
+                                className="w-16 h-16 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center hover:bg-purple-200 transition-colors"
+                            >
+                                {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
+                            </button>
+                        </div>
+
                         {/* Duration */}
                         <div className="text-center">
                             <div className="text-2xl font-bold text-gray-900">{formatDuration(duration)}</div>

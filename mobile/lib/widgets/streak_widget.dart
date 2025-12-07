@@ -279,7 +279,7 @@ class _StreakWidgetState extends State<StreakWidget> {
                   if (_streakData!['freeze_tokens'] == 0)
                     TextButton(
                       onPressed: () {
-                        // TODO: Show purchase dialog
+                        _showPurchaseDialog();
                       },
                       style: TextButton.styleFrom(
                         backgroundColor: Colors.purple.withOpacity(0.2),
@@ -337,6 +337,36 @@ class _StreakWidgetState extends State<StreakWidget> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showPurchaseDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Protect Your Streak! 🔥', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Get Streak Freeze tokens with TwinMind Pro. Never lose your progress again.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/subscription');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9333EA),
+            ),
+            child: const Text('Upgrade now', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );

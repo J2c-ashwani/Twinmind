@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useStore';
 import { motion } from 'framer-motion';
 import { User, LogOut, Settings, Crown, Zap } from 'lucide-react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 import StreakWidget from '@/components/Gamification/StreakWidget';
 import GrowthCircleWidget from '@/components/Circles/GrowthCircleWidget';
@@ -15,11 +16,16 @@ import { Users, TrendingUp } from 'lucide-react';
 
 export default function ProfilePage() {
     const router = useRouter();
+    const supabase = createClientComponentClient();
     const { user, logout } = useUserStore();
+    const [isEditing, setIsEditing] = useState(false);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // Sign out from Supabase (clears session cookie)
+        await supabase.auth.signOut();
         logout();
-        router.push('/');
+        router.refresh();
+        router.push('/login');
     };
 
     const [isHydrated, setIsHydrated] = useState(false);

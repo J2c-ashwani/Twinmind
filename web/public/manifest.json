@@ -1,0 +1,43 @@
+{
+    "name": "TwinMind",
+    "short_name": "TwinMind",
+    "description": "Your AI companion for personal growth and emotional wellness",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0F0F1E",
+    "theme_color": "#9333EA",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "categories": [
+        "lifestyle",
+        "health",
+        "productivity"
+    ],
+    "shortcuts": [
+        {
+            "name": "Chat",
+            "url": "/chat",
+            "description": "Start chatting with your AI twin"
+        },
+        {
+            "name": "Life Coach",
+            "url": "/life-coach",
+            "description": "Access your coaching programs"
+        }
+    ]
+}

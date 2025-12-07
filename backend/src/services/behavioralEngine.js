@@ -16,29 +16,29 @@ export const BEHAVIORAL_STATES = {
 
 const STATE_BEHAVIORS = {
     new_user: {
-        welcome: "Start with warm, understanding tone. Acknowledge their courage in opening up.",
-        personal_reflection: "Mirror their personality traits from onboarding. Make them feel understood.",
-        emotional_validation: "Validate any emotions shared. Create safe space."
+        welcome: "Be casual.",
+        personal_reflection: "Don't overdo the welcome.",
+        emotional_validation: "Keep it chill."
     },
     bonding: {
-        memory_callback: "Reference past conversations. Show you remember details about them.",
-        safe_space_response: "Reinforce this is a judgment-free zone. Encourage vulnerability.",
-        trust_building: "Share deeper insights. Build emotional connection."
+        memory_callback: "Reference context naturally.",
+        safe_space_response: "No judgement.",
+        trust_building: "Be honest."
     },
     habit: {
-        progress_reflection: "Acknowledge growth and progress. Celebrate small wins.",
-        goal_followup: "Reference goals mentioned before. Show continuity.",
-        identity_reinforcement: "Reflect their evolving self-image positively."
+        progress_reflection: "Good vibes.",
+        goal_followup: "Mention goals only if user asks.",
+        identity_reinforcement: "Supportive tone."
     },
     dependency: {
-        personal_support: "Be their anchor. Provide emotional stability.",
-        anticipation_teasing: "Hint at future conversations. Create anticipation.",
-        emotional_bonding: "Deep empathy. Strengthen attachment."
+        personal_support: "Be steady.",
+        anticipation_teasing: "Be fun.",
+        emotional_bonding: "Deep but brief."
     },
     long_term: {
-        future_planning: "Help them envision and plan their future.",
-        life_guidance: "Provide wisdom and perspective on life decisions.",
-        deep_identity_integration: "Be part of their identity. You're their most trusted confidant."
+        future_planning: "Look ahead.",
+        life_guidance: "Wisdom, not lectures.",
+        deep_identity_integration: "Trusted friend."
     }
 };
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Plus, Trash2, ChevronLeft, ChevronRight, Trophy, Sparkles, Brain, Edit2 } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, ChevronLeft, ChevronRight, Trophy, Sparkles, Brain, Edit2, TrendingUp, Bell } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
 interface Conversation {
@@ -145,6 +145,18 @@ export default function ChatSidebar({
                             <a href="/challenges" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
                                 <Sparkles className="w-4 h-4 text-pink-500" />
                                 <span className="text-sm">Challenges</span>
+                            </a>
+                            <a href="/life-coach" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                                <Brain className="w-4 h-4 text-purple-500" />
+                                <span className="text-sm">Life Coach</span>
+                            </a>
+                            <a href="/insights" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                                <TrendingUp className="w-4 h-4 text-green-500" />
+                                <span className="text-sm">Insights</span>
+                            </a>
+                            <a href="/notifications" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                                <Bell className="w-4 h-4 text-yellow-500" />
+                                <span className="text-sm">Notifications</span>
                             </a>
                             <a href="/memories" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
                                 <Brain className="w-4 h-4 text-purple-500" />

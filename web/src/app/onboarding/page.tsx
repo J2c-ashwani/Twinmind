@@ -47,15 +47,15 @@ export default function OnboardingPage() {
             const { data: { session } } = await supabase.auth.getSession()
 
             if (session) {
-                // User is signed in, check if they've completed onboarding
+                // User is signed in, check if they've completed onboarding (must have generated personality)
                 const { data: profile } = await supabase
                     .from('personality_profiles')
-                    .select('user_id')
+                    .select('personality_json')
                     .eq('user_id', session.user.id)
                     .single()
 
-                // If profile exists, they've already completed onboarding
-                if (profile) {
+                // If profile exists AND has personality data, they've completed onboarding
+                if (profile && profile.personality_json) {
                     router.push('/chat')
                 }
                 // If no profile, they need to complete onboarding but don't need signup form

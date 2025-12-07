@@ -615,4 +615,209 @@ class ApiService {
     }
     throw Exception('Failed to compare');
   }
+
+  // Life Coach endpoints
+  // Fallback programs matching web app
+  static const List<Map<String, dynamic>> _fallbackPrograms = [
+    {
+      'id': '1',
+      'title': 'Anxiety Relief Journey',
+      'description': 'A 7-day guided program to understand and manage anxiety using proven techniques.',
+      'category': 'anxiety',
+      'duration_days': 7,
+      'is_premium': false
+    },
+    {
+      'id': '2',
+      'title': 'Confidence Builder',
+      'description': 'Build unshakeable self-confidence with daily exercises and mindset shifts.',
+      'category': 'growth',
+      'duration_days': 14,
+      'is_premium': false
+    },
+    {
+      'id': '3',
+      'title': 'Emotional Intelligence Mastery',
+      'description': 'Master your emotions and develop deeper connections with others.',
+      'category': 'mindfulness',
+      'duration_days': 21,
+      'is_premium': true
+    },
+    {
+      'id': '4',
+      'title': 'Career Growth Accelerator',
+      'description': 'Unlock your professional potential with goal-setting and productivity coaching.',
+      'category': 'growth',
+      'duration_days': 30,
+      'is_premium': true
+    },
+    {
+      'id': '5',
+      'title': 'Daily Mindfulness Practice',
+      'description': 'Start each day with calm and clarity through guided meditation sessions.',
+      'category': 'mindfulness',
+      'duration_days': 7,
+      'is_premium': false
+    },
+    {
+      'id': '6',
+      'title': 'Relationship Healing',
+      'description': 'Repair and strengthen your most important relationships with guided exercises.',
+      'category': 'anxiety',
+      'duration_days': 14,
+      'is_premium': true
+    }
+  ];
+
+  Future<List<dynamic>> getLifeCoachPrograms() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/life-coach/programs'),
+        headers: _headers,
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List && data.isNotEmpty) {
+          return data;
+        }
+      }
+      return _fallbackPrograms;
+    } catch (e) {
+      print('API Error: $e');
+      return _fallbackPrograms;
+    }
+  }
+
+  Future<Map<String, dynamic>> startProgram(String programId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/life-coach/start'),
+      headers: _headers,
+      body: json.encode({'programId': programId}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to start program');
+  }
+
+  Future<Map<String, dynamic>> getSession(String programId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/life-coach/session/$programId'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to load session');
+  }
+
+  Future<Map<String, dynamic>> sendSessionMessage(
+    String programId,
+    String message,
+    List<Map<String, String>> history,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/life-coach/session/$programId/message'),
+      headers: _headers,
+      body: json.encode({
+        'message': message,
+        'history': history,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to send message');
+  }
+
+  Future<void> completeSession(String programId, String notes) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/life-coach/session/$programId/complete'),
+      headers: _headers,
+      body: json.encode({'notes': notes}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to complete session');
+    }
+  }
+
+  // Voice Message endpoint
+  Future<Map<String, dynamic>?> sendVoiceMessage(
+    String audioFilePath,
+    String mode,
+    String? conversationId,
+  ) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/voice/message'),
+      );
+
+      // Add headers
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+
+      // Add fields
+      request.fields['mode'] = mode;
+      if (conversationId != null) {
+        request.fields['conversationId'] = conversationId;
+      }
+
+      // Add audio file
+      request.files.add(
+        await http.MultipartFile.fromPath('audio', audioFilePath),
+      );
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Voice message error: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Failed to send voice message: $e');
+      return null;
+    }
+  }
+
+  // Notification endpoints
+  Future<List<dynamic>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/notifications'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to load notifications');
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/notifications/$id/read'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark read');
+    }
+  }
+
+  Future<void> updateFcmToken(String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/notifications/device-token'),
+      headers: _headers,
+      body: json.encode({'token': token}),
+    );
+    if (response.statusCode != 200) {
+      // Don't throw - just log, as this is background sync
+      print('Failed to update FCM token');
+    }
+  }
+
+
 }

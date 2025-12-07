@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import api from '@/lib/api'
+import { apiClient } from '@/lib/api/client'
 import { Send, Loader2, Menu, User as UserIcon, Crown, Smile, LayoutDashboard, Mic, Bot } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { ChatMessage, TwinMode } from '@/lib/types'
@@ -17,6 +18,7 @@ const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
 function ChatContent() {
     const router = useRouter()
+    const supabase = createClientComponentClient()
     const searchParams = useSearchParams()
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [input, setInput] = useState('')
@@ -26,9 +28,15 @@ function ChatContent() {
     const [twinName, setTwinName] = useState('Your Twin')
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
     const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
+    const [isProcessingVoice, setIsProcessingVoice] = useState(false)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
+
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages, loading])
 
     useEffect(() => {
         loadData()
@@ -52,6 +60,7 @@ function ChatContent() {
 
             if (session) {
                 token = session.access_token
+                apiClient.setToken(token) // Set token for Sidebar and other widgets
             }
 
             if (!token) {
@@ -90,6 +99,14 @@ function ChatContent() {
                 try {
                     const { history } = await api.getChatHistory(token, undefined, urlId)
                     setMessages(history)
+
+                    // Auto-detect mode from last message to restore context
+                    if (history && history.length > 0) {
+                        const lastMsg = history[history.length - 1];
+                        if (lastMsg.mode && ['normal', 'future', 'dark', 'therapist'].includes(lastMsg.mode)) {
+                            setCurrentMode(lastMsg.mode);
+                        }
+                    }
                 } catch (error) {
                     console.log('Failed to load conversation from URL')
                     setMessages([])
@@ -141,16 +158,23 @@ function ChatContent() {
 
             // Extract the actual message text from nested response
             let messageText = '';
-            if (typeof response === 'string') {
-                messageText = response;
-            } else if (response.message) {
-                // Check if message.message exists (nested)
-                messageText = typeof response.message === 'string'
-                    ? response.message
-                    : (response.message.message || JSON.stringify(response));
-            } else {
-                messageText = JSON.stringify(response);
-            }
+
+            // Helper function to extract text from any level of nesting
+            const extractMessage = (obj: any): string => {
+                if (typeof obj === 'string') return obj;
+                if (!obj) return '';
+                // Check common message properties
+                if (obj.text) return extractMessage(obj.text);
+                if (obj.content) return extractMessage(obj.content);
+                if (obj.response) return extractMessage(obj.response);
+                if (obj.message) return extractMessage(obj.message);
+                if (obj.reply) return extractMessage(obj.reply);
+                // Last resort: stringify but avoid [object Object]
+                const str = String(obj);
+                return str === '[object Object]' ? JSON.stringify(obj) : str;
+            };
+
+            messageText = extractMessage(response);
 
             const aiMessage: ChatMessage = {
                 id: Date.now().toString(),
@@ -162,10 +186,43 @@ function ChatContent() {
             }
 
             setMessages(prev => [...prev, aiMessage])
-        } catch (error) {
-            console.error('Failed to send message:', error)
+        } catch (error: any) {
+            console.error('Failed to send message:', error);
+
+            // Check if it's a limit error
+            const errorMessage = error?.message || String(error);
+            const isLimitError = errorMessage.includes('limit reached') || errorMessage.includes('429');
+
+            // Try to extract reset time from error response
+            let resetTimeMessage = '';
+            try {
+                const response = await fetch(error?.config?.url || '');
+                const data = await response.json().catch(() => ({}));
+                if (data.resetTime) {
+                    const resetDate = new Date(data.resetTime);
+                    const now = new Date();
+                    const hoursLeft = Math.ceil((resetDate.getTime() - now.getTime()) / (1000 * 60 * 60));
+                    resetTimeMessage = `\n\n⏰ Limit resets in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} at midnight`;
+                }
+            } catch (e) {
+                // Fallback if we can't get reset time
+                resetTimeMessage = '\n\n⏰ Limit resets at midnight (12:00 AM)';
+            }
+
+            const errorAiMessage: ChatMessage = {
+                id: Date.now().toString(),
+                user_id: '',
+                message: isLimitError
+                    ? `🚫 **Daily message limit reached!**\n\nYou've used all 10 free messages today. Come back tomorrow or upgrade to Pro for unlimited messages!${resetTimeMessage}\n\n[Upgrade to Pro →](/pricing)`
+                    : "Sorry, I couldn't process that message. Please try again.",
+                sender: 'ai',
+                mode: currentMode,
+                created_at: new Date().toISOString()
+            };
+
+            setMessages(prev => [...prev, errorAiMessage]);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
@@ -174,10 +231,12 @@ function ChatContent() {
     };
 
     const handleVoiceSend = async (audioBlob: Blob, duration: number) => {
+        setIsProcessingVoice(true);
         setShowVoiceRecorder(false);
 
+        const optimisticId = Date.now().toString();
         const voiceMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: optimisticId,
             user_id: '',
             message: `🎤 Voice message (${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')})`,
             sender: 'user',
@@ -194,36 +253,67 @@ function ChatContent() {
             if (session) {
                 token = session.access_token;
             } else {
-                // No valid session, redirect to login
                 router.push('/login');
                 return;
             }
 
-            const response = await api.sendMessage(
-                "[User sent a voice message]",
+            const response = await api.sendVoiceMessage(
+                currentConversationId,
+                audioBlob,
                 currentMode,
-                token,
-                currentConversationId || undefined
+                token
             );
 
-            if (response.conversation_id) {
-                setCurrentConversationId(response.conversation_id)
+            if (response.conversationId || response.conversation_id) {
+                setCurrentConversationId(response.conversationId || response.conversation_id);
+            }
+
+            // Update user message with transcription and audio URL
+            if (response.userMessage || response.userAudioUrl) {
+                setMessages(prev => prev.map(msg =>
+                    msg.id === optimisticId
+                        ? { ...msg, message: response.userMessage || msg.message, audio_url: response.userAudioUrl }
+                        : msg
+                ));
             }
 
             const aiMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                user_id: '',
+                message: response.aiResponse,
+                sender: 'ai',
+                mode: currentMode,
+                created_at: new Date().toISOString(),
+                audio_url: response.audioUrl
+            };
+
+            setMessages(prev => [...prev, aiMessage]);
+        } catch (error: any) {
+            console.error('Failed to send voice message:', error);
+
+            const errorMessage = error?.message || String(error);
+            const isLimitError = errorMessage.includes('limit reached') || errorMessage.includes('429');
+
+            // Calculate reset time
+            const now = new Date();
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+            const hoursLeft = Math.ceil((midnight.getTime() - now.getTime()) / (1000 * 60 * 60));
+            const resetTimeMessage = `\n\n⏰ Limit resets in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} at midnight`;
+
+            const errorAiMessage: ChatMessage = {
                 id: Date.now().toString(),
                 user_id: '',
-                message: response.message,
+                message: isLimitError
+                    ? `🚫 **Daily message limit reached!**\n\nYou've used all 10 free messages today. Come back tomorrow or upgrade to Pro for unlimited messages!${resetTimeMessage}\n\n[Upgrade to Pro →](/pricing)`
+                    : "Sorry, I couldn't process that voice message.",
                 sender: 'ai',
                 mode: currentMode,
                 created_at: new Date().toISOString()
             };
-
-            setMessages(prev => [...prev, aiMessage]);
-        } catch (error) {
-            console.error('Failed to send voice message:', error);
+            setMessages(prev => [...prev, errorAiMessage]);
         } finally {
             setLoading(false);
+            setIsProcessingVoice(false);
         }
     };
 
@@ -243,6 +333,13 @@ function ChatContent() {
             if (session) {
                 const { history } = await api.getChatHistory(session.access_token, undefined, id);
                 setMessages(history);
+
+                if (history && history.length > 0) {
+                    const lastMsg = history[history.length - 1];
+                    if (lastMsg.mode && ['normal', 'future', 'dark', 'therapist'].includes(lastMsg.mode)) {
+                        setCurrentMode(lastMsg.mode);
+                    }
+                }
             }
         } catch (error) {
             console.error('Failed to load conversation history:', error);
@@ -353,6 +450,11 @@ function ChatContent() {
                                             })()}
                                         </ReactMarkdown>
                                     </div>
+                                    {msg.audio_url && (
+                                        <div className="mt-2 mb-2">
+                                            <audio controls src={msg.audio_url} className="w-full h-8" />
+                                        </div>
+                                    )}
                                     <div className="text-[10px] opacity-50 mt-2">
                                         {new Date(msg.created_at).toLocaleTimeString()}
                                     </div>
@@ -360,20 +462,31 @@ function ChatContent() {
                             </div>
                         </motion.div>
                     ))}
-                    {loading && (
-                        <div className="flex justify-start">
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-2">
-                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
-                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-100" />
-                                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-200" />
+                    {/* Voice Processing Indicator */}
+                    {isProcessingVoice && (
+                        <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl w-fit mb-4">
+                            <div className="relative flex items-center justify-center">
+                                <div className="absolute w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></div>
+                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                             </div>
+                            <span className="text-sm text-purple-200">Processing voice message...</span>
                         </div>
                     )}
+
+                    {/* Text Typing Indicator */}
+                    {!isProcessingVoice && loading && (
+                        <div className="flex items-center gap-1 p-4 bg-white/5 border border-white/10 rounded-2xl w-fit mb-4">
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                        </div>
+                    )}
+
                     <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 bg-black/20 backdrop-blur-md border-t border-white/10">
+                <div className="border-t border-white/10 p-4 bg-gray-900/50 backdrop-blur-md">
                     <div className="max-w-4xl mx-auto relative">
                         {showEmojiPicker && (
                             <div className="absolute bottom-20 left-0 z-50">

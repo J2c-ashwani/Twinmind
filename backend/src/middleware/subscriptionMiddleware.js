@@ -9,13 +9,6 @@ export async function checkSubscription(req, res, next) {
     try {
         const userId = req.userId;
 
-        // Dev mode bypass
-        if (userId === 'dev-user-123') {
-            req.subscription = { plan_type: 'pro', status: 'active' };
-            req.isPro = true;
-            return next();
-        }
-
         // Get user's subscription
         const { data: subscription, error } = await supabaseAdmin
             .from('subscriptions')
@@ -60,44 +53,35 @@ export async function checkUsageLimits(req, res, next) {
     try {
         const userId = req.userId;
 
-        // Dev mode bypass
-        if (userId === 'dev-user-123') {
-            req.usage = {
-                messages: 1,
-                limit: 100,
-                remaining: 99
-            };
-            return next();
-        }
-
         // Pro users have no limits
         if (req.isPro) {
             return next();
         }
 
         const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-        // Check message count for this month
+        // Check message count for today
         const { count, error } = await supabaseAdmin
             .from('chat_history')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', userId)
             .eq('sender', 'user')
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString());
+            .gte('created_at', dayStart.toISOString())
+            .lte('created_at', dayEnd.toISOString());
 
         if (error) throw error;
 
-        const messageLimit = parseInt(process.env.FREE_TIER_MONTHLY_MESSAGES) || 50;
+        const messageLimit = parseInt(process.env.FREE_TIER_DAILY_MESSAGES) || 10;
 
         if (count >= messageLimit) {
             return res.status(429).json({
-                error: `Free tier limit reached (${messageLimit} messages/month)`,
+                error: `Free tier limit reached (${messageLimit} messages/day)`,
                 current: count,
                 limit: messageLimit,
-                upgrade: true
+                upgrade: true,
+                resetTime: dayEnd.toISOString()
             });
         }
 

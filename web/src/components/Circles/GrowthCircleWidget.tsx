@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Flame, TrendingUp, UserPlus, Crown, Award } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface Circle {
     id: string;
@@ -19,9 +20,19 @@ export default function GrowthCircleWidget({ onInviteClick }: CircleWidgetProps)
     const [circle, setCircle] = useState<Circle | null>(null);
     const [progress, setProgress] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const supabase = createClientComponentClient();
 
     useEffect(() => {
-        loadCircle();
+        const init = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                apiClient.setToken(session.access_token);
+                loadCircle();
+            } else {
+                setIsLoading(false);
+            }
+        };
+        init();
     }, []);
 
     const loadCircle = async () => {

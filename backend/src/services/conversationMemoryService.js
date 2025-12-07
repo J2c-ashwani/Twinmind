@@ -1,268 +1,238 @@
-import logger from '../config/logger.js';
-import { supabaseAdmin } from '../config/supabase.js';
-import aiService from './aiService.js';
+import logger from "../config/logger.js";
+import { supabaseAdmin } from "../config/supabase.js";
+import aiService from "./aiService.js";
 
 /**
- * Conversation Memory Service
- * Fast semantic search and retrieval of past conversations
+ * Conversation Memory Service (Twin-Optimized)
+ * - Stores message embeddings
+ * - Performs semantic search
+ * - Helps SmartContextManager recall relevant past conversations
  */
 
-/**
- * Generate embedding for a text
- */
+/* --------------------------------------------------------
+   1. Generate Embedding
+-------------------------------------------------------- */
 export async function generateEmbedding(text) {
     try {
-        // Use Gemini embeddings via aiService (Free!)
-        const embedding = await aiService.generateEmbedding(text);
-        return embedding;
+        return await aiService.generateEmbedding(text);
     } catch (error) {
-        logger.error('Error generating embedding:', error);
+        logger.error("❌ Error generating embedding:", error.message);
         throw error;
     }
 }
 
-/**
- * Store message with embedding for semantic search
- */
-export async function storeMessageWithEmbedding(messageId, userId, content, conversationId) {
+/* --------------------------------------------------------
+   2. Store Message With Embedding
+-------------------------------------------------------- */
+export async function storeMessageWithEmbedding(messageId, userId, content, conversationId = null) {
     try {
-        // Generate embedding
         const embedding = await generateEmbedding(content);
 
-        // Store in message_embeddings table
         const { error } = await supabaseAdmin
-            .from('message_embeddings')
+            .from("message_embeddings")
             .insert({
                 message_id: messageId,
                 user_id: userId,
                 conversation_id: conversationId,
-                content: content,
-                embedding: embedding
+                content,
+                embedding,
             });
 
         if (error) throw error;
 
-        logger.info(`Stored embedding for message ${messageId}`);
-
+        logger.info(`✅ Stored embedding for message ${messageId}`);
     } catch (error) {
-        logger.error('Error storing message embedding:', error);
+        logger.error("❌ Error storing message embedding:", error.message);
     }
 }
 
-/**
- * Search past conversations semantically
- */
-export async function searchConversations(userId, query, limit = 5) {
+/* --------------------------------------------------------
+   3. Semantic Search Across Conversation Memory
+-------------------------------------------------------- */
+export async function searchSimilarConversations(userId, query, limit = 5) {
     try {
-        // Generate embedding for query
         const queryEmbedding = await generateEmbedding(query);
 
-        // Perform vector similarity search using pgvector
-        const { data, error } = await supabaseAdmin.rpc('search_conversations', {
+        const { data, error } = await supabaseAdmin.rpc("search_conversations", {
             query_embedding: queryEmbedding,
-            match_threshold: 0.7,
+            match_threshold: 0.70,
             match_count: limit,
-            p_user_id: userId
+            p_user_id: userId,
         });
 
         if (error) throw error;
 
         return data || [];
-
     } catch (error) {
-        logger.error('Error searching conversations:', error);
+        logger.error("❌ Error searching conversations:", error.message);
         return [];
     }
 }
 
-/**
- * Get conversation context for a specific topic
- */
+/* --------------------------------------------------------
+   4. Build Context Block for Twin Prompt
+-------------------------------------------------------- */
 export async function getConversationContext(userId, topic, limit = 3) {
     try {
-        const results = await searchConversations(userId, topic, limit);
+        const results = await searchSimilarConversations(userId, topic, limit);
+        if (!results?.length) return null;
 
-        if (results.length === 0) {
-            return null;
-        }
+        let context = `\n## RELEVANT PAST CONVERSATIONS ABOUT "${topic}"\n\n`;
 
-        // Format context for AI
-        let context = `\n## RELEVANT PAST CONVERSATIONS\n`;
-        context += `User asked about: "${topic}"\n\n`;
-
-        results.forEach((result, index) => {
-            const date = new Date(result.created_at).toLocaleDateString();
-            context += `### Memory ${index + 1} (${date}, similarity: ${Math.round(result.similarity * 100)}%)\n`;
-            context += `${result.content}\n\n`;
+        results.forEach((r, i) => {
+            const date = new Date(r.created_at).toLocaleString();
+            context += `${i + 1}. (${Math.round(r.similarity * 100)}% match | ${date})\n`;
+            context += `"${r.content}"\n\n`;
         });
 
-        context += `⚠️ Reference these past conversations naturally to show you remember.\n`;
-
         return {
-            context: context,
-            memories: results
+            context,
+            memories: results,
         };
-
     } catch (error) {
-        logger.error('Error getting conversation context:', error);
+        logger.error("❌ Error building conversation context:", error.message);
         return null;
     }
 }
 
-/**
- * Quick memory recall for user queries
- */
+/* --------------------------------------------------------
+   5. FAST Recall — triggered when user says "remember when..."
+-------------------------------------------------------- */
 export async function quickRecall(userId, userMessage) {
     try {
-        // Check if user is asking about past conversations
         const recallPatterns = [
             /remember when/i,
-            /we talked about/i,
             /you said/i,
+            /we talked about/i,
             /i told you/i,
             /last time/i,
             /earlier/i,
             /before/i,
-            /what did (i|we) say about/i,
-            /do you remember/i
+            /what did we say/i,
+            /do you remember/i,
         ];
 
-        const isRecallQuery = recallPatterns.some(pattern => pattern.test(userMessage));
+        const wantsRecall = recallPatterns.some((p) => p.test(userMessage));
+        if (!wantsRecall) return null;
 
-        if (!isRecallQuery) {
-            return null;
-        }
+        const topic = extractTopic(userMessage);
 
-        // Extract topic from query
-        const topic = extractTopicFromQuery(userMessage);
+        const results = await searchSimilarConversations(
+            userId,
+            topic || userMessage,
+            5
+        );
 
-        // Search for relevant conversations
-        const results = await searchConversations(userId, topic || userMessage, 5);
-
-        if (results.length === 0) {
+        if (!results.length) {
             return {
                 found: false,
-                message: "I don't have a clear memory of that conversation. Could you tell me more?"
+                message: "Hmm… I don’t clearly remember that one. Tell me again?",
             };
         }
 
-        // Format quick response
-        const topResult = results[0];
-        const date = new Date(topResult.created_at).toLocaleDateString();
+        const top = results[0];
+        const date = new Date(top.created_at).toLocaleDateString();
 
         return {
             found: true,
+            quickResponse: `Yeah, I remember — around ${date} we talked about this: "${top.content.slice(
+                0,
+                200
+            )}..."`,
             memories: results,
-            quickResponse: `Yes, I remember! On ${date}, we talked about this. ${topResult.content.substring(0, 200)}...`,
-            fullContext: results.map(r => ({
-                date: new Date(r.created_at).toLocaleDateString(),
-                content: r.content,
-                similarity: r.similarity
-            }))
         };
-
     } catch (error) {
-        logger.error('Error in quick recall:', error);
+        logger.error("❌ Recall error:", error.message);
         return null;
     }
 }
 
-/**
- * Extract topic from recall query
- */
-function extractTopicFromQuery(query) {
-    // Remove recall phrases to get topic
-    let topic = query
-        .replace(/remember when/i, '')
-        .replace(/we talked about/i, '')
-        .replace(/you said/i, '')
-        .replace(/i told you/i, '')
-        .replace(/last time/i, '')
-        .replace(/do you remember/i, '')
-        .replace(/what did (i|we) say about/i, '')
+/* --------------------------------------------------------
+   6. Topic Extraction (Smart, Minimal)
+-------------------------------------------------------- */
+function extractTopic(message) {
+    return message
+        .replace(/remember when/i, "")
+        .replace(/we talked about/i, "")
+        .replace(/you said/i, "")
+        .replace(/i told you/i, "")
+        .replace(/last time/i, "")
+        .replace(/do you remember/i, "")
+        .replace(/what did we say/i, "")
         .trim();
-
-    return topic;
 }
 
-/**
- * Get recent conversation summary
- */
+/* --------------------------------------------------------
+   7. Weekly Conversation Summary
+-------------------------------------------------------- */
 export async function getRecentConversationSummary(userId, days = 7) {
     try {
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
+        const start = new Date();
+        start.setDate(start.getDate() - days);
 
         const { data, error } = await supabaseAdmin
-            .from('messages')
-            .select('content, created_at, sender_type')
-            .eq('user_id', userId)
-            .gte('created_at', startDate.toISOString())
-            .order('created_at', { ascending: false })
-            .limit(50);
+            .from("messages")
+            .select("content, created_at, sender_type")
+            .eq("user_id", userId)
+            .gte("created_at", start.toISOString())
+            .order("created_at", { ascending: false });
 
         if (error) throw error;
 
-        // Group by topic using simple keyword extraction
+        if (!data?.length)
+            return { total_messages: 0, topics: [], date_range: "No data" };
+
         const topics = {};
 
-        data.forEach(msg => {
-            // Extract key phrases (simple implementation)
-            const words = msg.content.toLowerCase().split(' ');
-            const keywords = words.filter(w => w.length > 5);
+        // Extract simple keywords
+        data.forEach((msg) => {
+            const words = msg.content.toLowerCase().split(" ");
+            const keywords = words.filter((w) => w.length > 5);
 
-            keywords.forEach(keyword => {
-                if (!topics[keyword]) {
-                    topics[keyword] = [];
-                }
-                topics[keyword].push(msg);
+            keywords.forEach((word) => {
+                if (!topics[word]) topics[word] = [];
+                topics[word].push(msg);
             });
         });
 
         return {
             total_messages: data.length,
-            date_range: `${startDate.toLocaleDateString()} - ${new Date().toLocaleDateString()}`,
-            topics: Object.keys(topics).slice(0, 10) // Top 10 topics
+            date_range: `${start.toLocaleDateString()} → ${new Date().toLocaleDateString()}`,
+            topics: Object.keys(topics).slice(0, 10),
         };
-
     } catch (error) {
-        logger.error('Error getting conversation summary:', error);
+        logger.error("❌ Weekly summary error:", error.message);
         return null;
     }
 }
 
-/**
- * Build conversation history for AI context
- */
-export async function buildConversationHistory(userId, conversationId, messageLimit = 20) {
+/* --------------------------------------------------------
+   8. Build Timeline (conversation history for AI)
+-------------------------------------------------------- */
+export async function buildConversationHistory(userId, conversationId, limit = 20) {
     try {
         const { data, error } = await supabaseAdmin
-            .from('messages')
-            .select('content, sender_type, created_at')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: false })
-            .limit(messageLimit);
+            .from("messages")
+            .select("content, sender_type, created_at")
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: true })
+            .limit(limit);
 
         if (error) throw error;
 
-        // Reverse to chronological order
-        const messages = (data || []).reverse();
-
-        // Format for AI
-        return messages.map(msg => ({
-            role: msg.sender_type === 'user' ? 'user' : 'assistant',
-            content: msg.content
+        return (data || []).map((msg) => ({
+            role: msg.sender_type === "user" ? "user" : "assistant",
+            content: msg.content,
         }));
-
     } catch (error) {
-        logger.error('Error building conversation history:', error);
+        logger.error("❌ Error building conversation history:", error.message);
         return [];
     }
 }
 
-/**
- * Cache frequently accessed conversations
- */
+/* --------------------------------------------------------
+   9. In-Memory Cache (5-minute auto-expire)
+-------------------------------------------------------- */
 const conversationCache = new Map();
 
 export async function getCachedConversation(conversationId) {
@@ -273,21 +243,21 @@ export async function getCachedConversation(conversationId) {
     const history = await buildConversationHistory(null, conversationId);
     conversationCache.set(conversationId, history);
 
-    // Clear cache after 5 minutes
-    setTimeout(() => {
-        conversationCache.delete(conversationId);
-    }, 5 * 60 * 1000);
+    setTimeout(() => conversationCache.delete(conversationId), 5 * 60 * 1000);
 
     return history;
 }
 
+/* --------------------------------------------------------
+   Export
+-------------------------------------------------------- */
 export default {
     generateEmbedding,
     storeMessageWithEmbedding,
-    searchConversations,
+    searchSimilarConversations,
     getConversationContext,
     quickRecall,
     getRecentConversationSummary,
     buildConversationHistory,
-    getCachedConversation
+    getCachedConversation,
 };

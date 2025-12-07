@@ -1,10 +1,21 @@
-const NodeCache = require('node-cache');
+
+import NodeCache from "node-cache";
+
+/**
+ * PromptOptimizer
+ * Reduces token usage while preserving:
+ * - Twin personality blueprint
+ * - Mode rules
+ * - Memory context
+ * - Emotional cues
+ * - User tone & slang
+ * Designed for multi-provider routing (Gemini, Mistral, OpenAI, etc.)
+ */
 
 class PromptOptimizer {
     constructor() {
-        // Cache responses for 1 hour
+        // Cache: 1 hour for responses, 24h for embeddings
         this.responseCache = new NodeCache({ stdTTL: 3600 });
-        // Cache embeddings for 24 hours
         this.embeddingCache = new NodeCache({ stdTTL: 86400 });
 
         this.stats = {
@@ -14,52 +25,91 @@ class PromptOptimizer {
         };
     }
 
-    /**
-     * Optimize chat prompt by removing redundancy
-     */
+    // ============================================================
+    // 1. SMART PROMPT OPTIMIZATION FOR CHAT
+    // ============================================================
+
     optimizePrompt(systemPrompt, userMessage, conversationHistory = []) {
-        // Keep only last 5 messages for context (saves tokens)
-        const recentHistory = conversationHistory.slice(-5);
+        // Keep last 6 messages for continuity
+        const history = this.reduceHistory(conversationHistory);
 
-        // Compress system prompt (remove verbose instructions)
-        const compressedSystem = this.compressSystemPrompt(systemPrompt);
+        // Compress system prompt safely
+        const compressedSystem = this.compressTwinSystem(systemPrompt);
 
-        // Build optimized prompt
-        let optimizedPrompt = `${compressedSystem}\n\n`;
+        // Build final optimized prompt
+        let optimized = `${compressedSystem}\n\n`;
 
-        // Add minimal conversation history
-        recentHistory.forEach(msg => {
-            const role = msg.sender_type === 'user' ? 'U' : 'A'; // Shortened roles
-            optimizedPrompt += `${role}: ${msg.content}\n`;
-        });
+        if (history.length > 0) {
+            optimized += "## RECENT CONVERSATION\n";
+            history.forEach(msg => {
+                optimized += `${msg.sender_type === "user" ? "U" : "A"}: ${msg.content}\n`;
+            });
+            optimized += "\n";
+        }
 
-        optimizedPrompt += `U: ${userMessage}\nA:`;
+        optimized += `U: ${userMessage}\nA:`;
 
         return {
-            prompt: optimizedPrompt,
-            history: recentHistory,
+            prompt: optimized,
+            history,
             tokensSaved: this.estimateTokensSaved(systemPrompt, compressedSystem),
         };
     }
 
-    /**
-     * Compress system prompt by removing verbose text
-     */
-    compressSystemPrompt(prompt) {
-        return prompt
-            // Remove extra whitespace
-            .replace(/\s+/g, ' ')
-            // Remove verbose phrases
-            .replace(/please note that/gi, '')
-            .replace(/it is important to/gi, '')
-            .replace(/you should/gi, '')
-            // Keep core instructions only
+    // ============================================================
+    // 2. SMART HISTORY REDUCTION
+    // ============================================================
+
+    reduceHistory(history) {
+        if (!history || !history.length) return [];
+
+        // Remove messages like "okay", "hmm", "yes", "bro?"
+        const uselessPatterns = /^(ok|okay|hmm|bro|dude|yes|no|huh|hmmmmm?)$/i;
+
+        const cleaned = history.filter(msg => {
+            const content = msg.content.trim().toLowerCase();
+            return content.length > 2 && !uselessPatterns.test(content);
+        });
+
+        // Keep last 6 meaningful messages
+        return cleaned.slice(-6);
+    }
+
+    // ============================================================
+    // 3. SMART SYSTEM-PROMPT COMPRESSION (Critical!)
+    // ============================================================
+
+    // Alias for backward compatibility
+    compressSystemPrompt(systemPrompt) {
+        return this.compressTwinSystem(systemPrompt);
+    }
+
+    compressTwinSystem(systemPrompt) {
+        if (!systemPrompt) return "";
+
+        return systemPrompt
+            .replace(/\s+/g, " ") // remove excess spaces
+            .replace(/You must/g, "Do")
+            .replace(/Important:/gi, "")
+            .replace(/Follow these rules strictly:/gi, "Rules:")
+            .replace(/Please avoid/gi, "Avoid")
+            .replace(/You should not/gi, "Don't")
+            .replace(/Do not/gi, "Never")
+            // Remove verbose filler with no semantic meaning:
+            .replace(/This is crucial/gi, "")
+            .replace(/It is important to note/gi, "")
+            .replace(/keep in mind that/gi, "")
+            // But **DO NOT REMOVE** patterns describing:
+            // - personality blueprint
+            // - mode rules
+            // - memory context
             .trim();
     }
 
-    /**
-     * Get cached response if available
-     */
+    // ============================================================
+    // 4. RESPONSE CACHING
+    // ============================================================
+
     getCachedResponse(cacheKey) {
         const cached = this.responseCache.get(cacheKey);
         if (cached) {
@@ -71,152 +121,114 @@ class PromptOptimizer {
         return null;
     }
 
-    /**
-     * Cache a response
-     */
     cacheResponse(cacheKey, response) {
         this.responseCache.set(cacheKey, response);
     }
 
-    /**
-     * Generate cache key from user message
-     */
-    generateCacheKey(userId, message) {
-        // Normalize message for caching
+    generateCacheKey(userId, message, mode = "normal") {
+        // Cache must be mode-specific & semantic
         const normalized = message.toLowerCase().trim();
-        return `${userId}:${this.hashString(normalized)}`;
+        return `${userId}:${mode}:${this.hashString(normalized)}`;
     }
 
-    /**
-     * Get cached embedding
-     */
+    // ============================================================
+    // 5. EMBEDDING CACHE
+    // ============================================================
+
     getCachedEmbedding(text) {
         const key = this.hashString(text);
         return this.embeddingCache.get(key);
     }
 
-    /**
-     * Cache embedding
-     */
     cacheEmbedding(text, embedding) {
         const key = this.hashString(text);
         this.embeddingCache.set(key, embedding);
     }
 
-    /**
-     * Simple hash function for cache keys
-     */
+    // ============================================================
+    // 6. UTILS
+    // ============================================================
+
     hashString(str) {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
         }
         return hash.toString(36);
     }
 
-    /**
-     * Estimate tokens in text (rough approximation)
-     */
     estimateTokens(text) {
-        // Rough estimate: 1 token ≈ 4 characters
-        return Math.ceil(text.length / 4);
+        if (!text) return 0;
+        return Math.ceil(text.length / 4); // average 4 chars per token
     }
 
-    /**
-     * Estimate tokens saved
-     */
     estimateTokensSaved(original, compressed) {
         return this.estimateTokens(original) - this.estimateTokens(compressed);
     }
 
-    /**
-     * Get optimizer stats
-     */
     getStats() {
-        const totalRequests = this.stats.cacheHits + this.stats.cacheMisses;
-        const hitRate = totalRequests > 0
-            ? ((this.stats.cacheHits / totalRequests) * 100).toFixed(2)
-            : '0.00';
+        const total = this.stats.cacheHits + this.stats.cacheMisses;
+        const hitRate = total
+            ? ((this.stats.cacheHits / total) * 100).toFixed(2)
+            : "0.00";
 
         return {
             cacheHits: this.stats.cacheHits,
             cacheMisses: this.stats.cacheMisses,
-            hitRate: hitRate + '%',
+            hitRate: hitRate + "%",
             tokensSaved: this.stats.tokensSaved,
-            estimatedCostSaved: (this.stats.tokensSaved * 0.00003).toFixed(4) + ' USD',
+            estimatedCostSaved: (this.stats.tokensSaved * 0.00003).toFixed(4) + " USD"
         };
     }
 
-    /**
-     * Template-based prompts (pre-optimized)
-     */
+    // ============================================================
+    // 7. Lightweight Predefined Templates
+    // ============================================================
+
     getTemplate(type) {
         const templates = {
-            // Concise emotional analysis
-            emotion: `Analyze emotion. Return JSON:
+            emotion: `
+Return JSON only:
 {
-  "trust": 0-100,
-  "dependency": 0-100,
-  "vulnerability": 0-100,
-  "openness": 0-100,
-  "engagement": 0-100,
-  "valence": -100 to 100,
-  "emotions": ["emotion1"]
+  "valence": -100 to +100,
+  "emotions": ["sad", "angry"],
+  "intensity": 1-10
 }
+Text: "{text}"
+`,
 
-Text: "{text}"`,
-
-            // Concise entity extraction
-            entities: `Extract entities. Return JSON:
+            entities: `
+Extract entities. Return JSON only:
 {
-  "people": ["name1"],
-  "goals": ["goal1"],
-  "situations": ["situation1"]
+  "people": [],
+  "goals": [],
+  "topics": []
 }
+Text: "{text}"
+`,
 
-Text: "{text}"`,
-
-            // Concise memory detection
-            memory: `Is this memorable? Return JSON:
+            memory: `
+Is this a memorable moment? Return JSON:
 {
   "is_memorable": true/false,
-  "type": "milestone|achievement|emotion|breakthrough|funny|conversation",
-  "title": "short title",
+  "category": "milestone|emotion|achievement",
   "significance": 1-10
 }
-
-Text: "{text}"`,
-
-            // Optimized chat system prompt
-            chat: `You are an AI companion. Be:
-- Empathetic & supportive
-- Conversational & natural
-- Remember past context
-- Ask follow-up questions
-- Use casual language
-
-Personality: {personality}
-Emotional state: {emotion}
-Trust level: {trust}/100
-
-Respond naturally.`,
+Text: "{text}"
+`
         };
 
-        return templates[type] || '';
+        return templates[type] || "";
     }
 
-    /**
-     * Fill template with variables
-     */
-    fillTemplate(template, variables) {
-        let filled = template;
-        for (const [key, value] of Object.entries(variables)) {
-            filled = filled.replace(`{${key}}`, value);
+    fillTemplate(template, vars) {
+        let temp = template;
+        for (const [k, v] of Object.entries(vars)) {
+            temp = temp.replace(`{${k}}`, v);
         }
-        return filled;
+        return temp;
     }
 }
 
-module.exports = new PromptOptimizer();
+export default new PromptOptimizer();

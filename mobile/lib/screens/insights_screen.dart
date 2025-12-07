@@ -31,6 +31,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       setState(() {
         _isLoading = false;
       });
+      print('Error loading insights: $e');
     }
   }
 
@@ -58,20 +59,20 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Stats cards
-                      _buildStatsGrid(),
+                      // Summary Card
+                      _buildSummaryCard(),
                       const SizedBox(height: 24),
 
-                      // Emotional trend chart
-                      _buildEmotionalTrendCard(),
+                      // Stats cards
+                      _buildStatsGrid(),
                       const SizedBox(height: 24),
 
                       // Top topics
                       _buildTopTopicsCard(),
                       const SizedBox(height: 24),
 
-                      // AI observations
-                      _buildAIObservationsCard(),
+                      // Achievements Entry
+                      _buildAchievementsCard(context),
                       const SizedBox(height: 24),
 
                       // Share button
@@ -82,7 +83,45 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  Widget _buildSummaryCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Weekly Summary',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _insights!['summary'] ?? 'No summary available.',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatsGrid() {
+    final dailyData = _insights!['daily_data'] as List? ?? [];
+    final streak = dailyData.length; // Simple streak calc based on insights count
+    final avgMood = _insights!['average_mood']?.toStringAsFixed(1) ?? 'N/A';
+    final moodTrend = _insights!['mood_trend'] ?? 'Stable';
+
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -92,27 +131,27 @@ class _InsightsScreenState extends State<InsightsScreen> {
       childAspectRatio: 1.5,
       children: [
         _buildStatCard(
-          'Messages',
-          '${_insights!['total_messages']}',
-          Icons.message,
+          'Avg Mood',
+          avgMood,
+          Icons.sentiment_satisfied_alt,
           const Color(0xFF8B5CF6),
         ),
         _buildStatCard(
-          'Mood',
-          '+${_insights!['mood_improvement']}%',
+          'Trend',
+          moodTrend.toString().toUpperCase(),
           Icons.trending_up,
           const Color(0xFF3B82F6),
         ),
         _buildStatCard(
-          'Trust',
-          '${_insights!['trust_score']}',
-          Icons.favorite,
+          'Entries',
+          '$streak',
+          Icons.edit_note,
           const Color(0xFF10B981),
         ),
         _buildStatCard(
-          'Streak',
-          '${_insights!['streak_days']} days',
-          Icons.local_fire_department,
+          'Top Emotion',
+          (_insights!['top_emotions'] as List?)?.firstOrNull ?? 'N/A',
+          Icons.favorite,
           const Color(0xFFF59E0B),
         ),
       ],
@@ -146,10 +185,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               Text(
                 label,
@@ -165,107 +206,44 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildEmotionalTrendCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Emotional Trends',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(show: false),
-                titlesData: FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _getChartSpots(),
-                    isCurved: true,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
-                    ),
-                    barWidth: 3,
-                    dotData: FlDotData(show: false),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<FlSpot> _getChartSpots() {
-    // Mock data - replace with actual data from insights
-    return List.generate(7, (index) {
-      return FlSpot(index.toDouble(), (50 + index * 5).toDouble());
-    });
-  }
-
   Widget _buildTopTopicsCard() {
-    final topics = _insights!['top_topics'] as List? ?? [];
+    final topics = _insights!['topics'] as List? ?? [];
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'What We Talked About',
+            'Key Topics',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
+          topics.isEmpty 
+          ? const Text('No topics analyzed yet.', style: TextStyle(color: Colors.white54))
+          : Wrap(
             spacing: 8,
             runSpacing: 8,
             children: topics.map<Widget>((topic) {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF3E8FF), Color(0xFFFCE7F3)],
-                  ),
+                  color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
                 child: Text(
-                  '${topic['name']} (${topic['count']})',
+                  topic.toString(),
                   style: const TextStyle(
-                    color: Color(0xFF8B5CF6),
+                    color: Colors.white,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -277,65 +255,63 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildAIObservationsCard() {
-    final observations = _insights!['ai_observations'] as List? ?? [];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF3E8FF), Color(0xFFFCE7F3)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6)),
-              SizedBox(width: 8),
-              Text(
-                'AI Observations',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF8B5CF6),
-                ),
-              ),
-            ],
+  Widget _buildAchievementsCard(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.pushNamed(context, '/achievements');
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
           ),
-          const SizedBox(height: 16),
-          ...observations.map<Widget>((obs) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.emoji_events, color: Colors.white, size: 32),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 4,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6),
-                      borderRadius: BorderRadius.circular(2),
+                  Text(
+                    'Achievements',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      obs.toString(),
-                      style: const TextStyle(
-                        color: Color(0xFF6B21A8),
-                        height: 1.5,
-                      ),
+                  SizedBox(height: 4),
+                  Text(
+                    'View your badges & XP',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
-            );
-          }).toList(),
-        ],
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+          ],
+        ),
       ),
     );
   }

@@ -17,32 +17,13 @@ class CloudflareService {
     /**
      * Generate chat response
      */
-    async generateChatResponse(prompt, conversationHistory = [], systemPrompt = null) {
+    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
         if (!this.accountId || !this.apiToken) {
             throw new Error('Cloudflare credentials not configured');
         }
 
         try {
-            const messages = [];
-
-            // Add system prompt
-            if (systemPrompt) {
-                messages.push({ role: 'system', content: systemPrompt });
-            }
-
-            // Add conversation history
-            if (conversationHistory && conversationHistory.length > 0) {
-                conversationHistory.forEach((msg) => {
-                    messages.push({
-                        role: msg.role === 'user' ? 'user' : 'assistant',
-                        content: msg.content,
-                    });
-                });
-            }
-
-            // Add current prompt
-            messages.push({ role: 'user', content: prompt });
-
+            // Cloudflare AI Llama 3 supports standard messages array
             const response = await fetch(
                 `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/ai/run/${this.model}`,
                 {
@@ -52,7 +33,7 @@ class CloudflareService {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        messages: messages,
+                        messages: messagesArray,
                     }),
                 }
             );

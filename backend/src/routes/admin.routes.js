@@ -13,12 +13,13 @@ const isAdmin = async (req, res, next) => {
             .eq('user_id', req.user.userId)
             .single();
 
-        // Check if user email is admin email or has admin flag in metadata
-        const isUserAdmin = req.user.email === 'admin@twinmind.com' ||
-            req.user.email?.includes('+admin@') ||
+        // Check against environment variable and metadata
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const isUserAdmin = (adminEmail && req.user.email === adminEmail) ||
             profile?.metadata?.role === 'admin';
 
         if (!isUserAdmin) {
+            console.warn(`Admin access denied for: ${req.user.email}`);
             return res.status(403).json({ error: 'Forbidden: Admin access required' });
         }
 

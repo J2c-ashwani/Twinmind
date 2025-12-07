@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Brain, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useUserStore } from '@/store/useStore';
-import { supabase } from '@/lib/supabase';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function LoginPage() {
     const router = useRouter();
+    const supabase = createClientComponentClient();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export default function LoginPage() {
             // Real Supabase authentication
             const { data, error: signInError } = await supabase.auth.signInWithPassword({
                 email,
-                password,
+                password
             });
 
             if (signInError) throw signInError;
@@ -37,6 +38,9 @@ export default function LoginPage() {
                     name: data.user.user_metadata?.full_name,
                     is_pro: false
                 });
+
+                // Refresh router to ensure middleware sees the new cookie
+                router.refresh();
 
                 // Check if user has completed onboarding
                 const { data: profile, error: profileError } = await supabase

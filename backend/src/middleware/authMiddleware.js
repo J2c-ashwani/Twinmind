@@ -25,6 +25,7 @@ export const authenticateUser = async (req, res, next) => {
 
         // Attach user to request
         req.userId = user.id;
+        req.user = { userId: user.id }; // For compatibility
 
         next();
     } catch (error) {
@@ -33,4 +34,8 @@ export const authenticateUser = async (req, res, next) => {
     }
 };
 
+// Export as verifyToken for backwards compatibility
+export const verifyToken = authenticateUser;
+
 export default authenticateUser;
+

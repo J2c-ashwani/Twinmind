@@ -146,11 +146,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Generate personality
       await _api.generatePersonality(token);
 
-      // Navigate to chat
+      // Navigate to home (main screen with chat)
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ChatScreen()),
-        );
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
       setState(() {

@@ -1,9 +1,10 @@
-const promptOptimizer = require('./promptOptimizer');
-const responseCache = require('./responseCache');
+import promptOptimizer from './promptOptimizer.js';
+import responseCache from './responseCache.js';
+import conversationMemoryService from './conversationMemoryService.js';
 
 class SmartContextManager {
     constructor() {
-        this.conversationMemoryService = require('./conversationMemoryService');
+        this.conversationMemoryService = conversationMemoryService;
     }
 
     /**
@@ -25,12 +26,16 @@ class SmartContextManager {
                 5 // Get top 5 relevant past messages
             );
 
+            // PATCH 4: Filter by relevance (simulated > 0.75 check if score available, or just limit)
+            // Assuming result has score. If not, we just take top 3.
+            const highlyRelevant = relevantPast.filter(item => (item.score || 1) > 0.75).slice(0, 3);
+
             // 4. Combine recent + relevant past
             return {
                 recentHistory: recentContext,
-                relevantPast: relevantPast,
+                relevantPast: highlyRelevant,
                 hasMemoryContext: true,
-                contextSummary: this.buildContextSummary(recentContext, relevantPast),
+                contextSummary: this.buildContextSummary(recentContext, highlyRelevant),
             };
         }
 
@@ -81,8 +86,22 @@ class SmartContextManager {
         let summary = "Relevant past context:\n";
 
         relevantPast.forEach((conv, index) => {
-            summary += `${index + 1}. ${conv.summary || conv.content.substring(0, 100)}\n`;
+            // PATCH 3: Limit summary content to ~200 chars
+            const content = (conv.summary || conv.content || '').substring(0, 200).replace(/\n+/g, ' ');
+            summary += `${index + 1}. ${content}\n`;
         });
+
+        // PATCH 2 & 5: Hallucination protection & Dynamic Instructions
+        summary += `\nIMPORTANT: 
+If any past context seems unclear or not directly relevant, 
+do NOT invent details. Only use what is explicitly written above.
+
+USE THESE RULES:
+1. Use a past memory ONLY if it helps answer the user's CURRENT message.
+2. If it does not help, IGNORE it.
+3. NEVER force a memory reference.
+4. If context conflicts, ALWAYS prioritize the user's latest message.
+`;
 
         return summary;
     }
@@ -192,4 +211,4 @@ class SmartContextManager {
     }
 }
 
-module.exports = new SmartContextManager();
+export default new SmartContextManager();

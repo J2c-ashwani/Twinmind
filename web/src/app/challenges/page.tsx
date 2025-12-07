@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import api from '@/lib/api'
 import { Loader2, CheckCircle2, Circle, Clock, Gift, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -18,7 +18,17 @@ interface DailyChallenge {
 
 export default function DailyChallengesPage() {
     const router = useRouter()
-    const [challenges, setChallenges] = useState<DailyChallenge[]>([])
+    const supabase = createClientComponentClient()
+
+    // Fallback challenges for when API is unavailable
+    const fallbackChallenges: DailyChallenge[] = [
+        { id: '1', task: 'Start your day with a morning reflection', type: 'morning_reflection', reward: 25, time_window: '6AM - 10AM', completed: false },
+        { id: '2', task: 'Share 3 things you\'re grateful for today', type: 'gratitude_moment', reward: 30, time_window: 'Anytime', completed: false },
+        { id: '3', task: 'Reflect on your wins from today', type: 'evening_wins', reward: 25, time_window: '6PM - 11PM', completed: false },
+        { id: '4', task: 'Open up about something you\'ve been avoiding', type: 'vulnerability_challenge', reward: 50, time_window: 'Anytime', completed: false }
+    ]
+
+    const [challenges, setChallenges] = useState<DailyChallenge[]>(fallbackChallenges)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [completingId, setCompletingId] = useState<string | null>(null)
@@ -36,9 +46,12 @@ export default function DailyChallengesPage() {
             }
 
             const response = await api.getDailyChallenges(session.access_token)
-            setChallenges(response.challenges || [])
+            if (response.challenges && response.challenges.length > 0) {
+                setChallenges(response.challenges)
+            }
         } catch (err: any) {
-            setError(err.message)
+            console.error('Failed to load challenges, using fallback:', err)
+            // Keep using fallback challenges
         } finally {
             setLoading(false)
         }
@@ -133,8 +146,8 @@ export default function DailyChallengesPage() {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.1 }}
                             className={`bg-white/10 backdrop-blur-sm rounded-2xl p-6 border-2 ${challenge.completed
-                                    ? 'border-green-500/50'
-                                    : 'border-white/10'
+                                ? 'border-green-500/50'
+                                : 'border-white/10'
                                 }`}
                         >
                             <div className="flex items-center gap-4">
@@ -170,8 +183,8 @@ export default function DailyChallengesPage() {
                                     onClick={() => completeChallenge(challenge.id)}
                                     disabled={challenge.completed || completingId === challenge.id}
                                     className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${challenge.completed
-                                            ? 'bg-green-500 cursor-default'
-                                            : 'bg-white/10 hover:bg-white/20 cursor-pointer'
+                                        ? 'bg-green-500 cursor-default'
+                                        : 'bg-white/10 hover:bg-white/20 cursor-pointer'
                                         }`}
                                 >
                                     {completingId === challenge.id ? (

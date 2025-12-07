@@ -1,5 +1,5 @@
-const redis = require('redis');
-const { promisify } = require('util');
+import redis from 'redis';
+import { promisify } from 'util';
 
 class ResponseCache {
     constructor() {
@@ -132,4 +132,4 @@ class ResponseCache {
     }
 }
 
-module.exports = new ResponseCache();
+export default new ResponseCache();

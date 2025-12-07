@@ -6,12 +6,25 @@ import { motion } from 'framer-motion';
 import { User, Bell, Lock, Palette, LogOut, ChevronLeft, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function SettingsPage() {
     const router = useRouter();
+    const supabase = createClientComponentClient();
     const { user, logout } = useUserStore();
     const [notifications, setNotifications] = useState(true);
     const [aiMode, setAiMode] = useState('normal');
+
+    const handleLogout = async () => {
+        // Sign out from Supabase (clears session cookie)
+        await supabase.auth.signOut();
+        // Clear local state
+        logout();
+        // Refresh router to update middleware state
+        router.refresh();
+        // Redirect to login
+        router.push('/login');
+    };
 
     const aiModes = [
         { value: 'normal', label: 'Normal Twin', description: 'Balanced and empathetic' },
@@ -186,7 +199,7 @@ export default function SettingsPage() {
 
                 {/* Logout */}
                 <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="w-full p-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white 
                              rounded-xl font-semibold hover:shadow-lg hover:scale-105 
                              transition-all flex items-center justify-center gap-2"

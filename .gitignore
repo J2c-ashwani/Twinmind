@@ -7,6 +7,14 @@ node_modules/
 .env.local
 .env.*.local
 
+# Firebase credentials (NEVER commit!)
+firebase-service-account.json
+**/firebase-service-account.json
+
+# Google Cloud credentials (NEVER commit!)
+google-tts-service-account.json
+**/google-tts-service-account.json
+
 # Build outputs
 dist/
 build/
