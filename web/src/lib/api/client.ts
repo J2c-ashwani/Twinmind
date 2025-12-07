@@ -126,37 +126,12 @@ class ApiClient {
         });
     }
 
-    // Voice endpoints
-    async sendVoiceMessage(audioBlob: Blob, duration: number, conversationId: string) {
-        const formData = new FormData();
-        formData.append('audio', audioBlob);
-        formData.append('duration', duration.toString());
-        formData.append('conversationId', conversationId);
-
-        // Note: We use fetch directly here because we need to send FormData
-        // and our request wrapper sets Content-Type to application/json
-        const headers: HeadersInit = {};
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
-
-        const response = await fetch(`${this.baseUrl}/api/voice/message`, {
-            method: 'POST',
-            headers,
-            body: formData,
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to send voice message');
-        }
-
-        return response.json();
-    }
 
     // Life Coach endpoints
     async getLifeCoachPrograms() {
         return this.request('/api/life-coach/programs');
     }
+
 
     async startProgram(programId: string) {
         return this.request('/api/life-coach/start', {

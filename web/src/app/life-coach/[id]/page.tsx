@@ -45,7 +45,7 @@ export default function CoachingSessionPage() {
             setMessages([
                 {
                     role: 'ai',
-                    content: data.content.initial_prompt,
+                    content: (data as any).content?.initial_prompt || 'Welcome to your coaching session!',
                     id: 'init'
                 }
             ]);
@@ -168,8 +168,8 @@ export default function CoachingSessionPage() {
                     >
                         <div
                             className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
-                                    ? 'bg-purple-600 text-white rounded-br-none'
-                                    : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
+                                ? 'bg-purple-600 text-white rounded-br-none'
+                                : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
                                 }`}
                         >
                             {msg.content}

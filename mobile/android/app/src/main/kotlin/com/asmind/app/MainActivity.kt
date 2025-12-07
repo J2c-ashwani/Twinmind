@@ -1,4 +1,4 @@
-package com.twinmind.app
+package com.asmind.app
 
 import io.flutter.embedding.android.FlutterActivity
 

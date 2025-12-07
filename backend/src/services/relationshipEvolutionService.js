@@ -88,7 +88,7 @@ export async function recordDailyMetrics(userId) {
 
         const { error } = await supabaseAdmin
             .from("relationship_growth_metrics")
-            .insert({
+            .upsert({
                 user_id: userId,
                 date: today,
                 trust_score: stats.trust,
@@ -97,9 +97,9 @@ export async function recordDailyMetrics(userId) {
                 vulnerability_events: stats.vulnerability_events,
                 streak: stats.streak,
                 total_messages: stats.total_messages,
-            })
-            .onConflict("user_id,date")
-            .merge();
+            }, {
+                onConflict: 'user_id,date'
+            });
 
         if (error && error.code !== "23505") throw error;
 

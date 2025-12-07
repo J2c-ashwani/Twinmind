@@ -76,9 +76,9 @@ export default function EnhancedChatInterface() {
 
         try {
             const response = await apiClient.sendVoiceMessage(
+                currentConversationId,
                 audioBlob,
-                duration,
-                currentConversationId
+                'normal' // mode
             ) as any;
 
             // Update with real response
