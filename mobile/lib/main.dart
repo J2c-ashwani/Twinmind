@@ -136,6 +136,7 @@ class TwinMindApp extends StatelessWidget {
           '/growth-story': (context) => const GrowthStoryScreen(),
           '/twin-match': (context) => const TwinMatchScreen(),
         },
+      ),
     );
   }
 }

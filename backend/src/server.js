@@ -3,7 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { logger } from './config/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import routes
 import authRoutes from './routes/auth.routes.js';
@@ -205,6 +210,22 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/life-coach', lifeCoachRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+// ============================================
+// 📱 SERVE WEB APP (Flutter PWA)
+// ============================================
+
+// Serve static files from 'public' directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Handle SPA routing - send index.html for any non-API route
+app.get('*', (req, res, next) => {
+  // If it's an API call that wasn't handled, let it fall through to 404
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
 
 // ============================================
 // ❌ ERROR HANDLING
