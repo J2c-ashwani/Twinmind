@@ -132,6 +132,7 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
               onPressed: _isGenerating ? null : _generateCard,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF9333EA),
+                foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 45),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
