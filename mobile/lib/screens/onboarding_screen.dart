@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:twinmind/services/api_service.dart';
 import 'package:twinmind/services/auth_service.dart';
-import 'package:twinmind/screens/chat_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -196,9 +195,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Container(
                   width: 120,
                   height: 120,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Color(0xFF9333EA), Color(0xFF3B82F6)],
                     ),
                   ),

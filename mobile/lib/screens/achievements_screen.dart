@@ -4,7 +4,7 @@ import '../providers/gamification_provider.dart';
 import '../services/auth_service.dart';
 
 class AchievementsScreen extends StatefulWidget {
-  const AchievementsScreen({Key? key}) : super(key: key);
+  const AchievementsScreen({super.key});
 
   @override
   State<AchievementsScreen> createState() => _AchievementsScreenState();
@@ -56,11 +56,11 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               // Stats header
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
                   ),
-                  borderRadius: const BorderRadius.only(
+                  borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(32),
                     bottomRight: Radius.circular(32),
                   ),

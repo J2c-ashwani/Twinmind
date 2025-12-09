@@ -4,7 +4,7 @@ import '../providers/memory_provider.dart';
 import '../widgets/memory_card.dart';
 
 class MemoryTimelineScreen extends StatefulWidget {
-  const MemoryTimelineScreen({Key? key}) : super(key: key);
+  const MemoryTimelineScreen({super.key});
 
   @override
   State<MemoryTimelineScreen> createState() => _MemoryTimelineScreenState();

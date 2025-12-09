@@ -7,10 +7,10 @@ class ProgramDetailScreen extends StatefulWidget {
   final String title;
 
   const ProgramDetailScreen({
-    Key? key,
+    super.key,
     required this.programId,
     required this.title,
-  }) : super(key: key);
+  });
 
   @override
   State<ProgramDetailScreen> createState() => _ProgramDetailScreenState();

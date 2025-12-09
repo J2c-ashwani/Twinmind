@@ -6,10 +6,10 @@ class MemoryCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const MemoryCard({
-    Key? key,
+    super.key,
     required this.memory,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

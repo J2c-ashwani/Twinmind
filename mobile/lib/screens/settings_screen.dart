@@ -184,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Icon(icon, color: Colors.white70, size: 20),
         ),
-        activeColor: const Color(0xFF9333EA),
+        activeThumbColor: const Color(0xFF9333EA),
       ),
     );
   }

@@ -4,7 +4,7 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
 class GrowthStoryScreen extends StatefulWidget {
-  const GrowthStoryScreen({Key? key}) : super(key: key);
+  const GrowthStoryScreen({super.key});
 
   @override
   State<GrowthStoryScreen> createState() => _GrowthStoryScreenState();
@@ -241,7 +241,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
                 style: const TextStyle(fontSize: 14, color: Colors.white, height: 1.5),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
 class StreakWidget extends StatefulWidget {
-  const StreakWidget({Key? key}) : super(key: key);
+  const StreakWidget({super.key});
 
   @override
   State<StreakWidget> createState() => _StreakWidgetState();
@@ -116,11 +116,11 @@ class _StreakWidgetState extends State<StreakWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
                 Icon(Icons.local_fire_department, color: Colors.grey, size: 28),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Daily Streak',
                   style: TextStyle(
                     fontSize: 14,
@@ -330,7 +330,7 @@ class _StreakWidgetState extends State<StreakWidget> {
               child: LinearProgressIndicator(
                 value: effectiveStreak / (effectiveStreak < 7 ? 7 : 30),
                 backgroundColor: Colors.white.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation<Color>(
+                valueColor: const AlwaysStoppedAnimation<Color>(
                   Colors.orange,
                 ),
                 minHeight: 6,

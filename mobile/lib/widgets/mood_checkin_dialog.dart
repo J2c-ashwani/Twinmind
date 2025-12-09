@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/daily_provider.dart';
 
 class MoodCheckInDialog extends StatefulWidget {
-  const MoodCheckInDialog({Key? key}) : super(key: key);
+  const MoodCheckInDialog({super.key});
 
   @override
   State<MoodCheckInDialog> createState() => _MoodCheckInDialogState();

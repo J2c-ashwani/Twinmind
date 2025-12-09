@@ -5,7 +5,7 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
 class WeeklyMotivationCardWidget extends StatefulWidget {
-  const WeeklyMotivationCardWidget({Key? key}) : super(key: key);
+  const WeeklyMotivationCardWidget({super.key});
 
   @override
   State<WeeklyMotivationCardWidget> createState() => _WeeklyMotivationCardWidgetState();

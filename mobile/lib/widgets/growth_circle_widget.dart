@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 class GrowthCircleWidget extends StatefulWidget {
   final VoidCallback? onInviteClick;
   
-  const GrowthCircleWidget({Key? key, this.onInviteClick}) : super(key: key);
+  const GrowthCircleWidget({super.key, this.onInviteClick});
 
   @override
   State<GrowthCircleWidget> createState() => _GrowthCircleWidgetState();

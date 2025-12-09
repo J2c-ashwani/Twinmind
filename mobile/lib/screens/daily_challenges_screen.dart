@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/daily_provider.dart';
 
 class DailyChallengesScreen extends StatefulWidget {
-  const DailyChallengesScreen({Key? key}) : super(key: key);
+  const DailyChallengesScreen({super.key});
 
   @override
   State<DailyChallengesScreen> createState() => _DailyChallengesScreenState();

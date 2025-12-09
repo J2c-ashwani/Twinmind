@@ -9,10 +9,10 @@ class VoiceRecorderWidget extends StatefulWidget {
   final VoidCallback? onCancel;
 
   const VoiceRecorderWidget({
-    Key? key,
+    super.key,
     required this.onSend,
     this.onCancel,
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceRecorderWidget> createState() => _VoiceRecorderWidgetState();

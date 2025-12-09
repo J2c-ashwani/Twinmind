@@ -51,7 +51,7 @@ class DailyProvider with ChangeNotifier {
 
     try {
       final data = await _apiService.getDailyChallenges();
-      _challenges = (data as List)
+      _challenges = (data)
           .map((json) => DailyChallenge.fromJson(json))
           .toList();
     } catch (e) {

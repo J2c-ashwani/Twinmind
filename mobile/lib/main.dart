@@ -22,8 +22,6 @@ import 'screens/main_screen.dart';
 import 'screens/daily_challenges_screen.dart';
 import 'screens/growth_story_screen.dart';
 import 'screens/twin_match_screen.dart';
-import 'screens/program_detail_screen.dart';
-import 'screens/coaching_session_screen.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
@@ -92,7 +90,7 @@ Future<void> main() async {
 }
 
 class TwinMindApp extends StatelessWidget {
-  const TwinMindApp({Key? key}) : super(key: key);
+  const TwinMindApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +110,6 @@ class TwinMindApp extends StatelessWidget {
             primary: Color(0xFF9333EA),
             secondary: Color(0xFF3B82F6),
             surface: Color(0xFF1A1A2E),
-            background: Color(0xFF0F0F1E),
           ),
         ),
         home: const WelcomeScreen(),

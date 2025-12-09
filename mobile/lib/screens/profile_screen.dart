@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../services/auth_service.dart';
 import '../widgets/mood_history_widget.dart';
 import '../widgets/weekly_motivation_card_widget.dart';
@@ -14,7 +13,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
-    final isPro = false;
+    const isPro = false;
 
     return Scaffold(
       appBar: AppBar(

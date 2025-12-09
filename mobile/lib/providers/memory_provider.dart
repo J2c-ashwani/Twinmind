@@ -59,7 +59,7 @@ class MemoryProvider with ChangeNotifier {
 
     try {
       final data = await _apiService.getMemories();
-      _memories = (data as List).map((json) => Memory.fromJson(json)).toList();
+      _memories = (data).map((json) => Memory.fromJson(json)).toList();
     } catch (e) {
       _error = e.toString();
     } finally {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +96,7 @@ class WelcomeScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ).copyWith(
-                        backgroundColor: MaterialStateProperty.all(Colors.transparent),
+                        backgroundColor: WidgetStateProperty.all(Colors.transparent),
                       ),
                       child: Ink(
                         decoration: BoxDecoration(

@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ).copyWith(
-                      backgroundColor: MaterialStateProperty.all(Colors.transparent),
+                      backgroundColor: WidgetStateProperty.all(Colors.transparent),
                     ),
                     child: Ink(
                       decoration: BoxDecoration(

@@ -6,10 +6,10 @@ class CoachingSessionScreen extends StatefulWidget {
   final String programTitle;
 
   const CoachingSessionScreen({
-    Key? key,
+    super.key,
     required this.programId,
     required this.programTitle,
-  }) : super(key: key);
+  });
 
   @override
   State<CoachingSessionScreen> createState() => _CoachingSessionScreenState();
@@ -23,7 +23,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   Map<String, dynamic>? _sessionData;
-  List<Map<String, String>> _messages = []; // {role: 'user'|'ai', content: '...'}
+  final List<Map<String, String>> _messages = []; // {role: 'user'|'ai', content: '...'}
   bool _showExercise = false;
 
   @override
@@ -109,7 +109,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Great job! Any notes for today?'),
+            const Text('Great job! Any notes for today?'),
             const SizedBox(height: 16),
             TextField(
               controller: notesController,

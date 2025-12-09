@@ -475,32 +475,6 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.notifications_outlined),
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/notifications');
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.self_improvement),
-                      tooltip: 'Life Coach',
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/life-coach');
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.insights),
-                      tooltip: 'Insights',
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/insights');
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.history),
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/memory-timeline');
-                      },
-                    ),
-                    IconButton(
                       onPressed: () => Navigator.pushNamed(context, '/profile'),
                       icon: const Icon(Icons.person_outline),
                     ),
@@ -765,7 +739,58 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              child: Center(
+                child: Text(
+                  'TwinMind',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Navigation Items
+            ListTile(
+              leading: const Icon(Icons.self_improvement, color: Colors.white70),
+              title: const Text('Life Coach', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/life-coach');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_outlined, color: Colors.white70),
+              title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/notifications');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.insights, color: Colors.white70),
+              title: const Text('Insights', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/insights');
+              },
+            ),
+             ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined, color: Colors.white70),
+              title: const Text('Privacy & Terms', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/privacy');
+              },
+            ),
+            
+            const Divider(color: Colors.white12, height: 32),
+
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, bottom: 8.0),
               child: Row(
                 children: [
                   const Icon(Icons.history, color: Colors.white),

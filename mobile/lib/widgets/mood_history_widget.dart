@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
 class MoodHistoryWidget extends StatefulWidget {
-  const MoodHistoryWidget({Key? key}) : super(key: key);
+  const MoodHistoryWidget({super.key});
 
   @override
   State<MoodHistoryWidget> createState() => _MoodHistoryWidgetState();

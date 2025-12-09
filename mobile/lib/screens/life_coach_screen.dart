@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import 'program_detail_screen.dart';
 
 class LifeCoachScreen extends StatefulWidget {
-  const LifeCoachScreen({Key? key}) : super(key: key);
+  const LifeCoachScreen({super.key});
 
   @override
   State<LifeCoachScreen> createState() => _LifeCoachScreenState();
