@@ -216,6 +216,11 @@ app.use('/api/notifications', notificationRoutes);
 // ============================================
 
 // Serve static files from 'public' directory
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+});
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Handle SPA routing - send index.html for any non-API route
