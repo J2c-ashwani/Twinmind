@@ -403,7 +403,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        setState(() {
+          _showEmojiPicker = false;
+          _showVoiceRecorder = false;
+          _showModeDropdown = false;
+        });
+      },
+      child: Scaffold(
       key: _scaffoldKey,
       drawer: _buildDrawer(),
       body: Container(
@@ -728,6 +737,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
