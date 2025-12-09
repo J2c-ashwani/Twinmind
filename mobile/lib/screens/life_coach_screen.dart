@@ -74,8 +74,8 @@ class _LifeCoachScreenState extends State<LifeCoachScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => ProgramDetailScreen(
-                              programId: program['id'],
-                              title: program['title'],
+                              programId: program['id'].toString(),
+                              title: program['title']?.toString() ?? 'Program',
                             ),
                           ),
                         );
