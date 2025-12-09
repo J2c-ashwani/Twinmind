@@ -91,7 +91,30 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       const SizedBox(height: 24),
 
                       // Achievements Entry
+                      // Achievements Entry
                       _buildAchievementsCard(context),
+                      const SizedBox(height: 16),
+
+                      // Daily Challenges
+                      _buildNavCard(
+                        context,
+                        'Daily Challenges',
+                        'Daily tasks & streaks',
+                        Icons.flag,
+                        const Color(0xFFEF4444),
+                        '/daily-challenges',
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Twin Match
+                      _buildNavCard(
+                        context,
+                        'Twin Match',
+                        'Find your community',
+                        Icons.people,
+                        const Color(0xFFEC4899),
+                        '/twin-match',
+                      ),
                       const SizedBox(height: 24),
 
                       // Share button
@@ -321,6 +344,66 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   Text(
                     'View your badges & XP',
                     style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavCard(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    String route,
+  ) {
+    return InkWell(
+      onTap: () {
+        Navigator.pushNamed(context, route);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
                     ),
