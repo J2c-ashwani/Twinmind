@@ -19,6 +19,13 @@ router.get('/programs', verifyToken, async (req, res) => {
 router.post('/start', verifyToken, async (req, res) => {
     try {
         const { programId } = req.body;
+
+        // Validate UUID
+        const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+        if (!programId || !uuidRegex.test(programId)) {
+            return res.status(400).json({ error: 'Invalid Program ID format. Please refresh programs.' });
+        }
+
         const result = await lifeCoachService.startProgram(req.user.userId, programId);
         res.json(result);
     } catch (error) {
