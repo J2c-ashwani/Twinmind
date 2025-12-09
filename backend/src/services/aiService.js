@@ -137,6 +137,9 @@ class AIService {
         // provider adapter might be missing methods? check quickly
         if (!provider.service) return false;
 
+        // check if provider is configured (credentials present)
+        if (provider.service.isConfigured === false) return false;
+
         return true;
     }
 

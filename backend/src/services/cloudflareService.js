@@ -10,8 +10,12 @@ class CloudflareService {
         if (this.accountId && this.apiToken) {
             console.log('✅ Cloudflare Service initialized');
         } else {
-            console.log('⚠️  Cloudflare credentials not found');
+            console.log('⚠️  Cloudflare credentials not found (Service disabled)');
         }
+    }
+
+    get isConfigured() {
+        return !!(this.accountId && this.apiToken);
     }
 
     /**
