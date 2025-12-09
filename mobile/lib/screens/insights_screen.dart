@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class InsightsScreen extends StatefulWidget {
@@ -17,20 +19,37 @@ class _InsightsScreenState extends State<InsightsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInsights();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInsights();
+    });
   }
 
   Future<void> _loadInsights() async {
     try {
-      final data = await _apiService.getWeeklyInsights();
-      setState(() {
-        _insights = data;
-        _isLoading = false;
-      });
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      if (token != null) {
+        _apiService.setToken(token);
+        final data = await _apiService.getWeeklyInsights();
+        if (mounted) {
+          setState(() {
+            _insights = data;
+            _isLoading = false;
+          });
+        }
+      } else {
+        print('No access token available');
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       print('Error loading insights: $e');
     }
   }

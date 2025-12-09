@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/gamification_provider.dart';
+import '../services/auth_service.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({Key? key}) : super(key: key);
@@ -14,7 +15,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GamificationProvider>().loadGamificationStatus();
+      final token = context.read<AuthService>().getAccessToken();
+      context.read<GamificationProvider>().loadGamificationStatus(token);
     });
   }
 

@@ -112,12 +112,19 @@ class GamificationProvider with ChangeNotifier {
     ),
   );
 
-  Future<void> loadGamificationStatus() async {
+  Future<void> loadGamificationStatus(String? token) async {
+    if (token == null) {
+      _error = 'No access token available';
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      _apiService.setToken(token);
       final data = await _apiService.getGamificationStatus();
       
       _achievements = (data['achievements'] as List)
