@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5001'; // Backend API port
+  static const String baseUrl = kReleaseMode 
+      ? 'https://twinmind-9l6x.onrender.com'
+      : 'http://localhost:5001'; // Backend API port
   String? _token;
 
   void setToken(String token) {
