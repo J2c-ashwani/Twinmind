@@ -102,7 +102,7 @@ class GeminiService {
 
             // Create model instance per request to support dynamic systemPrompt
             const model = this.genAI.getGenerativeModel({
-                model: usePro ? 'gemini-1.5-pro' : 'gemini-1.5-flash',
+                model: 'gemini-1.5-pro', // Always use Pro to avoid Flash 404 errors
                 systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }], role: 'model' } : undefined,
                 generationConfig: {
                     temperature: 0.9,
