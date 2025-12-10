@@ -13,13 +13,16 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
   bool _isLoading = false;
+  bool _isSignupMode = false;
   String? _error;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -76,6 +79,56 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleSignup() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || name.isEmpty) {
+      setState(() {
+        _error = 'Please fill in all fields';
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(() {
+        _error = 'Password must be at least 6 characters';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signUpWithEmail(email, password, name);
+      
+      // After signup, sign in automatically
+      final user = await authService.signInWithEmail(email, password);
+      
+      if (mounted && user != null) {
+        // New users always need onboarding
+        Navigator.pushReplacementNamed(context, '/onboarding');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,9 +169,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 40),
                 
-                const Text(
-                  'Welcome Back',
-                  style: TextStyle(
+                Text(
+                  _isSignupMode ? 'Create Your Twin' : 'Welcome Back',
+                  style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
@@ -126,9 +179,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 8),
                 
-                const Text(
-                  'Sign in to continue your journey',
-                  style: TextStyle(
+                Text(
+                  _isSignupMode ? 'Start your personalized AI journey' : 'Sign in to continue your journey',
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.white70,
                   ),
@@ -136,10 +189,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 60),
                 
+                // Name Field (only for signup)
+                if (_isSignupMode) ...[
+                  TextField(
+                    controller: _nameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Full Name',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                
                 // Email Field
                 TextField(
                   controller: _emailController,
                   style: const TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     hintText: 'Email',
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -179,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
+                    onPressed: _isLoading ? null : (_isSignupMode ? _handleSignup : _handleLogin),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: Colors.transparent,
@@ -209,9 +283,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               )
-                            : const Text(
-                                'Sign In',
-                                style: TextStyle(
+                            : Text(
+                                _isSignupMode ? 'Create Account' : 'Sign In',
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -231,6 +305,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
                 
                 const SizedBox(height: 24),
+                
+                // Toggle signup/signin
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _isSignupMode ? 'Already have an account?' : "Don't have an account?",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _isSignupMode = !_isSignupMode;
+                          _error = null;
+                        });
+                      },
+                      child: Text(
+                        _isSignupMode ? 'Sign In' : 'Sign Up',
+                        style: const TextStyle(color: Color(0xFF9333EA), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 8),
                 
                 // Back button
                 TextButton(
