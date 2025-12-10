@@ -93,8 +93,8 @@ export async function recordDailyMetrics(userId) {
                 date: today,
                 trust_score: stats.trust,
                 dependency_score: stats.dependency,
-                // emotional_depth: stats.emotional_depth, // Removed: Column missing in DB
-                // vulnerability_events: stats.vulnerability_events, // Removed: Likely missing
+                emotional_depth: stats.emotional_depth,
+                vulnerability_events: stats.vulnerability_events,
                 streak: stats.streak,
                 total_messages: stats.total_messages,
             }, {
