@@ -20,7 +20,9 @@ class VoiceRecorderWidget extends StatefulWidget {
 
 class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  final FlutterSoundPlayer _player = FlutterSoundPlayer();
   bool _isRecording = false;
+  bool _isPlaying = false;
   int _duration = 0;
   File? _audioFile;
   String? _recordingPath;
@@ -29,15 +31,22 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
   void initState() {
     super.initState();
     _initRecorder();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    await _player.openPlayer();
   }
 
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
+    await _recorder.setSubscriptionDuration(const Duration(milliseconds: 100));
   }
 
   @override
   void dispose() {
     _recorder.closeRecorder();
+    _player.closePlayer();
     super.dispose();
   }
 
@@ -98,12 +107,38 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
   }
 
   void _reset() {
+    _stopPlayback();
     setState(() {
       _isRecording = false;
+      _isPlaying = false;
       _duration = 0;
       _audioFile = null;
       _recordingPath = null;
     });
+  }
+
+  Future<void> _togglePlayback() async {
+    if (_audioFile == null) return;
+
+    if (_isPlaying) {
+      await _player.stopPlayer();
+      setState(() => _isPlaying = false);
+    } else {
+      setState(() => _isPlaying = true);
+      await _player.startPlayer(
+        fromURI: _audioFile!.path,
+        whenFinished: () {
+          setState(() => _isPlaying = false);
+        },
+      );
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    if (_player.isPlaying) {
+      await _player.stopPlayer();
+      setState(() => _isPlaying = false);
+    }
   }
 
   String _formatDuration(int seconds) {
@@ -272,6 +307,32 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
           style: TextStyle(
             fontSize: 14,
             color: Colors.grey,
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Play Button
+        GestureDetector(
+          onTap: _togglePlayback,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              _isPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
+              color: const Color(0xFF8B5CF6),
+              size: 32,
+            ),
           ),
         ),
 

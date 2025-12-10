@@ -602,8 +602,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       padding: const EdgeInsets.all(16),
                       itemCount: _messages.length + (_isLoading ? 1 : 0),
                       itemBuilder: (context, index) {
-                        if (index >= _messages.length) {
-                          return _buildLoadingBubble();
+                        if (_isLoading) {
+                          if (index == 0) {
+                            return _buildLoadingBubble();
+                          }
+                          // Shift index by 1 since index 0 is used for loading bubble
+                          final message = _messages[index - 1];
+                          return _buildMessageBubble(message);
                         }
                         
                         final message = _messages[index];

@@ -26,6 +26,8 @@ import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 
+import 'screens/auth_wrapper.dart';
+
 import 'dart:async';
 
 Future<void> main() async {
@@ -112,7 +114,7 @@ class TwinMindApp extends StatelessWidget {
             surface: Color(0xFF1A1A2E),
           ),
         ),
-        home: const WelcomeScreen(),
+        home: const AuthWrapper(),
         routes: {
           '/welcome': (context) => const WelcomeScreen(),
           '/login': (context) => const LoginScreen(),
