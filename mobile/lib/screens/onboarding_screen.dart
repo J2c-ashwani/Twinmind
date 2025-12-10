@@ -12,6 +12,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final ApiService _api = ApiService();
   final AuthService _auth = AuthService();
+  final ScrollController _scrollController = ScrollController();
   
   int currentScreen = 1;
   final int totalScreens = 5;
@@ -26,7 +27,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeAuth();
     _loadQuestions();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeAuth() async {
+    final token = _auth.currentSession?.accessToken;
+    if (token != null) {
+      _api.setToken(token);
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -107,6 +122,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       setState(() {
         currentScreen++;
       });
+      // Scroll to top of next screen
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     } else {
       await _handleSubmit();
     }
@@ -271,6 +292,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 // Questions
                 Expanded(
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -310,6 +332,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       onPressed: _canProgress() && !isLoading ? _handleNext : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF9333EA),
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 32,
                           vertical: 16,
@@ -325,14 +348,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           else
-                            Text(currentScreen == totalScreens
-                                ? 'Create My Twin'
-                                : 'Next'),
+                            Text(
+                              currentScreen == totalScreens
+                                  ? 'Create My Twin'
+                                  : 'Next',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           if (!isLoading && currentScreen < totalScreens)
-                            const Icon(Icons.chevron_right),
+                            const Icon(Icons.chevron_right, color: Colors.white),
                         ],
                       ),
                     ),
