@@ -797,6 +797,9 @@ class ApiService {
         try {
           final errorData = json.decode(response.body);
           errorMessage = errorData['error'] ?? errorMessage;
+          if (errorData['details'] != null) {
+            errorMessage += ': ${errorData['details']}';
+          }
         } catch (_) {
           errorMessage = 'Server error: ${response.statusCode}';
         }

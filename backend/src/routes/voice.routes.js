@@ -50,7 +50,6 @@ const upload = multer({
 router.post('/message', verifyToken, upload.single('audio'), async (req, res) => {
     let audioFilePath = null;
     let responseAudioPath = null;
-    let userAudioUrl = null;
 
     try {
         if (!req.file) {
@@ -61,17 +60,20 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
         const { mode = 'normal', conversationId } = req.body;
         const userId = req.user.userId;
 
+        logger.info(`Processing voice message from user ${userId}, file: ${audioFilePath}`);
+
         // 1. Resolve Conversation ID
         let targetConversationId = conversationId;
         if (!targetConversationId || targetConversationId === 'null' || targetConversationId === 'undefined') {
             try {
+                // Try to find recent or create new
                 const { data: recent } = await supabaseAdmin
                     .from('conversations')
                     .select('id')
                     .eq('user_id', userId)
                     .order('updated_at', { ascending: false })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
 
                 if (recent) {
                     targetConversationId = recent.id;
@@ -90,11 +92,11 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
                 }
             } catch (err) {
                 logger.error("Error determining conversation:", err);
-                // Fallback?
             }
         }
 
-        // 2. Upload User Audio (For Replay)
+        // 2. Upload User Audio (Optional, for replay)
+        let userAudioUrl = null;
         try {
             const userAudioName = `user_${Date.now()}_${path.basename(audioFilePath)}`;
             const userAudioBuffer = fs.readFileSync(audioFilePath);
@@ -109,35 +111,44 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
                 userAudioUrl = publicUrl;
             }
         } catch (err) {
-            logger.error("Failed to upload user audio:", err);
-            // Non-blocking
+            logger.warn("Failed to upload user audio (non-critical):", err.message);
         }
 
-        // 3. Transcribe
-        const transcription = await transcribeAudio(audioFilePath);
-        if (!transcription || transcription.trim() === '') {
-            return res.status(400).json({ error: 'Could not transcribe audio' });
+        // 3. Transcribe Audio (Gemini/Whisper)
+        let transcription;
+        try {
+            transcription = await transcribeAudio(audioFilePath);
+            if (!transcription || transcription.trim() === '') {
+                throw new Error('Transcription service returned empty result');
+            }
+            logger.info(`Transcription complete: "${transcription.substring(0, 30)}..."`);
+        } catch (err) {
+            logger.error('Transcription failed:', err);
+            throw new Error(`Transcription failed: ${err.message}`);
         }
 
         // 4. Generate AI Response
-        const aiResponse = await generateChatResponse(
-            userId,
-            transcription, // userMessage
-            mode,
-            '', // modifiers
-            targetConversationId// conversationId
-        );
-
-        // Extract the message text (generateChatResponse returns an object)
-        const aiMessageText = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.message || aiResponse?.text || String(aiResponse));
+        let aiMessageText;
+        try {
+            const aiResponse = await generateChatResponse(
+                userId,
+                transcription,
+                mode,
+                '',
+                targetConversationId
+            );
+            aiMessageText = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.message || aiResponse?.text || String(aiResponse));
+            logger.info(`AI Response generated: "${aiMessageText.substring(0, 30)}..."`);
+        } catch (err) {
+            logger.error('AI Generation failed:', err);
+            throw new Error(`AI Generation failed: ${err.message}`);
+        }
 
         // 5. Save to Database
         try {
             const userTime = new Date();
             const aiTime = new Date(userTime.getTime() + 100);
 
-            // Attempt to save (try to include metadata if schema supports, otherwise plain)
-            // We use 'message' field primarily.
             await supabaseAdmin.from('chat_history').insert([
                 {
                     user_id: userId,
@@ -145,13 +156,12 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
                     message: transcription,
                     sender: 'user',
                     mode: mode,
-                    created_at: userTime.toISOString(),
-                    // metadata: { audio_url: userAudioUrl } // If column doesn't exist, this might fail unless JSONB
+                    created_at: userTime.toISOString()
                 },
                 {
                     user_id: userId,
                     conversation_id: targetConversationId,
-                    message: aiMessageText, // Use extracted text, not the full object
+                    message: aiMessageText,
                     sender: 'ai',
                     mode: mode,
                     created_at: aiTime.toISOString()
@@ -165,19 +175,18 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
                     .eq('id', targetConversationId);
             }
         } catch (dbError) {
-            logger.error("DB Save failed:", dbError);
-            // Proceed despite DB error to return voice response
+            logger.error("DB Save failed (non-critical):", dbError.message);
         }
 
         // 6. TTS & AI Audio Upload
-        responseAudioPath = `uploads/voice/response_${Date.now()}.mp3`;
-        await textToSpeech(aiMessageText, responseAudioPath); // Use extracted text
-
-        const aiAudioName = path.basename(responseAudioPath);
-        const aiAudioBuffer = fs.readFileSync(responseAudioPath);
-
         let aiAudioUrl = null;
         try {
+            responseAudioPath = `uploads/voice/response_${Date.now()}.mp3`;
+            await textToSpeech(aiMessageText, responseAudioPath);
+
+            const aiAudioName = path.basename(responseAudioPath);
+            const aiAudioBuffer = fs.readFileSync(responseAudioPath);
+
             const { error: uploadError } = await supabase.storage
                 .from('voice-responses')
                 .upload(aiAudioName, aiAudioBuffer, {
@@ -186,41 +195,44 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
                 });
 
             if (uploadError) {
-                logger.warn('AI audio upload failed (bucket may not exist):', uploadError.message);
+                logger.warn('AI audio upload to Supabase failed:', uploadError.message);
             } else {
                 const { data: { publicUrl } } = supabase.storage
                     .from('voice-responses')
                     .getPublicUrl(aiAudioName);
                 aiAudioUrl = publicUrl;
             }
-        } catch (uploadErr) {
-            logger.warn('AI audio storage error:', uploadErr.message);
-            // Continue without audio URL
+        } catch (ttsError) {
+            logger.error('TTS/Upload failed:', ttsError);
+            throw new Error(`TTS generation failed: ${ttsError.message}`);
         }
 
         // Cleanup
         await Promise.all([
             unlink(audioFilePath).catch(() => { }),
-            unlink(responseAudioPath).catch(() => { })
+            responseAudioPath ? unlink(responseAudioPath).catch(() => { }) : Promise.resolve()
         ]);
 
+        // Success Response
         res.json({
             success: true,
             conversationId: targetConversationId,
             userMessage: transcription,
-            userAudioUrl, // May be null if upload failed
-            aiResponse: aiMessageText, // Return the text, not the full object
-            audioUrl: aiAudioUrl // May be null if upload failed
+            userAudioUrl,
+            aiResponse: aiMessageText,
+            audioUrl: aiAudioUrl
         });
 
     } catch (error) {
-        logger.error('Voice message processing error:', error);
+        logger.error('Voice processing error:', error);
+
+        // Cleanup on error
         if (audioFilePath) await unlink(audioFilePath).catch(() => { });
         if (responseAudioPath) await unlink(responseAudioPath).catch(() => { });
 
         res.status(500).json({
             error: 'Failed to process voice message',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            details: error.message // Expose details for debugging
         });
     }
 });
