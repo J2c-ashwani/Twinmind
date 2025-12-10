@@ -31,14 +31,18 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     fileFilter: (req, file, cb) => {
+        logger.info(`Incoming voice upload check: name=${file.originalname}, type=${file.mimetype}`);
+
         const allowedTypes = /mp3|wav|m4a|aac|ogg|webm/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
 
-        if (extname && mimetype) {
+        // Allow if EITHER extension OR mimetype is valid to handle generic binary uploads
+        if (extname || mimetype) {
             cb(null, true);
         } else {
-            cb(new Error('Only audio files are allowed'));
+            logger.error(`Voice upload rejected: name=${file.originalname}, mime=${file.mimetype}`);
+            cb(new Error(`Only audio files are allowed. Got: ${file.mimetype}`));
         }
     }
 });

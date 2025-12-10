@@ -30,65 +30,141 @@ import 'screens/auth_wrapper.dart';
 
 import 'dart:async';
 
-Future<void> main() async {
-  runZonedGuarded(() async {
-    print('TwinMind App Starting...');
+void main() {
+  // Catch errors during strict startup
+  runZonedGuarded(() {
     WidgetsFlutterBinding.ensureInitialized();
-    
-    // Initialize Firebase and Notifications (skip on web)
-    if (!kIsWeb) {
-      try {
-        await Firebase.initializeApp();
-        print('✅ Firebase initialized');
-        
-        // Initialize Notification Service
-        await NotificationService().initialize();
-        print('✅ Notification Service initialized');
-      } catch (e) {
-        print('⚠️ Firebase/Notification initialization failed (safe to ignore in dev): $e');
-      }
-    } else {
-      print('🌐 Running on web - Firebase/Notifications not supported');
-    }
-    
-    // Initialize Supabase with session persistence
-    await Supabase.initialize(
-      url: 'https://lhwtfjgtripwikxwookp.supabase.co',
-      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
-      authOptions: const FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.pkce,
-      ),
-    );
-
-    // Sync FCM Token if logged in (mobile only)
-    if (!kIsWeb) {
-      final authSession = Supabase.instance.client.auth.currentSession;
-      if (authSession != null) {
-        final token = authSession.accessToken;
-        final fcmToken = NotificationService().fcmToken;
-        if (fcmToken != null) {
-          print('🔄 Syncing FCM token on startup...');
-          final api = ApiService();
-          api.setToken(token);
-          await api.updateFcmToken(fcmToken);
-        }
-      }
-    }
-    
-    // Global Flutter Error Handler
-    FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details);
-      print('🔴 Flutter Error: ${details.exception}');
-      print('Stack trace: ${details.stack}');
-    };
-
     runApp(const TwinMindApp());
   }, (error, stack) {
-    // Global Async Error Handler
-    print('🔴 Global Async Error: $error');
-    print('Stack trace: $stack');
-    // TODO: Send to Crashlytics in future
+    print('🔴 Global Startup Error: $error');
   });
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  String _status = 'Initializing...';
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      setState(() => _status = 'Connecting to services...');
+      
+      // Initialize Firebase (skip on web)
+      if (!kIsWeb) {
+        try {
+          await Firebase.initializeApp();
+          await NotificationService().initialize();
+        } catch (e) {
+          print('⚠️ Firebase warning: $e');
+        }
+      }
+
+      // Initialize Supabase
+      setState(() => _status = 'Syncing data...');
+      await Supabase.initialize(
+        url: 'https://lhwtfjgtripwikxwookp.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+        ),
+      );
+
+      // Sync FCM if needed
+      if (!kIsWeb) {
+        try {
+          final session = Supabase.instance.client.auth.currentSession;
+          if (session != null) {
+            final fcmToken = NotificationService().fcmToken;
+            if (fcmToken != null) {
+              final api = ApiService();
+              api.setToken(session.accessToken);
+              await api.updateFcmToken(fcmToken);
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+        );
+      }
+    } catch (e) {
+      print('🔴 Initialization Error: $e');
+      setState(() {
+        _status = 'Connection failed. Please check your internet.';
+        _hasError = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F1E),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF9333EA), Color(0xFF3B82F6)],
+                ),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: const Icon(Icons.psychology, size: 50, color: Colors.white),
+            ),
+            const SizedBox(height: 32),
+            if (_hasError)
+              Column(
+                children: [
+                   Text(
+                    _status,
+                    style: GoogleFonts.inter(color: Colors.redAccent),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _hasError = false;
+                        _status = 'Retrying...';
+                      });
+                      _initializeApp();
+                    },
+                    child: const Text('Retry'),
+                  )
+                ],
+              )
+            else ...[
+              const CircularProgressIndicator(color: Color(0xFF9333EA)),
+              const SizedBox(height: 16),
+              Text(
+                _status,
+                style: GoogleFonts.inter(color: Colors.white54),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class TwinMindApp extends StatelessWidget {
@@ -114,7 +190,7 @@ class TwinMindApp extends StatelessWidget {
             surface: Color(0xFF1A1A2E),
           ),
         ),
-        home: const AuthWrapper(),
+        home: const SplashScreen(),
         routes: {
           '/welcome': (context) => const WelcomeScreen(),
           '/login': (context) => const LoginScreen(),
