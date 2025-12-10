@@ -15,12 +15,12 @@ export async function getYearInPixels(userId, year = new Date().getFullYear()) {
         const startDate = new Date(year, 0, 1);
         const endDate = new Date(year, 11, 31);
 
-        // Get all mood check-ins for the year
+        // Get all mood check-ins for the year from behavioral_triggers
         const { data: moodEvents } = await supabaseAdmin
-            .from('metric_events')
+            .from('behavioral_triggers')
             .select('created_at, metadata')
             .eq('user_id', userId)
-            .eq('metric_type', 'mood')
+            .eq('trigger_type', 'mood_checkin')
             .gte('created_at', startDate.toISOString())
             .lte('created_at', endDate.toISOString())
             .order('created_at', { ascending: true });
@@ -95,10 +95,10 @@ export async function generateInsights(userId, period = 'year') {
         // Get mood and conversation data
         const [moodData, chatData] = await Promise.all([
             supabaseAdmin
-                .from('metric_events')
+                .from('behavioral_triggers')
                 .select('created_at, metadata')
                 .eq('user_id', userId)
-                .eq('metric_type', 'mood')
+                .eq('trigger_type', 'mood_checkin')
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString()),
             supabaseAdmin
