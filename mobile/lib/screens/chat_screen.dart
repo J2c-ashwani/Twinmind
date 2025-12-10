@@ -335,6 +335,18 @@ class _ChatScreenState extends State<ChatScreen> {
       _isLoading = true;
     });
 
+    // Add optimistic user message
+    final optimisticId = DateTime.now().millisecondsSinceEpoch.toString();
+    setState(() {
+      _messages.insert(0, ChatMessage(
+        id: optimisticId,
+        message: '🎤 Voice message (${duration ~/ 60}:${(duration % 60).toString().padLeft(2, '0')})',
+        sender: 'user',
+        mode: _currentMode,
+        createdAt: DateTime.now(),
+      ));
+    });
+
     try {
       // Upload voice file and get response
       final response = await _api.sendVoiceMessage(
@@ -343,39 +355,56 @@ class _ChatScreenState extends State<ChatScreen> {
         _currentConversationId,
       );
 
-      if (response != null && response['success'] == true) {
-        // Add user message (transcribed text)
+      // Update conversation ID if provided
+      if (response['conversationId'] != null || response['conversation_id'] != null) {
         setState(() {
-          _messages.insert(0, ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            message: response['userMessage'],
-            sender: 'user',
-            mode: _currentMode,
-            createdAt: DateTime.now(),
-          ));
+          _currentConversationId = response['conversationId'] ?? response['conversation_id'];
         });
-
-        // Add AI response with audio URL
-        setState(() {
-          _messages.insert(0, ChatMessage(
-            id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-            message: response['aiResponse'],
-            sender: 'ai',
-            mode: _currentMode,
-            createdAt: DateTime.now(),
-          ));
-        });
-
-        // Play AI voice response (optional - can add audio player later)
-        // For now, just show success
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎤 Voice message sent!')),
-        );
-      } else {
-        _showError('Failed to send voice message. Please try again.');
       }
+
+      // Update user message with transcription if available
+      if (response['userMessage'] != null) {
+        setState(() {
+          final index = _messages.indexWhere((msg) => msg.id == optimisticId);
+          if (index != -1) {
+            _messages[index] = ChatMessage(
+              id: optimisticId,
+              message: response['userMessage'],
+              sender: 'user',
+              mode: _currentMode,
+              createdAt: _messages[index].createdAt,
+              audioUrl: response['userAudioUrl'],
+            );
+          }
+        });
+      }
+
+      // Add AI response
+      setState(() {
+        _messages.insert(0, ChatMessage(
+          id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+          message: response['aiResponse'] ?? response['message'] ?? 'Response received',
+          sender: 'ai',
+          mode: _currentMode,
+          createdAt: DateTime.now(),
+          audioUrl: response['audioUrl'],
+        ));
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎤 Voice message sent!'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      _showError('Error: $e');
+      // Remove optimistic message on error
+      setState(() {
+        _messages.removeWhere((msg) => msg.id == optimisticId);
+      });
+      
+      _showError('Failed to send voice message: ${e.toString().replaceAll('Exception: ', '')}');
     } finally {
       setState(() {
         _isLoading = false;

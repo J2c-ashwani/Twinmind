@@ -745,7 +745,7 @@ class ApiService {
   }
 
   // Voice Message endpoint
-  Future<Map<String, dynamic>?> sendVoiceMessage(
+  Future<Map<String, dynamic>> sendVoiceMessage(
     String audioFilePath,
     String mode,
     String? conversationId,
@@ -759,6 +759,8 @@ class ApiService {
       // Add headers
       if (_token != null) {
         request.headers['Authorization'] = 'Bearer $_token';
+      } else {
+        throw Exception('Authentication required');
       }
 
       // Add fields
@@ -767,24 +769,37 @@ class ApiService {
         request.fields['conversationId'] = conversationId;
       }
 
-      // Add audio file
-      request.files.add(
-        await http.MultipartFile.fromPath('audio', audioFilePath),
+      // Add audio file with proper filename and extension
+      final audioFile = await http.MultipartFile.fromPath(
+        'audio',
+        audioFilePath,
+        filename: 'voice.aac', // Specify filename with extension
       );
+      request.files.add(audioFile);
 
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        return responseData;
       } else {
-        print('Voice message error: ${response.body}');
-        return null;
+        // Parse error message from response
+        String errorMessage = 'Failed to send voice message';
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['error'] ?? errorMessage;
+        } catch (_) {
+          errorMessage = 'Server error: ${response.statusCode}';
+        }
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      print('Failed to send voice message: $e');
-      return null;
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Failed to send voice message: $e');
     }
   }
 
