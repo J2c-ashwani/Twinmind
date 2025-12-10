@@ -15,12 +15,12 @@ export async function getYearInPixels(userId, year = new Date().getFullYear()) {
         const startDate = new Date(year, 0, 1);
         const endDate = new Date(year, 11, 31);
 
-        // Get all mood check-ins for the year from behavioral_triggers
+        // Get all mood check-ins for the year
         const { data: moodEvents } = await supabaseAdmin
-            .from('behavioral_triggers')
-            .select('created_at, metadata')
+            .from('metric_events')
+            .select('created_at, metadata, event_value')
             .eq('user_id', userId)
-            .eq('trigger_type', 'mood_checkin')
+            .eq('metric_type', 'mood')
             .gte('created_at', startDate.toISOString())
             .lte('created_at', endDate.toISOString())
             .order('created_at', { ascending: true });
@@ -33,7 +33,7 @@ export async function getYearInPixels(userId, year = new Date().getFullYear()) {
         const moodByDay = {};
         moodEvents.forEach(event => {
             const date = new Date(event.created_at).toISOString().split('T')[0];
-            const mood = event.metadata?.mood || event.metadata?.value || 3;
+            const mood = event.event_value || event.metadata?.mood || 3;
 
             // If multiple check-ins same day, use average
             if (moodByDay[date]) {
@@ -95,10 +95,10 @@ export async function generateInsights(userId, period = 'year') {
         // Get mood and conversation data
         const [moodData, chatData] = await Promise.all([
             supabaseAdmin
-                .from('behavioral_triggers')
-                .select('created_at, metadata')
+                .from('metric_events')
+                .select('created_at, metadata, event_value')
                 .eq('user_id', userId)
-                .eq('trigger_type', 'mood_checkin')
+                .eq('metric_type', 'mood')
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString()),
             supabaseAdmin
@@ -183,7 +183,7 @@ function analyzeMoodPatterns(moodData) {
         const date = new Date(event.created_at);
         const dayOfWeek = date.getDay();
         const hour = date.getHours();
-        const mood = event.metadata?.mood || event.metadata?.value || 3;
+        const mood = event.event_value || event.metadata?.mood || 3;
 
         moodByDay[dayOfWeek].push(mood);
         moodByHour[hour] = moodByHour[hour] || [];

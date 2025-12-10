@@ -15,15 +15,15 @@ router.post('/mood', authenticateUser, async (req, res) => {
         const { mood, note } = req.body;
         const userId = req.userId;
 
-        // 1. Store mood in 'behavioral_triggers' (Existing Generic Table)
+        // 1. Store mood in 'metric_events' (Original Logic Restored)
         const { data: event, error } = await supabaseAdmin
-            .from('behavioral_triggers')
+            .from('metric_events')
             .insert({
                 user_id: userId,
-                trigger_type: 'mood_checkin',
-                old_state: null,
-                new_state: null,
-                metadata: { mood, note } // Store mood/note in JSONB metadata
+                event_type: 'mood_checkin',
+                event_value: mood, // Store as integer for analytics
+                metric_type: 'mood', // For growthStoryService compatibility
+                metadata: { mood, note }
             })
             .select()
             .single();
@@ -37,12 +37,12 @@ router.post('/mood', authenticateUser, async (req, res) => {
             logger.warn('Streak update warning:', e.message);
         }
 
-        // Return formatted event matching frontend expectation
+        // Return formatted event
         res.json({
             id: event.id,
             user_id: event.user_id,
             event_type: 'mood_checkin',
-            event_value: mood,
+            event_value: event.event_value,
             metadata: event.metadata,
             created_at: event.created_at
         });
@@ -65,12 +65,12 @@ router.get('/mood/history', authenticateUser, async (req, res) => {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
 
-        // Fetch from behavioral_triggers
+        // Fetch from metric_events
         const { data, error } = await supabaseAdmin
-            .from('behavioral_triggers')
+            .from('metric_events')
             .select('*')
             .eq('user_id', userId)
-            .eq('trigger_type', 'mood_checkin')
+            .eq('event_type', 'mood_checkin')
             .gte('created_at', startDate.toISOString())
             .order('created_at', { ascending: false });
 
@@ -79,7 +79,7 @@ router.get('/mood/history', authenticateUser, async (req, res) => {
         // Format for frontend
         const history = data.map(event => ({
             id: event.id,
-            mood: event.metadata?.mood ?? event.event_value,
+            mood: event.event_value, // Direct access to integer
             note: event.metadata?.note,
             created_at: event.created_at
         }));
