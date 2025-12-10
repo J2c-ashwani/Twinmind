@@ -15,35 +15,64 @@ router.post('/mood', authenticateUser, async (req, res) => {
         const { mood, note } = req.body;
         const userId = req.userId;
 
-        // Mock event response (Table 'metric_events' missing on production)
-        const mockEvent = {
-            id: 'mock_' + Date.now(),
-            user_id: userId,
-            event_type: 'mood_checkin',
-            event_value: mood,
-            metadata: { mood, note },
-            created_at: new Date().toISOString()
-        };
+        // 1. Store mood in 'behavioral_triggers' (Existing Generic Table)
+        const { data: event, error } = await supabaseAdmin
+            .from('behavioral_triggers')
+            .insert({
+                user_id: userId,
+                trigger_type: 'mood_checkin',
+                old_state: null,
+                new_state: null,
+                metadata: { mood, note } // Store mood/note in JSONB metadata
+            })
+            .select()
+            .single();
 
-        // 2. Update daily streak (This uses 'user_streaks' which might exist, let's keep it safe)
+        if (error) throw error;
+
+        // 2. Update daily streak
         try {
             await updateStreak(userId, 'daily_checkin');
         } catch (e) {
-            logger.warn('Streak update failed:', e.message);
+            logger.warn('Streak update warning:', e.message);
         }
 
-        res.json(mockEvent);
+        // Return formatted event matching frontend expectation
+        res.json({
+            id: event.id,
+            user_id: event.user_id,
+            event_type: 'mood_checkin',
+            event_value: mood,
+            metadata: event.metadata,
+            created_at: event.created_at
+        });
 
     } catch (error) {
-        res.json(history);
+        logger.error('Error submitting mood:', error);
+        res.status(500).json({ error: 'Failed to submit mood check-in' });
+    }
+});
 
-        /* 
+/**
+ * GET /api/daily/mood/history
+ * Get mood history
+ */
+router.get('/mood/history', authenticateUser, async (req, res) => {
+    try {
+        const userId = req.userId;
+        const days = parseInt(req.query.days) || 30;
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        // Fetch from behavioral_triggers
         const { data, error } = await supabaseAdmin
-            .from('metric_events')
-            ...
-        */
-
-    } catch (error) {
+            .from('behavioral_triggers')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('trigger_type', 'mood_checkin')
+            .gte('created_at', startDate.toISOString())
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
 
