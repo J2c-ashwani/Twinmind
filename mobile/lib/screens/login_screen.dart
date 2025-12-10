@@ -44,7 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final user = await authService.signInWithEmail(email, password);
+      final response = await authService.signInWithEmail(email, password);
+      final user = response.user;
       
       if (mounted && user != null) {
         // Check if user has completed onboarding (matching web app logic)
@@ -108,7 +109,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await authService.signUpWithEmail(email, password, name);
       
       // After signup, sign in automatically
-      final user = await authService.signInWithEmail(email, password);
+      final response = await authService.signInWithEmail(email, password);
+      final user = response.user;
       
       if (mounted && user != null) {
         // New users always need onboarding

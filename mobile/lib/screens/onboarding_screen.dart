@@ -176,13 +176,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await _auth.signUpWithEmail(email, password, name);
       
       // Auto-login
-      final user = await _auth.signInWithEmail(email, password);
+      final response = await _auth.signInWithEmail(email, password);
+      final user = response.user;
       
       if (user == null) {
         throw Exception('Failed to sign in after signup');
       }
 
-      final token = _auth.currentSession?.accessToken;
+      print('DEBUG: Login successful. User: ${user.id}');
+
+      // Get token directly from response session
+      final token = response.session?.accessToken;
       if (token == null) {
         throw Exception('Not authenticated');
       }

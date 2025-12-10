@@ -15,13 +15,13 @@ class AuthService extends ChangeNotifier {
     });
   }
   
-  Future<User?> signInWithEmail(String email, String password) async {
+  Future<AuthResponse> signInWithEmail(String email, String password) async {
     try {
       final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
-      return response.user;
+      return response;
     } catch (e) {
       throw 'Authentication failed: ${e.toString()}';
     }

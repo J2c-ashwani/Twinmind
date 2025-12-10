@@ -9,6 +9,11 @@ class ApiService {
   String? _token;
 
   void setToken(String token) {
+    if (token.isEmpty || token.split('.').length != 3) {
+      print('WARNING: Setting invalid JWT token format: ${token.length > 20 ? token.substring(0, 20) : token}...');
+    } else {
+      print('DEBUG: Token set successfully (length: ${token.length})');
+    }
     _token = token;
   }
 
