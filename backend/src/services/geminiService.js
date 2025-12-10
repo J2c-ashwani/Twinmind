@@ -7,7 +7,7 @@ class GeminiService {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
             // Use Gemini 1.5 Flash by default (Faster, Cheaper/Free)
             this.flashModel = this.genAI.getGenerativeModel({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-1.5-pro',
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -267,12 +267,16 @@ Return only the JSON object.`;
     async generateEmbedding(text) {
         try {
             const result = await this.embeddingModel.embedContent(text);
-            const embedding = result.embedding;
-            return embedding.values;
+            const embedding = result.embedding.values;
+            // Pad to 1536 dimensions if needed (openai-compatibility hack)
+            if (embedding.length === 768) {
+                return [...embedding, ...embedding]; // Duplicate to reach 1536
+            }
+            return embedding;
         } catch (error) {
             console.error('Error generating embedding:', error);
             // Fallback to empty array or throw
-            return Array(768).fill(0); // Gemini embeddings are 768 dimensions usually
+            return Array(1536).fill(0);
         }
     }
 }
