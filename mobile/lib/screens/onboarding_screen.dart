@@ -172,10 +172,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
 
     try {
-      // Create account
-      await _auth.signUpWithEmail(email, password, name);
+      print('DEBUG: Starting signup process...');
       
-      // Auto-login
+      // Create account
+      try {
+        await _auth.signUpWithEmail(email, password, name);
+        print('DEBUG: Signup completed successfully');
+      } catch (signupError) {
+        print('DEBUG: Signup error: $signupError');
+        // If error is "already registered", it means account exists
+        // We should try to login instead
+        if (signupError.toString().contains('already registered')) {
+          print('DEBUG: Account exists, attempting login...');
+          // Account exists, try login
+          final loginResponse = await _auth.signInWithEmail(email, password);
+          if (loginResponse.user != null) {
+            print('DEBUG: Login successful, proceeding with personality generation');
+          } else {
+            throw Exception('Account exists but login failed. Please try logging in manually.');
+          }
+        } else {
+          // Some other error, rethrow
+          throw signupError;
+        }
+      }
+      
+      print('DEBUG: Getting current session...');
+      // Auto-login (or use existing session if we logged in above)
       final response = await _auth.signInWithEmail(email, password);
       final user = response.user;
       
@@ -194,6 +217,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Set token for API
       _api.setToken(token);
 
+      print('DEBUG: Submitting ${answers.length} answers...');
       // Format answers for API
       final formattedAnswers = answers.values.map((a) => {
         'question_id': a.questionId,
@@ -203,15 +227,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // Submit answers
       await _api.submitAnswers(formattedAnswers, token);
+      print('DEBUG: Answers submitted successfully');
 
+      print('DEBUG: Generating personality...');
       // Generate personality
       await _api.generatePersonality(token);
+      print('DEBUG: Personality generated successfully');
 
       // Navigate to home (main screen with chat)
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
+      print('DEBUG: Error in signup flow: $e');
       setState(() {
         isGenerating = false;
         signupError = e.toString().replaceAll('Exception: ', '');
