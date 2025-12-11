@@ -7,7 +7,7 @@ class GeminiService {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
             // Use Gemini Pro (Stable v1.0) for everything to avoid 404s
             this.flashModel = this.genAI.getGenerativeModel({
-                model: 'gemini-1.5-flash',
+                model: 'models/gemini-pro',  // Full model path for v1beta
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -17,7 +17,7 @@ class GeminiService {
             });
             // Use Gemini Pro for complex reasoning too
             this.proModel = this.genAI.getGenerativeModel({
-                model: 'gemini-1.5-flash',
+                model: 'models/gemini-pro',  // Full model path for v1beta
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -27,7 +27,7 @@ class GeminiService {
             });
 
             this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
-            console.log('✅ Gemini Service initialized (Using gemini-1.5-flash)');
+            console.log('✅ Gemini Service initialized (Using models/gemini-pro)');
         } else {
             console.log('⚠️  Gemini API key not found');
         }
