@@ -68,13 +68,23 @@ export async function generateChatResponse(
         logger.info(`➡️ Chat request from ${userId} [mode=${mode}]`);
 
         /* 1. LOAD DATA IN PARALLEL (faster!) */
-        const [personality, userData, recentChats] = await Promise.all([
+        let [personality, userData, recentChats] = await Promise.all([
             getPersonality(userId),
             supabaseAdmin.from("users").select("full_name").eq("id", userId).single(),
             supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6)
         ]);
 
-        if (!personality) throw new Error("Personality not found");
+        if (!personality) {
+            logger.warn(`Personality missing for user ${userId}, using default.`);
+            personality = {
+                personality_json: JSON.stringify({
+                    mode: 'normal',
+                    style: 'friendly',
+                    core_traits: ['supportive', 'curious', 'adaptive'],
+                    voice: 'casual'
+                })
+            };
+        }
         const userName = userData?.data?.full_name || "User";
 
         const conversationHistory = (recentChats?.data || [])
