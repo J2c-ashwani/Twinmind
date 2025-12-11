@@ -74,17 +74,7 @@ export async function generateChatResponse(
             supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6)
         ]);
 
-        if (!personality) {
-            logger.warn(`Personality missing for user ${userId}, using default.`);
-            personality = {
-                personality_json: JSON.stringify({
-                    mode: 'normal',
-                    style: 'friendly',
-                    core_traits: ['supportive', 'curious', 'adaptive'],
-                    voice: 'casual'
-                })
-            };
-        }
+        if (!personality) throw new Error("Chat Engine Fatal: Personality not found. User onboarding may be incomplete.");
         const userName = userData?.data?.full_name || "User";
 
         const conversationHistory = (recentChats?.data || [])
