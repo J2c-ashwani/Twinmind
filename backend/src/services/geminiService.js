@@ -5,9 +5,9 @@ class GeminiService {
         this.apiKey = apiKey || process.env.GEMINI_API_KEY;
         if (this.apiKey) {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
-            // Use Gemini 1.5 Flash by default (Faster, Cheaper/Free)
+            // Use Gemini Pro (Stable v1.0) for everything to avoid 404s
             this.flashModel = this.genAI.getGenerativeModel({
-                model: 'gemini-1.5-pro',
+                model: 'gemini-pro',
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -15,9 +15,9 @@ class GeminiService {
                     maxOutputTokens: 2048,
                 },
             });
-            // Use Gemini 1.5 Pro for complex reasoning
+            // Use Gemini Pro for complex reasoning too
             this.proModel = this.genAI.getGenerativeModel({
-                model: 'gemini-1.5-pro',
+                model: 'gemini-pro',
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -27,7 +27,7 @@ class GeminiService {
             });
 
             this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
-            console.log('✅ Gemini Service initialized (Flash + Pro)');
+            console.log('✅ Gemini Service initialized (Using stable gemini-pro)');
         } else {
             console.log('⚠️  Gemini API key not found');
         }
