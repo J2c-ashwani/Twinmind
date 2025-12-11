@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../widgets/voice_recorder_widget.dart';
+import '../widgets/audio_message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -971,6 +972,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+            ),
+          ),
+        if (message.audioUrl != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AudioMessageBubble(
+              audioUrl: message.audioUrl!,
+              isUser: isUser,
             ),
           ),
           Padding(
