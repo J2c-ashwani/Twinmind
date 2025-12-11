@@ -43,13 +43,32 @@ class AuthService extends ChangeNotifier {
             'id': response.user!.id,
             'full_name': fullName,
             'email': email,
-          }, onConflict: 'id'); // Specify the conflict column
+          }, onConflict: 'id');
         } catch (upsertError) {
           // Ignore errors - if trigger already created the user, that's fine
           print('User profile creation (expected if trigger ran): $upsertError');
         }
       }
+    } on AuthException catch (authError) {
+      // Handle authentication-specific errors
+      if (authError.message.contains('already registered') || 
+          authError.message.contains('User already registered')) {
+        throw 'This email is already registered. Please login instead.';
+      }
+      throw 'Sign up failed: ${authError.message}';
+    } on PostgrestException catch (dbError) {
+      // Handle database-specific errors
+      if (dbError.code == '23505') {
+        // Duplicate key error - account exists
+        throw 'This email is already registered. Please login instead.';
+      }
+      throw 'Sign up failed: ${dbError.message}';
     } catch (e) {
+      // Catch-all for unexpected errors
+      final errorMessage = e.toString();
+      if (errorMessage.contains('duplicate key') || errorMessage.contains('23505')) {
+        throw 'This email is already registered. Please login instead.';
+      }
       throw 'Sign up failed: ${e.toString()}';
     }
   }
