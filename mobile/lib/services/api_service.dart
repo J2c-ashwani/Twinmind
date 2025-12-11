@@ -3,25 +3,30 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class ApiService {
   static const String baseUrl = kReleaseMode 
       ? 'https://twinmind-9l6x.onrender.com'
       : 'http://localhost:5001'; // Backend API port
-  String? _token;
+  
+  // Deprecated: Token is now fetched directly from Supabase client to ensure freshness
+  String? _token; 
 
   void setToken(String token) {
-    if (token.isEmpty || token.split('.').length != 3) {
-      print('WARNING: Setting invalid JWT token format: ${token.length > 20 ? token.substring(0, 20) : token}...');
-    } else {
-      print('DEBUG: Token set successfully (length: ${token.length})');
-    }
     _token = token;
   }
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    if (_token != null) 'Authorization': 'Bearer $_token',
-  };
+  Map<String, String> get _headers {
+    // Dynamically get the latest token from Supabase SDK
+    // This handles auto-refresh automatically
+    final currentToken = Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
+    
+    return {
+      'Content-Type': 'application/json',
+      if (currentToken != null) 'Authorization': 'Bearer $currentToken',
+    };
+  }
 
   // Memory endpoints
   Future<List<dynamic>> getMemories() async {
@@ -289,10 +294,11 @@ class ApiService {
     String mode,
     {String? token, String? conversationId}
   ) async {
+    final currentToken = token ?? Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
+    
     final headers = {
       'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-      if (token == null && _token != null) 'Authorization': 'Bearer $_token',
+      if (currentToken != null) 'Authorization': 'Bearer $currentToken',
     };
     
     final response = await http.post(
@@ -763,8 +769,10 @@ class ApiService {
       );
 
       // Add headers
-      if (_token != null) {
-        request.headers['Authorization'] = 'Bearer $_token';
+      final currentToken = Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
+      
+      if (currentToken != null) {
+        request.headers['Authorization'] = 'Bearer $currentToken';
       } else {
         throw Exception('Authentication required');
       }
