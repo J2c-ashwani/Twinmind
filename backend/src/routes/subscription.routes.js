@@ -5,7 +5,17 @@ import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
 
 const router = express.Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY
+    ? new Stripe(process.env.STRIPE_SECRET_KEY)
+    : {
+        checkout: { sessions: { create: async () => { throw new Error('Stripe not configured'); } } },
+        webhooks: { constructEvent: () => { throw new Error('Stripe not configured'); } },
+        subscriptions: { cancel: async () => { throw new Error('Stripe not configured'); } }
+    };
+
+if (!process.env.STRIPE_SECRET_KEY) {
+    logger.warn('⚠️ STRIPE_SECRET_KEY missing. Subscription features disabled.');
+}
 
 /**
  * GET /api/subscription/status
