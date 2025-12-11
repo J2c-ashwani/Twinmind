@@ -100,12 +100,12 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
         try {
             const userAudioName = `user_${Date.now()}_${path.basename(audioFilePath)}`;
             const userAudioBuffer = fs.readFileSync(audioFilePath);
-            const { error: userUploadError } = await supabase.storage
+            const { error: userUploadError } = await supabaseAdmin.storage
                 .from('voice-responses')
                 .upload(userAudioName, userAudioBuffer, { contentType: 'audio/webm', cacheControl: '3600' });
 
             if (!userUploadError) {
-                const { data: { publicUrl } } = supabase.storage
+                const { data: { publicUrl } } = supabaseAdmin.storage
                     .from('voice-responses')
                     .getPublicUrl(userAudioName);
                 userAudioUrl = publicUrl;
@@ -187,7 +187,7 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
             const aiAudioName = path.basename(responseAudioPath);
             const aiAudioBuffer = fs.readFileSync(responseAudioPath);
 
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await supabaseAdmin.storage
                 .from('voice-responses')
                 .upload(aiAudioName, aiAudioBuffer, {
                     contentType: 'audio/mpeg',
@@ -197,7 +197,7 @@ router.post('/message', verifyToken, upload.single('audio'), async (req, res) =>
             if (uploadError) {
                 logger.warn('AI audio upload to Supabase failed:', uploadError.message);
             } else {
-                const { data: { publicUrl } } = supabase.storage
+                const { data: { publicUrl } } = supabaseAdmin.storage
                     .from('voice-responses')
                     .getPublicUrl(aiAudioName);
                 aiAudioUrl = publicUrl;
