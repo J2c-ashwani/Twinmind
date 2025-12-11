@@ -227,16 +227,18 @@ router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => 
                 }
             });
 
+
         } catch (innerError) {
             // STRICT MODE: No mock responses. Fail properly.
             logger.error('Chat services critical failure:', innerError);
-            throw new Error(`Chat service temporarily unavailable: ${innerError.message}`);
-
-        } catch (error) {
-            logger.error('Error in chat message:', error);
-            res.status(500).json({ error: 'Failed to process message' });
+            throw innerError; // Re-throw to be caught by outer catch
         }
-    });
+
+    } catch (error) {
+        logger.error('Error in chat message:', error);
+        res.status(500).json({ error: 'Failed to process message' });
+    }
+});
 
 /**
  * GET /api/chat/history
