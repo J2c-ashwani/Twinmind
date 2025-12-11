@@ -10,6 +10,7 @@ import openaiService from './openaiService.js';
 import openrouterService from './openrouterService.js';
 import mistralService from './mistralService.js';
 import cloudflareService from './cloudflareService.js';
+import deepSeekService from './deepSeekService.js';
 
 const DEFAULT_TIMEOUT_MS = 12000; // 12s timeout for provider calls
 const SAFE_FALLBACK_REPLY = "I'm having trouble thinking clearly right now — tell me the one sentence that matters most.";
@@ -31,18 +32,19 @@ class AIService {
             { name: 'OpenRouter', service: openrouterService, dailyLimit: 1000 },
             { name: 'Cloudflare', service: cloudflareService, dailyLimit: 100000 },
             { name: 'Cohere', service: cohereService, dailyLimit: 100 },
-            { name: 'HuggingFace', service: huggingfaceService, dailyLimit: 1000 }
+            { name: 'HuggingFace', service: huggingfaceService, dailyLimit: 1000 },
+            { name: 'DeepSeek', service: deepSeekService, dailyLimit: 5000 }
         ];
 
         // Routing map (taskType -> preferred provider names in order)
         this.routingMap = {
-            fast_chat: ['Groq', 'Mistral', 'Gemini', 'Cloudflare'],
-            deep_reasoning: ['Claude', 'Mistral', 'Gemini', 'OpenAI'],
-            emotional_support: ['Gemini', 'Claude', 'Mistral', 'OpenAI'],
-            personality_core: ['OpenAI', 'Mistral', 'Gemini', 'Cloudflare'],
-            creative_writing: ['OpenRouter', 'Mistral', 'Claude', 'Gemini'],
+            fast_chat: ['DeepSeek', 'Groq', 'Mistral', 'Gemini', 'Cloudflare'],
+            deep_reasoning: ['DeepSeek', 'Claude', 'Mistral', 'Gemini', 'OpenAI'],
+            emotional_support: ['Gemini', 'Claude', 'DeepSeek', 'Mistral', 'OpenAI'],
+            personality_core: ['DeepSeek', 'OpenAI', 'Mistral', 'Gemini', 'Cloudflare'],
+            creative_writing: ['OpenRouter', 'DeepSeek', 'Mistral', 'Claude', 'Gemini'],
             memory_analysis: ['Cohere', 'Mistral', 'Gemini', 'Cloudflare'],
-            default: ['Gemini', 'Mistral', 'Cloudflare', 'OpenAI']
+            default: ['DeepSeek', 'Gemini', 'Mistral', 'Cloudflare', 'OpenAI']
         };
 
         // runtime status tracking
