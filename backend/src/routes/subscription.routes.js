@@ -5,16 +5,46 @@ import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
 
 const router = express.Router();
-const stripe = process.env.STRIPE_SECRET_KEY
+// Check if we should use Mock Mode (Missing key OR Explicit mock key)
+const isMockMode = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('mock_');
+
+const stripe = !isMockMode
     ? new Stripe(process.env.STRIPE_SECRET_KEY)
     : {
-        checkout: { sessions: { create: async () => { throw new Error('Stripe not configured'); } } },
-        webhooks: { constructEvent: () => { throw new Error('Stripe not configured'); } },
-        subscriptions: { cancel: async () => { throw new Error('Stripe not configured'); } }
+        checkout: {
+            sessions: {
+                create: async (params) => {
+                    logger.info('💰 Mock Payment: Creating fake checkout session');
+                    return {
+                        url: `${process.env.WEB_APP_URL || 'http://localhost:3000'}/subscription/success?session_id=mock_session_${Date.now()}&mock=true`,
+                        customer: 'cus_mock_123',
+                        subscription: 'sub_mock_123'
+                    };
+                }
+            }
+        },
+        webhooks: {
+            constructEvent: (body) => {
+                // Return a fake 'checkout.session.completed' event
+                return {
+                    type: 'checkout.session.completed',
+                    data: {
+                        object: {
+                            customer: 'cus_mock_123',
+                            subscription: 'sub_mock_123',
+                            metadata: JSON.parse(body.toString()).metadata
+                        }
+                    }
+                };
+            }
+        },
+        subscriptions: {
+            cancel: async () => { logger.info('💰 Mock Payment: Subscription cancelled'); return {}; }
+        }
     };
 
-if (!process.env.STRIPE_SECRET_KEY) {
-    logger.warn('⚠️ STRIPE_SECRET_KEY missing. Subscription features disabled.');
+if (isMockMode) {
+    logger.warn('⚠️ Stripe running in MOCK MODE. Payments will be simulated.');
 }
 
 /**
@@ -79,6 +109,25 @@ router.post('/create-checkout', authenticateUser, async (req, res) => {
                 planType: planType
             }
         });
+
+        // ---------------------------------------------------------
+        // MOCK MODE: Auto-upgrade immediately (since no webhook will come)
+        // ---------------------------------------------------------
+        if (isMockMode) {
+            logger.info(`💰 Mock/Dev: Auto-upgrading user ${userId} to PRO`);
+            await supabaseAdmin
+                .from('subscriptions')
+                .upsert({
+                    user_id: userId,
+                    plan_type: 'pro',
+                    status: 'active',
+                    stripe_customer_id: 'cus_mock_' + userId,
+                    stripe_subscription_id: 'sub_mock_' + Date.now(),
+                    current_period_start: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+        }
+        // ---------------------------------------------------------
 
         res.json({ url: session.url });
 
