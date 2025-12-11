@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:twinmind/services/api_service.dart';
 import 'package:twinmind/services/auth_service.dart';
 
@@ -173,48 +174,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     try {
       print('DEBUG: Starting signup process...');
+      print('DEBUG: Email: $email');
       
-      // Create account
-      try {
-        await _auth.signUpWithEmail(email, password, name);
-        print('DEBUG: Signup completed successfully');
-      } catch (signupError) {
-        print('DEBUG: Signup error: $signupError');
-        // If error is "already registered", it means account exists
-        // We should try to login instead
-        if (signupError.toString().contains('already registered')) {
-          print('DEBUG: Account exists, attempting login...');
-          // Account exists, try login
-          final loginResponse = await _auth.signInWithEmail(email, password);
-          if (loginResponse.user != null) {
-            print('DEBUG: Login successful, proceeding with personality generation');
-          } else {
-            throw Exception('Account exists but login failed. Please try logging in manually.');
+      // Check if already logged in
+      var currentUser = _auth.currentUser;
+      Session? currentSession;
+      
+      if (currentUser != null && currentUser.email == email) {
+        print('DEBUG: User already logged in with this email');
+        currentSession = _auth.currentSession;
+      } else {
+        // Not logged in, need to signup/login
+        try {
+          print('DEBUG: Attempting signup...');
+          await _auth.signUpWithEmail(email, password, name);
+          print('DEBUG: Signup completed successfully');
+          
+          // Login after signup
+          print('DEBUG: Logging in after signup...');
+          final response = await _auth.signInWithEmail(email, password);
+          currentSession = response.session;
+          print('DEBUG: Login successful after signup');
+        } catch (signupError) {
+          print('DEBUG: Signup error: $signupError');
+          
+          // Signup failed, try login (account might already exist)
+          try {
+            print('DEBUG: Signup failed, attempting direct login...');
+            final loginResponse = await _auth.signInWithEmail(email, password);
+            currentSession = loginResponse.session;
+            print('DEBUG: Login successful (account existed)');
+          } catch (loginError) {
+            print('DEBUG: Login also failed: $loginError');
+            throw Exception('Could not create or access account. Please check your credentials.');
           }
-        } else {
-          // Some other error, rethrow
-          throw signupError;
         }
       }
       
-      print('DEBUG: Getting current session...');
-      // Auto-login (or use existing session if we logged in above)
-      final response = await _auth.signInWithEmail(email, password);
-      final user = response.user;
+      // At this point we MUST have a valid session
+      if (currentSession == null || currentSession.accessToken == null) {
+        print('DEBUG: ERROR - No valid session after signup/login');
+        throw Exception('Authentication failed. Please try again.');
+      }
       
-      if (user == null) {
-        throw Exception('Failed to sign in after signup');
-      }
-
-      print('DEBUG: Login successful. User: ${user.id}');
-
-      // Get token directly from response session
-      final token = response.session?.accessToken;
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      // Set token for API
+      final user = currentSession.user;
+      final token = currentSession.accessToken!;
+      
+      print('DEBUG: ✅ Authenticated as: ${user.id}');
+      print('DEBUG: Setting API token...');
       _api.setToken(token);
 
       print('DEBUG: Submitting ${answers.length} answers...');
@@ -225,16 +232,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         if (a.answerText != null) 'answer_text': a.answerText,
       }).toList();
 
+      print('DEBUG: Calling API submitAnswers...');
       // Submit answers
       await _api.submitAnswers(formattedAnswers, token);
-      print('DEBUG: Answers submitted successfully');
+      print('DEBUG: ✅ Answers submitted successfully');
 
-      print('DEBUG: Generating personality...');
+      print('DEBUG: Calling API generatePersonality...');
       // Generate personality
       await _api.generatePersonality(token);
-      print('DEBUG: Personality generated successfully');
+      print('DEBUG: ✅ Personality generated successfully');
 
       // Navigate to home (main screen with chat)
+      print('DEBUG: Navigating to home...');
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
