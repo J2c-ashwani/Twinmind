@@ -78,6 +78,7 @@ class _SplashScreenState extends State<SplashScreen> {
         anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
         authOptions: const FlutterAuthClientOptions(
           authFlowType: AuthFlowType.pkce,
+          autoRefreshToken: true,  // Auto-refresh tokens before expiry
         ),
       );
 
