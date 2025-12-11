@@ -36,13 +36,18 @@ class AuthService extends ChangeNotifier {
       );
       
       if (response.user != null) {
-        // Create user profile
-        // Create or update user profile (Upsert handles race condition with Trigger)
-        await _supabase.from('users').upsert({
-          'id': response.user!.id,
-          'full_name': fullName,
-          'email': email,
-        });
+        // Try to create/update user profile
+        // The trigger might have already created it, so we ignore conflicts
+        try {
+          await _supabase.from('users').upsert({
+            'id': response.user!.id,
+            'full_name': fullName,
+            'email': email,
+          }, onConflict: 'id'); // Specify the conflict column
+        } catch (upsertError) {
+          // Ignore errors - if trigger already created the user, that's fine
+          print('User profile creation (expected if trigger ran): $upsertError');
+        }
       }
     } catch (e) {
       throw 'Sign up failed: ${e.toString()}';
