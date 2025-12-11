@@ -95,7 +95,7 @@ export async function recordDailyMetrics(userId) {
                 dependency_score: stats.dependency,
                 emotional_depth: stats.emotional_depth,
                 vulnerability_events: stats.vulnerability_events,
-                // streak: stats.streak, // TODO: Add streak column to DB schema
+                streak: stats.streak, // ✅ Enabled after running db_add_streak_column.sql
                 total_messages: stats.total_messages,
             }, {
                 onConflict: 'user_id,date'
