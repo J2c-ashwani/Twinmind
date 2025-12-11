@@ -6,11 +6,11 @@ dotenv.config();
 
 class DeepSeekService {
     constructor() {
-        // Use provided key or fallback to env var
-        this.apiKey = process.env.DEEPSEEK_API_KEY || 'sk-7e35f4f8cdf741fa88ddcb1d04ca3eeb';
+        // Use environment variable only
+        this.apiKey = process.env.DEEPSEEK_API_KEY;
 
         if (!this.apiKey) {
-            logger.warn('⚠️ DeepSeek API key missing');
+            logger.warn('⚠️ DeepSeek API key missing in environment variables');
             return;
         }
 
