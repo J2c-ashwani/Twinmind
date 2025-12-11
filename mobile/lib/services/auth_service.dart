@@ -37,7 +37,8 @@ class AuthService extends ChangeNotifier {
       
       if (response.user != null) {
         // Create user profile
-        await _supabase.from('users').insert({
+        // Create or update user profile (Upsert handles race condition with Trigger)
+        await _supabase.from('users').upsert({
           'id': response.user!.id,
           'full_name': fullName,
           'email': email,

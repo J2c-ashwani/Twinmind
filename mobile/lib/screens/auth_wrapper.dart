@@ -4,6 +4,9 @@ import '../services/auth_service.dart';
 import 'welcome_screen.dart';
 import 'main_screen.dart';
 
+import '../services/api_service.dart';
+import 'onboarding_screen.dart';
+
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -13,6 +16,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
+  bool _hasPersonality = false;
 
   @override
   void initState() {
@@ -21,12 +25,38 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkSession() async {
-    // Allow Supabase to restore session
     await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
+    if (authService.isAuthenticated) {
+      try {
+        // Strict Check: Verify if personality exists
+        final api = ApiService();
+        await api.getPersonalityProfile();
+        
+        if (mounted) {
+          setState(() {
+            _hasPersonality = true;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        // If 404/Error, assume pending onboarding
+        print('🔒 Strict Mode: Personality not found, redirecting to onboarding.');
+        if (mounted) {
+          setState(() {
+            _hasPersonality = false;
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -41,15 +71,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    // Listen to AuthService
     return Consumer<AuthService>(
       builder: (context, authService, _) {
-        // If authenticated, go to MainScreen (which shows Chat)
-        if (authService.isAuthenticated) {
-          return const MainScreen();
+        if (!authService.isAuthenticated) {
+          return const WelcomeScreen();
         }
-        // Otherwise show Welcome Screen
-        return const WelcomeScreen();
+
+        // Strict Routing:
+        if (_hasPersonality) {
+          return const MainScreen();
+        } else {
+          // User is logged in but missing profile -> Force Onboarding
+          return const OnboardingScreen();
+        }
       },
     );
   }
