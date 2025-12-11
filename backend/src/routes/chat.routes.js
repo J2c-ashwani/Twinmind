@@ -228,64 +228,15 @@ router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => 
             });
 
         } catch (innerError) {
-            // If any service fails, return a simple mock response for dev mode
-            logger.warn('Chat services unavailable, using mock response:', innerError.message);
+            // STRICT MODE: No mock responses. Fail properly.
+            logger.error('Chat services critical failure:', innerError);
+            throw new Error(`Chat service temporarily unavailable: ${innerError.message}`);
 
-            const mockResponses = [
-                "I hear you. Tell me more about that.",
-                "That's interesting. How does that make you feel?",
-                "I understand. What would you like to explore next?",
-                "Thanks for sharing that with me. What's on your mind?",
-                "I'm here to listen. Continue when you're ready.",
-            ];
-
-            const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
-
-            // Save mock conversation to DB so it doesn't disappear
-            const userTime = new Date();
-            const aiTime = new Date(userTime.getTime() + 100);
-
-            await supabaseAdmin.from('chat_history').insert([
-                {
-                    user_id: userId,
-                    conversation_id: targetConversationId,
-                    message: message,
-                    sender: 'user',
-                    mode: mode,
-                    created_at: userTime.toISOString()
-                },
-                {
-                    user_id: userId,
-                    conversation_id: targetConversationId,
-                    message: randomResponse,
-                    sender: 'ai',
-                    mode: mode,
-                    created_at: aiTime.toISOString()
-                }
-            ]);
-
-            res.json({
-                message: randomResponse,
-                mode,
-                timestamp: new Date().toISOString(),
-                usage: { messages_used: 1, messages_limit: 100 },
-                engagement_state: 'new_user',
-                consecutive_days: 1,
-                emotional_state: 'neutral',
-                emotional_metrics: {
-                    trust_level: 0,
-                    dependency_score: 0,
-                    relationship_depth: 0,
-                    weighted_score: 0
-                }
-            });
+        } catch (error) {
+            logger.error('Error in chat message:', error);
+            res.status(500).json({ error: 'Failed to process message' });
         }
-
-    } catch (error) {
-        logger.error('Error in chat message:', error);
-        res.status(500).json({ error: 'Failed to process message' });
-    }
-});
+    });
 
 /**
  * GET /api/chat/history
