@@ -3,7 +3,9 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
+import rateLimit from 'express-rate-limit';
 import { verifyToken } from '../middleware/authMiddleware.js';
+import { checkSubscription } from '../middleware/subscriptionMiddleware.js';
 import { transcribeAudio } from '../services/whisperService.js';
 import { textToSpeech } from '../services/ttsService.js';
 import { generateChatResponse } from '../services/chatEngine.js';
@@ -47,7 +49,21 @@ const upload = multer({
     }
 });
 
-router.post('/message', verifyToken, upload.single('audio'), async (req, res) => {
+// Voice Limit: 3 per day for Free users
+const voiceLimiter = rateLimit({
+    windowMs: 24 * 60 * 60 * 1000, // 24 Hours
+    max: 3,
+    message: {
+        error: 'Free limit reached (3 voice messages/day). Upgrade to Pro for unlimited.',
+        upgrade: true
+    },
+    keyGenerator: (req) => req.user?.userId || req.ip,
+    skip: (req) => req.isPro === true, // Skip for Pro users
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+router.post('/message', verifyToken, checkSubscription, voiceLimiter, upload.single('audio'), async (req, res) => {
     let audioFilePath = null;
     let responseAudioPath = null;
 

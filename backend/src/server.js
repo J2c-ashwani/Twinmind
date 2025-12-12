@@ -140,10 +140,10 @@ const chatLimiter = rateLimit({
   message: { error: 'Sending messages too fast, please slow down.' }
 });
 
-// TEMPORARILY DISABLED ALL RATE LIMITING FOR DEVELOPMENT
-// app.use('/api/', standardLimiter);
-// app.use('/api/auth/login', authLimiter);
-// app.use('/api/auth/register', authLimiter);
+// Rate Limiting (Re-enabled for Production)
+app.use('/api/', standardLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api/chat/message', chatLimiter);
 
 // ============================================
