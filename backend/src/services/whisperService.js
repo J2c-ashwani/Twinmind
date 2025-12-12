@@ -58,7 +58,8 @@ export async function transcribeAudio(audioFilePath) {
         return transcription;
 
     } catch (geminiError) {
-        logger.error(`Gemini transcription failed (${geminiError.message}). Attempting fallback...`);
+        console.error(`Gemini transcription failed (${geminiError.message}). Attempting fallback...`);
+        const fallbackErrors = [];
 
         // 2. Try Groq (Fast & High Limit)
         if (groqService.isEnabled) {
@@ -69,7 +70,10 @@ export async function transcribeAudio(audioFilePath) {
                 return groqText;
             } catch (groqError) {
                 logger.warn('Groq transcription failed:', groqError.message);
+                fallbackErrors.push(`Groq: ${groqError.message}`);
             }
+        } else {
+            fallbackErrors.push('Groq: Not Configured');
         }
 
         // 3. Try Cloudflare (Fallback)
@@ -81,13 +85,16 @@ export async function transcribeAudio(audioFilePath) {
                 return cfTranscript;
             } catch (cfError) {
                 logger.error('Cloudflare transcription failed:', cfError);
+                fallbackErrors.push(`Cloudflare: ${cfError.message}`);
             }
         } else {
-            logger.warn('Cloudflare not configured, skipping fallback.');
+            // fallbackErrors.push('Cloudflare: Not Configured'); // Don't spam if just not set up
         }
 
-        // 3. Fail
-        throw new Error(`Transcription service unavailable. Gemini: ${geminiError.message}`);
+        // 4. Fail with comprehensive error
+        throw new Error(`Transcription Service Unavailable. 
+        Primary (Gemini): ${geminiError.message.substring(0, 100)}...
+        Fallbacks: ${fallbackErrors.join(' | ')}`);
     }
 }
 
