@@ -38,13 +38,13 @@ class AIService {
 
         // Routing map (taskType -> preferred provider names in order)
         this.routingMap = {
-            fast_chat: ['DeepSeek', 'Groq', 'Mistral', 'Gemini', 'Cloudflare'],
-            deep_reasoning: ['DeepSeek', 'Claude', 'Mistral', 'Gemini', 'OpenAI'],
-            emotional_support: ['Gemini', 'Claude', 'DeepSeek', 'Mistral', 'OpenAI'],
-            personality_core: ['DeepSeek', 'OpenAI', 'Mistral', 'Gemini', 'Cloudflare'],
-            creative_writing: ['OpenRouter', 'DeepSeek', 'Mistral', 'Claude', 'Gemini'],
-            memory_analysis: ['Cohere', 'Mistral', 'Gemini', 'Cloudflare'],
-            default: ['DeepSeek', 'Gemini', 'Mistral', 'Cloudflare', 'OpenAI']
+            fast_chat: ['Groq', 'Mistral', 'Gemini', 'Cloudflare', 'OpenRouter', 'DeepSeek'],
+            deep_reasoning: ['DeepSeek', 'Claude', 'Groq', 'OpenRouter', 'Mistral', 'Gemini', 'OpenAI'],
+            emotional_support: ['Gemini', 'Mistral', 'Claude', 'Groq', 'DeepSeek', 'OpenAI'],
+            personality_core: ['Groq', 'Mistral', 'OpenRouter', 'Gemini', 'Cloudflare', 'DeepSeek', 'OpenAI'],
+            creative_writing: ['OpenRouter', 'Groq', 'DeepSeek', 'Mistral', 'Claude', 'Gemini'],
+            memory_analysis: ['Cohere', 'Groq', 'Mistral', 'Gemini', 'Cloudflare'],
+            default: ['Groq', 'Mistral', 'OpenRouter', 'Gemini', 'Cloudflare', 'DeepSeek', 'OpenAI']
         };
 
         // runtime status tracking
