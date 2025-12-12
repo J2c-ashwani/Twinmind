@@ -127,9 +127,9 @@ const standardLimiter = rateLimit({
 
 // Strict rate limiting for auth routes (prevent brute force)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Increased for development
-  message: { error: 'Too many login attempts, please try again later.' },
+  windowMs: 48 * 60 * 60 * 1000, // 48 hours (Block duration)
+  max: 20, // Max 20 failed attempts allowed in window
+  message: { error: 'Too many failed login attempts. Access blocked for 48 hours protection.' },
   skipSuccessfulRequests: true // Don't count successful logins
 });
 
