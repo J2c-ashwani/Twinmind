@@ -53,11 +53,17 @@ class AIService {
             this.providerStatus[p.name] = {
                 requestsToday: 0,
                 errorsToday: 0,
+                consecutiveFailures: 0,      // NEW: Track consecutive failures
                 isExhausted: false,
                 cooldownUntil: null,
-                lastError: null
+                lastError: null,
+                lastSuccess: null            // NEW: Track last successful call
             };
         });
+
+        // Circuit breaker thresholds
+        this.CIRCUIT_BREAKER_THRESHOLD = 3;  // Open circuit after 3 consecutive failures
+        this.CIRCUIT_BREAKER_COOLDOWN = 15 * 60 * 1000;  // 15 minutes
 
         // stats
         this.stats = {
@@ -148,19 +154,50 @@ class AIService {
     markProviderError(providerName, error) {
         const status = this.providerStatus[providerName];
         if (!status) return;
+
+        // Increment counters
         status.errorsToday = (status.errorsToday || 0) + 1;
+        status.consecutiveFailures = (status.consecutiveFailures || 0) + 1;
         status.lastError = error?.message || String(error);
 
         const msg = (error?.message || '').toLowerCase();
 
-        if (msg.includes('429') || msg.includes('quota') || msg.includes('limit') || msg.includes('exhausted')) {
+        // Immediate circuit open conditions (quota/rate limit)
+        if (msg.includes('429') || msg.includes('quota') || msg.includes('limit') || msg.includes('exhausted') || msg.includes('402') || msg.includes('insufficient balance')) {
             status.isExhausted = true;
             status.cooldownUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-        } else if (msg.includes('timeout') || msg.includes('network') || msg.includes('socket')) {
-            status.cooldownUntil = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-        } else {
-            // small backoff for other errors
-            status.cooldownUntil = new Date(Date.now() + 1 * 60 * 1000); // 1 minute
+            console.warn(`⚠️ Provider ${providerName} exhausted - cooldown 1 hour`);
+        }
+        // Circuit breaker: consecutive failures threshold
+        else if (status.consecutiveFailures >= this.CIRCUIT_BREAKER_THRESHOLD) {
+            status.cooldownUntil = new Date(Date.now() + this.CIRCUIT_BREAKER_COOLDOWN);
+            console.warn(`🔴 Circuit OPEN for ${providerName} - ${status.consecutiveFailures} consecutive failures - cooldown 15min`);
+        }
+        // Temporary backoff for network/timeout
+        else if (msg.includes('timeout') || msg.includes('network') || msg.includes('socket')) {
+            status.cooldownUntil = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
+        }
+        // Small backoff for other errors
+        else {
+            status.cooldownUntil = new Date(Date.now() + 30 * 1000); // 30 seconds
+        }
+
+        // Track stats
+        this.stats.providerUsage[providerName].errors++;
+    }
+
+    markProviderSuccess(providerName) {
+        const status = this.providerStatus[providerName];
+        if (!status) return;
+
+        // Reset circuit breaker on success
+        status.consecutiveFailures = 0;
+        status.lastSuccess = new Date();
+        status.cooldownUntil = null;  // Clear any cooldown
+
+        if (status.isExhausted) {
+            console.log(`✅ Provider ${providerName} recovered from exhaustion`);
+            status.isExhausted = false;
         }
     }
 
@@ -291,12 +328,12 @@ class AIService {
                     const text = typeof raw === 'string' ? raw : (raw?.message || raw?.text || JSON.stringify(raw));
                     const cleaned = this.sanitizeResponse(String(text));
 
-                    // success
+                    // success - reset circuit breaker
+                    this.markProviderSuccess(provider.name);
+
                     return { provider: provider.name, text: cleaned, raw };
                 } catch (err) {
-                    // provider error — record and move on
-                    this.stats.providerUsage[provider.name].errors = (this.stats.providerUsage[provider.name].errors || 0) + 1;
-                    this.providerStatus[provider.name].errorsToday = (this.providerStatus[provider.name].errorsToday || 0) + 1;
+                    // provider error — mark error regarding circuit breaker
                     this.markProviderError(provider.name, err);
                     console.warn(`aiService: provider ${provider.name} failed: ${err?.message || err}`);
                     continue;
