@@ -55,10 +55,8 @@ export async function transcribeAudio(audioFilePath) {
         return transcription;
     } catch (error) {
         logger.error('Gemini transcription error:', error);
-
-        // Fallback to simple placeholder
-        logger.warn('Transcription failed, using placeholder');
-        return "Voice message received";
+        // Explicitly throw so the client knows transcription failed
+        throw new Error(`Transcription provider error: ${error.message}`);
     }
 }
 

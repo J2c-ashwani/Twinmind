@@ -5,9 +5,9 @@ class GeminiService {
         this.apiKey = apiKey || process.env.GEMINI_API_KEY;
         if (this.apiKey) {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
-            // Use Gemini Pro (Stable v1.0) for everything to avoid 404s
+            // Use Gemini 2.0 Flash (Multimodal: Audio/Image/Text) - CONFIRMED AVAILABLE
             this.flashModel = this.genAI.getGenerativeModel({
-                model: 'models/gemini-pro',  // Full model path for v1beta
+                model: 'models/gemini-2.0-flash',
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -15,9 +15,9 @@ class GeminiService {
                     maxOutputTokens: 2048,
                 },
             });
-            // Use Gemini Pro for complex reasoning too
+            // Use Gemini 2.0 Flash (or 2.5-pro if available/needed)
             this.proModel = this.genAI.getGenerativeModel({
-                model: 'models/gemini-pro',  // Full model path for v1beta
+                model: 'models/gemini-2.0-flash',
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -26,8 +26,8 @@ class GeminiService {
                 },
             });
 
-            this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
-            console.log('✅ Gemini Service initialized (Using models/gemini-pro)');
+            this.embeddingModel = this.genAI.getGenerativeModel({ model: "models/text-embedding-004" });
+            console.log('✅ Gemini Service initialized (Using models/gemini-2.0-flash)');
         } else {
             console.log('⚠️  Gemini API key not found');
         }
@@ -102,7 +102,7 @@ class GeminiService {
 
             // Create model instance per request to support dynamic systemPrompt
             const model = this.genAI.getGenerativeModel({
-                model: 'gemini-1.5-flash', // v1beta compatible model
+                model: 'models/gemini-2.0-flash', // CONFIRMED AVAILABLE
                 systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }], role: 'model' } : undefined,
                 generationConfig: {
                     temperature: 0.9,
