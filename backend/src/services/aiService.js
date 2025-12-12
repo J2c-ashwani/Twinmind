@@ -1,5 +1,6 @@
 // aiService.js
 // Production-grade multi-provider AI router for TwinMind
+// Optimized for Stability, Cost-Control, and Rate-Limit Defense
 
 import geminiService from './geminiService.js';
 import groqService from './groqService.js';
@@ -12,60 +13,58 @@ import mistralService from './mistralService.js';
 import cloudflareService from './cloudflareService.js';
 import deepSeekService from './deepSeekService.js';
 
-const DEFAULT_TIMEOUT_MS = 12000; // 12s timeout for provider calls
-const SAFE_FALLBACK_REPLY = "I'm having trouble thinking clearly right now — tell me the one sentence that matters most.";
+const SAFE_FALLBACK_REPLY = "I’m having a temporary issue reaching my AI engines. Please try again in a moment.";
 
 class AIService {
     constructor() {
         /**
-         * Provider definitions:
-         * name: string
-         * service: adapter import
-         * dailyLimit: soft daily quota
+         * Provider definitions with Realistic Limits
+         * Daily Limits adjusted for Free/Low-Cost tiers
          */
         this.providers = [
-            { name: 'Gemini', service: geminiService, dailyLimit: 1000 },
-            { name: 'Mistral', service: mistralService, dailyLimit: 10000 },
-            { name: 'OpenAI', service: openaiService, dailyLimit: 500 },
-            { name: 'Groq', service: groqService, dailyLimit: 1000 },
-            { name: 'Claude', service: claudeService, dailyLimit: 50 },
-            { name: 'OpenRouter', service: openrouterService, dailyLimit: 1000 },
-            { name: 'Cloudflare', service: cloudflareService, dailyLimit: 100000 },
+            { name: 'Groq', service: groqService, dailyLimit: 300 },       // Fast LPU
+            { name: 'Mistral', service: mistralService, dailyLimit: 200 }, // Reliable Free
+            { name: 'OpenRouter', service: openrouterService, dailyLimit: 1000 }, // Aggregator
+            { name: 'Gemini', service: geminiService, dailyLimit: 1000 },  // Generous but 429 prone
+            { name: 'Cloudflare', service: cloudflareService, dailyLimit: 100000 }, // Workers AI
             { name: 'Cohere', service: cohereService, dailyLimit: 100 },
             { name: 'HuggingFace', service: huggingfaceService, dailyLimit: 1000 },
-            { name: 'DeepSeek', service: deepSeekService, dailyLimit: 5000 }
+            { name: 'Claude', service: claudeService, dailyLimit: 100 },
+            { name: 'OpenAI', service: openaiService, dailyLimit: 500 },
+            { name: 'DeepSeek', service: deepSeekService, dailyLimit: 100 } // Paid - Limit Risk
         ];
 
-        // Routing map (taskType -> preferred provider names in order)
+        // Routing map: DEEPSEEK MOVED TO BOTTOM
+        // Prioritizes Free/Fast -> Fallback to Paid/Quota
         this.routingMap = {
-            fast_chat: ['Groq', 'Mistral', 'Gemini', 'Cloudflare', 'OpenRouter', 'DeepSeek'],
-            deep_reasoning: ['DeepSeek', 'Claude', 'Groq', 'OpenRouter', 'Mistral', 'Gemini', 'OpenAI'],
-            emotional_support: ['Gemini', 'Mistral', 'Claude', 'Groq', 'DeepSeek', 'OpenAI'],
+            fast_chat: ['Groq', 'Mistral', 'Gemini', 'Cloudflare', 'OpenRouter', 'Cohere', 'HuggingFace', 'DeepSeek', 'OpenAI'],
+            deep_reasoning: ['Claude', 'Gemini', 'Groq', 'Mistral', 'OpenRouter', 'DeepSeek', 'OpenAI'],
+            emotional_support: ['Gemini', 'Mistral', 'Claude', 'Groq', 'OpenRouter', 'DeepSeek', 'OpenAI'],
             personality_core: ['Groq', 'Mistral', 'OpenRouter', 'Gemini', 'Cloudflare', 'DeepSeek', 'OpenAI'],
-            creative_writing: ['OpenRouter', 'Groq', 'DeepSeek', 'Mistral', 'Claude', 'Gemini'],
+            creative_writing: ['OpenRouter', 'Groq', 'Mistral', 'Claude', 'Gemini', 'DeepSeek'],
             memory_analysis: ['Cohere', 'Groq', 'Mistral', 'Gemini', 'Cloudflare'],
             default: ['Groq', 'Mistral', 'OpenRouter', 'Gemini', 'Cloudflare', 'DeepSeek', 'OpenAI']
         };
 
-        // runtime status tracking
+        // Provider Status Tracking
         this.providerStatus = {};
         this.providers.forEach(p => {
             this.providerStatus[p.name] = {
                 requestsToday: 0,
                 errorsToday: 0,
-                consecutiveFailures: 0,      // NEW: Track consecutive failures
+                consecutiveFailures: 0,
                 isExhausted: false,
                 cooldownUntil: null,
                 lastError: null,
-                lastSuccess: null            // NEW: Track last successful call
+                lastSuccess: null
             };
         });
 
-        // Circuit breaker thresholds
-        this.CIRCUIT_BREAKER_THRESHOLD = 3;  // Open circuit after 3 consecutive failures
-        this.CIRCUIT_BREAKER_COOLDOWN = 15 * 60 * 1000;  // 15 minutes
+        // Config
+        this.CIRCUIT_BREAKER_THRESHOLD = 3;
+        this.CIRCUIT_BREAKER_COOLDOWN = 15 * 60 * 1000; // 15 min
 
-        // stats
+        // Statistics
         this.stats = {
             totalRequests: 0,
             successfulRequests: 0,
@@ -76,7 +75,6 @@ class AIService {
             this.stats.providerUsage[p.name] = { requests: 0, errors: 0 };
         });
 
-        // daily reset
         this.scheduleDailyReset();
     }
 
@@ -88,65 +86,69 @@ class AIService {
         try {
             const now = new Date();
             const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-            const ms = tomorrow - now;
             setTimeout(() => {
                 this.resetDailyQuotas();
                 this.scheduleDailyReset();
-            }, ms);
-        } catch (err) {
-            // best-effort
-            console.warn('aiService: scheduleDailyReset failed', err?.message || err);
-        }
+            }, tomorrow - now);
+        } catch (e) { console.warn('Daily reset scheduling failed'); }
     }
 
     resetDailyQuotas() {
         Object.keys(this.providerStatus).forEach(k => {
-            this.providerStatus[k].requestsToday = 0;
-            this.providerStatus[k].errorsToday = 0;
-            this.providerStatus[k].isExhausted = false;
-            this.providerStatus[k].cooldownUntil = null;
-            this.providerStatus[k].lastError = null;
+            const s = this.providerStatus[k];
+            // Only reset usage, keep long-term suspensions (like 30-day 402)
+            s.requestsToday = 0;
+            s.errorsToday = 0;
+            if (s.cooldownUntil && s.cooldownUntil > new Date(Date.now() + 24 * 60 * 60 * 1000)) {
+                // Keep long cooldowns (e.g. 30 days)
+            } else {
+                s.isExhausted = false;
+                s.cooldownUntil = null;
+            }
         });
+        console.log('🔄 Daily AI Quotas Reset');
     }
 
-    withTimeout(promise, ms = DEFAULT_TIMEOUT_MS) {
-        return Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))
-        ]);
+    getTimeoutForProvider(providerName) {
+        const timeouts = {
+            'Groq': 6000,
+            'Mistral': 8000,
+            'Claude': 12000,
+            'Gemini': 12000,
+            'Cloudflare': 8000,
+            'DeepSeek': 6000,
+            'OpenRouter': 15000,
+            'default': 12000
+        };
+        return timeouts[providerName] || timeouts['default'];
     }
 
-    sanitizeResponse(text) {
-        if (!text || typeof text !== 'string') return text || '';
-        return text
-            .replace(/\bAs an AI[^.]*\.\s*/gi, '')
-            .replace(/\bI am an AI[^.]*\.\s*/gi, '')
-            .replace(/^(Sure[,.\s]?|Certainly[,.\s]?|Of course[,.\s]?)(\s*)/i, '')
-            .replace(/\bHere'?s (a breakdown|what I think|an overview)[^\n]*\n?/gi, '')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim() || text.trim();
-    }
+    /* ---------------------
+       Core Logic
+       --------------------- */
 
     isProviderAvailable(provider) {
         const s = this.providerStatus[provider.name];
         if (!s) return false;
 
-        // cooldown check
+        // 1. Check Cooldown / Exhaustion
+        if (s.isExhausted) return false;
         if (s.cooldownUntil && new Date() < s.cooldownUntil) return false;
 
-        // exhausted flag
-        if (s.isExhausted) return false;
-
-        // soft quota
+        // 2. Check Daily Limit
         if (typeof provider.dailyLimit === 'number' && s.requestsToday >= provider.dailyLimit) {
             return false;
         }
 
-        // provider adapter might be missing methods? check quickly
-        if (!provider.service) return false;
+        // 3. Check Configuration (API Key presence)
+        // Checks .isConfigured OR .isEnabled (legacy)
+        const svc = provider.service;
+        if (!svc) return false;
 
-        // check if provider is configured (credentials present)
-        if (provider.service.isConfigured === false) return false;
+        const isConfigured = (svc.isConfigured !== undefined) ? svc.isConfigured :
+            (svc.isEnabled !== undefined ? svc.isEnabled : true);
+
+        if (isConfigured === false) return false;
 
         return true;
     }
@@ -155,60 +157,71 @@ class AIService {
         const status = this.providerStatus[providerName];
         if (!status) return;
 
-        // Increment counters
-        status.errorsToday = (status.errorsToday || 0) + 1;
-        status.consecutiveFailures = (status.consecutiveFailures || 0) + 1;
+        status.errorsToday++;
+        status.consecutiveFailures++;
         status.lastError = error?.message || String(error);
 
-        const msg = (error?.message || '').toLowerCase();
+        const msg = (status.lastError).toLowerCase();
 
-        // Immediate circuit open conditions (quota/rate limit)
-        if (msg.includes('429') || msg.includes('quota') || msg.includes('limit') || msg.includes('exhausted') || msg.includes('402') || msg.includes('insufficient balance')) {
+        // ⚠️ 10. Improve Error Categorization
+        if (msg.includes('402') || msg.includes('insufficient balance')) {
+            // 30 Days lockout for billing issues
             status.isExhausted = true;
-            status.cooldownUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-            console.warn(`⚠️ Provider ${providerName} exhausted - cooldown 1 hour`);
+            status.cooldownUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            console.warn(`💸 Provider ${providerName} DISABLED (Insufficient Balance) - Cooldown 30 Days`);
         }
-        // Circuit breaker: consecutive failures threshold
-        else if (status.consecutiveFailures >= this.CIRCUIT_BREAKER_THRESHOLD) {
-            status.cooldownUntil = new Date(Date.now() + this.CIRCUIT_BREAKER_COOLDOWN);
-            console.warn(`🔴 Circuit OPEN for ${providerName} - ${status.consecutiveFailures} consecutive failures - cooldown 15min`);
+        else if (msg.includes('401') || msg.includes('invalid') || msg.includes('unauthorized')) {
+            // 24 Hours lockout for config issues
+            status.isExhausted = true;
+            status.cooldownUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            console.warn(`🔑 Provider ${providerName} DISABLED (Auth Failed) - Cooldown 24 Hours`);
         }
-        // Temporary backoff for network/timeout
+        else if (msg.includes('404') || msg.includes('not found')) {
+            // 6 Hours lockout for Model Not Found (Gemini fix)
+            status.isExhausted = true;
+            status.cooldownUntil = new Date(Date.now() + 6 * 60 * 60 * 1000);
+            console.warn(`🚫 Provider ${providerName} DISABLED (Model Not Found) - Cooldown 6 Hours`);
+        }
+        else if (msg.includes('429') || msg.includes('quota') || msg.includes('limit') || msg.includes('exhausted')) {
+            // 1 Hour for Rate Limits
+            status.isExhausted = true;
+            status.cooldownUntil = new Date(Date.now() + 60 * 60 * 1000);
+            console.warn(`⏳ Provider ${providerName} Throttled (Rate Limit) - Cooldown 1 Hour`);
+        }
         else if (msg.includes('timeout') || msg.includes('network') || msg.includes('socket')) {
-            status.cooldownUntil = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
+            // 2 Minute temporary backoff
+            status.cooldownUntil = new Date(Date.now() + 2 * 60 * 1000);
         }
-        // Small backoff for other errors
-        else {
-            status.cooldownUntil = new Date(Date.now() + 30 * 1000); // 30 seconds
+        else if (status.consecutiveFailures >= this.CIRCUIT_BREAKER_THRESHOLD) {
+            // Circuit Breaker
+            status.cooldownUntil = new Date(Date.now() + this.CIRCUIT_BREAKER_COOLDOWN);
+            console.warn(`🔴 Circuit OPEN for ${providerName} (${status.consecutiveFailures} failures) - Cooldown 15m`);
+        } else {
+            // Standard small backoff
+            status.cooldownUntil = new Date(Date.now() + 30 * 1000);
         }
 
-        // Track stats
         this.stats.providerUsage[providerName].errors++;
     }
 
     markProviderSuccess(providerName) {
         const status = this.providerStatus[providerName];
         if (!status) return;
-
-        // Reset circuit breaker on success
         status.consecutiveFailures = 0;
         status.lastSuccess = new Date();
-        status.cooldownUntil = null;  // Clear any cooldown
-
-        if (status.isExhausted) {
-            console.log(`✅ Provider ${providerName} recovered from exhaustion`);
-            status.isExhausted = false;
-        }
+        status.cooldownUntil = null;
+        status.isExhausted = false;
     }
 
-    // Build canonical messages array: system -> history (already shaped) -> user
+    /* ---------------------
+       Message Helper
+       --------------------- */
     buildMessagesArray(systemPrompt, conversationHistory = [], userMessage) {
         const messages = [];
-        if (systemPrompt && systemPrompt.length) {
-            messages.push({ role: 'system', content: typeof systemPrompt === 'string' ? systemPrompt : JSON.stringify(systemPrompt) });
+        if (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.length > 0) {
+            messages.push({ role: 'system', content: systemPrompt });
         }
-        // conversationHistory expected to be array of { sender_type, content } oldest-first
-        if (Array.isArray(conversationHistory) && conversationHistory.length) {
+        if (Array.isArray(conversationHistory)) {
             conversationHistory.forEach(item => {
                 const role = (item.sender_type === 'user' || item.role === 'user') ? 'user' : 'assistant';
                 messages.push({ role, content: item.content });
@@ -218,225 +231,155 @@ class AIService {
         return messages;
     }
 
-    // detect task type using system prompt first (mode-aware), then fallback heuristics
-    detectTaskType(userMessage, systemPrompt = '') {
-        const s = (systemPrompt || '').toLowerCase();
-        const p = (userMessage || '').toLowerCase();
+    /* ---------------------
+       Execution Logic
+       --------------------- */
 
-        // Mode-based routing (priority)
-        if (s.includes('therapist') || s.includes('therapist twin') || s.includes('emotional_support') || s.includes('emotional')) return 'emotional_support';
-        if (s.includes('future') || s.includes('future twin') || s.includes('deep_reasoning')) return 'deep_reasoning';
-        if (s.includes('dark') || s.includes('dark twin') || s.includes('brutally honest')) return 'creative_writing';
-        if (s.includes('normal') || s.includes('normal twin') || s.includes('personality')) return 'personality_core';
-
-        // Heuristic fallback
-        if (p.includes('feel') || p.includes('sad') || p.includes('angry') || p.includes('anxious')) return 'emotional_support';
-        if (p.includes('why') || p.includes('analyze') || p.includes('how come') || p.includes('should i')) return 'deep_reasoning';
-        if (p.length < 30 && (p.includes('hi') || p.includes('hello') || p.includes('thanks'))) return 'fast_chat';
-        if (p.includes('story') || p.includes('write') || p.includes('imagine')) return 'creative_writing';
-
-        return 'default';
-    }
-
-    // Get ordered provider list for a task type (preferred first, then rest)
-    getProvidersForTask(taskType) {
-        const preferred = this.routingMap[taskType] || this.routingMap.default || ['Gemini', 'Mistral'];
-        const ordered = [];
-
-        preferred.forEach(name => {
-            const p = this.providers.find(x => x.name === name);
-            if (p) ordered.push(p);
-        });
-
-        // append remaining (dedupe)
-        this.providers.forEach(p => {
-            if (!ordered.find(x => x.name === p.name)) ordered.push(p);
-        });
-
-        return ordered;
-    }
-
-    // normalize provider adapter calls to a safe contract:
-    // try provider.service.generateChatResponse(messagesArray, userMessage, conversationHistory)
-    // if not available, fallback to provider.service.generateWithContext(systemPrompt, userMessage)
     async callProvider(provider, messagesArray, userMessage, conversationHistory) {
         const svc = provider.service;
-        // increase usage counters
         this.stats.providerUsage[provider.name].requests++;
-        this.providerStatus[provider.name].requestsToday = (this.providerStatus[provider.name].requestsToday || 0) + 1;
+        this.providerStatus[provider.name].requestsToday++;
 
-        // Preferred: generateChatResponse(systemMessagesArray, userMessage, conversationHistory)
+        const timeoutMs = this.getTimeoutForProvider(provider.name);
+
+        // Timeout Wrapper
+        const withTimeout = (promise) => Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout (${timeoutMs}ms)`)), timeoutMs))
+        ]);
+
+        let rawResponse;
+
+        // Try Unified Interface
         if (typeof svc.generateChatResponse === 'function') {
-            // call with timeout
-            return await this.withTimeout(svc.generateChatResponse(messagesArray, userMessage, conversationHistory), DEFAULT_TIMEOUT_MS);
+            rawResponse = await withTimeout(svc.generateChatResponse(messagesArray, userMessage, conversationHistory));
+        }
+        // Try Legacy Context Interface
+        else if (typeof svc.generateWithContext === 'function') {
+            const systemPrompt = messagesArray.find(m => m.role === 'system')?.content || '';
+            rawResponse = await withTimeout(svc.generateWithContext(systemPrompt, userMessage));
+        } else {
+            throw new Error(`Provider ${provider.name} missing methods`);
         }
 
-        // Next fallback: generateWithContext(systemPromptString, userMessage)
-        if (typeof svc.generateWithContext === 'function') {
-            const systemPromptString = messagesArray.find(m => m.role === 'system')?.content || '';
-            return await this.withTimeout(svc.generateWithContext(systemPromptString, userMessage), DEFAULT_TIMEOUT_MS);
-        }
+        // ⚠️ 11. Normalize Return
+        const text = (typeof rawResponse === 'string') ? rawResponse :
+            (rawResponse?.text || rawResponse?.message || rawResponse?.content || JSON.stringify(rawResponse));
 
-        // Provider does not implement expected methods
-        throw new Error(`Provider ${provider.name} adapter missing generateChatResponse/generateWithContext`);
+        return { text, raw: rawResponse };
     }
 
     /* ---------------------
-       Public API
+       Public Methods
        --------------------- */
 
-    /**
-     * Main generator with multi-provider fallback
-     * - systemPrompt (string)
-     * - userMessage (string)
-     * - conversationHistory: array oldest-first [{sender_type, content}, ...]
-     * - taskType: optional
-     */
+    detectTaskType(userMessage, systemPrompt) {
+        const s = (systemPrompt || '').toLowerCase();
+        const p = (userMessage || '').toLowerCase();
+        if (s.includes('therapist') || s.includes('support')) return 'emotional_support';
+        if (s.includes('reason') || s.includes('analyze')) return 'deep_reasoning';
+        if (s.includes('personality')) return 'personality_core';
+        if (p.length < 50 && (p.includes('hi') || p.includes('hello'))) return 'fast_chat';
+        return 'default';
+    }
+
+    getProvidersForTask(taskType) {
+        const preferred = this.routingMap[taskType] || this.routingMap.default;
+        // Map names to objects
+        return preferred.map(name => this.providers.find(p => p.name === name)).filter(Boolean);
+    }
+
     async generateChatResponse(userMessage, conversationHistory = [], systemPrompt = '', taskType = 'default') {
         this.stats.totalRequests++;
 
-        try {
-            // If caller passed default, try to detect task type
-            if (!taskType || taskType === 'default') {
-                taskType = this.detectTaskType(userMessage, systemPrompt);
-            }
-
-            const messagesArray = this.buildMessagesArray(systemPrompt, conversationHistory, userMessage);
-            const providersToTry = this.getProvidersForTask(taskType);
-
-            // Filter available providers (soft check)
-            let available = providersToTry.filter(p => this.isProviderAvailable(p));
-
-            // If none available, attempt providersToTry anyway (we'll handle errors individually)
-            if (!available.length) available = providersToTry;
-
-            for (const provider of available) {
-                try {
-                    // final guard: skip providers that can't handle very large prompts
-                    if (typeof systemPrompt === 'string' && systemPrompt.length > 8000 && ['HuggingFace', 'Cloudflare'].includes(provider.name)) {
-                        // skip small providers for huge system prompts
-                        continue;
-                    }
-
-                    // call provider
-                    const raw = await this.callProvider(provider, messagesArray, userMessage, conversationHistory);
-
-                    // mark stats
-                    this.stats.successfulRequests++;
-                    this.stats.providerUsage[provider.name].requests = (this.stats.providerUsage[provider.name].requests || 0);
-                    // provider succeeded — sanitize and return
-                    const text = typeof raw === 'string' ? raw : (raw?.message || raw?.text || JSON.stringify(raw));
-                    const cleaned = this.sanitizeResponse(String(text));
-
-                    // success - reset circuit breaker
-                    this.markProviderSuccess(provider.name);
-
-                    return { provider: provider.name, text: cleaned, raw };
-                } catch (err) {
-                    // provider error — mark error regarding circuit breaker
-                    this.markProviderError(provider.name, err);
-                    console.warn(`aiService: provider ${provider.name} failed: ${err?.message || err}`);
-                    continue;
-                }
-            }
-
-            // all providers failed
-            this.stats.failedRequests++;
-            console.error('aiService: all AI providers failed for this request');
-            return { provider: null, text: SAFE_FALLBACK_REPLY, raw: null };
-        } catch (fatal) {
-            this.stats.failedRequests++;
-            console.error('aiService.generateChatResponse fatal error:', fatal?.message || fatal);
-            return { provider: null, text: SAFE_FALLBACK_REPLY, raw: null };
+        if (!taskType || taskType === 'default') {
+            taskType = this.detectTaskType(userMessage, systemPrompt);
         }
-    }
 
-    /**
-     * Simpler call when you already assembled a systemPrompt and want a one-shot call
-     */
-    async generateWithContext(systemPrompt, userMessage) {
-        // try providers in availability order
-        const providers = this.providers.filter(p => this.isProviderAvailable(p)) || this.providers;
-        for (const p of providers) {
+        const messagesArray = this.buildMessagesArray(systemPrompt, conversationHistory, userMessage);
+        const preferredProviders = this.getProvidersForTask(taskType);
+
+        // ⚠️ 3. Unique & Duplicate Prevention
+        // Filter unique providers that are AVAILABLE
+        const uniqueAvailable = [];
+        const seen = new Set();
+
+        for (const p of preferredProviders) {
+            if (!seen.has(p.name) && this.isProviderAvailable(p)) {
+
+                // ⚠️ 6. Reduce Large Prompt Failures
+                if (systemPrompt.length > 3000 && ['HuggingFace', 'Cloudflare'].includes(p.name)) {
+                    continue; // Skip small context providers
+                }
+
+                uniqueAvailable.push(p);
+                seen.add(p.name);
+            }
+        }
+
+        // ⚠️ 9. Prevent Infinite Retry - If NO providers, fail immediately
+        if (uniqueAvailable.length === 0) {
+            console.error('aiService: NO Available Providers for task ' + taskType);
+            this.stats.failedRequests++;
+            return { provider: null, text: SAFE_FALLBACK_REPLY, error: 'ALL_PROVIDERS_FAILED' };
+        }
+
+        // Try Loop
+        for (const provider of uniqueAvailable) {
             try {
-                if (typeof p.service.generateWithContext === 'function') {
-                    const raw = await this.withTimeout(p.service.generateWithContext(systemPrompt, userMessage), DEFAULT_TIMEOUT_MS);
-                    const text = typeof raw === 'string' ? raw : (raw?.message || raw?.text || JSON.stringify(raw));
-                    return { provider: p.name, text: this.sanitizeResponse(String(text)), raw };
-                }
+                // ⚠️ 12. Logging
+                // console.log(`Attempting ${provider.name}...`); 
+
+                const result = await this.callProvider(provider, messagesArray, userMessage, conversationHistory);
+
+                // Success
+                this.markProviderSuccess(provider.name);
+                this.stats.successfulRequests++;
+                this.stats.providerUsage[provider.name].requests = (this.stats.providerUsage[provider.name].requests || 0); // usage incremented in callProvider? Yes.
+
+                // Sanitize
+                let cleaned = result.text;
+                cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+
+                return {
+                    provider: provider.name,
+                    text: cleaned,
+                    raw: result.raw
+                };
+
             } catch (err) {
-                this.markProviderError(p.name, err);
-                console.warn(`aiService.generateWithContext: ${p.name} failed: ${err?.message || err}`);
-                continue;
+                // Failure
+                console.warn(`❌ ${provider.name} Failed: ${err.message}. Trying next...`);
+                this.markProviderError(provider.name, err);
+                continue; // Try next
             }
         }
-        return { provider: null, text: SAFE_FALLBACK_REPLY, raw: null };
+
+        // All failed
+        this.stats.failedRequests++;
+        console.error('aiService: All attempted providers failed.');
+        return { provider: null, text: SAFE_FALLBACK_REPLY, error: 'ALL_PROVIDERS_FAILED' };
     }
 
-    /**
-     * Optional streaming support.
-     * Delegates to provider if it has generateStreamingResponse and returns an async iterator or event emitter.
-     * Otherwise returns null to indicate streaming not available.
-     */
-    async generateStreamingResponse(systemPrompt, userMessage, conversationHistory = [], taskType = 'default') {
-        const task = taskType === 'default' ? this.detectTaskType(userMessage, systemPrompt) : taskType;
-        const providers = this.getProvidersForTask(task).filter(p => this.isProviderAvailable(p));
-
-        for (const p of providers) {
-            if (p.service && typeof p.service.generateStreamingResponse === 'function') {
-                try {
-                    // let the provider handle streaming with a messages array
-                    const messages = this.buildMessagesArray(systemPrompt, conversationHistory, userMessage);
-                    return p.service.generateStreamingResponse(messages, userMessage, conversationHistory);
-                } catch (err) {
-                    this.markProviderError(p.name, err);
-                    console.warn(`aiService.stream: ${p.name} streaming failed: ${err?.message || err}`);
-                    continue;
-                }
-            }
-        }
-        // streaming not supported by any provider
+    // Streaming placeholder (returns null for now to force standard)
+    async generateStreamingResponse() {
         return null;
     }
 
-    /* ----------------
-       Diagnostics
-       ---------------- */
-    getStats() {
-        const successRate = this.stats.totalRequests > 0
-            ? ((this.stats.successfulRequests / this.stats.totalRequests) * 100).toFixed(2)
-            : '0.00';
-        return {
-            totalRequests: this.stats.totalRequests,
-            successful: this.stats.successfulRequests,
-            failed: this.stats.failedRequests,
-            successRate: `${successRate}%`,
-            providerBreakdown: this.stats.providerUsage,
-            routingStatus: this.providerStatus
-        };
-    }
-
-    getMostReliableProvider() {
-        let best = null;
-        let bestRate = -1;
-        for (const [name, usage] of Object.entries(this.stats.providerUsage)) {
-            const req = usage.requests || 0;
-            const err = usage.errors || 0;
-            if (req === 0) continue;
-            const rate = ((req - err) / req) * 100;
-            if (rate > bestRate) {
-                bestRate = rate;
-                best = name;
-            }
-        }
-        return { provider: best, successRate: bestRate >= 0 ? bestRate.toFixed(2) + '%' : 'N/A' };
-    }
-
-    // convenience wrappers for provider-specific helpers (preserve your existing API)
+    // Helpers
     async analyzeEmotion(text) { return await geminiService.analyzeEmotion(text); }
     async extractEntities(text) { return await geminiService.extractEntities(text); }
     async detectMemorableMoment(text) { return await geminiService.detectMemorableMoment(text); }
     async generateEmbedding(text) { return await geminiService.generateEmbedding(text); }
+
+    getStats() {
+        return {
+            total: this.stats.totalRequests,
+            success: this.stats.successfulRequests,
+            usage: this.stats.providerUsage,
+            status: this.providerStatus
+        };
+    }
 }
 
 export default new AIService();
