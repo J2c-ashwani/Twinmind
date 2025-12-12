@@ -37,15 +37,45 @@ class AuthService extends ChangeNotifier {
         data: {'full_name': fullName},  // Trigger uses this to create profile
       );
       
-      // No need to manually create profile - the database trigger handles it!
-      // Trigger: handle_new_user() in db_fix_rls.sql
-      
       if (response.user == null) {
-        throw 'Signup failed - no user returned';
+        throw 'Signup failed: ${response.session?.user == null ? "No user returned" : "Unknown error"}';
       }
       
-      // Profile will be created by trigger within 10-50ms
-      // The onboarding flow will proceed regardless
+      // DEFENSIVE CHECK: Wait for database trigger to create profile
+      // Trigger should complete in 10-50ms, but we poll for up to 2 seconds
+      print('Verifying profile creation...');
+      bool profileExists = false;
+      
+      for (int attempt = 0; attempt < 10; attempt++) {
+        try {
+          final result = await _supabase
+              .from('users')
+              .select('id')
+              .eq('id', response.user!.id)
+              .maybeSingle();
+          
+          if (result != null) {
+            profileExists = true;
+            print('✅ Profile verified (attempt ${attempt + 1})');
+            break;
+          }
+        } catch (e) {
+          // Ignore query errors, retry
+          print('Profile check attempt ${attempt + 1} failed: $e');
+        }
+        
+        // Wait before retry (exponential backoff)
+        await Future.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+      }
+      
+      if (!profileExists) {
+        // Profile creation failed - clean up auth account
+        print('❌ Profile creation timeout - cleaning up auth account');
+        await _supabase.auth.signOut();
+        throw 'Profile creation failed. This may be a temporary issue. Please try again or contact support if the problem persists.';
+      }
+      
+      print('✅ Signup complete - profile exists');
       
     } on AuthException catch (authError) {
       // Handle Supabase auth errors
