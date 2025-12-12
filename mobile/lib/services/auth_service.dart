@@ -29,44 +29,35 @@ class AuthService extends ChangeNotifier {
   
   Future<void> signUpWithEmail(String email, String password, String fullName) async {
     try {
+      // Sign up with Supabase Auth
+      // Metadata is automatically passed to the database trigger
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName},
+        data: {'full_name': fullName},  // Trigger uses this to create profile
       );
       
-      if (response.user != null) {
-        // Try to create/update user profile
-        // The trigger might have already created it, so we ignore conflicts
-        try {
-          await _supabase.from('users').upsert({
-            'id': response.user!.id,
-            'full_name': fullName,
-            'email': email,
-          }, onConflict: 'id');
-        } catch (upsertError) {
-          // Ignore errors - if trigger already created the user, that's fine
-          print('User profile creation (expected if trigger ran): $upsertError');
-        }
+      // No need to manually create profile - the database trigger handles it!
+      // Trigger: handle_new_user() in db_fix_rls.sql
+      
+      if (response.user == null) {
+        throw 'Signup failed - no user returned';
       }
+      
+      // Profile will be created by trigger within 10-50ms
+      // The onboarding flow will proceed regardless
+      
     } on AuthException catch (authError) {
-      // Handle authentication-specific errors
+      // Handle Supabase auth errors
       if (authError.message.contains('already registered') || 
           authError.message.contains('User already registered')) {
         throw 'This email is already registered. Please login instead.';
       }
       throw 'Sign up failed: ${authError.message}';
-    } on PostgrestException catch (dbError) {
-      // Handle database-specific errors
-      if (dbError.code == '23505') {
-        // Duplicate key error - account exists
-        throw 'This email is already registered. Please login instead.';
-      }
-      throw 'Sign up failed: ${dbError.message}';
     } catch (e) {
-      // Catch-all for unexpected errors
+      // Catch unexpected errors
       final errorMessage = e.toString();
-      if (errorMessage.contains('duplicate key') || errorMessage.contains('23505')) {
+      if (errorMessage.contains('already registered')) {
         throw 'This email is already registered. Please login instead.';
       }
       throw 'Sign up failed: ${e.toString()}';
