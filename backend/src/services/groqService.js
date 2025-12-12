@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import fs from 'fs';
 
 class GroqService {
     constructor() {
@@ -55,6 +56,29 @@ class GroqService {
         } catch (error) {
             console.error('Groq API error:', error);
             throw new Error('Failed to generate AI response');
+        }
+    }
+
+    /**
+     * Transcribe audio file using Groq Whisper (Distil-V3)
+     */
+    async transcribeAudio(filePath) {
+        if (!this.isEnabled) {
+            throw new Error('Groq API key not configured');
+        }
+
+        try {
+            // Groq requires a ReadStream for the file
+            const transcription = await this.groq.audio.transcriptions.create({
+                file: fs.createReadStream(filePath),
+                model: 'distil-whisper-large-v3-en', // Ultra fast & free
+                response_format: 'json',
+            });
+
+            return transcription.text;
+        } catch (error) {
+            console.error('Groq Transcription Error:', error.message);
+            throw error;
         }
     }
 }

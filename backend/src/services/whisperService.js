@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import logger from '../config/logger.js';
 import geminiService from './geminiService.js';
 import cloudflareService from './cloudflareService.js';
+import groqService from './groqService.js';
 
 const unlink = promisify(fs.unlink);
 
@@ -59,7 +60,19 @@ export async function transcribeAudio(audioFilePath) {
     } catch (geminiError) {
         logger.error(`Gemini transcription failed (${geminiError.message}). Attempting fallback...`);
 
-        // 2. Try Cloudflare (Fallback)
+        // 2. Try Groq (Fast & High Limit)
+        if (groqService.isEnabled) {
+            try {
+                logger.info('🔄 Switching to Groq Whisper...');
+                const groqText = await groqService.transcribeAudio(audioFilePath);
+                logger.info(`✅ Groq transcription complete: ${groqText.substring(0, 50)}...`);
+                return groqText;
+            } catch (groqError) {
+                logger.warn('Groq transcription failed:', groqError.message);
+            }
+        }
+
+        // 3. Try Cloudflare (Fallback)
         if (cloudflareService.isConfigured) {
             try {
                 logger.info('🔄 Switching to Cloudflare Whisper...');
