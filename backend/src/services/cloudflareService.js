@@ -98,6 +98,53 @@ class CloudflareService {
             throw error;
         }
     }
+
+    /**
+     * Transcribe audio using Cloudflare Whisper
+     * @param {Buffer} audioBuffer 
+     */
+    async transcribeAudio(audioBuffer) {
+        if (!this.accountId || !this.apiToken) {
+            throw new Error('Cloudflare credentials not configured');
+        }
+
+        try {
+            // Convert Buffer to Array/Vector for Cloudflare AI
+            const audioArray = [...new Uint8Array(audioBuffer)];
+
+            const response = await fetch(
+                `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/ai/run/@cf/openai/whisper`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.apiToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audio: audioArray
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Cloudflare Whisper Error: ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(`Cloudflare Whisper Failed: ${JSON.stringify(data.errors)}`);
+            }
+
+            return data.result.text;
+        } catch (error) {
+            console.error('Cloudflare Transcription Error:', error.message);
+            // Don't swallow, let caller handle fallback
+            throw error;
+        }
+    }
+
 }
 
 export default new CloudflareService();

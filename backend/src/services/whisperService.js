@@ -4,6 +4,7 @@ import path from 'path';
 import { promisify } from 'util';
 import logger from '../config/logger.js';
 import geminiService from './geminiService.js';
+import cloudflareService from './cloudflareService.js';
 
 const unlink = promisify(fs.unlink);
 
@@ -17,14 +18,18 @@ const unlink = promisify(fs.unlink);
  * @returns {Promise<string>} - Transcribed text
  */
 export async function transcribeAudio(audioFilePath) {
+    let audioBuffer;
+    try {
+        audioBuffer = fs.readFileSync(audioFilePath);
+    } catch (err) {
+        throw new Error(`Failed to read audio file: ${err.message}`);
+    }
+
+    // 1. Try Gemini (Primary)
     try {
         logger.info(`Starting Gemini audio transcription for: ${audioFilePath}`);
-
-        // Read audio file as base64
-        const audioBuffer = fs.readFileSync(audioFilePath);
         const base64Audio = audioBuffer.toString('base64');
 
-        // Determine MIME type from file extension
         const ext = path.extname(audioFilePath).toLowerCase();
         const mimeTypes = {
             '.mp3': 'audio/mp3',
@@ -36,9 +41,7 @@ export async function transcribeAudio(audioFilePath) {
         };
         const mimeType = mimeTypes[ext] || 'audio/webm';
 
-        // Use Gemini Flash model for audio transcription
         const model = geminiService.flashModel;
-
         const result = await model.generateContent([
             {
                 inlineData: {
@@ -51,12 +54,27 @@ export async function transcribeAudio(audioFilePath) {
 
         const transcription = result.response.text().trim();
         logger.info(`Gemini transcription complete: ${transcription.substring(0, 50)}...`);
-
         return transcription;
-    } catch (error) {
-        logger.error('Gemini transcription error:', error);
-        // Explicitly throw so the client knows transcription failed
-        throw new Error(`Transcription provider error: ${error.message}`);
+
+    } catch (geminiError) {
+        logger.error(`Gemini transcription failed (${geminiError.message}). Attempting fallback...`);
+
+        // 2. Try Cloudflare (Fallback)
+        if (cloudflareService.isConfigured) {
+            try {
+                logger.info('🔄 Switching to Cloudflare Whisper...');
+                const cfTranscript = await cloudflareService.transcribeAudio(audioBuffer);
+                logger.info(`✅ Cloudflare transcription complete: ${cfTranscript.substring(0, 50)}...`);
+                return cfTranscript;
+            } catch (cfError) {
+                logger.error('Cloudflare transcription failed:', cfError);
+            }
+        } else {
+            logger.warn('Cloudflare not configured, skipping fallback.');
+        }
+
+        // 3. Fail
+        throw new Error(`Transcription service unavailable. Gemini: ${geminiError.message}`);
     }
 }
 
