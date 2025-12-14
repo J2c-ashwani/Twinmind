@@ -25,6 +25,8 @@ import 'screens/twin_match_screen.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
+import 'providers/gamification_provider.dart';
+import 'providers/daily_provider.dart';
 
 import 'screens/auth_wrapper.dart';
 
@@ -176,6 +178,8 @@ class TwinMindApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => GamificationProvider()),
+        ChangeNotifierProvider(create: (_) => DailyProvider()),
       ],
       child: MaterialApp(
         title: 'TwinMind',
