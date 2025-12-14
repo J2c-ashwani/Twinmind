@@ -88,12 +88,17 @@ Example 3 (No specific context): "Hope you're having a great day! I'm here if yo
 Output ONLY the message text. Keep it under 15 words.
 `;
 
-        const reminderMessage = await aiService.generateChatResponse(
+        const aiResponse = await aiService.generateChatResponse(
             `Recent chat history:\n${context}\n\nGenerate a check-in message:`,
             [], // conversationHistory
             systemPrompt,
             'reminders' // taskType
         );
+
+        // Extract text from AI response (aiService returns {text, provider, ...})
+        const reminderMessage = typeof aiResponse === 'string'
+            ? aiResponse
+            : (aiResponse?.text || aiResponse?.message || 'Hope you\'re having a great day!');
 
         // Save notification
         await supabaseAdmin

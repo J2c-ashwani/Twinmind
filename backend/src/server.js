@@ -36,6 +36,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for Render (fixes X-Forwarded-For header issue with rate limiting)
+app.set('trust proxy', 1);
+
 // ============================================
 // 🛡️ ENHANCED SECURITY MIDDLEWARE
 // ============================================
