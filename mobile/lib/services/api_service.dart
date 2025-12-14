@@ -787,8 +787,8 @@ class ApiService {
       final audioFile = await http.MultipartFile.fromPath(
         'audio',
         audioFilePath,
-        filename: 'voice.aac', // Specify filename with extension
-        contentType: MediaType('audio', 'aac'),
+        filename: 'voice.m4a', // Specify filename with extension
+        contentType: MediaType('audio', 'mp4'),
       );
       request.files.add(audioFile);
 

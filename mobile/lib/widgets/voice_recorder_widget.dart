@@ -1,8 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 class VoiceRecorderWidget extends StatefulWidget {
   final Function(File audioFile, int duration) onSend;
@@ -19,8 +19,7 @@ class VoiceRecorderWidget extends StatefulWidget {
 }
 
 class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  final FlutterSoundPlayer _player = FlutterSoundPlayer();
+  final AudioRecorder _recorder = AudioRecorder();
   bool _isRecording = false;
   bool _isPlaying = false;
   int _duration = 0;
@@ -28,70 +27,91 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
   String? _recordingPath;
 
   @override
-  void initState() {
-    super.initState();
-    _initRecorder();
-    _initPlayer();
-  }
-
-  Future<void> _initPlayer() async {
-    await _player.openPlayer();
-  }
-
-  Future<void> _initRecorder() async {
-    await _recorder.openRecorder();
-    await _recorder.setSubscriptionDuration(const Duration(milliseconds: 100));
-  }
-
-  @override
   void dispose() {
-    _recorder.closeRecorder();
-    _player.closePlayer();
+    _recorder.dispose();
     super.dispose();
   }
 
   Future<void> _startRecording() async {
-    // Request permission
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission denied')),
-      );
-      return;
+    try {
+      // Check and request permission
+      if (await _recorder.hasPermission()) {
+        // Get temp directory
+        final directory = kIsWeb 
+            ? null // Web doesn't need path_provider
+            : await getTemporaryDirectory();
+        
+        _recordingPath = kIsWeb
+            ? 'voice_recording' // Web uses blob
+            : '${directory!.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+        // Configure recording based on platform
+        final config = RecordConfig(
+          encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+          bitRate: 128000,
+          sampleRate: 44100,
+        );
+
+        await _recorder.start(config, path: _recordingPath!);
+
+        setState(() {
+          _isRecording = true;
+          _duration = 0;
+        });
+
+        // Update duration
+        _startDurationTimer();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission denied')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start recording: $e')),
+        );
+      }
     }
+  }
 
-    // Get temp directory
-    final directory = await getTemporaryDirectory();
-    _recordingPath = '${directory.path}/voice_${DateTime.now().millisecondsSinceEpoch}.aac';
-
-    await _recorder.startRecorder(
-      toFile: _recordingPath,
-      codec: Codec.aacADTS,
-    );
-
-    setState(() {
-      _isRecording = true;
-      _duration = 0;
-    });
-
-    // Update duration
-    _recorder.onProgress!.listen((event) {
-      setState(() {
-        _duration = event.duration.inSeconds;
-      });
+  void _startDurationTimer() {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (_isRecording && mounted) {
+        setState(() {
+          _duration++;
+        });
+        _startDurationTimer();
+      }
     });
   }
 
   Future<void> _stopRecording() async {
-    await _recorder.stopRecorder();
-    
-    if (_recordingPath != null) {
-      _audioFile = File(_recordingPath!);
-    }
+    try {
+      final path = await _recorder.stop();
+      
+      if (path != null) {
+        if (kIsWeb) {
+          // On web, we need to handle the blob URL differently
+          // For now, we'll create a temporary file reference
+          _audioFile = File(path);
+        } else {
+          _audioFile = File(path);
+        }
+      }
 
-    setState(() {
-      _isRecording = false;
-    });
+      setState(() {
+        _isRecording = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to stop recording: $e')),
+        );
+      }
+    }
   }
 
   void _handleSend() {
@@ -107,7 +127,6 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
   }
 
   void _reset() {
-    _stopPlayback();
     setState(() {
       _isRecording = false;
       _isPlaying = false;
@@ -115,30 +134,6 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
       _audioFile = null;
       _recordingPath = null;
     });
-  }
-
-  Future<void> _togglePlayback() async {
-    if (_audioFile == null) return;
-
-    if (_isPlaying) {
-      await _player.stopPlayer();
-      setState(() => _isPlaying = false);
-    } else {
-      setState(() => _isPlaying = true);
-      await _player.startPlayer(
-        fromURI: _audioFile!.path,
-        whenFinished: () {
-          setState(() => _isPlaying = false);
-        },
-      );
-    }
-  }
-
-  Future<void> _stopPlayback() async {
-    if (_player.isPlaying) {
-      await _player.stopPlayer();
-      setState(() => _isPlaying = false);
-    }
   }
 
   String _formatDuration(int seconds) {
@@ -312,29 +307,32 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
 
         const SizedBox(height: 24),
 
-        // Play Button
-        GestureDetector(
-          onTap: _togglePlayback,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(
-              _isPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
-              color: const Color(0xFF8B5CF6),
-              size: 32,
+        // Play Button (disabled on web for now)
+        if (!kIsWeb)
+          GestureDetector(
+            onTap: () {
+              // TODO: Implement playback
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.play_arrow_rounded,
+                color: Color(0xFF8B5CF6),
+                size: 32,
+              ),
             ),
           ),
-        ),
 
         const SizedBox(height: 24),
 

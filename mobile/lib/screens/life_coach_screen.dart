@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/api_service.dart';
 import 'program_detail_screen.dart';
 
@@ -17,6 +18,19 @@ class _LifeCoachScreenState extends State<LifeCoachScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAuthAndLoad();
+  }
+
+  Future<void> _checkAuthAndLoad() async {
+    // Check if user is authenticated
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      // Not logged in, redirect to login
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+      return;
+    }
     _loadPrograms();
   }
 

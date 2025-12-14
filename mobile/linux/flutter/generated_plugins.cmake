@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   emoji_picker_flutter
   flutter_sound
   gtk
+  record_linux
   url_launcher_linux
 )
 

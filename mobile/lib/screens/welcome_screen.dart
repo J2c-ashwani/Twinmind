@@ -105,10 +105,9 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Container(
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          child: const Row(
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 18),
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.auto_awesome),

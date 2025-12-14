@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/api_service.dart';
 import 'coaching_session_screen.dart';
 
@@ -21,6 +22,19 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
   bool _isLoading = false;
 
   Future<void> _startProgram() async {
+    // Check if user is authenticated
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      // Not logged in, redirect to login
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to start the program')),
+        );
+        Navigator.of(context).pushNamed('/login');
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       await _apiService.startProgram(widget.programId);

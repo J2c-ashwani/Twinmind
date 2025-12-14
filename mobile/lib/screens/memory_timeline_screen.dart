@@ -139,8 +139,9 @@ class _MemoryTimelineScreenState extends State<MemoryTimelineScreen> {
           });
         },
         selectedColor: const Color(0xFF8B5CF6),
+        backgroundColor: Colors.black.withOpacity(0.3),
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
+          color: isSelected ? Colors.white : Colors.white70,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),

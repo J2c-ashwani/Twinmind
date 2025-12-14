@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AuthService extends ChangeNotifier {
+class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   final _supabase = Supabase.instance.client;
   
   User? get currentUser => _supabase.auth.currentUser;
@@ -9,10 +10,49 @@ class AuthService extends ChangeNotifier {
   Session? get currentSession => _supabase.auth.currentSession;
   
   AuthService() {
+    // Register lifecycle observer to handle app resume
+    WidgetsBinding.instance.addObserver(this);
+
     // Listen to auth state changes
     _supabase.auth.onAuthStateChange.listen((data) {
       notifyListeners();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _recoverSession();
+    }
+  }
+
+  Future<void> _recoverSession() async {
+    try {
+      final session = currentSession;
+      if (session != null) {
+        // If token is expired or close to expiring (within 60s), force refresh
+        if (session.isExpired || _isTokenNearExpiry(session.expiresAt)) {
+          print('🔄 App Resumed: Refreshing stale session...');
+          await _supabase.auth.refreshSession();
+          print('✅ Session recovered');
+        }
+      }
+    } catch (e) {
+      print('⚠️ Session recovery failed: $e');
+    }
+  }
+
+  bool _isTokenNearExpiry(int? expiresAt) {
+    if (expiresAt == null) return false;
+    final expiry = DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000);
+    // Refresh if expiring in less than 5 minutes
+    return DateTime.now().add(const Duration(minutes: 5)).isAfter(expiry);
   }
   
   Future<AuthResponse> signInWithEmail(String email, String password) async {

@@ -43,6 +43,7 @@ dependencies:
   
   # Voice
   flutter_sound: ^9.2.13
+  record: ^5.0.4
   permission_handler: ^11.1.0
   path_provider: ^2.1.1
   emoji_picker_flutter: ^4.3.0
