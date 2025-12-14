@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/daily_provider.dart';
+import '../services/auth_service.dart';
 
 class DailyChallengesScreen extends StatefulWidget {
   const DailyChallengesScreen({super.key});
@@ -14,7 +15,8 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DailyProvider>().loadChallenges();
+      final token = context.read<AuthService>().getAccessToken();
+      context.read<DailyProvider>().loadChallenges(token);
     });
   }
 

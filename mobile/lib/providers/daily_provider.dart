@@ -44,12 +44,19 @@ class DailyProvider with ChangeNotifier {
   int get completedCount => _challenges.where((c) => c.completed).length;
   int get totalCount => _challenges.length;
 
-  Future<void> loadChallenges() async {
+  Future<void> loadChallenges(String? token) async {
+    if (token == null) {
+      _error = 'No access token available';
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      _apiService.setToken(token);
       final data = await _apiService.getDailyChallenges();
       _challenges = (data)
           .map((json) => DailyChallenge.fromJson(json))
