@@ -38,90 +38,106 @@ class _MemoryTimelineScreenState extends State<MemoryTimelineScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // Filter chips
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildFilterChip('all', 'All'),
-                _buildFilterChip('milestone', 'Milestone'),
-                _buildFilterChip('conversation', 'Conversation'),
-                _buildFilterChip('achievement', 'Achievement'),
-                _buildFilterChip('emotion', 'Emotion'),
-                _buildFilterChip('funny_moment', 'Funny'),
-                _buildFilterChip('breakthrough', 'Breakthrough'),
-              ],
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0F0F1E), Color(0xFF1A0B2E), Color(0xFF0F0F1E)],
           ),
+        ),
+        child: Column(
+          children: [
+            // Filter chips
+            Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _buildFilterChip('all', 'All'),
+                  _buildFilterChip('milestone', 'Milestone'),
+                  _buildFilterChip('conversation', 'Conversation'),
+                  _buildFilterChip('achievement', 'Achievement'),
+                  _buildFilterChip('emotion', 'Emotion'),
+                  _buildFilterChip('funny_moment', 'Funny'),
+                  _buildFilterChip('breakthrough', 'Breakthrough'),
+                ],
+              ),
+            ),
 
-          // Memory list
-          Expanded(
-            child: Consumer<MemoryProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
+            // Memory list
+            Expanded(
+              child: Consumer<MemoryProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
 
-                if (provider.error != null) {
-                  return Center(
-                    child: Text('Error: ${provider.error}'),
-                  );
-                }
+                  if (provider.error != null) {
+                    return Center(
+                      child: Text(
+                        'Error: ${provider.error}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
 
-                final filteredMemories = _selectedFilter == 'all'
-                    ? provider.memories
-                    : provider.memories
-                        .where((m) => m.memoryType == _selectedFilter)
-                        .toList();
+                  final filteredMemories = _selectedFilter == 'all'
+                      ? provider.memories
+                      : provider.memories
+                          .where((m) => m.memoryType == _selectedFilter)
+                          .toList();
 
-                if (filteredMemories.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.auto_awesome, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No memories yet',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Keep chatting to create special moments!',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                  if (filteredMemories.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.auto_awesome, size: 64, color: Colors.white.withOpacity(0.5)),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No memories yet',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Keep chatting to create special moments!',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => provider.loadMemories(),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredMemories.length,
+                      itemBuilder: (context, index) {
+                        return MemoryCard(
+                          memory: filteredMemories[index],
+                          onTap: () {
+                            provider.setSelectedMemory(filteredMemories[index]);
+                            Navigator.pushNamed(context, '/memory-detail');
+                          },
+                        );
+                      },
                     ),
                   );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () => provider.loadMemories(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredMemories.length,
-                    itemBuilder: (context, index) {
-                      return MemoryCard(
-                        memory: filteredMemories[index],
-                        onTap: () {
-                          provider.setSelectedMemory(filteredMemories[index]);
-                          Navigator.pushNamed(context, '/memory-detail');
-                        },
-                      );
-                    },
-                  ),
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
