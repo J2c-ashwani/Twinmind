@@ -21,7 +21,7 @@ class GroqService {
             // Groq SDK is OpenAI-compatible, so messagesArray works directly
             const completion = await this.groq.chat.completions.create({
                 messages: messagesArray,
-                model: 'llama3-70b-8192', // Fast and free
+                model: 'llama-3.3-70b-versatile', // Replacement for deprecated llama3-70b-8192
                 temperature: 0.9,
                 max_tokens: 2048,
             });
@@ -47,7 +47,7 @@ class GroqService {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage },
                 ],
-                model: 'llama3-70b-8192',
+                model: 'llama-3.3-70b-versatile',
                 temperature: 0.9,
                 max_tokens: 2048,
             });
@@ -71,7 +71,7 @@ class GroqService {
             // Groq requires a ReadStream for the file
             const transcription = await this.groq.audio.transcriptions.create({
                 file: fs.createReadStream(filePath),
-                model: 'distil-whisper-large-v3-en', // Ultra fast & free
+                model: 'whisper-large-v3-turbo', // Replacement for deprecated distil-whisper-large-v3-en
                 response_format: 'json',
             });
 
