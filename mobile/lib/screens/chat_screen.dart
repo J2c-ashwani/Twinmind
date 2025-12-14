@@ -823,6 +823,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 Navigator.pushNamed(context, '/insights');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.timeline, color: Colors.white70),
+              title: const Text('Memory Timeline', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/memory-timeline');
+              },
+            ),
              ListTile(
               leading: const Icon(Icons.privacy_tip_outlined, color: Colors.white70),
               title: const Text('Privacy & Terms', style: TextStyle(color: Colors.white)),
