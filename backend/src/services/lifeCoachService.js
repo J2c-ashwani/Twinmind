@@ -127,12 +127,12 @@ Current Exercise Instructions: "${content.exercise_instructions}"
 If the user seems ready to move on, suggest completing the daily exercise.
 `;
 
-        // Generate Response
-        const response = await aiService.generateResponse(
+        // Generate Response using correct method name
+        const response = await aiService.generateChatResponse(
             userMessage,
-            systemPrompt,
             history,
-            'gpt-4o-mini' // Use a good model for coaching
+            systemPrompt,
+            'coaching' // Task type for routing
         );
 
         return response;
