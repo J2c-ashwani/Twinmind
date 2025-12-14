@@ -23,8 +23,18 @@ class _StreakWidgetState extends State<StreakWidget> {
   Future<void> _loadStreak() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
       final api = ApiService();
-      api.setToken(authService.getAccessToken() ?? 'dev-token');
+      api.setToken(token);
 
       final data = await api.getGamificationStatus();
       final streaks = data['streaks'] as List;

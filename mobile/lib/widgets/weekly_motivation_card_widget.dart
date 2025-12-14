@@ -25,8 +25,18 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
   Future<void> _loadCard() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
       final api = ApiService();
-      api.setToken(authService.getAccessToken() ?? 'dev-token');
+      api.setToken(token);
 
       final data = await api.getWeeklyMotivationCard();
       setState(() {
@@ -48,8 +58,18 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) {
+        setState(() {
+          _isGenerating = false;
+        });
+        return;
+      }
+      
       final api = ApiService();
-      api.setToken(authService.getAccessToken() ?? 'dev-token');
+      api.setToken(token);
 
       final data = await api.generateMotivationCard();
       setState(() {
@@ -75,8 +95,13 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
 
       // Mark as shared
       final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) return;
+      
       final api = ApiService();
-      api.setToken(authService.getAccessToken() ?? 'dev-token');
+      api.setToken(token);
       await api.markCardShared(_card!['id'], 'native');
     } catch (e) {
       print('Share failed: $e');

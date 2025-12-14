@@ -26,8 +26,18 @@ class _GrowthCircleWidgetState extends State<GrowthCircleWidget> {
   Future<void> _loadCircle() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
       final api = ApiService();
-      api.setToken(authService.getAccessToken() ?? 'dev-token');
+      api.setToken(token);
 
       final data = await api.getMyCircle();
       if (data['circle'] != null) {

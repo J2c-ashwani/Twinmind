@@ -260,8 +260,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed == true && mounted) {
       try {
         final authService = Provider.of<AuthService>(context, listen: false);
+        final token = authService.getAccessToken();
+        
+        if (token == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please sign in to clear history')),
+            );
+          }
+          return;
+        }
+        
         final api = ApiService();
-        api.setToken(authService.getAccessToken() ?? 'dev-token');
+        api.setToken(token);
         
         await api.clearChatHistory();
         
