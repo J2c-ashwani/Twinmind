@@ -135,7 +135,12 @@ If the user seems ready to move on, suggest completing the daily exercise.
             'coaching' // Task type for routing
         );
 
-        return response;
+        // Extract message string from response object
+        // generateChatResponse returns { message: "...", ... }
+        if (typeof response === 'string') {
+            return response;
+        }
+        return response?.message || response?.content || JSON.stringify(response);
     } catch (error) {
         logger.error('Error processing session message:', error);
         throw error;
