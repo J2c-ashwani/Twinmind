@@ -5,6 +5,14 @@ import 'package:http_parser/http_parser.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Custom exception for rate limiting
+class RateLimitException implements Exception {
+  final String message;
+  RateLimitException([this.message = 'Rate limit exceeded. Please upgrade to Pro for unlimited access.']);
+  @override
+  String toString() => message;
+}
+
 class ApiService {
   static const String baseUrl = kReleaseMode 
       ? 'https://twinmind-9l6x.onrender.com'
@@ -312,6 +320,9 @@ class ApiService {
     );
     if (response.statusCode == 200) {
       return json.decode(response.body);
+    }
+    if (response.statusCode == 429) {
+      throw RateLimitException();
     }
     throw Exception('Failed to send message');
   }
