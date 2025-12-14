@@ -136,11 +136,13 @@ If the user seems ready to move on, suggest completing the daily exercise.
         );
 
         // Extract message string from response object
-        // generateChatResponse returns { message: "...", ... }
+        // generateChatResponse returns { text: "...", ... } or { message: "...", ... }
         if (typeof response === 'string') {
             return response;
         }
-        return response?.message || response?.content || JSON.stringify(response);
+
+        // Check all common field names for the message content
+        return response?.text || response?.message || response?.content || (response?.choices && response.choices[0]?.message?.content) || JSON.stringify(response);
     } catch (error) {
         logger.error('Error processing session message:', error);
         throw error;
