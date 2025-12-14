@@ -98,11 +98,11 @@ router.get('/mood/history', authenticateUser, async (req, res) => {
  */
 router.get('/challenges', authenticateUser, async (req, res) => {
     try {
-        // Mock challenges for now
+        // Mock challenges - using format expected by web app
         const challenges = [
-            { id: '1', title: 'Morning Reflection', description: 'Take 5 minutes to reflect on your goals.', completed: false, xp: 10 },
-            { id: '2', title: 'Gratitude Log', description: 'Write down 3 things you are grateful for.', completed: false, xp: 15 },
-            { id: '3', title: 'Mindful Breathing', description: 'Practice deep breathing for 2 minutes.', completed: false, xp: 10 }
+            { id: '1', type: 'morning_reflection', task: 'Morning Reflection', description: 'Take 5 minutes to reflect on your goals.', completed: false, reward: 10, time_window: '6AM - 10AM' },
+            { id: '2', type: 'gratitude_moment', task: 'Gratitude Log', description: 'Write down 3 things you are grateful for.', completed: false, reward: 15, time_window: null },
+            { id: '3', type: 'mindful_breathing', task: 'Mindful Breathing', description: 'Practice deep breathing for 2 minutes.', completed: false, reward: 10, time_window: null }
         ];
         res.json(challenges);
     } catch (error) {

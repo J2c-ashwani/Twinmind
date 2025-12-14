@@ -3,26 +3,29 @@ import '../services/api_service.dart';
 
 class DailyChallenge {
   final String id;
-  final String title;
-  final String description;
-  final int xp;
+  final String type;
+  final String task;
+  final int reward;
   final bool completed;
+  final String? timeWindow;
 
   DailyChallenge({
     required this.id,
-    required this.title,
-    required this.description,
-    required this.xp,
+    required this.type,
+    required this.task,
+    required this.reward,
     required this.completed,
+    this.timeWindow,
   });
 
   factory DailyChallenge.fromJson(Map<String, dynamic> json) {
     return DailyChallenge(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      xp: json['xp'] ?? 0,
+      id: json['id']?.toString() ?? '',
+      type: json['type'] ?? '',
+      task: json['task'] ?? '',
+      reward: json['reward'] ?? 0,
       completed: json['completed'] ?? false,
+      timeWindow: json['time_window'],
     );
   }
 }
@@ -75,10 +78,11 @@ class DailyProvider with ChangeNotifier {
         final challenge = _challenges[index];
         _challenges[index] = DailyChallenge(
           id: challenge.id,
-          title: challenge.title,
-          description: challenge.description,
-          xp: challenge.xp,
+          type: challenge.type,
+          task: challenge.task,
+          reward: challenge.reward,
           completed: true,
+          timeWindow: challenge.timeWindow,
         );
         notifyListeners();
       }

@@ -187,7 +187,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
         children: [
           // Icon
           Text(
-            _getChallengeIcon(challenge.title),
+            _getChallengeIcon(challenge.type),
             style: const TextStyle(fontSize: 32),
           ),
           const SizedBox(width: 16),
@@ -198,29 +198,31 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  challenge.title,
+                  challenge.task,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  challenge.description,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
+                    if (challenge.timeWindow != null) ...[
+                      Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        challenge.timeWindow!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
                     const Icon(Icons.card_giftcard, size: 14, color: Color(0xFF8B5CF6)),
                     const SizedBox(width: 4),
                     Text(
-                      '${challenge.xp} XP',
+                      '${challenge.reward} XP',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF8B5CF6),
@@ -257,17 +259,14 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
     );
   }
 
-  String _getChallengeIcon(String title) {
-    // Map challenge titles to icons
-    if (title.toLowerCase().contains('morning') || title.toLowerCase().contains('reflection')) {
-      return '☀️';
-    } else if (title.toLowerCase().contains('gratitude')) {
-      return '🙏';
-    } else if (title.toLowerCase().contains('breathing') || title.toLowerCase().contains('mindful')) {
-      return '🧘';
-    } else if (title.toLowerCase().contains('evening') || title.toLowerCase().contains('win')) {
-      return '🌟';
-    }
-    return '✨';
+  String _getChallengeIcon(String type) {
+    const icons = {
+      'morning_reflection': '☀️',
+      'gratitude_moment': '🙏',
+      'mindful_breathing': '🧘',
+      'evening_wins': '🌟',
+      'vulnerability_challenge': '💙',
+    };
+    return icons[type] ?? '✨';
   }
 }
