@@ -489,7 +489,7 @@ export async function getFreezeStatus(userId) {
  */
 export async function getGamificationStatus(userId) {
     try {
-        const [streaks, achievements, level] = await Promise.all([
+        const [streaks, userAchievements, level] = await Promise.all([
             supabaseAdmin.from('user_streaks').select('*').eq('user_id', userId),
             supabaseAdmin.from('user_achievements').select('*').eq('user_id', userId).order('unlocked_at', { ascending: false }),
             supabaseAdmin.from('user_levels').select('*').eq('user_id', userId).single()
@@ -525,9 +525,36 @@ export async function getGamificationStatus(userId) {
             };
         });
 
+        // Merge predefined achievements with user's unlocked achievements
+        // This ensures ALL achievements are shown (locked ones too)
+        const unlockedMap = {};
+        (userAchievements.data || []).forEach(a => {
+            unlockedMap[a.achievement_type] = a;
+        });
+
+        const allAchievements = Object.entries(ACHIEVEMENTS).map(([type, achievement]) => {
+            const userAchievement = unlockedMap[type];
+            if (userAchievement) {
+                // User has unlocked this achievement
+                return userAchievement;
+            } else {
+                // Locked achievement - return predefined data with null unlocked_at
+                return {
+                    id: type, // Use type as fallback ID
+                    achievement_type: type,
+                    achievement_name: achievement.name,
+                    description: achievement.description,
+                    rarity: achievement.rarity,
+                    points: achievement.points,
+                    icon: achievement.icon,
+                    unlocked_at: null
+                };
+            }
+        });
+
         return {
             streaks: effectiveStreaks,
-            achievements: achievements.data || [],
+            achievements: allAchievements,
             level: level.data || { current_level: 'stranger', level_number: 1, experience_points: 0 }
         };
 
