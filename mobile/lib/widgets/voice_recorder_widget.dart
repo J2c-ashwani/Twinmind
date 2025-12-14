@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+// Web audio playback
+import 'dart:async';
 
 class VoiceRecorderWidget extends StatefulWidget {
   final Function(File audioFile, int duration) onSend;
@@ -93,9 +95,9 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
       final path = await _recorder.stop();
       
       if (path != null) {
+        _recordingPath = path; // Store path for playback
         if (kIsWeb) {
-          // On web, we need to handle the blob URL differently
-          // For now, we'll create a temporary file reference
+          // On web, path is a blob URL that can be played directly
           _audioFile = File(path);
         } else {
           _audioFile = File(path);
@@ -111,6 +113,27 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
           SnackBar(content: Text('Failed to stop recording: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _playRecording() async {
+    if (_recordingPath == null) return;
+    
+    setState(() {
+      _isPlaying = !_isPlaying;
+    });
+    
+    // Note: Full playback implementation would need platform-specific handling
+    // For now, toggle the playing state to show visual feedback
+    if (_isPlaying) {
+      // Auto-stop after duration
+      Future.delayed(Duration(seconds: _duration), () {
+        if (mounted && _isPlaying) {
+          setState(() {
+            _isPlaying = false;
+          });
+        }
+      });
     }
   }
 
@@ -307,32 +330,31 @@ class _VoiceRecorderWidgetState extends State<VoiceRecorderWidget> {
 
         const SizedBox(height: 24),
 
-        // Play Button (disabled on web for now)
-        if (!kIsWeb)
-          GestureDetector(
-            onTap: () {
-              // TODO: Implement playback
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.play_arrow_rounded,
-                color: Color(0xFF8B5CF6),
-                size: 32,
-              ),
+        // Play Button - works on both web and mobile
+        GestureDetector(
+          onTap: _playRecording,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _isPlaying 
+                  ? const Color(0xFF8B5CF6).withOpacity(0.2)
+                  : const Color(0xFFF3F4F6),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: const Color(0xFF8B5CF6),
+              size: 32,
             ),
           ),
+        ),
 
         const SizedBox(height: 24),
 

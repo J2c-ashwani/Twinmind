@@ -43,13 +43,17 @@ dependencies:
   
   # Voice
   flutter_sound: ^9.2.13
-  record: ^5.0.4
+  record: ^5.1.2
   permission_handler: ^11.1.0
   path_provider: ^2.1.1
   emoji_picker_flutter: ^4.3.0
   
   # Time formatting
   timeago: ^3.6.1
+
+dependency_overrides:
+  record_linux: ^1.2.1
+  record_platform_interface: ^1.4.0
 
 dev_dependencies:
   flutter_test:
