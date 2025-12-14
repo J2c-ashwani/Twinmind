@@ -88,6 +88,14 @@ class ExploreScreen extends StatelessWidget {
                     const Color(0xFFEC4899),
                     '/twin-match', // Assuming this route exists or we can add it
                   ),
+                  _buildFeatureCard(
+                    context,
+                    'Memories',
+                    'Your timeline',
+                    Icons.timeline,
+                    const Color(0xFF06B6D4),
+                    '/memory-timeline',
+                  ),
                 ],
               ),
             ],

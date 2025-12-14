@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/mood_history_widget.dart';
 import '../widgets/weekly_motivation_card_widget.dart';
+import '../widgets/streak_widget.dart';
 import 'growth_story_screen.dart';
 import 'twin_match_screen.dart';
 
@@ -120,6 +121,11 @@ class ProfileScreen extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 32),
+
+                // Daily Streak
+                const StreakWidget(),
+
+                const SizedBox(height: 24),
 
                 // Mood History
                 const MoodHistoryWidget(),
