@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class NotificationsScreen extends StatefulWidget {
@@ -22,6 +24,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _loadNotifications() async {
     try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      
+      _apiService.setToken(token);
+      
       final notifications = await _apiService.getNotifications();
       setState(() {
         _notifications = notifications;

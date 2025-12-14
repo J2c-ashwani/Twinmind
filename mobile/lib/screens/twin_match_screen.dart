@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/api_service.dart';
 
 class TwinMatchScreen extends StatefulWidget {
@@ -19,6 +20,15 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
 
+    // Check if user is authenticated
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      setState(() {
+        _error = 'Please sign in to use Twin Match';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -26,12 +36,8 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
     });
 
     try {
-      final api = Provider.of<ApiService>(context, listen: false);
-      // First find the user
-      // Note: The web app does findUserForMatch then compareTwins, 
-      // but the mobile API service seems to have compareTwins taking the identifier directly.
-      // Let's check the implementation in api_service.dart again.
-      // It sends 'identifier' in the body.
+      final api = ApiService();
+      api.setToken(session.accessToken);
       
       final result = await api.compareTwins(query);
       

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/api_service.dart';
 
 class CoachingSessionScreen extends StatefulWidget {
@@ -33,17 +34,28 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
   }
 
   Future<void> _loadSession() async {
+    // Check if user is authenticated
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+      return;
+    }
+    
+    _apiService.setToken(session.accessToken);
+    
     try {
-      final session = await _apiService.getSession(widget.programId);
+      final sessionData = await _apiService.getSession(widget.programId);
       setState(() {
-        _sessionData = session;
+        _sessionData = sessionData;
         _isLoading = false;
         
         // Add initial prompt from AI if history is empty
         if (_messages.isEmpty) {
           _messages.add({
             'role': 'ai',
-            'content': session['content']['initial_prompt']
+            'content': sessionData['content']['initial_prompt']
           });
         }
       });

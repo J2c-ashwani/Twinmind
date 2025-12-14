@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ReferralScreen extends StatefulWidget {
@@ -24,6 +26,17 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   Future<void> _loadReferralData() async {
     try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final token = authService.getAccessToken();
+      
+      // Skip API call if not authenticated
+      if (token == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      
+      _apiService.setToken(token);
+      
       final code = await _apiService.getReferralCode();
       final stats = await _apiService.getReferralStats();
       setState(() {
