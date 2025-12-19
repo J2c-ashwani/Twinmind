@@ -1,8 +1,11 @@
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 class ApiClient {
     private baseUrl: string;
     private token: string | null = null;
+    private supabase = createClientComponentClient();
 
     constructor() {
         this.baseUrl = API_URL;
@@ -16,6 +19,18 @@ class ApiClient {
         endpoint: string,
         options: RequestInit = {}
     ): Promise<T> {
+        // Robust Token Fetching (Mobile Parity)
+        if (!this.token) {
+            try {
+                const { data } = await this.supabase.auth.getSession();
+                if (data.session?.access_token) {
+                    this.token = data.session.access_token;
+                }
+            } catch (e) {
+                console.warn('Failed to auto-fetch token:', e);
+            }
+        }
+
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
             ...(this.token && { Authorization: `Bearer ${this.token}` }),

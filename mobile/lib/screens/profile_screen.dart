@@ -6,6 +6,7 @@ import '../widgets/weekly_motivation_card_widget.dart';
 import '../widgets/streak_widget.dart';
 import 'growth_story_screen.dart';
 import 'twin_match_screen.dart';
+import 'growth_circles_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -138,37 +139,61 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Growth Story & Twin Match Buttons
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const GrowthStoryScreen()),
-                        ),
-                        icon: const Icon(Icons.auto_graph, size: 18),
-                        label: const Text('Growth Story'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const GrowthStoryScreen()),
+                            ),
+                            icon: const Icon(Icons.auto_graph, size: 18),
+                            label: const Text('Growth Story'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const TwinMatchScreen()),
+                            ),
+                            icon: const Icon(Icons.people, size: 18),
+                            label: const Text('Twin Match'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8B5CF6),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const TwinMatchScreen()),
+                          MaterialPageRoute(builder: (_) => const GrowthCirclesScreen()),
                         ),
-                        icon: const Icon(Icons.people, size: 18),
-                        label: const Text('Twin Match'),
+                        icon: const Icon(Icons.groups_rounded, size: 18),
+                        label: const Text('Growth Circle'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
+                          backgroundColor: const Color(0xFFEC4899),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(

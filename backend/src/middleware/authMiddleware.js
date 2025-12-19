@@ -42,7 +42,11 @@ export const authenticateUser = async (req, res, next) => {
 
         // Attach user to request
         req.userId = user.id;
-        req.user = { userId: user.id }; // For compatibility
+        req.user = {
+            userId: user.id,
+            email: user.email,
+            role: user.role
+        };
 
         next();
     } catch (error) {

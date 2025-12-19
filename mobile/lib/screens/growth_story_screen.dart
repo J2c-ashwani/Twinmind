@@ -46,7 +46,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Failed to load growth story: $e');
+      // print('Failed to load growth story: $e');
       setState(() {
         _isLoading = false;
       });
@@ -54,7 +54,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
   }
 
   Color _getMoodColor(int? mood) {
-    if (mood == null) return Colors.grey.withOpacity(0.3);
+    if (mood == null) return Colors.grey.withValues(alpha: 0.3);
     switch (mood) {
       case 1:
         return Colors.red;
@@ -104,7 +104,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.blue.withOpacity(0.1), Colors.purple.withOpacity(0.1)],
+            colors: [Colors.blue.withValues(alpha: 0.1), Colors.purple.withValues(alpha: 0.1)],
           ),
           borderRadius: BorderRadius.circular(20),
         ),
@@ -120,7 +120,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue.withOpacity(0.1), Colors.purple.withOpacity(0.1)],
+          colors: [Colors.blue.withValues(alpha: 0.1), Colors.purple.withValues(alpha: 0.1)],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.blue.withOpacity(0.2)),
@@ -141,7 +141,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
                   ),
                   Text(
                     '$totalDays days tracked',
-                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5)),
                   ),
                 ],
               ),
@@ -171,7 +171,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
           // Legend
           Row(
             children: [
-              Text('Less', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
+              Text('Less', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.5))),
               const SizedBox(width: 8),
               ...List.generate(
                 5,
@@ -186,7 +186,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text('More', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
+              Text('More', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.5))),
             ],
           ),
         ],
@@ -202,10 +202,10 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.purple.withOpacity(0.1), Colors.blue.withOpacity(0.1)],
+          colors: [Colors.purple.withValues(alpha: 0.1), Colors.blue.withValues(alpha: 0.1)],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.purple.withOpacity(0.2)),
+        border: Border.all(color: Colors.purple.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,7 +242,7 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
                 border: const Border(left: BorderSide(color: Colors.purpleAccent, width: 2)),
               ),
@@ -261,13 +261,13 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.5))),
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
         ],

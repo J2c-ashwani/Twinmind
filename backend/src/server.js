@@ -45,7 +45,7 @@ app.set('trust proxy', 1);
 
 // Debugging Hang
 app.use((req, res, next) => {
-  console.log('DEBUG: Request received', req.method, req.path);
+  // console.log('DEBUG: Request received', req.method, req.path);
   next();
 });
 
@@ -57,11 +57,16 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'"], // Removed 'unsafe-eval' for security
       connectSrc: ["'self'", process.env.SUPABASE_URL, "https://api.openai.com", "https://generativelanguage.googleapis.com"],
     },
   },
-  crossOriginEmbedderPolicy: false, // Needed for some API calls
+  crossOriginEmbedderPolicy: false,
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
 }));
 
 // CORS configuration

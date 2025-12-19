@@ -194,6 +194,30 @@ async function scheduleProactiveMessage(userId, trigger) {
         if (error) throw error;
 
         logger.info(`Scheduled proactive message for user ${userId}: ${trigger.type}`);
+
+        // ---------------------------------------------------------
+        // REVIVAL FIX: Also push to Notifications Table so user sees it
+        // ---------------------------------------------------------
+        try {
+            await supabaseAdmin
+                .from('notifications')
+                .insert({
+                    user_id: userId,
+                    title: 'TwinMind Check-in',
+                    body: message.replace(/"/g, ''), // Clean quotes
+                    type: 'proactive_message',
+                    data: {
+                        action: 'chat',
+                        message_id: data.id,
+                        trigger_type: trigger.type
+                    }
+                });
+            logger.info(`✅ Synced proactive message to Notifications for user ${userId}`);
+        } catch (notifError) {
+            logger.warn('Failed to sync proactive message to notifications:', notifError);
+        }
+        // ---------------------------------------------------------
+
         return data;
 
     } catch (error) {

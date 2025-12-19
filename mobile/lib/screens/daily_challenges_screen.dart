@@ -15,8 +15,8 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final token = context.read<AuthService>().getAccessToken();
-      context.read<DailyProvider>().loadChallenges(token);
+      // Token is fetched internally by provider
+      context.read<DailyProvider>().loadChallenges();
     });
   }
 
@@ -42,7 +42,35 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
           }
 
           if (provider.error != null) {
-            return Center(child: Text('Error: ${provider.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: ${provider.error}', style: const TextStyle(color: Colors.red)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => provider.loadChallenges(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (provider.challenges.isEmpty) {
+             return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('No challenges found for today.', style: TextStyle(color: Colors.white)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => provider.loadChallenges(),
+                    child: const Text('Refresh'),
+                  ),
+                ],
+              ),
+            );
           }
 
           return Column(
@@ -78,7 +106,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -100,7 +128,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                             ? provider.completedCount / provider.totalCount
                             : 0,
                         minHeight: 8,
-                        backgroundColor: Colors.white.withOpacity(0.3),
+                        backgroundColor: Colors.white.withValues(alpha: 0.3),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Colors.white,
                         ),
@@ -177,7 +205,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

@@ -60,6 +60,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load session: $e')),
@@ -98,6 +99,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
       });
       _scrollToBottom();
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSending = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send message: $e')),
@@ -209,7 +211,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
           // Goal Banner
           Container(
             padding: const EdgeInsets.all(12),
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             child: Row(
               children: [
                 const Icon(Icons.flag, color: Colors.blue),
@@ -228,7 +230,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
           if (_showExercise)
             Container(
               padding: const EdgeInsets.all(16),
-              color: Colors.amber.withOpacity(0.1),
+              color: Colors.amber.withValues(alpha: 0.1),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -289,7 +291,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
@@ -300,13 +302,13 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF8B5CF6).withOpacity(0.1),
-                    const Color(0xFF06B6D4).withOpacity(0.1),
+                    const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                    const Color(0xFF06B6D4).withValues(alpha: 0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
-                  color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),
@@ -322,7 +324,7 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
                       decoration: InputDecoration(
                         hintText: 'Type your response...',
                         hintStyle: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 16,
                         ),
                         border: InputBorder.none,

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Achievement {
   final String id;
@@ -92,7 +93,7 @@ class GamificationProvider with ChangeNotifier {
   List<Achievement> _achievements = [];
   List<Streak> _streaks = [];
   UserLevel? _level;
-  bool _isLoading = false;
+  bool _isLoading = true; // Default to true
   String? _error;
 
   List<Achievement> get achievements => _achievements;
@@ -112,19 +113,19 @@ class GamificationProvider with ChangeNotifier {
     ),
   );
 
-  Future<void> loadGamificationStatus(String? token) async {
-    if (token == null) {
-      _error = 'No access token available';
-      notifyListeners();
-      return;
-    }
-
+  Future<void> loadGamificationStatus([String? token]) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _apiService.setToken(token);
+      final accessToken = token ?? Supabase.instance.client.auth.currentSession?.accessToken;
+      
+      if (accessToken == null) {
+        throw Exception('Not authenticated. Please log in again.');
+      }
+
+      _apiService.setToken(accessToken);
       final data = await _apiService.getGamificationStatus();
       
       _achievements = (data['achievements'] as List)
@@ -137,7 +138,8 @@ class GamificationProvider with ChangeNotifier {
       
       _level = UserLevel.fromJson(data['level']);
     } catch (e) {
-      _error = e.toString();
+      print('🔴 GamificationProvider Error: $e');
+      _error = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();

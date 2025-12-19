@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DailyChallenge {
   final String id;
@@ -34,7 +35,7 @@ class DailyProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   
   List<DailyChallenge> _challenges = [];
-  bool _isLoading = false;
+  bool _isLoading = true; // Default to true to show loading initially
   String? _error;
 
   List<DailyChallenge> get challenges => _challenges;
@@ -44,25 +45,31 @@ class DailyProvider with ChangeNotifier {
   int get completedCount => _challenges.where((c) => c.completed).length;
   int get totalCount => _challenges.length;
 
-  Future<void> loadChallenges(String? token) async {
-    if (token == null) {
-      _error = 'No access token available';
-      notifyListeners();
-      return;
-    }
-
+  Future<void> loadChallenges([String? token]) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _apiService.setToken(token);
+      // Try to get token from arguments or Supabase directly
+      final accessToken = token ?? Supabase.instance.client.auth.currentSession?.accessToken;
+      
+      if (accessToken == null) {
+        throw Exception('Not authenticated. Please log in again.');
+      }
+
+      _apiService.setToken(accessToken);
       final data = await _apiService.getDailyChallenges();
+      
+      if (data is! List) throw Exception('Invalid data format received');
+      
       _challenges = (data)
           .map((json) => DailyChallenge.fromJson(json))
           .toList();
+          
     } catch (e) {
-      _error = e.toString();
+      print('🔴 DailyProvider Error: $e');
+      _error = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();

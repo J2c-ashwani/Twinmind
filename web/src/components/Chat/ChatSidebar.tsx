@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Plus, Trash2, ChevronLeft, ChevronRight, Trophy, Sparkles, Brain, Edit2, TrendingUp, Bell } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, ChevronLeft, ChevronRight, Trophy, Sparkles, Brain, Edit2, TrendingUp, Bell, Users } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
 interface Conversation {
@@ -161,6 +161,10 @@ export default function ChatSidebar({
                             <a href="/memories" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
                                 <Brain className="w-4 h-4 text-purple-500" />
                                 <span className="text-sm">Memories</span>
+                            </a>
+                            <a href="/growth-circles" className="flex items-center gap-3 p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                                <Users className="w-4 h-4 text-blue-500" />
+                                <span className="text-sm">Growth Circles</span>
                             </a>
                         </div>
                     </div>

@@ -15,8 +15,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final token = context.read<AuthService>().getAccessToken();
-      context.read<GamificationProvider>().loadGamificationStatus(token);
+      // Token is fetched internally by provider
+      context.read<GamificationProvider>().loadGamificationStatus();
     });
   }
 
@@ -44,7 +44,19 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           }
 
           if (provider.error != null) {
-            return Center(child: Text('Error: ${provider.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: ${provider.error}', style: const TextStyle(color: Colors.red)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => provider.loadGamificationStatus(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
           }
 
           final unlockedCount = provider.achievements
@@ -121,14 +133,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         boxShadow: isUnlocked
             ? [
                 BoxShadow(
-                  color: rarityColors[0].withOpacity(0.3),
+                  color: rarityColors[0].withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               ]
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -171,7 +183,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                       achievement.icon,
                       style: TextStyle(
                         fontSize: 48,
-                        color: isUnlocked ? null : Colors.grey.withOpacity(0.3),
+                        color: isUnlocked ? null : Colors.grey.withValues(alpha: 0.3),
                       ),
                     ),
                     if (!isUnlocked)
