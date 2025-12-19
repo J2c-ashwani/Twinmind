@@ -30,26 +30,55 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final authService = Provider.of<AuthService>(context, listen: false);
     
     if (authService.isAuthenticated) {
-      try {
-        // Strict Check: Verify if personality exists
-        final api = ApiService();
-        await api.getPersonalityProfile();
-        
-        if (mounted) {
-          setState(() {
-            _hasPersonality = true;
-            _isLoading = false;
-          });
+      bool success = false;
+      int attempts = 0;
+      
+      while (!success && attempts < 3) {
+        try {
+          // Strict Check: Verify if personality exists
+          final api = ApiService();
+          await api.getPersonalityProfile();
+          success = true; // If we get here, it exists (200 OK)
+          
+          if (mounted) {
+            setState(() {
+              _hasPersonality = true;
+              _isLoading = false;
+            });
+          }
+        } on HttpException catch (e) {
+          if (e.statusCode == 404) {
+            print('🔒 Strict Mode: Personality not found (404), redirecting to onboarding.');
+            success = true; // Exit loop, we know the status
+            if (mounted) {
+              setState(() {
+                _hasPersonality = false;
+                _isLoading = false;
+              });
+            }
+          } else {
+            // Server error (500, 503, etc.) - Retry
+            attempts++;
+            print('⚠️ Server Check Attempt $attempts failed: ${e.statusCode}. Retrying...');
+            await Future.delayed(const Duration(seconds: 2));
+          }
+        } catch (e) {
+          // Network/Timeout error - Retry
+          attempts++;
+          print('⚠️ Network Check Attempt $attempts failed: $e. Retrying...');
+          await Future.delayed(const Duration(seconds: 2));
         }
-      } catch (e) {
-        // If 404/Error, assume pending onboarding
-        print('🔒 Strict Mode: Personality not found, redirecting to onboarding.');
-        if (mounted) {
-          setState(() {
-            _hasPersonality = false;
-            _isLoading = false;
-          });
-        }
+      }
+
+      // If we exhausted retries and still failed
+      if (!success && mounted) {
+        // Fallback: Assume authenticated (MainScreen) to avoid locking user out.
+        // The MainScreen will likely show error states for specific widgets.
+        print('❌ All attempts failed. Creating optimistic session.');
+        setState(() {
+          _hasPersonality = true; 
+          _isLoading = false;
+        });
       }
     } else {
       if (mounted) {

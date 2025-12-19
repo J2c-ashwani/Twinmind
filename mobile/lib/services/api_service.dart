@@ -13,6 +13,14 @@ class RateLimitException implements Exception {
   String toString() => message;
 }
 
+class HttpException implements Exception {
+  final String message;
+  final int statusCode;
+  HttpException(this.message, this.statusCode);
+  @override
+  String toString() => 'HttpException: $message (Status: $statusCode)';
+}
+
 class ApiService {
   static const String baseUrl = kReleaseMode 
       ? 'https://twinmind-9l6x.onrender.com'
@@ -123,7 +131,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to load personality profile');
+    throw HttpException('Failed to load personality profile', response.statusCode);
   }
 
   Future<List<dynamic>> getQuestions() async {
