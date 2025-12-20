@@ -60,7 +60,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   void _shareReferral() {
     Share.share(
-      'I\'m using TwinGenie - the most advanced AI companion. Join me! https://twinmind.app/join/$_referralCode',
+      'I\'m using TwinGenie - the most advanced AI companion. Join me! https://twingenie.app/join/$_referralCode',
     );
   }
 

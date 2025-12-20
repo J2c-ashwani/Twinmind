@@ -1,6 +1,6 @@
 {
-    "name": "twinmind",
-    "short_name": "twinmind",
+    "name": "TwinGenie",
+    "short_name": "TwinGenie",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0F0F1E",

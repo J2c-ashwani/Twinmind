@@ -31,7 +31,7 @@ class PrivacyScreen extends StatelessWidget {
             _buildSection('4. Data Security', 
               'We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction.'),
             _buildSection('5. Contact Us', 
-              'If you have any questions about this Privacy Policy, please contact us at support@twinmind.app.'),
+              'If you have any questions about this Privacy Policy, please contact us at support@twingenie.app.'),
           ],
         ),
       ),
