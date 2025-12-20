@@ -35,7 +35,7 @@ export default function ReferralPage() {
 
     const shareToSocial = (platform: string) => {
         const url = `https://twinmind.app/join/${referralCode}`;
-        const text = "I'm using TwinMind - the most advanced AI companion. Join me!";
+        const text = "I'm using TwinGenie - the most advanced AI companion. Join me!";
 
         const urls: Record<string, string> = {
             twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
@@ -51,7 +51,7 @@ export default function ReferralPage() {
             {/* Header */}
             <div className="text-center mb-8">
                 <h1 className="text-4xl font-bold mb-2">Invite Friends</h1>
-                <p className="text-gray-600">Share TwinMind and earn rewards together!</p>
+                <p className="text-gray-600">Share TwinGenie and earn rewards together!</p>
             </div>
 
             {/* Referral Card */}

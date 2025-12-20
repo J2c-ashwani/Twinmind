@@ -123,7 +123,7 @@ export default function SecretAdminPanel() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
             🔒 Admin Dashboard
           </h1>
-          <p className="text-gray-400 mt-2">Secret Control Panel - TwinMind Platform</p>
+          <p className="text-gray-400 mt-2">Secret Control Panel - TwinGenie Platform</p>
         </div>
 
         {/* Tabs */}
@@ -133,8 +133,8 @@ export default function SecretAdminPanel() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 capitalize ${activeTab === tab
-                  ? 'border-b-2 border-purple-500 text-purple-400'
-                  : 'text-gray-400 hover:text-white'
+                ? 'border-b-2 border-purple-500 text-purple-400'
+                : 'text-gray-400 hover:text-white'
                 }`}
             >
               {tab}
@@ -197,7 +197,7 @@ export default function SecretAdminPanel() {
           <div className="bg-[#1A1A2E] rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">System Information</h2>
             <div className="space-y-4">
-              <InfoRow label="Platform" value="TwinMind AI" />
+              <InfoRow label="Platform" value="TwinGenie AI" />
               <InfoRow label="Version" value="1.0.0" />
               <InfoRow label="Environment" value={process.env.NODE_ENV || 'development'} />
               <InfoRow label="Database" value="Supabase PostgreSQL" />

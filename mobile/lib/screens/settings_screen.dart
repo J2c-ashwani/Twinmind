@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSectionHeader('Support'),
               _buildActionTile(
                 'Help Center',
-                'Get help with using TwinMind',
+                'Get help with using TwinGenie',
                 Icons.help_outline,
                 () {},
               ),
@@ -117,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _buildActionTile(
                 'Terms of Service',
-                'Rules for using TwinMind',
+                'Rules for using TwinGenie',
                 Icons.description_outlined,
                 () => Navigator.pushNamed(context, '/terms'),
               ),

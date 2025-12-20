@@ -2,7 +2,7 @@
   "name": "twinmind-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "TwinMind AI Backend API",
+  "description": "TwinGenie AI Backend API",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",

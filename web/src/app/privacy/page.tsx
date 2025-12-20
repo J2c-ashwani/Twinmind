@@ -7,7 +7,7 @@ export default function PrivacyPolicy() {
             <section className="space-y-4">
                 <h2 className="text-xl font-semibold">1. Introduction</h2>
                 <p>
-                    TwinMind ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our application.
+                    TwinGenie ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our application.
                 </p>
             </section>
 

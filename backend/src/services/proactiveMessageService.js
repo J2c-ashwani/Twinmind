@@ -203,7 +203,7 @@ async function scheduleProactiveMessage(userId, trigger) {
                 .from('notifications')
                 .insert({
                     user_id: userId,
-                    title: 'TwinMind Check-in',
+                    title: 'TwinGenie Check-in',
                     body: message.replace(/"/g, ''), // Clean quotes
                     type: 'proactive_message',
                     data: {

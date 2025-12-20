@@ -35,7 +35,7 @@ export default function InsightsSummary() {
     const shareInsights = async () => {
         if (!insights) return;
 
-        const text = `My ${insights.period} in review:\n\n${insights.insights.join('\n\n')}\n\nTrack your emotional journey with TwinMind`;
+        const text = `My ${insights.period} in review:\n\n${insights.insights.join('\n\n')}\n\nTrack your emotional journey with TwinGenie`;
 
         try {
             if (navigator.share) {

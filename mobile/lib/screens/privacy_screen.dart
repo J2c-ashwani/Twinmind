@@ -23,7 +23,7 @@ class PrivacyScreen extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           children: [
             _buildSection('1. Introduction', 
-              'TwinMind ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our application.'),
+              'TwinGenie ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our application.'),
             _buildSection('2. Information We Collect', 
               '• Account Information: Email address and profile details provided during registration.\n\n• Usage Data: Information about how you interact with our services, including chat history and feature usage.\n\n• Device Information: Device type, operating system, and unique device identifiers.'),
             _buildSection('3. How We Use Your Information', 

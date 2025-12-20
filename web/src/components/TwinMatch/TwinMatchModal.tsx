@@ -38,7 +38,7 @@ export default function TwinMatchModal({ isOpen, onClose }: TwinMatchModalProps)
     const shareComparison = async () => {
         if (!comparison) return;
 
-        const text = `My Twin is ${comparison.compatibility}% compatible with ${comparison.user2.twin_name}'s Twin!\n\n${comparison.insights[0]}\n\nCompare your AI Twin with friends on TwinMind`;
+        const text = `My Twin is ${comparison.compatibility}% compatible with ${comparison.user2.twin_name}'s Twin!\n\n${comparison.insights[0]}\n\nCompare your AI Twin with friends on TwinGenie`;
 
         try {
             if (navigator.share) {

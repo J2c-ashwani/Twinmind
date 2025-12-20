@@ -45,7 +45,7 @@ export default function Home() {
                     transition={{ delay: 0.4 }}
                     className="text-6xl md:text-7xl font-bold mb-6"
                 >
-                    <span className="gradient-text">TwinMind</span>
+                    <span className="gradient-text">TwinGenie</span>
                 </motion.h1>
 
                 <motion.p

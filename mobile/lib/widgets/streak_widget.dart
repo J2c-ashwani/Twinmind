@@ -359,7 +359,7 @@ class _StreakWidgetState extends State<StreakWidget> {
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Protect Your Streak! 🔥', style: TextStyle(color: Colors.white)),
         content: const Text(
-          'Get Streak Freeze tokens with TwinMind Pro. Never lose your progress again.',
+          'Get Streak Freeze tokens with TwinGenie Pro. Never lose your progress again.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [

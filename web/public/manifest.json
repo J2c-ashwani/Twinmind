@@ -1,6 +1,6 @@
 {
-    "name": "TwinMind",
-    "short_name": "TwinMind",
+    "name": "TwinGenie",
+    "short_name": "TwinGenie",
     "description": "Your AI companion for personal growth and emotional wellness",
     "start_url": "/",
     "display": "standalone",

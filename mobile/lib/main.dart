@@ -182,7 +182,7 @@ class TwinMindApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DailyProvider()),
       ],
       child: MaterialApp(
-        title: 'TwinMind',
+        title: 'TwinGenie',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,

@@ -7,7 +7,7 @@ export default function TermsOfService() {
             <section className="space-y-4">
                 <h2 className="text-xl font-semibold">1. Acceptance of Terms</h2>
                 <p>
-                    By accessing or using TwinMind, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
+                    By accessing or using TwinGenie, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
                 </p>
             </section>
 
@@ -20,7 +20,7 @@ export default function TermsOfService() {
 
             <section className="space-y-4">
                 <h2 className="text-xl font-semibold">3. Acceptable Use</h2>
-                <p>You agree not to use TwinMind to:</p>
+                <p>You agree not to use TwinGenie to:</p>
                 <ul className="list-disc pl-6 space-y-2">
                     <li>Violate any laws or regulations.</li>
                     <li>Infringe upon the rights of others.</li>
@@ -32,7 +32,7 @@ export default function TermsOfService() {
             <section className="space-y-4">
                 <h2 className="text-xl font-semibold">4. Intellectual Property</h2>
                 <p>
-                    The content, features, and functionality of TwinMind are owned by us and are protected by international copyright, trademark, and other intellectual property laws.
+                    The content, features, and functionality of TwinGenie are owned by us and are protected by international copyright, trademark, and other intellectual property laws.
                 </p>
             </section>
 

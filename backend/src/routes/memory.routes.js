@@ -71,7 +71,7 @@ router.get('/timeline', authenticateUser, async (req, res) => {
                 id: '1',
                 type: 'milestone',
                 title: 'First Conversation',
-                description: 'Started your journey with TwinMind',
+                description: 'Started your journey with TwinGenie',
                 date: new Date(Date.now() - 7 * 86400000).toISOString(),
                 significance: 5,
                 isFavorite: true

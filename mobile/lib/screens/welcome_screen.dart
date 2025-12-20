@@ -57,7 +57,7 @@ class WelcomeScreen extends StatelessWidget {
                       colors: [Color(0xFF9333EA), Color(0xFF3B82F6)],
                     ).createShader(bounds),
                     child: const Text(
-                      'TwinMind',
+                      'TwinGenie',
                       style: TextStyle(
                         fontSize: 56,
                         fontWeight: FontWeight.bold,

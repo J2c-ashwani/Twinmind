@@ -1,5 +1,5 @@
 // aiService.js
-// Production-grade multi-provider AI router for TwinMind
+// Production-grade multi-provider AI router for TwinGenie
 // Optimized for Stability, Cost-Control, and Rate-Limit Defense
 
 import geminiService from './geminiService.js';

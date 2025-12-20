@@ -46,7 +46,7 @@ export default function CircleInviteModal({ isOpen, onClose, circleId, circleNam
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: `Join ${circleName} on TwinMind`,
+                    title: `Join ${circleName} on TwinGenie`,
                     text: `Join my Growth Circle and let's grow together! Use code: ${inviteCode}`,
                     url: inviteLink,
                 });

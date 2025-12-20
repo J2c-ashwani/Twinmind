@@ -23,7 +23,7 @@ export default function AchievementsPage() {
 
     // Fallback achievements for when API is unavailable
     const fallbackAchievements: Achievement[] = [
-        { id: '1', achievement_name: 'First Steps', description: 'Start your TwinMind journey', icon: '🚀', points: 50, rarity: 'common', is_unlocked: true },
+        { id: '1', achievement_name: 'First Steps', description: 'Start your TwinGenie journey', icon: '🚀', points: 50, rarity: 'common', is_unlocked: true },
         { id: '2', achievement_name: 'Deep Thinker', description: 'Complete 10 meaningful conversations', icon: '🧠', points: 100, rarity: 'common', is_unlocked: false },
         { id: '3', achievement_name: 'Week Warrior', description: 'Maintain a 7-day streak', icon: '🔥', points: 200, rarity: 'rare', is_unlocked: false },
         { id: '4', achievement_name: 'Mindfulness Master', description: 'Complete a life coach program', icon: '🧘', points: 300, rarity: 'rare', is_unlocked: false },
@@ -123,7 +123,7 @@ export default function AchievementsPage() {
                         <Trophy className="w-16 h-16 mx-auto mb-4 text-gray-600" />
                         <p className="text-gray-400 text-lg">No achievements yet</p>
                         <p className="text-gray-500 text-sm mt-2">
-                            Keep using TwinMind to unlock achievements!
+                            Keep using TwinGenie to unlock achievements!
                         </p>
                     </div>
                 )}

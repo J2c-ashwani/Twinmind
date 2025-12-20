@@ -68,7 +68,7 @@ class ProfileScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user?.userMetadata?['full_name'] ?? 'TwinMind User',
+                              user?.userMetadata?['full_name'] ?? 'TwinGenie User',
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,

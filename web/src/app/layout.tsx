@@ -7,10 +7,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
     // Basic SEO
     title: {
-        default: 'TwinMind - Your AI Digital Twin for Personal Growth',
-        template: '%s | TwinMind'
+        default: 'TwinGenie - Your AI Digital Twin for Personal Growth',
+        template: '%s | TwinGenie'
     },
-    description: 'TwinMind is your AI-powered digital companion for personal growth, emotional wellness, and self-discovery. Chat, reflect, and grow with your personalized AI twin.',
+    description: 'TwinGenie is your AI-powered digital companion for personal growth, emotional wellness, and self-discovery. Chat, reflect, and grow with your personalized AI twin.',
     keywords: [
         'AI digital twin',
         'personal growth app',
@@ -24,24 +24,24 @@ export const metadata: Metadata = {
         'AI chatbot',
         'mindfulness app'
     ],
-    authors: [{ name: 'TwinMind Team' }],
-    creator: 'TwinMind',
-    publisher: 'TwinMind',
+    authors: [{ name: 'TwinGenie Team' }],
+    creator: 'TwinGenie',
+    publisher: 'TwinGenie',
 
     // Open Graph (Facebook, LinkedIn, etc.)
     openGraph: {
         type: 'website',
         locale: 'en_US',
         url: 'https://twinmind.app',
-        siteName: 'TwinMind',
-        title: 'TwinMind - Your AI Digital Twin for Personal Growth',
-        description: 'Discover your AI-powered companion for personal growth. Chat, reflect, and transform with TwinMind.',
+        siteName: 'TwinGenie',
+        title: 'TwinGenie - Your AI Digital Twin for Personal Growth',
+        description: 'Discover your AI-powered companion for personal growth. Chat, reflect, and transform with TwinGenie.',
         images: [
             {
                 url: '/og-image.png',
                 width: 1200,
                 height: 630,
-                alt: 'TwinMind - AI Digital Twin'
+                alt: 'TwinGenie - AI Digital Twin'
             }
         ]
     },
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     // Twitter Card
     twitter: {
         card: 'summary_large_image',
-        title: 'TwinMind - Your AI Digital Twin',
+        title: 'TwinGenie - Your AI Digital Twin',
         description: 'AI-powered personal growth companion. Chat, reflect, grow.',
         images: ['/og-image.png'],
         creator: '@twinmindapp'
@@ -81,7 +81,7 @@ export const metadata: Metadata = {
     },
 
     // App metadata
-    applicationName: 'TwinMind',
+    applicationName: 'TwinGenie',
     category: 'Lifestyle',
 
     // Icons
@@ -98,7 +98,7 @@ export const metadata: Metadata = {
 const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'TwinMind',
+    name: 'TwinGenie',
     applicationCategory: 'LifestyleApplication',
     operatingSystem: 'Web, iOS, Android',
     description: 'AI-powered digital twin for personal growth, emotional wellness, and self-discovery.',

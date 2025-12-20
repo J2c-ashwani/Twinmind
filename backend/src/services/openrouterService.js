@@ -49,7 +49,7 @@ class OpenRouterService {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                     'HTTP-Referer': 'https://twinmind.app',
-                    'X-Title': 'TwinMind',
+                    'X-Title': 'TwinGenie',
                 },
                 body: JSON.stringify({
                     model: model,
@@ -89,7 +89,7 @@ class OpenRouterService {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                     'HTTP-Referer': 'https://twinmind.app',
-                    'X-Title': 'TwinMind',
+                    'X-Title': 'TwinGenie',
                 },
                 body: JSON.stringify({
                     model: model,

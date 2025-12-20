@@ -72,7 +72,7 @@ class NotificationService {
       // Create notification channel for Android
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
         'twinmind_high_importance',
-        'TwinMind Notifications',
+        'TwinGenie Notifications',
         description: 'Important notifications from your AI Twin',
         importance: Importance.high,
       );
@@ -112,7 +112,7 @@ class NotificationService {
 
     // Show local notification when app is in foreground
     await _showLocalNotification(
-      message.notification?.title ?? 'TwinMind',
+      message.notification?.title ?? 'TwinGenie',
       message.notification?.body ?? '',
       message.data,
     );

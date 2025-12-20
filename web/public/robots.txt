@@ -1,4 +1,4 @@
-# TwinMind Web Crawler Rules
+# TwinGenie Web Crawler Rules
 # https://twinmind.app
 
 User-agent: *

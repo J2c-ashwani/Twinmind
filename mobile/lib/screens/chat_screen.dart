@@ -907,7 +907,7 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(vertical: 24.0),
               child: Center(
                 child: Text(
-                  'TwinMind',
+                  'TwinGenie',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,

@@ -291,7 +291,7 @@ app.use((err, req, res, next) => {
 // ============================================
 
 const server = app.listen(PORT, () => {
-  logger.info(`🚀 TwinMind API server running on port ${PORT}`);
+  logger.info(`🚀 TwinGenie API server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`⏱️ Request timeout: ${REQUEST_TIMEOUT}ms`);
 

@@ -1,8 +1,8 @@
-# TwinMind - AI Personal Digital Twin Engine
+# TwinGenie - AI Personal Digital Twin Engine
 
 <div align="center">
 
-![TwinMind Logo](https://via.placeholder.com/150x150/9333EA/FFFFFF?text=TwinMind)
+![TwinGenie Logo](https://via.placeholder.com/150x150/9333EA/FFFFFF?text=TwinGenie)
 
 **Create your AI Digital Twin that thinks, talks, and behaves exactly like you**
 
@@ -19,7 +19,7 @@
 
 ## 🌟 Overview
 
-TwinMind is a cutting-edge AI platform that creates personalized digital twins capable of thinking, conversing, and behaving like their human counterparts. Using advanced personality modeling and GPT-4o, TwinMind analyzes 30 carefully crafted questions to build a comprehensive psychological profile, enabling truly authentic AI conversations.
+TwinGenie is a cutting-edge AI platform that creates personalized digital twins capable of thinking, conversing, and behaving like their human counterparts. Using advanced personality modeling and GPT-4o, TwinGenie analyzes 30 carefully crafted questions to build a comprehensive psychological profile, enabling truly authentic AI conversations.
 
 ### Key Highlights
 

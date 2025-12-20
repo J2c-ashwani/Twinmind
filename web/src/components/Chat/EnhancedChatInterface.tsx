@@ -113,7 +113,7 @@ export default function EnhancedChatInterface() {
                         AI
                     </div>
                     <div>
-                        <h2 className="font-semibold">TwinMind AI</h2>
+                        <h2 className="font-semibold">TwinGenie AI</h2>
                         <p className="text-sm text-gray-500">
                             {isTyping ? 'Typing...' : 'Online'}
                         </p>

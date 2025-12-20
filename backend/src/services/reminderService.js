@@ -105,7 +105,7 @@ Output ONLY the message text. Keep it under 15 words.
             .from('notifications')
             .insert({
                 user_id: userId,
-                title: 'TwinMind Check-in',
+                title: 'TwinGenie Check-in',
                 body: reminderMessage.replace(/"/g, ''), // Remove quotes
                 type: 'smart_reminder',
                 data: { action: 'chat' }
