@@ -158,7 +158,7 @@ class NotificationService {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'twinmind_high_importance',
-      'TwinMind Notifications',
+      'TwinGenie Notifications',
       channelDescription: 'Important notifications from your AI Twin',
       importance: Importance.high,
       priority: Priority.high,

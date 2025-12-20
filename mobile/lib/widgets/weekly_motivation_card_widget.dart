@@ -89,7 +89,7 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
 
     try {
       await Share.share(
-        '"${_card!['quote']}" - ${_card!['twin_name']}\n\nGet your own AI companion at TwinMind',
+        '"${_card!['quote']}" - ${_card!['twin_name']}\n\nGet your own AI companion at TwinGenie',
         subject: 'My Weekly Motivation',
       );
 
