@@ -420,13 +420,11 @@ class _ChatScreenState extends State<ChatScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.star, size: 18),
-                            SizedBox(width: 6),
-                            Text('Upgrade to Pro'),
-                          ],
+child: const FittedBox(
+                          child: Text(
+                            'Upgrade to Pro',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ),
