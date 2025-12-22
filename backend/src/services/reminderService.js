@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabase.js';
 import aiService from './aiService.js';
+import pushNotificationService from './pushNotificationService.js';
 import logger from '../config/logger.js';
 
 /**
@@ -110,6 +111,14 @@ Output ONLY the message text. Keep it under 15 words.
                 type: 'smart_reminder',
                 data: { action: 'chat' }
             });
+
+        // Send Push Notification
+        await pushNotificationService.sendPushNotification(
+            userId,
+            'TwinGenie Check-in',
+            reminderMessage.replace(/"/g, ''),
+            { type: 'smart_reminder', action: 'chat' }
+        );
 
         logger.info(`Generated reminder for user ${userId}: ${reminderMessage}`);
 

@@ -1,5 +1,6 @@
 import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import pushNotificationService from './pushNotificationService.js';
 
 /**
  * Proactive Message Service
@@ -216,6 +217,21 @@ async function scheduleProactiveMessage(userId, trigger) {
         } catch (notifError) {
             logger.warn('Failed to sync proactive message to notifications:', notifError);
         }
+
+        // ---------------------------------------------------------
+        // SEND PUSH NOTIFICATION
+        // ---------------------------------------------------------
+        await pushNotificationService.sendPushNotification(
+            userId,
+            'TwinGenie Check-in',
+            message.replace(/"/g, ''),
+            {
+                type: 'proactive_message',
+                action: 'chat',
+                message_id: data.id,
+                trigger_type: trigger.type
+            }
+        );
         // ---------------------------------------------------------
 
         return data;

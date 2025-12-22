@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../services/api_service.dart';
 
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
@@ -96,11 +97,16 @@ class NotificationService {
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
         _fcmToken = newToken;
         print('🔄 FCM Token refreshed: $newToken');
-        // TODO: Send new token to backend
+        _sendTokenToBackend(newToken);
       });
 
       _isInitialized = true;
       print('✅ NotificationService initialized successfully');
+      
+      // Send initial token
+      if (_fcmToken != null) {
+        _sendTokenToBackend(_fcmToken!);
+      }
 
     } catch (e) {
       print('❌ Failed to initialize NotificationService: $e');
@@ -262,5 +268,14 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     await _firebaseMessaging.unsubscribeFromTopic(topic);
     print('📢 Unsubscribed from topic: $topic');
+  }
+
+  Future<void> _sendTokenToBackend(String token) async {
+    try {
+      await ApiService().updateFcmToken(token);
+      print('✅ Sent FCM token to backend');
+    } catch (e) {
+      print('❌ Failed to send FCM token to backend: $e');
+    }
   }
 }
