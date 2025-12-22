@@ -154,7 +154,6 @@ function getStripePriceId(countryCode, tier = 'monthly') {
 }
 
 export {
-    PRICING_TIERS,
     getPricingForCountry,
     detectCountryFromRequest,
     getPricingForRequest,
