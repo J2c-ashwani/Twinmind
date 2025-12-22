@@ -483,6 +483,6 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
             ),
         ],
       ),
-    );
+    ));
   }
 }
