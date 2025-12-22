@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -10,6 +11,29 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isYearly = true;
+  bool _isLoading = true;
+  Map<String, dynamic>? _pricing;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPricing();
+  }
+
+  Future<void> _fetchPricing() async {
+    try {
+      final data = await ApiService().getPricingPlans();
+      if (mounted) {
+        setState(() {
+          _pricing = data['pricing'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      print('Error fetching pricing: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +105,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 _buildPlanCard(
                   title: 'Premium',
                   subtitle: 'Unlock full potential',
-                  price: _isYearly ? '\$49' : '\$9',
+                  price: _isLoading 
+                      ? '...' 
+                      : (_isYearly 
+                          ? (_pricing?['yearly']?['display'] ?? '\$49') 
+                          : (_pricing?['monthly']?['display'] ?? '\$9')),
                   period: _isYearly ? 'year' : 'month',
                   features: [
                     '🚀 Unlimited messages/day',
@@ -96,7 +124,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   buttonText: 'Upgrade to Premium',
                   onTap: () => _handleUpgrade(),
                   isPremium: true,
-                  savingsText: _isYearly ? '🎉 You save 40% with yearly billing' : null,
+                  savingsText: _isYearly 
+                      ? (_pricing != null 
+                          ? '🎉 You save ${_pricing!['yearly']['savings']} with yearly billing' 
+                          : '🎉 You save 40% with yearly billing') 
+                      : null,
                 ),
                 
                 const SizedBox(height: 32),

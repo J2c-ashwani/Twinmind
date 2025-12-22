@@ -1,6 +1,6 @@
-const express = require('express');
-const { authenticateUser } = require('../middleware/authMiddleware');
-const { getPricingForRequest, getAllPricingTiers } = require('../services/geoPricingService');
+import express from 'express';
+import { authenticateUser } from '../middleware/authMiddleware.js';
+import { getPricingForRequest, getAllPricingTiers } from '../services/geoPricingService.js';
 
 const router = express.Router();
 
@@ -79,4 +79,4 @@ router.get('/compare', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;
