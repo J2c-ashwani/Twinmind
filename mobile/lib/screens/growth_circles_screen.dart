@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
@@ -124,6 +125,84 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
         _isLoading = false;
       });
     }
+  Future<void> _handleInvite() async {
+    if (_myCircle == null) return;
+    
+    setState(() => _isLoading = true);
+    try {
+      final response = await _apiService.createCircleInvitation(_myCircle!['id']);
+      // Assuming response structure: { invitation: { invitation_code: "XYZ" }, ... }
+      // Or simply based on api_service it might differ. Let's check api_service.dart from context
+      // Looking at step 2421: return json.decode(response.body);
+      // Looking at route step 2484: res.json({ invitation, invite_link })
+      
+      final code = response['invitation']['invitation_code'];
+      final link = response['invite_link'];
+      
+      setState(() => _isLoading = false);
+      
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          title: const Text('Invite Friends', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Share this code with your friends:', style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      code,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: const Icon(Icons.copy, color: Color(0xFF8B5CF6)),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: code));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Code copied to clipboard!')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      });
+    }
   }
 
   @override
@@ -240,8 +319,9 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
       ),
       child: InkWell(
         onTap: () {
-           // Create invite link logic would go here
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invite feature coming soon')));
+        onTap: () {
+           _handleInvite();
+        },
         },
         borderRadius: BorderRadius.circular(20),
         child: const Column(
