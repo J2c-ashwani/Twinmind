@@ -3,7 +3,7 @@
  * Competitive pricing for different markets based on purchasing power parity
  */
 
-const PRICING_TIERS = {
+export const PRICING_TIERS = {
     // India & South Asia (Low purchasing power)
     IN: { currency: 'INR', symbol: '₹', monthly: 299, yearly: 2999, usd: 3.60 },
     PK: { currency: 'PKR', symbol: 'Rs', monthly: 999, yearly: 9999, usd: 3.50 },
@@ -153,7 +153,7 @@ function getStripePriceId(countryCode, tier = 'monthly') {
     return `price_${countryCode}_${tier}`.toLowerCase();
 }
 
-module.exports = {
+export {
     PRICING_TIERS,
     getPricingForCountry,
     detectCountryFromRequest,
