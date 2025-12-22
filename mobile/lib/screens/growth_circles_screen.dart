@@ -125,6 +125,8 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
         _isLoading = false;
       });
     }
+  }
+
   Future<void> _handleInvite() async {
     if (_myCircle == null) return;
     
@@ -319,9 +321,7 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
       ),
       child: InkWell(
         onTap: () {
-        onTap: () {
            _handleInvite();
-        },
         },
         borderRadius: BorderRadius.circular(20),
         child: const Column(
