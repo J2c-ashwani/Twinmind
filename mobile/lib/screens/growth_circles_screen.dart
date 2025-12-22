@@ -289,9 +289,10 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
   }
 
   Widget _buildOnboarding() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.groups_rounded, size: 80, color: Colors.white54),
