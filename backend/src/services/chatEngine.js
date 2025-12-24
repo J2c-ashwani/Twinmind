@@ -67,11 +67,44 @@ export async function generateChatResponse(
     try {
         logger.info(`➡️ Chat request from ${userId} [mode=${mode}]`);
 
+        /* 0. INSTANT GREETING CHECK (Optimized) */
+        const cleanMsg = userMessage.toLowerCase().trim().replace(/[^a-z]/g, '');
+        const greetings = ['hey', 'hello', 'hi', 'sup', 'yo', 'greetings', 'hiya'];
+
+        if (greetings.includes(cleanMsg)) {
+            let replies = ["Hey, what's up?", "Hey.", "Yo, what's good?", "Hi there.", "Sup?", "Hey!"];
+
+            if (mode === 'therapist') {
+                replies = ["Hello.", "Hi there.", "I'm listening.", "Hi. How are you feeling?", "I'm here."];
+            } else if (mode === 'dark') {
+                replies = ["What?", "You're back.", "Speak.", "What now?", "I'm listening."];
+            } else if (mode === 'future') {
+                replies = ["Greetings.", "Hello.", "I'm here.", "Let's focus.", "Hi."];
+            }
+
+            const aiMessage = replies[Math.floor(Math.random() * replies.length)];
+
+            // Background tasks (Replicated for early return)
+            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
+            storeChatMemory(userId, aiMessage, "ai", mode).catch(() => { });
+            recordDailyMetrics(userId).catch(() => { });
+
+            return {
+                message: aiMessage,
+                mode,
+                timestamp: new Date().toISOString(),
+                genZ: false,
+                tokensSaved: 0
+            };
+        }
+
         /* 1. LOAD DATA IN PARALLEL (faster!) */
-        let [personality, userData, recentChats] = await Promise.all([
+        let [personality, userData, recentChats, contextPrompt, evolutionPrompt] = await Promise.all([
             getPersonality(userId),
             supabaseAdmin.from("users").select("full_name").eq("id", userId).single(),
-            supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6)
+            supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
+            getContextForPrompt(userId, 10).catch(() => ""),
+            getEvolutionSummaryForPrompt(userId).catch(() => "")
         ]);
 
         if (!personality) throw new Error("Chat Engine Fatal: Personality not found. User onboarding may be incomplete.");
@@ -110,13 +143,9 @@ export async function generateChatResponse(
             systemPrompt += `\n\n## BEHAVIOR MODIFIERS\n${behavioralModifiers}`;
         }
 
-        try {
-            systemPrompt += await getContextForPrompt(userId, 10);
-        } catch { }
-
-        try {
-            systemPrompt += await getEvolutionSummaryForPrompt(userId);
-        } catch { }
+        // Apply pre-fetched context
+        if (contextPrompt) systemPrompt += contextPrompt;
+        if (evolutionPrompt) systemPrompt += evolutionPrompt;
 
         if (genZ.isGenZ) {
             systemPrompt += `
@@ -141,51 +170,32 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
         const compressed = promptOptimizer.compressSystemPrompt(systemPrompt);
         const optimized = promptOptimizer.optimizePrompt(compressed, userMessage, conversationHistory);
 
-        /* SHORTCUT: INSTANT GREETINGS */
-        const cleanMsg = userMessage.toLowerCase().trim().replace(/[^a-z]/g, '');
-        const greetings = ['hey', 'hello', 'hi', 'sup', 'yo', 'greetings', 'hiya'];
-
         let aiMessage;
-
-        if (greetings.includes(cleanMsg)) {
-            let replies = ["Hey, what's up?", "Hey.", "Yo, what's good?", "Hi there.", "Sup?", "Hey!"];
-
-            // Mode-specific greetings
-            if (mode === 'therapist') {
-                replies = ["Hello.", "Hi there.", "I'm listening.", "Hi. How are you feeling?", "I'm here."];
-            } else if (mode === 'dark') {
-                replies = ["What?", "You're back.", "Speak.", "What now?", "I'm listening."];
-            } else if (mode === 'future') {
-                replies = ["Greetings.", "Hello.", "I'm here.", "Let's focus.", "Hi."];
-            }
-
-            aiMessage = replies[Math.floor(Math.random() * replies.length)];
-        } else {
-            /* 8. AI CALL (Only if not a simple greeting) */
-            try {
-                const aiResponse = await withTimeout(
-                    aiService.generateChatResponse(
-                        userMessage,
-                        optimized.history,
-                        compressed, // Use clean system prompt, NOT the mashed one
-                        mode
-                    ),
-                    12000
-                );
-                // aiService returns { provider, text, raw } - extract the text
-                aiMessage = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.text || aiResponse?.message || '');
-                logger.info(`AI Provider: ${aiResponse?.provider}, Response length: ${aiMessage?.length}`);
-            } catch (err) {
-                logger.warn("AI Timeout/Fallback:", err?.message);
-                aiMessage = mode === "therapist"
-                    ? "Let's slow down. Tell me the one thing bothering you the most."
-                    : mode === "dark"
-                        ? "You know your patterns bro. What triggered it?"
-                        : mode === "future"
-                            ? "You'll laugh at this later bro. What started it?"
-                            : "Bro, tell me quickly — what happened?";
-            }
+        /* 8. AI CALL (Only if not a simple greeting) */
+        try {
+            const aiResponse = await withTimeout(
+                aiService.generateChatResponse(
+                    userMessage,
+                    optimized.history,
+                    compressed, // Use clean system prompt, NOT the mashed one
+                    mode
+                ),
+                12000
+            );
+            // aiService returns { provider, text, raw } - extract the text
+            aiMessage = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.text || aiResponse?.message || '');
+            logger.info(`AI Provider: ${aiResponse?.provider}, Response length: ${aiMessage?.length}`);
+        } catch (err) {
+            logger.warn("AI Timeout/Fallback:", err?.message);
+            aiMessage = mode === "therapist"
+                ? "Let's slow down. Tell me the one thing bothering you the most."
+                : mode === "dark"
+                    ? "You know your patterns bro. What triggered it?"
+                    : mode === "future"
+                        ? "You'll laugh at this later bro. What started it?"
+                        : "Bro, tell me quickly — what happened?";
         }
+
 
         /* 9. SANITIZE */
         aiMessage = sanitize(aiMessage);
