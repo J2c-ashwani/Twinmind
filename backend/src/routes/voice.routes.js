@@ -82,23 +82,42 @@ router.post('/message', verifyToken, checkSubscription, voiceLimiter, upload.sin
         let targetConversationId = conversationId;
         if (!targetConversationId || targetConversationId === 'null' || targetConversationId === 'undefined') {
             try {
-                // Try to find recent or create new
+                // Try to find recent conversation
                 const { data: recent } = await supabaseAdmin
                     .from('conversations')
-                    .select('id')
+                    .select('id, created_at')
                     .eq('user_id', userId)
                     .order('updated_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
 
-                if (recent) {
+                // Check if the recent conversation is from today
+                const isToday = (date) => {
+                    const today = new Date();
+                    const compare = new Date(date);
+                    return today.getFullYear() === compare.getFullYear() &&
+                        today.getMonth() === compare.getMonth() &&
+                        today.getDate() === compare.getDate();
+                };
+
+                // Only reuse if it's from today, otherwise create a new one
+                if (recent && isToday(recent.created_at)) {
                     targetConversationId = recent.id;
                 } else {
+                    // Create new conversation with today's date as title
+                    const today = new Date();
+                    const dateTitle = today.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+
                     const { data: newConv } = await supabaseAdmin
                         .from('conversations')
                         .insert([{
                             user_id: userId,
-                            title: 'New Voice Chat',
+                            title: dateTitle,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         }])

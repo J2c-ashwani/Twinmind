@@ -57,24 +57,42 @@ router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => 
         let targetConversationId = conversation_id;
 
         if (!targetConversationId) {
-            // Check for most recent active conversation or create new
+            // Check for most recent active conversation
             const { data: recent } = await supabaseAdmin
                 .from('conversations')
-                .select('id')
+                .select('id, created_at')
                 .eq('user_id', userId)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .single();
 
-            if (recent) {
+            // Check if the recent conversation is from today
+            const isToday = (date) => {
+                const today = new Date();
+                const compare = new Date(date);
+                return today.getFullYear() === compare.getFullYear() &&
+                    today.getMonth() === compare.getMonth() &&
+                    today.getDate() === compare.getDate();
+            };
+
+            // Only reuse if it's from today, otherwise create a new one
+            if (recent && isToday(recent.created_at)) {
                 targetConversationId = recent.id;
             } else {
-                // Create default conversation
+                // Create new conversation with today's date as title
+                const today = new Date();
+                const dateTitle = today.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+
                 const { data: newConv, error: createError } = await supabaseAdmin
                     .from('conversations')
                     .insert([{
                         user_id: userId,
-                        title: 'New Chat',
+                        title: dateTitle,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     }])

@@ -117,7 +117,9 @@ app.use(express.json({
     try {
       JSON.parse(buf);
     } catch (e) {
-      res.status(400).json({ error: 'Invalid JSON' });
+      // Mark request as having invalid JSON - don't send response here
+      // Let the error handler deal with it
+      req.invalidJson = true;
       throw new Error('Invalid JSON');
     }
   }
@@ -270,6 +272,19 @@ app.use((req, res) => {
 
 // Global error handler - NEVER crashes the server
 app.use((err, req, res, next) => {
+  // Handle invalid JSON specifically
+  if (req.invalidJson || err.message === 'Invalid JSON') {
+    if (!res.headersSent) {
+      return res.status(400).json({ error: 'Invalid JSON in request body' });
+    }
+    return;
+  }
+
+  // Skip if headers already sent
+  if (res.headersSent) {
+    return next(err);
+  }
+
   // Log error details
   logger.error('Unhandled error:', {
     message: err.message,
@@ -284,7 +299,7 @@ app.use((err, req, res, next) => {
 
   res.status(err.status || 500).json({
     error: isProduction ? 'Internal server error' : err.message,
-    ...((!isProduction) && { stack: err.stack })
+    ...(!isProduction && { stack: err.stack })
   });
 });
 
