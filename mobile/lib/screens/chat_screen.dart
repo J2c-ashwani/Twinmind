@@ -182,7 +182,18 @@ class _ChatScreenState extends State<ChatScreen> {
             }
           }
           return ChatMessage.fromJson(m);
-        }).toList().cast<ChatMessage>().reversed.toList();  // Must reverse for correct order with reverse:true ListView
+        }).toList().cast<ChatMessage>();
+        
+        // Explicitly sort by date (Newest first) to ensure correct order
+        // regardless of backend response. With ListView(reverse: true), 
+        // Index 0 (Newest) appears at the bottom.
+        //
+        // ARCHITECTURE NOTE for Future Features:
+        // - Sort Order: [Newest, ..., Oldest]
+        // - New Message: Use _messages.insert(0, msg) to add to bottom.
+        // - Pagination (Load Old): Use _messages.addAll([old_msg1, ...])
+        //   to add to top (end of list).
+        _messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _isLoading = false;
       });
       _scrollToBottom();
