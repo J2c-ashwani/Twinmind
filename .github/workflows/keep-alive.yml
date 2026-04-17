@@ -1,0 +1,29 @@
+name: Keep Render Alive
+
+# Ping the backend every 14 minutes so Render free tier never sleeps.
+# Render sleeps after 15 min of inactivity — this fires from GitHub's
+# servers, completely external to Render.
+
+on:
+  schedule:
+    # Every 14 minutes, 24/7
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  ping:
+    name: Ping Backend Health
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping /health endpoint
+        run: |
+          echo "Pinging Render backend at $(date)"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${{ secrets.RENDER_BACKEND_URL }}/health")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Server is awake and healthy"
+          else
+            echo "⚠️ Unexpected status: $STATUS (server may be cold-starting)"
+          fi
