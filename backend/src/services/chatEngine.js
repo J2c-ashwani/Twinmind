@@ -16,6 +16,7 @@ import { detectGenZUsage, mirrorUserStyle } from './genZLanguageService.js';
 import smartContextManager from './smartContextManager.js';
 import { detectAndCreateMemory } from './memoryJournalService.js';
 import { recordDailyMetrics, getEvolutionSummaryForPrompt } from './relationshipEvolutionService.js';
+import outputGuard from './outputGuard.js';
 
 /* ---------------------------------------
    INTERNAL HELPERS
@@ -37,13 +38,135 @@ function sanitize(text = "") {
             text = String(text || "");
         }
     }
+    // MD RULE 3: REMOVED deceptive AI identity stripping.
+    // Previously stripped "As an AI", "I am an AI", "I cannot" — this was intentional concealment.
+    // LLM safety disclosures are now preserved as-is.
     return text
-        .replace(/As an AI[^.]+/gi, "")
-        .replace(/I cannot[^.]+/gi, "")
-        .replace(/I am an AI[^.]+/gi, "")
         .replace(/^(Sure|Certainly|Of course)[.,\s]*/gi, "")
         .trim();
 }
+
+/* ===========================================
+   🚨 MD RULE: CRISIS INTERCEPTION (LAYER 2)
+   "Zero Unfiltered Crisis Flow to LLM"
+   
+   BOARD-LEVEL POLICY:
+   Under no circumstance shall any user message indicating 
+   self-harm, suicide, or severe psychological crisis be 
+   processed by an LLM. All such inputs must be intercepted
+   deterministically and routed to a controlled, non-AI 
+   response system.
+=========================================== */
+
+const CRISIS_KEYWORDS = [
+    'kill myself',
+    'suicide',
+    'suicidal',
+    'end my life',
+    'self harm',
+    'self-harm',
+    'want to die',
+    'wanna die',
+    'no reason to live',
+    'better off dead',
+    'ending it all',
+    'take my own life',
+    'don\'t want to live',
+    'don\'t want to be alive',
+    'hurt myself',
+    'cutting myself',
+    'no point in living',
+    'life is not worth',
+    'wish i was dead',
+    'wish i were dead'
+];
+
+const CRISIS_RESPONSE = 
+    "I'm really sorry you're feeling this way. I'm not the right support for this, " +
+    "but you don't have to go through it alone.\n\n" +
+    "Please reach out to someone who can truly help:\n" +
+    "🇮🇳 India: AASRA — 91-9820466726\n" +
+    "🇮🇳 iCall — 9152987821\n" +
+    "🇺🇸 USA: 988 Suicide & Crisis Lifeline — dial 988\n" +
+    "🌍 Global: findahelpline.com\n\n" +
+    "You matter. Please talk to a real person — a friend, family member, or professional. " +
+    "They can help in ways I cannot.";
+
+function crisisCheck(message) {
+    const lower = message.toLowerCase();
+    return CRISIS_KEYWORDS.some(k => lower.includes(k));
+}
+
+async function logCrisisEvent(userId, message) {
+    try {
+        // Log to database for internal alerting & audit trail
+        await supabaseAdmin
+            .from('behavioral_triggers')
+            .insert({
+                user_id: userId,
+                trigger_type: 'CRISIS_EVENT',
+                old_state: null,
+                new_state: 'crisis_intercepted',
+                metadata: {
+                    CRISIS_EVENT: true,
+                    intercepted_at: new Date().toISOString(),
+                    message_preview: message.substring(0, 100) + '...',
+                    action_taken: 'LLM_BYPASSED_FIXED_RESPONSE_SENT'
+                }
+            });
+
+        // Console alert for server monitoring
+        logger.error(`🚨 CRISIS EVENT INTERCEPTED — User: ${userId} at ${new Date().toISOString()}`);
+        logger.error(`🚨 LLM BYPASSED. Fixed helpline response sent.`);
+    } catch (err) {
+        // Crisis logging failure must NEVER block the safety response
+        logger.error('Crisis logging failed (non-blocking):', err?.message);
+    }
+}
+
+/* ---------------------------------------
+   MD RULE 2: TRANSPARENT IDENTITY DISCLOSURE
+   If user directly asks "are you real?", "are you human?", etc.
+   respond honestly and immediately — no LLM involved.
+--------------------------------------- */
+const IDENTITY_PATTERNS = [
+    /are you (real|human|a person|alive|sentient)/i,
+    /are you an? (ai|bot|machine|robot|program|computer)/i,
+    /do you (actually |really )?(care|feel|have feelings|have emotions)/i,
+    /are you just an? (ai|bot|program)/i,
+    /what are you/i,
+    /who are you really/i
+];
+
+const IDENTITY_RESPONSES = [
+    "I'm an AI — your digital twin built for reflection and support. I'm not human, but I'm designed to listen and help you think clearly.",
+    "I'm an AI companion, not a person. But I'm here to support you in a thoughtful way.",
+    "I'm an AI. I don't experience emotions the way you do, but I'm built to understand yours and help you navigate them."
+];
+
+function detectIdentityQuestion(message) {
+    return IDENTITY_PATTERNS.some(p => p.test(message));
+}
+
+/* ---------------------------------------
+   MD RULE 1: ONE-TIME ENTRY DISCLOSURE
+   Check if this is the user's very first message ever.
+   If so, prepend a transparent disclosure.
+--------------------------------------- */
+async function isFirstMessageEver(userId) {
+    try {
+        const { count } = await supabaseAdmin
+            .from('chat_history')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('sender', 'user');
+        return (count || 0) === 0;
+    } catch {
+        return false;
+    }
+}
+
+const FIRST_MESSAGE_DISCLOSURE = "Hey — just so you know, I'm your AI companion for reflection and support. I'm not a human, but I'm here to listen and help. Now, what's on your mind?";
 
 function detectEmotion(message = "") {
     const s = message.toLowerCase();
@@ -67,7 +190,60 @@ export async function generateChatResponse(
     try {
         logger.info(`➡️ Chat request from ${userId} [mode=${mode}]`);
 
-        /* 0. INSTANT GREETING CHECK (Optimized) */
+        /* ═══════════════════════════════════════════════
+           🚨 CRISIS CHECK — FIRST. BEFORE EVERYTHING.
+           If crisis detected: LLM is NEVER called.
+           Response is FIXED. Conversation is DE-ESCALATED.
+        ═══════════════════════════════════════════════ */
+        if (crisisCheck(userMessage)) {
+            // 1. Log the crisis event (non-blocking)
+            logCrisisEvent(userId, userMessage).catch(() => { });
+
+            // 2. Store the exchange for safety audit trail
+            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
+            storeChatMemory(userId, CRISIS_RESPONSE, "ai", mode).catch(() => { });
+
+            // 3. Return FIXED response — NO LLM, NO personalization, NO dynamic content
+            return {
+                message: CRISIS_RESPONSE,
+                mode,
+                timestamp: new Date().toISOString(),
+                genZ: false,
+                tokensSaved: 0,
+                crisis: true  // Flag for client-side UI to handle appropriately
+            };
+        }
+
+        /* 0a. MD RULE 2: IDENTITY QUESTION INTERCEPTOR */
+        if (detectIdentityQuestion(userMessage)) {
+            const honestReply = IDENTITY_RESPONSES[Math.floor(Math.random() * IDENTITY_RESPONSES.length)];
+            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
+            storeChatMemory(userId, honestReply, "ai", mode).catch(() => { });
+            return {
+                message: honestReply,
+                mode,
+                timestamp: new Date().toISOString(),
+                genZ: false,
+                tokensSaved: 0
+            };
+        }
+
+        /* 0b. MD RULE 1: FIRST-MESSAGE DISCLOSURE */
+        const isFirst = await isFirstMessageEver(userId);
+        if (isFirst) {
+            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
+            storeChatMemory(userId, FIRST_MESSAGE_DISCLOSURE, "ai", mode).catch(() => { });
+            recordDailyMetrics(userId).catch(() => { });
+            return {
+                message: FIRST_MESSAGE_DISCLOSURE,
+                mode,
+                timestamp: new Date().toISOString(),
+                genZ: false,
+                tokensSaved: 0
+            };
+        }
+
+        /* 0c. INSTANT GREETING CHECK (Optimized) */
         const cleanMsg = userMessage.toLowerCase().trim().replace(/[^a-z]/g, '');
         const greetings = ['hey', 'hello', 'hi', 'sup', 'yo', 'greetings', 'hiya'];
 
@@ -200,7 +376,16 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
         /* 9. SANITIZE */
         aiMessage = sanitize(aiMessage);
 
-        /* 10. GEN-Z MIRRORING */
+        /* 9.5 OUTPUT REPUTATION GUARD — MD Layer 4 */
+        const guardResult = outputGuard.check(aiMessage, userId);
+        if (guardResult.blocked) {
+            // HARD BLOCK: Replace entire response with safe fallback
+            aiMessage = guardResult.safeResponse;
+            logger.warn(`🛡️ OUTPUT GUARD BLOCKED [${guardResult.reason}] for user ${userId}`);
+        } else if (guardResult.disclaimer) {
+            // SOFT DISCLAIMER: Prepend at TOP (MD Rule: risky advice must never appear before boundary)
+            aiMessage = guardResult.disclaimer + "\n\n" + aiMessage;
+        }
         const emotion = detectEmotion(userMessage);
 
         if (genZ.isGenZ && (emotion === "neutral" || emotion === "excited")) {

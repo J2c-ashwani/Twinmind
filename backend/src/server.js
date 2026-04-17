@@ -312,6 +312,15 @@ const server = app.listen(PORT, () => {
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`⏱️ Request timeout: ${REQUEST_TIMEOUT}ms`);
 
+  // 🔐 Prompt Governance: Log checksums for drift detection
+  try {
+    const { getPromptChecksums } = await import('./services/modeManager.js');
+    const checksums = getPromptChecksums();
+    logger.info(`🔐 Prompt checksums: ${JSON.stringify(checksums)}`);
+  } catch (e) {
+    logger.warn('Prompt checksum logging skipped:', e?.message);
+  }
+
   // Initialize cron jobs safely
   try {
     initJobs();

@@ -2,21 +2,19 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Sparkles, Brain, MessageCircle, Zap } from 'lucide-react'
+import { Brain, ArrowRight, Shield, Sparkles, MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
-import MoodCheckIn from '../components/Daily/MoodCheckIn';
-import MoodHistory from '../components/Daily/MoodHistory';
-import DailyChallenges from '../components/Daily/DailyChallenges';
 
 export default function Home() {
     const router = useRouter()
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden relative">
-            {/* Animated background elements */}
+            {/* Ambient background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse-slow" />
-                <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+                <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+                <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '1s' }} />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-pink-500/10 rounded-full blur-3xl" />
             </div>
 
             {/* Main content */}
@@ -24,41 +22,43 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
-                className="z-10 max-w-4xl text-center"
+                className="z-10 max-w-3xl text-center"
             >
-                {/* Logo/Icon */}
+                {/* Icon */}
                 <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                     className="mb-8 inline-block"
                 >
-                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-3xl flex items-center justify-center shadow-2xl">
-                        <Brain className="w-12 h-12 text-white" />
+                    <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/30">
+                        <Brain className="w-10 h-10 text-white" />
                     </div>
                 </motion.div>
 
-                {/* Heading */}
+                {/* Headline — Emotion first, not feature first */}
                 <motion.h1
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
-                    className="text-6xl md:text-7xl font-bold mb-6"
+                    className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
                 >
-                    <span className="gradient-text">TwinGenie</span>
+                    The AI that actually{' '}
+                    <span className="gradient-text">knows you</span>
                 </motion.h1>
 
                 <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto"
+                    className="text-lg md:text-xl text-gray-300 mb-10 max-w-xl mx-auto leading-relaxed"
                 >
-                    Create your AI Digital Twin that thinks, talks, and behaves exactly like you.
-                    Experience the future of self-reflection and personal AI.
+                    Your AI companion for honest reflection, emotional support,
+                    and personal growth. Not a chatbot — a digital twin built from
+                    your personality.
                 </motion.p>
 
-                {/* CTA Buttons */}
+                {/* Single CTA */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -67,59 +67,51 @@ export default function Home() {
                 >
                     <button
                         onClick={() => router.push('/onboarding')}
-                        className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-2"
+                        className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-lg shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-3"
                     >
                         <Sparkles className="w-5 h-5" />
-                        Create Your Twin
-                        <Zap className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                        Try It Free
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
 
                     <button
                         onClick={() => router.push('/login')}
-                        className="glass-button text-lg flex items-center gap-2"
+                        className="glass-button text-base flex items-center gap-2 opacity-80 hover:opacity-100"
                     >
-                        <MessageCircle className="w-5 h-5" />
-                        Sign In
+                        Already have an account? Sign In
                     </button>
                 </motion.div>
 
-                {/* Features Grid */}
+                {/* Trust signals — minimal, honest */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 1 }}
-                    className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto"
+                    className="flex flex-wrap justify-center gap-8 text-sm text-gray-400"
                 >
-                    {[
-                        {
-                            icon: <Brain className="w-8 h-8" />,
-                            title: 'Personality Engine',
-                            description: 'AI analyzes 30 questions to build your complete personality model'
-                        },
-                        {
-                            icon: <MessageCircle className="w-8 h-8" />,
-                            title: 'Natural Conversations',
-                            description: 'Chat with your twin using advanced memory and context'
-                        },
-                        {
-                            icon: <Sparkles className="w-8 h-8" />,
-                            title: 'Multiple Modes',
-                            description: 'Normal, Future, Dark, and Therapist versions of yourself'
-                        }
-                    ].map((feature, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1 + idx * 0.2 }}
-                            className="glass-card p-6 hover:bg-white/20 transition-all duration-300"
-                        >
-                            <div className="mb-4 text-purple-400">{feature.icon}</div>
-                            <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                            <p className="text-gray-400">{feature.description}</p>
-                        </motion.div>
-                    ))}
+                    <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-green-400" />
+                        <span>Your data stays private</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <MessageCircle className="w-4 h-4 text-purple-400" />
+                        <span>4 AI personality modes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-pink-400" />
+                        <span>Free to start</span>
+                    </div>
                 </motion.div>
+
+                {/* One-liner social proof placeholder */}
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1.2 }}
+                    className="mt-12 text-gray-500 text-sm"
+                >
+                    Built for people who think deeply about who they are.
+                </motion.p>
             </motion.div>
         </div>
     )

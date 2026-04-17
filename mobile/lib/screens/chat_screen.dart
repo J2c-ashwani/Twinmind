@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../widgets/voice_recorder_widget.dart';
 import '../widgets/audio_message_bubble.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -1064,7 +1065,9 @@ child: const FittedBox(
       child: Column(
         crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Container(
+          GestureDetector(
+            onLongPress: !isUser ? () => _shareMessage(message.message) : null,
+            child: Container(
             margin: const EdgeInsets.only(bottom: 4),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             constraints: BoxConstraints(
@@ -1073,10 +1076,10 @@ child: const FittedBox(
             decoration: BoxDecoration(
               gradient: isUser
                   ? const LinearGradient(
-                      colors: [Color(0xFF9333EA), Color(0xFFEC4899)], // Purple to Pink match
+                      colors: [Color(0xFF9333EA), Color(0xFFEC4899)],
                     )
                   : null,
-              color: isUser ? null : Colors.white, // White background for AI
+              color: isUser ? null : Colors.white,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(20),
                 topRight: const Radius.circular(20),
@@ -1096,7 +1099,7 @@ child: const FittedBox(
               styleSheet: MarkdownStyleSheet(
                 p: TextStyle(
                   fontSize: 16, 
-                  color: isUser ? Colors.white : Colors.black87, // Dark text for AI
+                  color: isUser ? Colors.white : Colors.black87,
                   height: 1.4,
                 ),
                 code: TextStyle(
@@ -1110,6 +1113,7 @@ child: const FittedBox(
                 ),
               ),
             ),
+          ),
           ),
         if (message.audioUrl != null)
           Padding(
@@ -1131,6 +1135,17 @@ child: const FittedBox(
           ),
         ],
       ),
+    );
+  }
+
+  void _shareMessage(String message) {
+    // Truncate very long messages for clean sharing
+    final shareText = message.length > 500 
+        ? '${message.substring(0, 500)}...' 
+        : message;
+    
+    Share.share(
+      '"$shareText"\n\n— My AI Twin on TwinMind\nhttps://twinmind.app/try',
     );
   }
 

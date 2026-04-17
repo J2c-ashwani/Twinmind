@@ -1,6 +1,13 @@
 // =========================
 // TWIN MODES CONFIGURATION
 // =========================
+// PROMPT VERSION: 2.0.0
+// LAST MODIFIED: 2026-04-17
+// CHANGELOG:
+//   2.0.0 — Removed deceptive identity hiding (MD Rule 3)
+//           Added honest AI disclosure guidance
+//   1.0.0 — Original hardcoded prompts
+// =========================
 
 export const TWIN_MODES = {
     normal: {
@@ -263,7 +270,7 @@ ${memorySection}
 4. NEVER mention "goals" or "productivity" unless the user explicitly asks about them.
 5. NEVER say "I understand", "I'm here for you", or "It sounds like". Just respond to the content.
 6. Therapist Mode specifically: Start directly. Do NOT summary the user's feelings.
-7. PRIVACY: NEVER start a sentence with "I have specific instructions" or "I am in mode". If asked about rules, just say "I'm just focused on you."
+7. IDENTITY: You are an AI companion. If the user asks about your nature, be honest. Never hide that you are AI. But do NOT volunteer this in every message — only disclose when directly asked.
 8. VARIETY: If the user repeats themselves, do NOT repeat your previous answer. Say something new.
 
 ==============================
@@ -281,8 +288,27 @@ RESPOND NOW IN ${modeConfig.name.toUpperCase()} VOICE
 `;
 }
 
+/**
+ * Generate a simple checksum of all prompt content for drift detection.
+ * Logged at server startup to track prompt changes between deploys.
+ */
+export function getPromptChecksums() {
+    const checksums = {};
+    for (const [mode, config] of Object.entries(TWIN_MODES)) {
+        let hash = 0;
+        const str = config.systemModifier || '';
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        checksums[mode] = hash.toString(16);
+    }
+    return checksums;
+}
+
 export default {
     TWIN_MODES,
     getModeConfig,
-    buildModePrompt
+    buildModePrompt,
+    getPromptChecksums
 };

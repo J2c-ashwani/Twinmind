@@ -51,7 +51,22 @@ export function initJobs() {
         }, 10000); // Run 10 seconds after startup
     }
 
-    logger.info('✅ All scheduled jobs initialized');
+    // ============================================
+    // 🔥 KEEP-ALIVE: Prevent Render free tier from sleeping
+    // Pings own health endpoint every 14 minutes
+    // Render sleeps after 15 min of inactivity — this prevents it
+    // ============================================
+    const RENDER_URL = process.env.RENDER_EXTERNAL_URL || process.env.WEB_APP_URL || 'http://localhost:3001';
+    cron.schedule('*/14 * * * *', async () => {
+        try {
+            const response = await fetch(`${RENDER_URL}/health`);
+            logger.info(`🏓 Keep-alive ping: ${response.status}`);
+        } catch (e) {
+            logger.warn('Keep-alive ping failed:', e?.message);
+        }
+    });
+
+    logger.info('✅ All scheduled jobs initialized (including keep-alive)');
 }
 
 export default { initJobs };
