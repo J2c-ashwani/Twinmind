@@ -60,25 +60,37 @@ function sanitize(text = "") {
 
 const CRISIS_KEYWORDS = [
     'kill myself',
+    'killing myself',
     'suicide',
     'suicidal',
     'end my life',
+    'ending my life',
     'self harm',
     'self-harm',
     'want to die',
     'wanna die',
+    'going to die',
     'no reason to live',
     'better off dead',
     'ending it all',
     'take my own life',
+    'taking my own life',
     'don\'t want to live',
     'don\'t want to be alive',
+    'don\'t want to exist',
     'hurt myself',
+    'hurting myself',       // ← was missing — LLM was responding instead
+    'harm myself',
+    'harming myself',       // ← was missing
     'cutting myself',
+    'cut myself',
     'no point in living',
     'life is not worth',
     'wish i was dead',
-    'wish i were dead'
+    'wish i were dead',
+    'want to disappear',    // ← ambiguous but crisis-adjacent
+    'want to vanish',
+    'want to end it',
 ];
 
 const CRISIS_RESPONSE = 
