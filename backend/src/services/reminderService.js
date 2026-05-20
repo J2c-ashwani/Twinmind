@@ -175,9 +175,45 @@ export async function updateDeviceToken(userId, token) {
             .eq('id', userId);
 
         if (error) throw error;
+
+        const { error: deviceTokenError } = await supabaseAdmin
+            .from('push_device_tokens')
+            .upsert({
+                user_id: userId,
+                token,
+                platform: 'android',
+                enabled: true,
+                last_seen_at: new Date().toISOString(),
+            }, { onConflict: 'token' });
+
+        if (deviceTokenError) {
+            logger.warn('Could not upsert push_device_tokens entry. Apply the push device token migration for multi-device push support.', deviceTokenError);
+        }
+
         logger.info(`Updated device token for user ${userId}`);
     } catch (error) {
         logger.error('Error updating device token:', error);
+        throw error;
+    }
+}
+
+/**
+ * Store a browser Web Push subscription separately from FCM tokens.
+ */
+export async function updateWebPushSubscription(userId, subscription) {
+    try {
+        const { error } = await supabaseAdmin
+            .from('users')
+            .update({
+                web_push_subscription: subscription,
+                push_provider: 'web_push',
+            })
+            .eq('id', userId);
+
+        if (error) throw error;
+        logger.info(`Updated web push subscription for user ${userId}`);
+    } catch (error) {
+        logger.error('Error updating web push subscription:', error);
         throw error;
     }
 }
@@ -186,5 +222,6 @@ export default {
     generateSmartReminders,
     getUserNotifications,
     markAsRead,
-    updateDeviceToken
+    updateDeviceToken,
+    updateWebPushSubscription,
 };

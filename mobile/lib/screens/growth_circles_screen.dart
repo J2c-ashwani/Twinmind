@@ -35,12 +35,13 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
       _apiService.setToken(token);
 
       final circleData = await _apiService.getMyCircle();
-      
+
       if (circleData['circle'] != null) {
         _myCircle = circleData['circle'];
         // Load progress if user has a circle
         try {
-          final progressData = await _apiService.getCircleProgress(_myCircle!['id']);
+          final progressData =
+              await _apiService.getCircleProgress(_myCircle!['id']);
           _progress = progressData;
         } catch (e) {
           print('Error loading progress: $e');
@@ -96,15 +97,19 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
 
   Future<void> _leaveCircle() async {
     if (_myCircle == null) return;
-    
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Leave Circle?'),
         content: const Text('You will lose your progress contribution.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Leave', style: TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Leave', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -129,33 +134,32 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
 
   Future<void> _handleInvite() async {
     if (_myCircle == null) return;
-    
+
     setState(() => _isLoading = true);
     try {
-      final response = await _apiService.createCircleInvitation(_myCircle!['id']);
-      // Assuming response structure: { invitation: { invitation_code: "XYZ" }, ... }
-      // Or simply based on api_service it might differ. Let's check api_service.dart from context
-      // Looking at step 2421: return json.decode(response.body);
-      // Looking at route step 2484: res.json({ invitation, invite_link })
-      
+      final response =
+          await _apiService.createCircleInvitation(_myCircle!['id']);
       final code = response['invitation']['invitation_code'];
       final link = response['invite_link'];
-      
+
       setState(() => _isLoading = false);
-      
+
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1E1E2E),
-          title: const Text('Invite Friends', style: TextStyle(color: Colors.white)),
+          title: const Text('Invite Friends',
+              style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Share this code with your friends:', style: TextStyle(color: Colors.white70)),
+              const Text('Share this code with your friends:',
+                  style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.black26,
                   borderRadius: BorderRadius.circular(8),
@@ -179,12 +183,24 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: code));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Code copied to clipboard!')),
+                          const SnackBar(
+                              content: Text('Code copied to clipboard!')),
                         );
                       },
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                icon: const Icon(Icons.link),
+                label: const Text('Copy invite link'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: link));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Invite link copied!')),
+                  );
+                },
               ),
             ],
           ),
@@ -196,14 +212,12 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
           ],
         ),
       );
-
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      });
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     }
   }
 
@@ -267,7 +281,8 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
             ),
             child: Column(
               children: [
-                const Icon(Icons.people_alt_rounded, size: 48, color: Colors.white),
+                const Icon(Icons.people_alt_rounded,
+                    size: 48, color: Colors.white),
                 const SizedBox(height: 16),
                 Text(
                   _myCircle!['name'],
@@ -288,25 +303,28 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Stats Grid
           if (_progress != null)
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            children: [
-               _buildStatCard('Members', '${_progress!['members_count']}', Icons.person),
-               _buildStatCard('Total XP', '${_progress!['total_xp']}', Icons.star),
-               _buildStatCard('Goals Met', '${_progress!['goals_completed']}', Icons.check_circle),
-               // Invite Button functionality would go here
-               _buildInviteCard(),
-            ],
-          ),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildStatCard(
+                    'Members', '${_progress!['members_count']}', Icons.person),
+                _buildStatCard(
+                    'Total XP', '${_progress!['total_xp']}', Icons.star),
+                _buildStatCard('Goals Met', '${_progress!['goals_completed']}',
+                    Icons.check_circle),
+                // Invite Button functionality would go here
+                _buildInviteCard(),
+              ],
+            ),
         ],
       ),
     );
@@ -321,15 +339,17 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
       ),
       child: InkWell(
         onTap: () {
-           _handleInvite();
+          _handleInvite();
         },
         borderRadius: BorderRadius.circular(20),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-             Icon(Icons.person_add, size: 32, color: Colors.greenAccent),
-             SizedBox(height: 8),
-             Text('Invite', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Icon(Icons.person_add, size: 32, color: Colors.greenAccent),
+            SizedBox(height: 8),
+            Text('Invite',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -370,9 +390,9 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
 
   Widget _buildOnboarding() {
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
+        child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.groups_rounded, size: 80, color: Colors.white54),
@@ -421,19 +441,21 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Join Circle'),
             ),
           ),
-          
+
           const SizedBox(height: 32),
           Row(
             children: [
               Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('OR', style: TextStyle(color: Colors.white.withOpacity(0.4))),
+                child: Text('OR',
+                    style: TextStyle(color: Colors.white.withOpacity(0.4))),
               ),
               Expanded(child: Divider(color: Colors.white.withOpacity(0.2))),
             ],
@@ -467,7 +489,8 @@ class _GrowthCirclesScreenState extends State<GrowthCirclesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEC4899),
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Create Circle'),
             ),

@@ -31,7 +31,7 @@ export default function MemoryTimeline() {
         try {
             setLoading(true);
             const data = await apiClient.getMemoryTimeline(50) as any;
-            setMemories(data || []);
+            setMemories(Array.isArray(data) ? data : data?.memories || []);
         } catch (error) {
             console.error('Failed to load memories:', error);
         } finally {

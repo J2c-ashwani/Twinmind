@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
-
 export const metadata: Metadata = {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://twinmind.app'),
     // Basic SEO
     title: {
         default: 'TwinGenie - Your AI Digital Twin for Personal Growth',
@@ -135,18 +133,10 @@ export default function RootLayout({
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-                {/* Fonts */}
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-                    rel="stylesheet"
-                />
             </head>
-            <body className={inter.className}>
+            <body>
                 {children}
             </body>
         </html>
     )
 }
-

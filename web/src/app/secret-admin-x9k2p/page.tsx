@@ -44,11 +44,15 @@ export default function SecretAdminPanel() {
         return;
       }
 
-      // Check if user is admin (stored in user metadata)
-      const isUserAdmin = user.email === 'admin@twinmind.com' ||
-        user.user_metadata?.role === 'admin';
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const adminResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (!isUserAdmin) {
+      if (!adminResponse.ok) {
         // Redirect to home without showing error (keep it secret)
         router.push('/chat');
         return;
@@ -121,9 +125,9 @@ export default function SecretAdminPanel() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            🔒 Admin Dashboard
+            Admin Dashboard
           </h1>
-          <p className="text-gray-400 mt-2">Secret Control Panel - TwinGenie Platform</p>
+          <p className="text-gray-400 mt-2">Control Panel - TwinGenie Platform</p>
         </div>
 
         {/* Tabs */}
@@ -188,7 +192,30 @@ export default function SecretAdminPanel() {
         {activeTab === 'users' && (
           <div className="bg-[#1A1A2E] rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">User Management</h2>
-            <p className="text-gray-400">User management features coming soon...</p>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-gray-400 border-b border-gray-700">
+                    <th className="pb-2">Email</th>
+                    <th className="pb-2">Created</th>
+                    <th className="pb-2">Last Sign In</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentUsers.map(user => (
+                    <tr key={user.id} className="border-b border-gray-800">
+                      <td className="py-3">{user.email}</td>
+                      <td className="py-3">{new Date(user.created_at).toLocaleDateString()}</td>
+                      <td className="py-3">
+                        {user.last_sign_in_at !== 'Never'
+                          ? new Date(user.last_sign_in_at).toLocaleDateString()
+                          : 'Never'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

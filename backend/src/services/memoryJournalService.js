@@ -325,23 +325,32 @@ export async function getUpcomingAnniversaries(userId, daysAhead = 7) {
 /* --------------------------------------------------------
    FAVORITES
 -------------------------------------------------------- */
-export async function toggleMemoryFavorite(memoryId) {
+export async function toggleMemoryFavorite(userId, memoryId) {
     try {
-        const { data } = await supabaseAdmin
+        const { data, error: fetchError } = await supabaseAdmin
             .from("shared_memories")
             .select("is_favorite")
+            .eq("user_id", userId)
             .eq("id", memoryId)
             .single();
 
+        if (fetchError) throw fetchError;
         const current = data?.is_favorite || false;
 
-        await supabaseAdmin
+        const { data: updated, error } = await supabaseAdmin
             .from("shared_memories")
             .update({ is_favorite: !current })
-            .eq("id", memoryId);
+            .eq("user_id", userId)
+            .eq("id", memoryId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return updated;
 
     } catch (error) {
         logger.error("❌ Error toggling favorite:", error);
+        throw error;
     }
 }
 

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/login_screen.dart';
@@ -18,15 +19,16 @@ import 'screens/terms_screen.dart';
 import 'screens/insights_screen.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/memory_timeline_screen.dart';
+import 'screens/memory_detail_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/daily_challenges_screen.dart';
 import 'screens/growth_story_screen.dart';
 import 'screens/twin_match_screen.dart';
 import 'services/auth_service.dart';
-import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'providers/gamification_provider.dart';
 import 'providers/daily_provider.dart';
+import 'providers/memory_provider.dart';
 
 import 'screens/auth_wrapper.dart';
 
@@ -36,7 +38,10 @@ void main() {
   // Catch errors during strict startup
   runZonedGuarded(() {
     WidgetsFlutterBinding.ensureInitialized();
-    runApp(const TwinMindApp());
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    }
+    runApp(const TwinGenieApp());
   }, (error, stack) {
     print('🔴 Global Startup Error: $error');
   });
@@ -62,8 +67,20 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeApp() async {
     try {
       setState(() => _status = 'Connecting to services...');
-      
-      // Initialize Firebase (skip on web)
+
+      // Initialize Supabase
+      setState(() => _status = 'Syncing data...');
+      await Supabase.initialize(
+        url: 'https://lhwtfjgtripwikxwookp.supabase.co',
+        anonKey:
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+          autoRefreshToken: true, // Auto-refresh tokens before expiry
+        ),
+      );
+
+      // Initialize Firebase after Supabase so FCM token sync has auth context.
       if (!kIsWeb) {
         try {
           await Firebase.initializeApp();
@@ -73,28 +90,12 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       }
 
-      // Initialize Supabase
-      setState(() => _status = 'Syncing data...');
-      await Supabase.initialize(
-        url: 'https://lhwtfjgtripwikxwookp.supabase.co',
-        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
-        authOptions: const FlutterAuthClientOptions(
-          authFlowType: AuthFlowType.pkce,
-          autoRefreshToken: true,  // Auto-refresh tokens before expiry
-        ),
-      );
-
       // Sync FCM if needed
       if (!kIsWeb) {
         try {
           final session = Supabase.instance.client.auth.currentSession;
           if (session != null) {
-            final fcmToken = NotificationService().fcmToken;
-            if (fcmToken != null) {
-              final api = ApiService();
-              api.setToken(session.accessToken);
-              await api.updateFcmToken(fcmToken);
-            }
+            await NotificationService().syncTokenToBackend();
           }
         } catch (_) {}
       }
@@ -131,13 +132,14 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 borderRadius: BorderRadius.circular(25),
               ),
-              child: const Icon(Icons.psychology, size: 50, color: Colors.white),
+              child:
+                  const Icon(Icons.psychology, size: 50, color: Colors.white),
             ),
             const SizedBox(height: 32),
             if (_hasError)
               Column(
                 children: [
-                   Text(
+                  Text(
                     _status,
                     style: GoogleFonts.inter(color: Colors.redAccent),
                     textAlign: TextAlign.center,
@@ -170,8 +172,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-class TwinMindApp extends StatelessWidget {
-  const TwinMindApp({super.key});
+class TwinGenieApp extends StatelessWidget {
+  const TwinGenieApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +182,7 @@ class TwinMindApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => GamificationProvider()),
         ChangeNotifierProvider(create: (_) => DailyProvider()),
+        ChangeNotifierProvider(create: (_) => MemoryProvider()),
       ],
       child: MaterialApp(
         title: 'TwinGenie',
@@ -211,6 +214,7 @@ class TwinMindApp extends StatelessWidget {
           '/daily-challenges': (context) => const DailyChallengesScreen(),
           '/achievements': (context) => const AchievementsScreen(),
           '/memory-timeline': (context) => const MemoryTimelineScreen(),
+          '/memory-detail': (context) => const MemoryDetailScreen(),
           '/terms': (context) => const TermsScreen(),
           '/insights': (context) => const InsightsScreen(),
           '/growth-story': (context) => const GrowthStoryScreen(),

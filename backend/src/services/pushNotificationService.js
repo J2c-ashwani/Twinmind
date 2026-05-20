@@ -2,6 +2,80 @@ import { messaging } from '../config/firebase.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
 
+const INVALID_TOKEN_ERROR_CODES = new Set([
+    'messaging/registration-token-not-registered',
+    'messaging/invalid-registration-token',
+]);
+
+function chunkArray(items, size) {
+    const chunks = [];
+    for (let index = 0; index < items.length; index += size) {
+        chunks.push(items.slice(index, index + size));
+    }
+    return chunks;
+}
+
+function stringifyDataPayload(data) {
+    return Object.fromEntries(
+        Object.entries(data || {}).map(([key, value]) => [
+            key,
+            value == null ? '' : String(value),
+        ])
+    );
+}
+
+async function getUserPushTokens(userId) {
+    const tokens = new Set();
+
+    const { data: deviceTokens, error: deviceTokenError } = await supabaseAdmin
+        .from('push_device_tokens')
+        .select('token')
+        .eq('user_id', userId)
+        .eq('enabled', true);
+
+    if (!deviceTokenError && Array.isArray(deviceTokens)) {
+        deviceTokens.forEach((row) => {
+            if (row.token) tokens.add(row.token);
+        });
+    } else if (deviceTokenError) {
+        logger.warn(`Failed to fetch push_device_tokens for user ${userId}; falling back to users.fcm_token`, deviceTokenError);
+    }
+
+    if (tokens.size === 0) {
+        const { data: user, error } = await supabaseAdmin
+            .from('users')
+            .select('fcm_token')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            logger.warn(`Failed to fetch fallback FCM token for user ${userId}:`, error);
+        } else if (user?.fcm_token) {
+            tokens.add(user.fcm_token);
+        }
+    }
+
+    return Array.from(tokens);
+}
+
+async function disableInvalidTokens(userId, tokens) {
+    if (tokens.length === 0) return;
+
+    await supabaseAdmin
+        .from('push_device_tokens')
+        .update({ enabled: false, disabled_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .in('token', tokens);
+
+    for (const token of tokens) {
+        await supabaseAdmin
+            .from('users')
+            .update({ fcm_token: null })
+            .eq('id', userId)
+            .eq('fcm_token', token);
+    }
+}
+
 /**
  * Send a push notification to a user
  * @param {string} userId - The user ID to send to
@@ -11,32 +85,29 @@ import logger from '../config/logger.js';
  */
 export async function sendPushNotification(userId, title, body, data = {}) {
     try {
-        // 1. Get user's FCM token from database
-        const { data: user, error } = await supabaseAdmin
-            .from('users')
-            .select('fcm_token')
-            .eq('id', userId)
-            .single();
-
-        if (error || !user || !user.fcm_token) {
-            if (error) logger.warn(`Failed to fetch FCM token for user ${userId}:`, error);
-            else logger.debug(`No FCM token found for user ${userId}, skipping push.`);
+        if (!messaging) {
+            logger.warn('Firebase Admin is not configured; skipping push notification send.');
             return false;
         }
 
-        const token = user.fcm_token;
+        // 1. Get user's FCM token(s) from database
+        const tokens = await getUserPushTokens(userId);
+
+        if (tokens.length === 0) {
+            logger.debug(`No FCM token found for user ${userId}, skipping push.`);
+            return false;
+        }
 
         // 2. Construct message payload
-        const message = {
+        const baseMessage = {
             notification: {
                 title,
                 body
             },
             data: {
-                ...data,
+                ...stringifyDataPayload(data),
                 click_action: 'FLUTTER_NOTIFICATION_CLICK' // Standard for Flutter
             },
-            token: token,
             android: {
                 priority: 'high',
                 notification: {
@@ -56,18 +127,34 @@ export async function sendPushNotification(userId, title, body, data = {}) {
         };
 
         // 3. Send message via Firebase
-        const response = await messaging.send(message);
-        logger.info(`Successfully sent push notification to user ${userId}: ${response}`);
-        return true;
+        const invalidTokens = [];
+        let successCount = 0;
+
+        for (const tokenBatch of chunkArray(tokens, 500)) {
+            const response = await messaging.sendEachForMulticast({
+                ...baseMessage,
+                tokens: tokenBatch,
+            });
+
+            successCount += response.successCount;
+
+            response.responses.forEach((result, index) => {
+                if (!result.success && INVALID_TOKEN_ERROR_CODES.has(result.error?.code)) {
+                    invalidTokens.push(tokenBatch[index]);
+                }
+            });
+        }
+
+        if (invalidTokens.length > 0) {
+            logger.warn(`Disabling ${invalidTokens.length} invalid FCM token(s) for user ${userId}`);
+            await disableInvalidTokens(userId, invalidTokens);
+        }
+
+        logger.info(`Sent push notification to user ${userId}: ${successCount}/${tokens.length} delivered`);
+        return successCount > 0;
 
     } catch (error) {
-        if (error.code === 'messaging/registration-token-not-registered') {
-            logger.warn(`FCM token invalid for user ${userId}, removing it.`);
-            // Remove invalid token to prevent future errors
-            await supabaseAdmin.from('users').update({ fcm_token: null }).eq('id', userId);
-        } else {
-            logger.error('Error sending push notification:', error);
-        }
+        logger.error('Error sending push notification:', error);
         return false;
     }
 }

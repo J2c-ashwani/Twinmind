@@ -24,7 +24,7 @@ class _StreakWidgetState extends State<StreakWidget> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final token = authService.getAccessToken();
-      
+
       // Skip API call if not authenticated
       if (token == null) {
         setState(() {
@@ -32,7 +32,7 @@ class _StreakWidgetState extends State<StreakWidget> {
         });
         return;
       }
-      
+
       final api = ApiService();
       api.setToken(token);
 
@@ -277,11 +277,16 @@ class _StreakWidgetState extends State<StreakWidget> {
                       children: [
                         Text(
                           'Streak Freeze',
-                          style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.5)),
                         ),
                         Text(
                           '${_streakData!['freeze_tokens']} ${_streakData!['freeze_tokens'] == 1 ? 'token' : 'tokens'}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
                         ),
                       ],
                     ),
@@ -293,20 +298,25 @@ class _StreakWidgetState extends State<StreakWidget> {
                       },
                       style: TextButton.styleFrom(
                         backgroundColor: Colors.purple.withOpacity(0.2),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                       ),
-                      child: const Text('Get More', style: TextStyle(fontSize: 11)),
+                      child: const Text('Get More',
+                          style: TextStyle(fontSize: 11)),
                     ),
                 ],
               ),
             ),
 
-          if (_streakData != null && _streakData!['freeze_tokens'] != null && _streakData!['freeze_tokens'] > 0)
+          if (_streakData != null &&
+              _streakData!['freeze_tokens'] != null &&
+              _streakData!['freeze_tokens'] > 0)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 'Auto-saves your streak if you miss a day',
-                style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.3)),
+                style: TextStyle(
+                    fontSize: 10, color: Colors.white.withOpacity(0.3)),
               ),
             ),
 
@@ -357,7 +367,8 @@ class _StreakWidgetState extends State<StreakWidget> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Protect Your Streak! 🔥', style: TextStyle(color: Colors.white)),
+        title: const Text('Protect Your Streak! 🔥',
+            style: TextStyle(color: Colors.white)),
         content: const Text(
           'Get Streak Freeze tokens with TwinGenie Pro. Never lose your progress again.',
           style: TextStyle(color: Colors.white70),
@@ -365,7 +376,8 @@ class _StreakWidgetState extends State<StreakWidget> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -375,7 +387,8 @@ class _StreakWidgetState extends State<StreakWidget> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9333EA),
             ),
-            child: const Text('Upgrade now', style: TextStyle(color: Colors.white)),
+            child: const Text('Upgrade now',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

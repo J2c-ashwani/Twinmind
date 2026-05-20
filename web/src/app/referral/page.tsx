@@ -7,6 +7,7 @@ import { Copy, Share2, Users, Gift, Check } from 'lucide-react';
 
 export default function ReferralPage() {
     const [referralCode, setReferralCode] = useState('');
+    const [referralUrl, setReferralUrl] = useState('');
     const [stats, setStats] = useState<any>(null);
     const [copied, setCopied] = useState(false);
 
@@ -21,6 +22,7 @@ export default function ReferralPage() {
                 apiClient.getReferralStats(),
             ]);
             setReferralCode((code as any)?.code || '');
+            setReferralUrl((code as any)?.url || '');
             setStats(statsData);
         } catch (error) {
             console.error('Failed to load referral data:', error);
@@ -28,14 +30,14 @@ export default function ReferralPage() {
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(`https://twinmind.app/join/${referralCode}`);
+        navigator.clipboard.writeText(referralUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     const shareToSocial = (platform: string) => {
-        const url = `https://twinmind.app/join/${referralCode}`;
-        const text = "I'm using TwinGenie - the most advanced AI companion. Join me!";
+        const url = referralUrl;
+        const text = "I'm using TwinGenie. Join me!";
 
         const urls: Record<string, string> = {
             twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,

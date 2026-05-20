@@ -37,14 +37,21 @@ export default function TermsOfService() {
             </section>
 
             <section className="space-y-4">
-                <h2 className="text-xl font-semibold">5. Termination</h2>
+                <h2 className="text-xl font-semibold">5. Subscriptions and Payments</h2>
+                <p>
+                    Premium subscriptions are purchased and managed through Google Play Billing in the Android app. You can cancel or manage your subscription from your Google Play account settings.
+                </p>
+            </section>
+
+            <section className="space-y-4">
+                <h2 className="text-xl font-semibold">6. Termination</h2>
                 <p>
                     We reserve the right to terminate or suspend your account immediately, without prior notice or liability, for any reason, including without limitation if you breach the Terms.
                 </p>
             </section>
 
             <section className="space-y-4">
-                <h2 className="text-xl font-semibold">6. Changes to Terms</h2>
+                <h2 className="text-xl font-semibold">7. Changes to Terms</h2>
                 <p>
                     We reserve the right to modify or replace these Terms at any time. We will provide notice of any significant changes.
                 </p>

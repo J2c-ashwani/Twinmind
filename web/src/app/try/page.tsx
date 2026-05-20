@@ -7,13 +7,16 @@ import { motion } from 'framer-motion'
 /**
  * /try — Smart redirect page for shared messages.
  * 
- * When someone receives a shared TwinMind message, the link
+ * When someone receives a shared TwinGenie message, the link
  * brings them here. This page:
  * 1. Detects their platform (iOS / Android / Desktop)
  * 2. Shows a quick emotional hook
  * 3. Redirects to the right store or web app
  */
 export default function TryPage() {
+    const playStoreUrl =
+        process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
+        'https://play.google.com/store/apps/details?id=com.asmind.app'
 
     useEffect(() => {
         // Auto-redirect after 3 seconds
@@ -27,11 +30,11 @@ export default function TryPage() {
         const ua = navigator.userAgent.toLowerCase()
 
         if (/iphone|ipad|ipod/.test(ua)) {
-            // iOS → App Store (update with real ID when submitted)
-            window.location.href = 'https://apps.apple.com/app/twinmind'
+            // iOS launch is not active yet; keep users in the web onboarding flow.
+            window.location.href = '/onboarding'
         } else if (/android/.test(ua)) {
-            // Android → Play Store (update with real ID when submitted)
-            window.location.href = 'https://play.google.com/store/apps/details?id=com.twinmind.app'
+            // Android → Play Store
+            window.location.href = playStoreUrl
         } else {
             // Desktop → Web app
             window.location.href = '/onboarding'
@@ -64,7 +67,7 @@ export default function TryPage() {
                 </h1>
 
                 <p className="text-gray-400 mb-8 text-lg">
-                    TwinMind — the AI that actually knows you.
+                    TwinGenie — the AI that actually knows you.
                     Try it yourself.
                 </p>
 
@@ -73,7 +76,7 @@ export default function TryPage() {
                     className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-lg shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-3 mx-auto"
                 >
                     <Sparkles className="w-5 h-5" />
-                    Try TwinMind Free
+                    Try TwinGenie Free
                     <ArrowRight className="w-5 h-5" />
                 </button>
 

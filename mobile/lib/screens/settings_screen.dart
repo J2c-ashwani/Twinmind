@@ -59,7 +59,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 (value) => setState(() => _soundEnabled = value),
                 Icons.volume_up_outlined,
               ),
-              
               const SizedBox(height: 32),
               _buildSectionHeader('Account'),
               _buildActionTile(
@@ -80,7 +79,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icons.credit_card_outlined,
                 () => Navigator.pushNamed(context, '/subscription'),
               ),
-              
               const SizedBox(height: 32),
               _buildSectionHeader('Data Management'),
               _buildActionTile(
@@ -91,7 +89,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 iconColor: Colors.red,
                 textColor: Colors.red,
               ),
-              
               const SizedBox(height: 32),
               _buildSectionHeader('Support'),
               _buildActionTile(
@@ -106,7 +103,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icons.info_outline,
                 () {},
               ),
-              
               const SizedBox(height: 32),
               _buildSectionHeader('Legal'),
               _buildActionTile(
@@ -121,7 +117,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icons.description_outlined,
                 () => Navigator.pushNamed(context, '/terms'),
               ),
-              
               const SizedBox(height: 32),
               const Center(
                 child: Text(
@@ -239,7 +234,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A0B2E),
-        title: const Text('Clear History?', style: TextStyle(color: Colors.white)),
+        title:
+            const Text('Clear History?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'This will permanently delete all your chat messages. This action cannot be undone.',
           style: TextStyle(color: Colors.white70),
@@ -261,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       try {
         final authService = Provider.of<AuthService>(context, listen: false);
         final token = authService.getAccessToken();
-        
+
         if (token == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -270,12 +266,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           }
           return;
         }
-        
+
         final api = ApiService();
         api.setToken(token);
-        
+
         await api.clearChatHistory();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Chat history cleared')),

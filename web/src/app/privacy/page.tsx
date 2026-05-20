@@ -17,6 +17,7 @@ export default function PrivacyPolicy() {
                     <li><strong>Account Information:</strong> Email address and profile details provided during registration.</li>
                     <li><strong>Usage Data:</strong> Information about how you interact with our services, including chat history and feature usage.</li>
                     <li><strong>Device Information:</strong> Device type, operating system, and unique device identifiers.</li>
+                    <li><strong>Payment Status:</strong> Google Play subscription status needed to unlock Premium features. We do not collect or store your full payment card details.</li>
                 </ul>
             </section>
 

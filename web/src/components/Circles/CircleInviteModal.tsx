@@ -11,18 +11,15 @@ interface CircleInviteModalProps {
 }
 
 export default function CircleInviteModal({ isOpen, onClose, circleId, circleName }: CircleInviteModalProps) {
-    console.log('CircleInviteModal rendered, isOpen:', isOpen, 'circleId:', circleId);
     const [inviteCode, setInviteCode] = useState('');
     const [inviteLink, setInviteLink] = useState('');
     const [copied, setCopied] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const generateInvite = async () => {
-        console.log('Generating invite for circle:', circleId);
         setIsLoading(true);
         try {
             const data = await apiClient.createCircleInvitation(circleId) as any;
-            console.log('Invite generated:', data);
             setInviteCode(data?.invitation?.invitation_code || data?.invitation_code || '');
             setInviteLink(data?.invite_link || '');
         } catch (error) {

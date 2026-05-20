@@ -30,6 +30,7 @@ import adminRoutes from './routes/admin.routes.js';
 import voiceRoutes from './routes/voice.routes.js';
 import lifeCoachRoutes from './routes/lifeCoach.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import proactiveRoutes from './routes/proactive.routes.js';
 import { initJobs } from './jobs/reminderJob.js';
 
 dotenv.config();
@@ -71,8 +72,9 @@ app.use(helmet({
 }));
 
 // CORS configuration
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
+const corsOriginConfig = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN;
+const allowedOrigins = corsOriginConfig
+  ? corsOriginConfig.split(',').map((origin) => origin.trim()).filter(Boolean)
   : [
     'http://localhost:3000',
     'http://localhost:3001',
@@ -229,6 +231,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/life-coach', lifeCoachRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/proactive', proactiveRoutes);
 
 // ============================================
 // 📱 SERVE WEB APP (Flutter PWA)
@@ -388,4 +391,3 @@ setInterval(() => {
 }, 60000); // Check every minute
 
 export default app;
-

@@ -161,13 +161,17 @@ export const api = {
     getMoodHistory: (token: string) =>
         apiCall('/api/daily/mood/history', { token }),
 
-    findUserForMatch: (username: string, token: string) =>
-        apiCall(`/api/twin-match/find?username=${encodeURIComponent(username)}`, { token }),
+    findUserForMatch: (identifier: string, token: string) =>
+        apiCall('/api/twin-match/find', {
+            method: 'POST',
+            body: { identifier },
+            token,
+        }),
 
-    compareTwins: (otherUserId: string, token: string) =>
+    compareTwins: (identifier: string, token: string) =>
         apiCall('/api/twin-match/compare', {
             method: 'POST',
-            body: { otherUserId },
+            body: { identifier },
             token,
         }),
 }

@@ -1,7 +1,11 @@
 // Web Push Notifications Service
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 class NotificationService {
     private registration: ServiceWorkerRegistration | null = null;
+    private supabase = createClientComponentClient();
 
     async initialize() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -40,10 +44,16 @@ class NotificationService {
                 ) as unknown as BufferSource,
             });
 
-            // Send subscription to backend
-            await fetch('/api/notifications/subscribe', {
+            const { data } = await this.supabase.auth.getSession();
+            const token = data.session?.access_token;
+            if (!token) throw new Error('Sign in required for push notifications');
+
+            await fetch(`${API_URL}/api/notifications/subscribe`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
                 body: JSON.stringify(subscription),
             });
 

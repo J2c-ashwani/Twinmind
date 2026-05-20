@@ -66,25 +66,17 @@ export default function GrowthCircleWidget({ onInviteClick }: CircleWidgetProps)
     };
 
     const handleCreateCircle = async () => {
-        console.log('=== CREATE CIRCLE BUTTON CLICKED ===');
         try {
-            console.log('Calling apiClient.createCircle()...');
             const data = await apiClient.createCircle('My Growth Circle') as any;
-            console.log('Circle create response:', data);
 
             if (data?.circle) {
                 setCircle(data.circle);
-                console.log('Circle set, fetching progress...');
-                // Reload to get progress
                 const progressData = await apiClient.getCircleProgress(data.circle.id) as any;
-                console.log('Progress data:', progressData);
                 setProgress(progressData);
-                console.log('✅ Circle created successfully!');
             }
         } catch (error: any) {
             console.error('❌ Failed to create circle:', error);
             const errorMessage = error.message || 'Failed to create circle. Please try again.';
-            console.log('Showing alert with message:', errorMessage);
             alert(errorMessage);
         }
     };

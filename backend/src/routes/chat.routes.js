@@ -38,7 +38,7 @@ const router = express.Router();
  * POST /api/chat/message
  * Send a message and get AI twin response with behavioral engagement tracking
  */
-router.post('/message', authenticateUser, checkUsageLimits, async (req, res) => {
+router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, async (req, res) => {
     try {
         const { message, mode = 'normal', conversation_id } = req.body;
         const userId = req.userId;

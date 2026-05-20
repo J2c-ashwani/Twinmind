@@ -8,8 +8,10 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface Memory {
     id: string;
-    content: string;
+    title: string;
+    description?: string;
     created_at: string;
+    memory_type?: string;
     metadata?: {
         emotion?: string;
         topics?: string[];
@@ -36,18 +38,8 @@ export default function MemoriesPage() {
 
     const loadMemories = async () => {
         try {
-            const data = await apiClient.getConversations() as { conversations: any[] };
-            // Transform conversations into memories format
-            const memoriesData = (data.conversations || []).map((conv: any) => ({
-                id: conv.id,
-                content: conv.title || 'Untitled Memory',
-                created_at: conv.updated_at || conv.created_at,
-                metadata: {
-                    emotion: 'neutral',
-                    topics: [],
-                },
-            }));
-            setMemories(memoriesData);
+            const data = await apiClient.getMemoryTimeline(50) as any;
+            setMemories(Array.isArray(data) ? data : data?.memories || []);
         } catch (error) {
             console.error('Failed to load memories:', error);
         } finally {
@@ -137,7 +129,7 @@ export default function MemoriesPage() {
                                     {dayMemories.map((memory) => (
                                         <motion.a
                                             key={memory.id}
-                                            href={`/chat?id=${memory.id}`}
+                                            href="/chat"
                                             whileHover={{ scale: 1.02 }}
                                             className="block p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
                                         >
@@ -145,8 +137,13 @@ export default function MemoriesPage() {
                                                 <div className="w-2 h-2 mt-2 rounded-full bg-purple-500" />
                                                 <div className="flex-1">
                                                     <h3 className="font-medium text-white mb-1">
-                                                        {memory.content}
+                                                        {memory.title}
                                                     </h3>
+                                                    {memory.description && (
+                                                        <p className="text-sm text-gray-500 line-clamp-2">
+                                                            {memory.description}
+                                                        </p>
+                                                    )}
                                                     <p className="text-sm text-gray-400">
                                                         {new Date(memory.created_at).toLocaleTimeString('en-US', {
                                                             hour: 'numeric',

@@ -8,7 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Custom exception for rate limiting
 class RateLimitException implements Exception {
   final String message;
-  RateLimitException([this.message = 'Rate limit exceeded. Please upgrade to Pro for unlimited access.']);
+  RateLimitException(
+      [this.message =
+          'Rate limit exceeded. Please upgrade to Pro for unlimited access.']);
   @override
   String toString() => message;
 }
@@ -22,12 +24,12 @@ class HttpException implements Exception {
 }
 
 class ApiService {
-  static const String baseUrl = kReleaseMode 
+  static const String baseUrl = kReleaseMode
       ? 'https://twinmind-9l6x.onrender.com'
       : 'http://localhost:5001'; // Backend API port
-  
+
   // Deprecated: Token is now fetched directly from Supabase client to ensure freshness
-  String? _token; 
+  String? _token;
 
   void setToken(String token) {
     _token = token;
@@ -36,8 +38,9 @@ class ApiService {
   Map<String, String> get _headers {
     // Dynamically get the latest token from Supabase SDK
     // This handles auto-refresh automatically
-    final currentToken = Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
-    
+    final currentToken =
+        Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
+
     return {
       'Content-Type': 'application/json',
       if (currentToken != null) 'Authorization': 'Bearer $currentToken',
@@ -131,7 +134,8 @@ class ApiService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
-    throw HttpException('Failed to load personality profile', response.statusCode);
+    throw HttpException(
+        'Failed to load personality profile', response.statusCode);
   }
 
   Future<List<dynamic>> getQuestions() async {
@@ -146,12 +150,13 @@ class ApiService {
     throw Exception('Failed to load questions');
   }
 
-  Future<void> submitAnswers(List<Map<String, dynamic>> answers, String token) async {
+  Future<void> submitAnswers(
+      List<Map<String, dynamic>> answers, String token) async {
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
-    
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/personality/submit-answers'),
       headers: headers,
@@ -167,11 +172,13 @@ class ApiService {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
-    
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/personality/generate'),
       headers: headers,
-      body: json.encode({'answers': []}), // Fix: Send empty answers array if needed or remove body if not required by backend
+      body: json.encode({
+        'answers': []
+      }), // Fix: Send empty answers array if needed or remove body if not required by backend
     );
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -203,12 +210,12 @@ class ApiService {
     if (conversationId != null && conversationId.isNotEmpty) {
       url += '&conversation_id=$conversationId';
     }
-    
+
     final response = await http.get(
       Uri.parse(url),
       headers: _headers,
     );
-    
+
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
@@ -305,18 +312,17 @@ class ApiService {
     throw Exception('Failed to load level');
   }
 
-  Future<Map<String, dynamic>> sendMessage(
-    String message,
-    String mode,
-    {String? token, String? conversationId}
-  ) async {
-    final currentToken = token ?? Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
-    
+  Future<Map<String, dynamic>> sendMessage(String message, String mode,
+      {String? token, String? conversationId}) async {
+    final currentToken = token ??
+        Supabase.instance.client.auth.currentSession?.accessToken ??
+        _token;
+
     final headers = {
       'Content-Type': 'application/json',
       if (currentToken != null) 'Authorization': 'Bearer $currentToken',
     };
-    
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/chat/message'),
       headers: headers,
@@ -441,6 +447,26 @@ class ApiService {
     throw Exception('Failed to create checkout session');
   }
 
+  Future<Map<String, dynamic>> verifyGooglePlayPurchase({
+    required String productId,
+    required String purchaseToken,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/subscription/google-play/verify'),
+      headers: _headers,
+      body: json.encode({
+        'productId': productId,
+        'purchaseToken': purchaseToken,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+
+    final data = json.decode(response.body.isEmpty ? '{}' : response.body);
+    throw Exception(data['error'] ?? 'Failed to verify Google Play purchase');
+  }
+
   Future<void> cancelSubscription() async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/subscription/cancel'),
@@ -476,7 +502,8 @@ class ApiService {
   }
 
   // Growth Circles
-  Future<Map<String, dynamic>> createCircle({String name = 'My Growth Circle'}) async {
+  Future<Map<String, dynamic>> createCircle(
+      {String name = 'My Growth Circle'}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/circles'),
       headers: _headers,
@@ -651,75 +678,18 @@ class ApiService {
   }
 
   // Life Coach endpoints
-  // Fallback programs matching web app
-  static const List<Map<String, dynamic>> _fallbackPrograms = [
-    {
-      'id': '1',
-      'title': 'Anxiety Relief Journey',
-      'description': 'A 7-day guided program to understand and manage anxiety using proven techniques.',
-      'category': 'anxiety',
-      'duration_days': 7,
-      'is_premium': false
-    },
-    {
-      'id': '2',
-      'title': 'Confidence Builder',
-      'description': 'Build unshakeable self-confidence with daily exercises and mindset shifts.',
-      'category': 'growth',
-      'duration_days': 14,
-      'is_premium': false
-    },
-    {
-      'id': '3',
-      'title': 'Emotional Intelligence Mastery',
-      'description': 'Master your emotions and develop deeper connections with others.',
-      'category': 'mindfulness',
-      'duration_days': 21,
-      'is_premium': true
-    },
-    {
-      'id': '4',
-      'title': 'Career Growth Accelerator',
-      'description': 'Unlock your professional potential with goal-setting and productivity coaching.',
-      'category': 'growth',
-      'duration_days': 30,
-      'is_premium': true
-    },
-    {
-      'id': '5',
-      'title': 'Daily Mindfulness Practice',
-      'description': 'Start each day with calm and clarity through guided meditation sessions.',
-      'category': 'mindfulness',
-      'duration_days': 7,
-      'is_premium': false
-    },
-    {
-      'id': '6',
-      'title': 'Relationship Healing',
-      'description': 'Repair and strengthen your most important relationships with guided exercises.',
-      'category': 'anxiety',
-      'duration_days': 14,
-      'is_premium': true
-    }
-  ];
-
   Future<List<dynamic>> getLifeCoachPrograms() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/life-coach/programs'),
-        headers: _headers,
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data is List && data.isNotEmpty) {
-          return data;
-        }
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/life-coach/programs'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is List) {
+        return data;
       }
-      return _fallbackPrograms;
-    } catch (e) {
-      print('API Error: $e');
-      return _fallbackPrograms;
     }
+    throw Exception('Failed to load Life Coach programs');
   }
 
   Future<Map<String, dynamic>> startProgram(String programId) async {
@@ -731,7 +701,8 @@ class ApiService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to start program');
+    final data = json.decode(response.body.isEmpty ? '{}' : response.body);
+    throw Exception(data['error'] ?? 'Failed to start program');
   }
 
   Future<Map<String, dynamic>> getSession(String programId) async {
@@ -788,8 +759,9 @@ class ApiService {
       );
 
       // Add headers
-      final currentToken = Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
-      
+      final currentToken =
+          Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
+
       if (currentToken != null) {
         request.headers['Authorization'] = 'Bearer $currentToken';
       } else {
@@ -869,10 +841,7 @@ class ApiService {
       body: json.encode({'token': token}),
     );
     if (response.statusCode != 200) {
-      // Don't throw - just log, as this is background sync
-      print('Failed to update FCM token');
+      throw HttpException('Failed to update FCM token', response.statusCode);
     }
   }
-
-
 }

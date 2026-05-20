@@ -25,15 +25,24 @@ class Memory {
   });
 
   factory Memory.fromJson(Map<String, dynamic> json) {
+    final description = json['description'] ?? json['content'] ?? '';
+    final memoryType = json['memory_type'] ?? json['type'] ?? 'conversation';
+    final significance =
+        json['emotional_significance'] ?? json['significance'] ?? 5;
+    final createdAt =
+        json['created_at'] ?? json['date'] ?? DateTime.now().toIso8601String();
+
     return Memory(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      memoryType: json['memory_type'],
-      emotionalSignificance: json['emotional_significance'],
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Memory',
+      description: description.toString(),
+      memoryType: memoryType.toString(),
+      emotionalSignificance: significance is int
+          ? significance
+          : int.tryParse(significance.toString()) ?? 5,
       tags: List<String>.from(json['tags'] ?? []),
-      isFavorite: json['is_favorite'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      isFavorite: json['is_favorite'] ?? json['isFavorite'] ?? false,
+      createdAt: DateTime.tryParse(createdAt.toString()) ?? DateTime.now(),
       referencedCount: json['referenced_count'] ?? 0,
     );
   }
@@ -41,7 +50,7 @@ class Memory {
 
 class MemoryProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
-  
+
   List<Memory> _memories = [];
   Memory? _selectedMemory;
   bool _isLoading = false;
@@ -71,7 +80,7 @@ class MemoryProvider with ChangeNotifier {
   Future<void> toggleFavorite(String memoryId) async {
     try {
       await _apiService.toggleMemoryFavorite(memoryId);
-      
+
       final index = _memories.indexWhere((m) => m.id == memoryId);
       if (index != -1) {
         final memory = _memories[index];

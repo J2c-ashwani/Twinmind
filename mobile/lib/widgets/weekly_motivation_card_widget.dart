@@ -8,10 +8,12 @@ class WeeklyMotivationCardWidget extends StatefulWidget {
   const WeeklyMotivationCardWidget({super.key});
 
   @override
-  State<WeeklyMotivationCardWidget> createState() => _WeeklyMotivationCardWidgetState();
+  State<WeeklyMotivationCardWidget> createState() =>
+      _WeeklyMotivationCardWidgetState();
 }
 
-class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget> {
+class _WeeklyMotivationCardWidgetState
+    extends State<WeeklyMotivationCardWidget> {
   Map<String, dynamic>? _card;
   bool _isLoading = true;
   bool _isGenerating = false;
@@ -26,7 +28,7 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final token = authService.getAccessToken();
-      
+
       // Skip API call if not authenticated
       if (token == null) {
         setState(() {
@@ -34,7 +36,7 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
         });
         return;
       }
-      
+
       final api = ApiService();
       api.setToken(token);
 
@@ -59,7 +61,7 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final token = authService.getAccessToken();
-      
+
       // Skip API call if not authenticated
       if (token == null) {
         setState(() {
@@ -67,7 +69,7 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
         });
         return;
       }
-      
+
       final api = ApiService();
       api.setToken(token);
 
@@ -96,10 +98,10 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
       // Mark as shared
       final authService = Provider.of<AuthService>(context, listen: false);
       final token = authService.getAccessToken();
-      
+
       // Skip API call if not authenticated
       if (token == null) return;
-      
+
       final api = ApiService();
       api.setToken(token);
       await api.markCardShared(_card!['id'], 'native');
@@ -115,7 +117,10 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.purple.withOpacity(0.1), Colors.pink.withOpacity(0.1)],
+            colors: [
+              Colors.purple.withOpacity(0.1),
+              Colors.pink.withOpacity(0.1)
+            ],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.purple.withOpacity(0.2)),
@@ -129,7 +134,10 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.purple.withOpacity(0.1), Colors.pink.withOpacity(0.1)],
+            colors: [
+              Colors.purple.withOpacity(0.1),
+              Colors.pink.withOpacity(0.1)
+            ],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.purple.withOpacity(0.2)),
@@ -139,18 +147,21 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, color: Colors.purpleAccent, size: 24),
+                const Icon(Icons.auto_awesome,
+                    color: Colors.purpleAccent, size: 24),
                 const SizedBox(width: 12),
                 Text(
                   'Weekly Motivation',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.7), fontSize: 14),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Text(
               'Chat more this week to unlock your personalized motivation card!',
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+              style:
+                  TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -159,9 +170,11 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
                 backgroundColor: const Color(0xFF9333EA),
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 45),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text(_isGenerating ? 'Generating...' : 'Try to Generate Now'),
+              child:
+                  Text(_isGenerating ? 'Generating...' : 'Try to Generate Now'),
             ),
           ],
         ),
@@ -191,7 +204,8 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
           // Header
           Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Colors.purpleAccent, size: 28),
+              const Icon(Icons.auto_awesome,
+                  color: Colors.purpleAccent, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -199,11 +213,13 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
                   children: [
                     Text(
                       'Weekly Motivation',
-                      style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                      style: TextStyle(
+                          fontSize: 10, color: Colors.white.withOpacity(0.5)),
                     ),
                     Text(
                       '${_formatDate(weekStart)} - ${_formatDate(weekEnd)}',
-                      style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7)),
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.white.withOpacity(0.7)),
                     ),
                   ],
                 ),
@@ -228,7 +244,8 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
             alignment: Alignment.centerRight,
             child: Text(
               '— ${_card!['twin_name']}',
-              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+              style:
+                  TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
             ),
           ),
           const SizedBox(height: 20),
@@ -246,7 +263,8 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
                     foregroundColor: Colors.white,
                     side: BorderSide(color: Colors.white.withOpacity(0.2)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
@@ -259,8 +277,10 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
                   backgroundColor: Colors.white.withOpacity(0.1),
                   foregroundColor: Colors.white,
                   side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
@@ -271,7 +291,20 @@ class _WeeklyMotivationCardWidgetState extends State<WeeklyMotivationCardWidget>
   }
 
   String _formatDate(DateTime date) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${months[date.month - 1]} ${date.day}';
   }
 }

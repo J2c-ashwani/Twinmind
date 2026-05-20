@@ -29,6 +29,10 @@ const isAdmin = async (req, res, next) => {
     }
 };
 
+router.get('/me', verifyToken, isAdmin, async (req, res) => {
+    res.json({ isAdmin: true, email: req.user.email });
+});
+
 // Get platform statistics
 router.get('/stats', verifyToken, isAdmin, async (req, res) => {
     try {
@@ -63,6 +67,22 @@ router.get('/stats', verifyToken, isAdmin, async (req, res) => {
     } catch (error) {
         console.error('Admin stats error:', error);
         res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+});
+
+router.get('/analytics', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const { count: profileCount } = await supabase
+            .from('personality_profiles')
+            .select('*', { count: 'exact', head: true });
+
+        res.json({
+            totalProfiles: profileCount || 0,
+            generatedAt: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('Admin analytics error:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics' });
     }
 });
 

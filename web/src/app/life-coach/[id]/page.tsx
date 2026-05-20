@@ -16,6 +16,7 @@ export default function CoachingSessionPage() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [showExercise, setShowExercise] = useState(false);
+    const [error, setError] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -34,6 +35,7 @@ export default function CoachingSessionPage() {
 
     const startSession = async () => {
         try {
+            setError('');
             // Ensure program is started
             await apiClient.startProgram(params.id as string);
 
@@ -51,6 +53,7 @@ export default function CoachingSessionPage() {
             ]);
         } catch (error) {
             console.error('Failed to start session:', error);
+            setError(error instanceof Error ? error.message : 'Failed to start Life Coach session.');
         } finally {
             setLoading(false);
         }
@@ -108,7 +111,19 @@ export default function CoachingSessionPage() {
         );
     }
 
-    if (!session) return null;
+    if (!session) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+                <div className="max-w-md rounded-xl border border-red-200 bg-white p-6 text-center shadow-sm">
+                    <h1 className="mb-2 text-xl font-semibold text-gray-900">Session unavailable</h1>
+                    <p className="mb-6 text-gray-600">{error || 'This Life Coach program could not be opened.'}</p>
+                    <Link href="/life-coach" className="inline-flex rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white">
+                        Back to programs
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-screen bg-gray-50">

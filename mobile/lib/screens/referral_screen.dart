@@ -15,6 +15,7 @@ class ReferralScreen extends StatefulWidget {
 class _ReferralScreenState extends State<ReferralScreen> {
   final ApiService _apiService = ApiService();
   String _referralCode = '';
+  String _referralUrl = '';
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
 
@@ -28,19 +29,20 @@ class _ReferralScreenState extends State<ReferralScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final token = authService.getAccessToken();
-      
+
       // Skip API call if not authenticated
       if (token == null) {
         setState(() => _isLoading = false);
         return;
       }
-      
+
       _apiService.setToken(token);
-      
+
       final code = await _apiService.getReferralCode();
       final stats = await _apiService.getReferralStats();
       setState(() {
         _referralCode = code['code'];
+        _referralUrl = code['url'] ?? '';
         _stats = stats;
         _isLoading = false;
       });
@@ -51,7 +53,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   void _copyToClipboard() {
     Clipboard.setData(
-      ClipboardData(text: 'https://twinmind.app/join/$_referralCode'),
+      ClipboardData(text: _referralUrl),
     );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Referral link copied!')),
@@ -60,7 +62,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   void _shareReferral() {
     Share.share(
-      'I\'m using TwinGenie - the most advanced AI companion. Join me! https://twingenie.app/join/$_referralCode',
+      'I\'m using TwinGenie. Join me! $_referralUrl',
     );
   }
 
@@ -256,7 +258,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -319,11 +322,14 @@ class _ReferralScreenState extends State<ReferralScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildRewardItem('50 XP', 'When your friend joins', const Color(0xFF8B5CF6)),
+          _buildRewardItem(
+              '50 XP', 'When your friend joins', const Color(0xFF8B5CF6)),
           const SizedBox(height: 12),
-          _buildRewardItem('25 XP', 'Welcome bonus for new users', const Color(0xFF3B82F6)),
+          _buildRewardItem(
+              '25 XP', 'Welcome bonus for new users', const Color(0xFF3B82F6)),
           const SizedBox(height: 12),
-          _buildRewardItem('🎁', 'Unlock premium features', const Color(0xFFF59E0B)),
+          _buildRewardItem(
+              '🎁', 'Unlock premium features', const Color(0xFFF59E0B)),
         ],
       ),
     );

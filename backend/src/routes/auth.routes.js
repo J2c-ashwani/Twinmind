@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+import { recordReferral } from '../services/referralService.js';
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ const router = express.Router();
  */
 router.post('/signup', async (req, res) => {
     try {
-        const { userId, fullName, email, country } = req.body;
+        const { userId, fullName, email, country, referralCode } = req.body;
 
         // Create user profile in our users table
         const { data, error } = await supabase
@@ -35,6 +36,10 @@ router.post('/signup', async (req, res) => {
                 plan_type: 'free',
                 status: 'active'
             });
+
+        if (referralCode) {
+            await recordReferral({ code: referralCode, referredUserId: userId });
+        }
 
         res.json({ success: true, user: data });
 

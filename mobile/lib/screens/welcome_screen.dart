@@ -48,9 +48,9 @@ class WelcomeScreen extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Title
                   ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
@@ -65,9 +65,9 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Subtitle
                   const Text(
                     'Create your AI Digital Twin that thinks,\ntalks, and behaves exactly like you.',
@@ -78,9 +78,9 @@ class WelcomeScreen extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 60),
-                  
+
                   // Primary Button
                   SizedBox(
                     width: double.infinity,
@@ -127,9 +127,9 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Secondary Button
                   SizedBox(
                     width: double.infinity,
@@ -154,9 +154,9 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 60),
-                  
+
                   // Features
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -174,7 +174,7 @@ class WelcomeScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildFeature(IconData icon, String label) {
     return Column(
       children: [

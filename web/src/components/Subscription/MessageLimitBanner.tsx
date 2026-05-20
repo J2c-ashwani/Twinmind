@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Sparkles } from 'lucide-react';
+import { Zap, Sparkles, Smartphone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface MessageLimitBannerProps {
@@ -16,6 +16,9 @@ export default function MessageLimitBanner({
     isVisible,
 }: MessageLimitBannerProps) {
     const router = useRouter();
+    const playStoreUrl =
+        process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
+        'https://play.google.com/store/apps/details?id=com.asmind.app';
     const remaining = dailyLimit - messagesUsed;
     const percentage = (messagesUsed / dailyLimit) * 100;
 
@@ -31,22 +34,22 @@ export default function MessageLimitBanner({
     const getMessage = () => {
         if (remaining === 0) {
             return {
-                title: "You've hit your daily limit! 😢",
-                subtitle: "Upgrade to Premium for unlimited conversations",
-                cta: "Upgrade Now",
+                title: "You've hit your daily limit",
+                subtitle: "Install the Android app to subscribe with Google Play",
+                cta: "Open Play Store",
             };
         }
         if (remaining <= 2) {
             return {
                 title: `Only ${remaining} messages left today!`,
-                subtitle: "Don't let the conversation end - go Premium",
-                cta: "Get Unlimited",
+                subtitle: "Premium is available through Google Play in the Android app",
+                cta: "Continue in App",
             };
         }
         return {
             title: `${remaining} messages remaining today`,
-            subtitle: "Enjoying the AI modes? Get unlimited access",
-            cta: "Go Premium",
+            subtitle: "Get unlimited access by subscribing in the Android app",
+            cta: "Install App",
         };
     };
 
@@ -90,9 +93,16 @@ export default function MessageLimitBanner({
 
                                     <div className="flex items-center gap-3">
                                         <button
-                                            onClick={() => router.push('/subscription')}
+                                            onClick={() => {
+                                                if (typeof window !== 'undefined' && /android/i.test(navigator.userAgent)) {
+                                                    window.location.href = playStoreUrl;
+                                                } else {
+                                                    router.push('/subscription');
+                                                }
+                                            }}
                                             className="bg-white text-purple-600 px-6 py-2 rounded-xl font-semibold hover:shadow-lg transition-all"
                                         >
+                                            <Smartphone className="mr-2 inline h-4 w-4" />
                                             {message.cta}
                                         </button>
                                         <span className="text-sm text-white/80">

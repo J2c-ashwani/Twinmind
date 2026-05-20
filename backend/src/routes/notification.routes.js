@@ -39,4 +39,18 @@ router.post('/device-token', verifyToken, async (req, res) => {
     }
 });
 
+router.post('/subscribe', verifyToken, async (req, res) => {
+    try {
+        const subscription = req.body;
+        if (!subscription?.endpoint) {
+            return res.status(400).json({ error: 'Valid web push subscription is required' });
+        }
+        await reminderService.updateWebPushSubscription(req.user.userId, subscription);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Failed to update web push subscription:', error);
+        res.status(500).json({ error: 'Failed to update web push subscription' });
+    }
+});
+
 export default router;

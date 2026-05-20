@@ -123,7 +123,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'TwinMind',
+                'TwinGenie',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,

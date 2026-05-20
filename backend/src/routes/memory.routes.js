@@ -1,6 +1,11 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { getMemoryCount } from '../services/memoryEngine.js';
+import {
+    createMemory,
+    getMemoryTimeline,
+    toggleMemoryFavorite,
+} from '../services/memoryJournalService.js';
 import { logger } from '../config/logger.js';
 
 const router = express.Router();
@@ -23,21 +28,65 @@ router.get('/count', authenticateUser, async (req, res) => {
 });
 
 /**
- * GET /api/memory/memories
- * Get user memories
+ * GET /api/memory
+ * Get user memories with optional filters
  */
-router.get('/memories', authenticateUser, async (req, res) => {
+router.get('/', authenticateUser, async (req, res) => {
     try {
         const userId = req.userId;
-        // Mock data for now until memory engine is fully implemented
-        const memories = [
-            { id: '1', title: 'First Chat', content: 'We talked about your goals.', date: new Date().toISOString(), isFavorite: true },
-            { id: '2', title: 'Breakthrough', content: 'You realized something important about work.', date: new Date(Date.now() - 86400000).toISOString(), isFavorite: false }
-        ];
+        const memories = await getMemoryTimeline(userId, {
+            type: req.query.type,
+            limit: parseInt(req.query.limit) || 50,
+        });
         res.json(memories);
     } catch (error) {
         logger.error('Error fetching memories:', error);
         res.status(500).json({ error: 'Failed to fetch memories' });
+    }
+});
+
+/**
+ * GET /api/memory/memories
+ * Backwards-compatible list endpoint used by Android
+ */
+router.get('/memories', authenticateUser, async (req, res) => {
+    try {
+        const memories = await getMemoryTimeline(req.userId, {
+            limit: parseInt(req.query.limit) || 50,
+        });
+        res.json(memories);
+    } catch (error) {
+        logger.error('Error fetching memories:', error);
+        res.status(500).json({ error: 'Failed to fetch memories' });
+    }
+});
+
+/**
+ * POST /api/memory
+ * Create a memory manually
+ */
+router.post('/', authenticateUser, async (req, res) => {
+    try {
+        const { type, title, description, significance, tags, conversationId, messageId } = req.body;
+
+        if (!title || !description) {
+            return res.status(400).json({ error: 'title and description are required' });
+        }
+
+        const memory = await createMemory(req.userId, {
+            type: type || 'conversation',
+            title,
+            description,
+            significance: Number(significance) || 5,
+            tags: Array.isArray(tags) ? tags : [],
+            conversationId,
+            messageId,
+        });
+
+        res.status(201).json({ memory });
+    } catch (error) {
+        logger.error('Error creating memory:', error);
+        res.status(500).json({ error: 'Failed to create memory' });
     }
 });
 
@@ -47,9 +96,8 @@ router.get('/memories', authenticateUser, async (req, res) => {
  */
 router.post('/:id/favorite', authenticateUser, async (req, res) => {
     try {
-        const { id } = req.params;
-        // Mock success
-        res.json({ success: true, message: 'Favorite toggled' });
+        const memory = await toggleMemoryFavorite(req.userId, req.params.id);
+        res.json({ success: true, memory });
     } catch (error) {
         logger.error('Error toggling favorite:', error);
         res.status(500).json({ error: 'Failed to toggle favorite' });
@@ -62,41 +110,12 @@ router.post('/:id/favorite', authenticateUser, async (req, res) => {
  */
 router.get('/timeline', authenticateUser, async (req, res) => {
     try {
-        const userId = req.userId;
         const limit = parseInt(req.query.limit) || 50;
-
-        // Mock timeline data until memory engine is fully implemented
-        const timeline = [
-            {
-                id: '1',
-                type: 'milestone',
-                title: 'First Conversation',
-                description: 'Started your journey with TwinGenie',
-                date: new Date(Date.now() - 7 * 86400000).toISOString(),
-                significance: 5,
-                isFavorite: true
-            },
-            {
-                id: '2',
-                type: 'insight',
-                title: 'Career Breakthrough',
-                description: 'Gained clarity on professional goals',
-                date: new Date(Date.now() - 3 * 86400000).toISOString(),
-                significance: 4,
-                isFavorite: false
-            },
-            {
-                id: '3',
-                type: 'reflection',
-                title: 'Self-Discovery',
-                description: 'Learned something new about yourself',
-                date: new Date(Date.now() - 1 * 86400000).toISOString(),
-                significance: 3,
-                isFavorite: false
-            }
-        ];
-
-        res.json({ memories: timeline.slice(0, limit) });
+        const timeline = await getMemoryTimeline(req.userId, {
+            type: req.query.type,
+            limit,
+        });
+        res.json({ memories: timeline });
     } catch (error) {
         logger.error('Error fetching memory timeline:', error);
         res.status(500).json({ error: 'Failed to fetch memory timeline' });

@@ -3,12 +3,18 @@ import Stripe from 'stripe';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+import {
+    acknowledgeSubscriptionPurchase,
+    verifySubscriptionPurchase,
+} from '../services/googlePlayService.js';
 
 const router = express.Router();
+const paymentProvider = process.env.PAYMENTS_PROVIDER || 'google_play';
+const playStoreUrl = process.env.PLAY_STORE_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app';
 // Check if we should use Mock Mode (Missing key OR Explicit mock key)
-const isMockMode = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('mock_');
+const isMockMode = paymentProvider === 'stripe' && (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('mock_'));
 
-const stripe = !isMockMode
+const stripe = paymentProvider === 'stripe' && !isMockMode
     ? new Stripe(process.env.STRIPE_SECRET_KEY)
     : {
         checkout: {
@@ -43,7 +49,9 @@ const stripe = !isMockMode
         }
     };
 
-if (isMockMode) {
+if (paymentProvider === 'google_play') {
+    logger.info('Subscriptions are configured for Google Play billing.');
+} else if (isMockMode) {
     logger.warn('⚠️ Stripe running in MOCK MODE. Payments will be simulated.');
 }
 
@@ -77,11 +85,83 @@ router.get('/status', authenticateUser, async (req, res) => {
 });
 
 /**
+ * POST /api/subscription/google-play/verify
+ * Verify a Google Play purchase token and activate the user's subscription.
+ */
+router.post('/google-play/verify', authenticateUser, async (req, res) => {
+    try {
+        if (paymentProvider !== 'google_play') {
+            return res.status(409).json({
+                error: 'Google Play verification is disabled for this deployment.',
+                paymentProvider,
+            });
+        }
+
+        const userId = req.userId;
+        const { productId, purchaseToken } = req.body || {};
+
+        if (!productId || !purchaseToken) {
+            return res.status(400).json({ error: 'productId and purchaseToken are required' });
+        }
+
+        const verified = await verifySubscriptionPurchase({ productId, purchaseToken });
+        if (verified.status !== 'active') {
+            return res.status(402).json({
+                error: 'Google Play subscription is not active yet.',
+                subscriptionState: verified.raw.subscriptionState,
+                status: verified.status,
+            });
+        }
+
+        await acknowledgeSubscriptionPurchase({ productId, purchaseToken });
+
+        const upsertData = {
+            user_id: userId,
+            plan_type: 'pro',
+            status: 'active',
+            google_play_product_id: productId,
+            google_play_purchase_token: purchaseToken,
+            google_play_order_id: verified.orderId,
+            google_play_linked_purchase_token: verified.linkedPurchaseToken,
+            google_play_raw_response: verified.raw,
+            current_period_start: new Date().toISOString(),
+            current_period_end: verified.expiryTime,
+            updated_at: new Date().toISOString(),
+        };
+
+        const { data: subscription, error } = await supabaseAdmin
+            .from('subscriptions')
+            .upsert(upsertData, { onConflict: 'user_id' })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            subscription,
+            provider: 'google_play',
+        });
+    } catch (error) {
+        logger.error('Google Play verification error:', error);
+        res.status(500).json({ error: error.message || 'Failed to verify Google Play subscription' });
+    }
+});
+
+/**
  * POST /api/subscription/create-checkout
  * Create Stripe checkout session
  */
 router.post('/create-checkout', authenticateUser, async (req, res) => {
     try {
+        if (paymentProvider !== 'stripe') {
+            return res.status(409).json({
+                error: 'Web checkout is disabled. Subscribe from the Android app with Google Play.',
+                paymentProvider,
+                playStoreUrl,
+            });
+        }
+
         const userId = req.userId;
         const { priceId, planType } = req.body; // 'monthly' or 'yearly'
 
@@ -143,6 +223,12 @@ router.post('/create-checkout', authenticateUser, async (req, res) => {
  */
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     try {
+        if (paymentProvider !== 'stripe') {
+            return res.status(410).json({
+                error: 'Stripe webhooks are disabled while Google Play billing is active.',
+            });
+        }
+
         const sig = req.headers['stripe-signature'];
         const event = stripe.webhooks.constructEvent(
             req.body,
@@ -206,6 +292,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
  */
 router.post('/cancel', authenticateUser, async (req, res) => {
     try {
+        if (paymentProvider === 'google_play') {
+            return res.status(409).json({
+                error: 'Google Play subscriptions must be cancelled from Google Play account settings.',
+                playStoreUrl,
+            });
+        }
+
         const userId = req.userId;
 
         // Get subscription

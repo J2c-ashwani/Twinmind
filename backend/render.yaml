@@ -3,9 +3,10 @@ services:
     name: twinmind-backend
     env: node
     region: oregon
-    plan: free
+    plan: starter
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,9 +18,25 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_BASE64
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: STRIPE_SECRET_KEY
+      - key: GOOGLE_PLAY_SERVICE_ACCOUNT_BASE64
         sync: false
+      - key: GOOGLE_PLAY_PACKAGE_NAME
+        value: com.asmind.app
+      - key: PAYMENTS_PROVIDER
+        value: google_play
+      - key: PLAY_STORE_URL
+        value: https://play.google.com/store/apps/details?id=com.asmind.app
+      - key: GOOGLE_PLAY_MONTHLY_PRODUCT_ID
+        value: premium_monthly
+      - key: GOOGLE_PLAY_YEARLY_PRODUCT_ID
+        value: premium_yearly

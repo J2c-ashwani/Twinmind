@@ -60,7 +60,8 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.person, size: 40, color: Colors.white),
+                        child: const Icon(Icons.person,
+                            size: 40, color: Colors.white),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
@@ -68,7 +69,8 @@ class ProfileScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user?.userMetadata?['full_name'] ?? 'TwinGenie User',
+                              user?.userMetadata?['full_name'] ??
+                                  'TwinGenie User',
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -86,7 +88,8 @@ class ProfileScreen extends StatelessWidget {
                             if (isPro) ...[
                               const SizedBox(height: 12),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
@@ -95,12 +98,14 @@ class ProfileScreen extends StatelessWidget {
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                                  border: Border.all(
+                                      color: Colors.amber.withOpacity(0.3)),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.workspace_premium, size: 16, color: Colors.amber),
+                                    Icon(Icons.workspace_premium,
+                                        size: 16, color: Colors.amber),
                                     SizedBox(width: 6),
                                     Text(
                                       'Pro Member',
@@ -147,7 +152,8 @@ class ProfileScreen extends StatelessWidget {
                           child: ElevatedButton.icon(
                             onPressed: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const GrowthStoryScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const GrowthStoryScreen()),
                             ),
                             icon: const Icon(Icons.auto_graph, size: 18),
                             label: const Text('Growth Story'),
@@ -166,7 +172,8 @@ class ProfileScreen extends StatelessWidget {
                           child: ElevatedButton.icon(
                             onPressed: () => Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const TwinMatchScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const TwinMatchScreen()),
                             ),
                             icon: const Icon(Icons.people, size: 18),
                             label: const Text('Twin Match'),
@@ -188,7 +195,8 @@ class ProfileScreen extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const GrowthCirclesScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const GrowthCirclesScreen()),
                         ),
                         icon: const Icon(Icons.groups_rounded, size: 18),
                         label: const Text('Growth Circle'),

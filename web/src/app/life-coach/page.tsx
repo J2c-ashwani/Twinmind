@@ -10,58 +10,7 @@ import Link from 'next/link';
 export default function LifeCoachPage() {
     const [programs, setPrograms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
-    // Fallback programs in case API fails
-    const fallbackPrograms = [
-        {
-            id: '1',
-            title: 'Anxiety Relief Journey',
-            description: 'A 7-day guided program to understand and manage anxiety using proven techniques.',
-            category: 'anxiety',
-            duration_days: 7,
-            is_premium: false
-        },
-        {
-            id: '2',
-            title: 'Confidence Builder',
-            description: 'Build unshakeable self-confidence with daily exercises and mindset shifts.',
-            category: 'growth',
-            duration_days: 14,
-            is_premium: false
-        },
-        {
-            id: '3',
-            title: 'Emotional Intelligence Mastery',
-            description: 'Master your emotions and develop deeper connections with others.',
-            category: 'mindfulness',
-            duration_days: 21,
-            is_premium: true
-        },
-        {
-            id: '4',
-            title: 'Career Growth Accelerator',
-            description: 'Unlock your professional potential with goal-setting and productivity coaching.',
-            category: 'growth',
-            duration_days: 30,
-            is_premium: true
-        },
-        {
-            id: '5',
-            title: 'Daily Mindfulness Practice',
-            description: 'Start each day with calm and clarity through guided meditation sessions.',
-            category: 'mindfulness',
-            duration_days: 7,
-            is_premium: false
-        },
-        {
-            id: '6',
-            title: 'Relationship Healing',
-            description: 'Repair and strengthen your most important relationships with guided exercises.',
-            category: 'anxiety',
-            duration_days: 14,
-            is_premium: true
-        }
-    ];
+    const [error, setError] = useState('');
 
     useEffect(() => {
         loadPrograms();
@@ -74,12 +23,11 @@ export default function LifeCoachPage() {
             if (session) apiClient.setToken(session.access_token);
 
             const data = await apiClient.getLifeCoachPrograms();
-            // Use fallback if API returns empty or invalid data
-            setPrograms(Array.isArray(data) && data.length > 0 ? data : fallbackPrograms);
+            setPrograms(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to load programs:', error);
-            // Use fallback programs on error
-            setPrograms(fallbackPrograms);
+            setPrograms([]);
+            setError('Life Coach programs are unavailable right now. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -113,6 +61,18 @@ export default function LifeCoachPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {error && (
+                    <div className="col-span-full rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+                        {error}
+                    </div>
+                )}
+
+                {!error && programs.length === 0 && (
+                    <div className="col-span-full rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600">
+                        No Life Coach programs are available yet.
+                    </div>
+                )}
+
                 {programs.map((program, index) => (
                     <motion.div
                         key={program.id}

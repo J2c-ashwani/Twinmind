@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { supabaseAdmin } from '../config/supabase.js';
 import {
     createCircle,
     getUserCircle,
@@ -80,7 +81,7 @@ router.post('/:id/invite', authenticateUser, async (req, res) => {
 
         res.json({
             invitation,
-            invite_link: `${process.env.WEB_APP_URL || 'http://localhost:3000'}/circle/join/${invitation.invitation_code}`,
+            invite_link: `${process.env.WEB_APP_URL || 'http://localhost:3000'}/growth-circles?invite=${invitation.invitation_code}`,
         });
     } catch (error) {
         logger.error('Error creating invitation:', error);
@@ -121,6 +122,7 @@ router.get('/preview/:code', async (req, res) => {
             .from('circle_invitations')
             .select(`
                 circle_id,
+                expires_at,
                 growth_circles (
                     name,
                     collective_streak,

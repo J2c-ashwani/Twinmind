@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -12,8 +12,14 @@ export default function SignupPage() {
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [referralCode, setReferralCode] = useState('');
     const router = useRouter();
     const supabase = createClientComponentClient();
+
+    useEffect(() => {
+        const code = new URLSearchParams(window.location.search).get('ref');
+        if (code) setReferralCode(code.toUpperCase());
+    }, []);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,7 +48,8 @@ export default function SignupPage() {
                     body: JSON.stringify({
                         userId: data.user.id,
                         email: data.user.email,
-                        fullName: fullName
+                        fullName: fullName,
+                        referralCode: referralCode || undefined,
                     })
                 });
 
@@ -79,6 +86,12 @@ export default function SignupPage() {
                     </div>
 
                     <form onSubmit={handleSignup} className="space-y-5">
+                        {referralCode && (
+                            <div className="rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+                                Invite code applied: {referralCode}
+                            </div>
+                        )}
+
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Full Name

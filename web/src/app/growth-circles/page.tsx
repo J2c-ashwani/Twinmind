@@ -20,6 +20,8 @@ export default function GrowthCirclesPage() {
     const supabase = createClientComponentClient();
 
     useEffect(() => {
+        const invite = new URLSearchParams(window.location.search).get('invite');
+        if (invite) setJoinCode(invite.toUpperCase());
         checkCircleStatus();
     }, []);
 

@@ -11,20 +11,39 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Config is in src/config, service account is in backend root
 const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
 
+function normalizeServiceAccount(serviceAccount) {
+    if (serviceAccount?.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+    return serviceAccount;
+}
+
 try {
     let serviceAccount;
 
     // 1. Try environment variable (Render/Production)
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         try {
-            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            serviceAccount = normalizeServiceAccount(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT));
             logger.info('Loaded Firebase credentials from environment variable');
         } catch (e) {
             logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT');
         }
     }
 
-    // 2. Try local file (Development fallback)
+    // 2. Try base64 environment variable (safer for multiline JSON on hosts)
+    if (!serviceAccount && process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+        try {
+            serviceAccount = normalizeServiceAccount(
+                JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'))
+            );
+            logger.info('Loaded Firebase credentials from base64 environment variable');
+        } catch (e) {
+            logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64');
+        }
+    }
+
+    // 3. Try local file (Development fallback)
     if (!serviceAccount) {
         try {
             serviceAccount = require(serviceAccountPath);
@@ -39,7 +58,8 @@ try {
 
     if (serviceAccount) {
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
+            projectId: serviceAccount.project_id,
         });
         logger.info('Firebase Admin initialized successfully');
     } else {
@@ -53,5 +73,6 @@ try {
     });
 }
 
-export const messaging = admin.messaging();
+export const isFirebaseConfigured = admin.apps.length > 0;
+export const messaging = isFirebaseConfigured ? admin.messaging() : null;
 export default admin;

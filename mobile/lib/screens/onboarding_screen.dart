@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:twinmind/services/api_service.dart';
 import 'package:twinmind/services/auth_service.dart';
+
+void _onboardingDebugLog(String message) {
+  if (kDebugMode) {
+    print(message);
+  }
+}
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -14,18 +21,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final ApiService _api = ApiService();
   final AuthService _auth = AuthService();
   final ScrollController _scrollController = ScrollController();
-  
+
   int currentScreen = 1;
   final int totalScreens = 5;
-  
+
   List<Question> questions = [];
   Map<int, QuestionAnswer> answers = {};
   Map<int, String> otherTextInputs = {};
-  
+
   bool isLoading = false;
   bool isGenerating = false;
   bool showSignup = false;
-  
+
   // Signup form state
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -62,7 +69,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return questions.where((q) => q.screenNumber == currentScreen).toList();
   }
 
-  void _handleAnswer(int questionId, String selectedOption, {bool isOther = false}) {
+  void _handleAnswer(int questionId, String selectedOption,
+      {bool isOther = false}) {
     setState(() {
       answers[questionId] = QuestionAnswer(
         questionId: questionId,
@@ -75,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _handleOtherText(int questionId, String text) {
     setState(() {
       otherTextInputs[questionId] = text;
-      
+
       // Update answer if "Other" is already selected
       if (answers[questionId]?.selectedOption == 'Other') {
         answers[questionId] = QuestionAnswer(
@@ -91,7 +99,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() {
       answers[questionId] = QuestionAnswer(
         questionId: questionId,
-        selectedOption: 'text', // Per spec: text questions store with selected="text"
+        selectedOption:
+            'text', // Per spec: text questions store with selected="text"
         answerText: text,
       );
     });
@@ -101,20 +110,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return currentQuestions.every((q) {
       final answer = answers[q.id];
       if (answer == null) return false;
-      
+
       if (q.questionType == 'text') {
         // For text questions: require text input
-        return answer.answerText != null && answer.answerText!.trim().isNotEmpty;
+        return answer.answerText != null &&
+            answer.answerText!.trim().isNotEmpty;
       }
-      
+
       // For single_choice questions
       if (answer.selectedOption == null) return false;
-      
+
       // If "Other" is selected, require text input
       if (answer.selectedOption == 'Other') {
-        return answer.answerText != null && answer.answerText!.trim().isNotEmpty;
+        return answer.answerText != null &&
+            answer.answerText!.trim().isNotEmpty;
       }
-      
+
       // Default options: immediately valid
       return true;
     });
@@ -173,82 +184,88 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
 
     try {
-      print('DEBUG: Starting signup process...');
-      print('DEBUG: Email: $email');
-      
+      _onboardingDebugLog('DEBUG: Starting signup process...');
+      _onboardingDebugLog('DEBUG: Email entered');
+
       // Check if already logged in
       var currentUser = _auth.currentUser;
       Session? currentSession;
-      
+
       if (currentUser != null && currentUser.email == email) {
-        print('DEBUG: User already logged in with this email');
+        _onboardingDebugLog('DEBUG: User already logged in with this email');
         currentSession = _auth.currentSession;
       } else {
         // Not logged in, need to signup/login
         try {
-          print('DEBUG: Attempting signup...');
+          _onboardingDebugLog('DEBUG: Attempting signup...');
           await _auth.signUpWithEmail(email, password, name);
-          print('DEBUG: Signup completed successfully');
-          
+          _onboardingDebugLog('DEBUG: Signup completed successfully');
+
           // Login after signup
-          print('DEBUG: Logging in after signup...');
+          _onboardingDebugLog('DEBUG: Logging in after signup...');
           final response = await _auth.signInWithEmail(email, password);
           currentSession = response.session;
-          print('DEBUG: Login successful after signup');
+          _onboardingDebugLog('DEBUG: Login successful after signup');
         } catch (signupError) {
-          print('DEBUG: Signup error: $signupError');
-          
+          _onboardingDebugLog('DEBUG: Signup error: $signupError');
+
           // Signup failed, try login (account might already exist)
           try {
-            print('DEBUG: Signup failed, attempting direct login...');
+            _onboardingDebugLog(
+                'DEBUG: Signup failed, attempting direct login...');
             final loginResponse = await _auth.signInWithEmail(email, password);
             currentSession = loginResponse.session;
-            print('DEBUG: Login successful (account existed)');
+            _onboardingDebugLog('DEBUG: Login successful (account existed)');
           } catch (loginError) {
-            print('DEBUG: Login also failed: $loginError');
-            throw Exception('Could not create or access account. Please check your credentials.');
+            _onboardingDebugLog('DEBUG: Login also failed: $loginError');
+            throw Exception(
+                'Could not create or access account. Please check your credentials.');
           }
         }
       }
-      
+
       // At this point we MUST have a valid session
       if (currentSession == null || currentSession.accessToken == null) {
-        print('DEBUG: ERROR - No valid session after signup/login');
+        _onboardingDebugLog(
+            'DEBUG: ERROR - No valid session after signup/login');
         throw Exception('Authentication failed. Please try again.');
       }
-      
+
       final user = currentSession.user;
       final token = currentSession.accessToken!;
-      
-      print('DEBUG: ✅ Authenticated as: ${user.id}');
-      print('DEBUG: Setting API token...');
+
+      _onboardingDebugLog('DEBUG: ✅ Authenticated as: ${user.id}');
+      _onboardingDebugLog('DEBUG: Setting API token...');
       _api.setToken(token);
 
-      print('DEBUG: Submitting ${answers.length} answers...');
+      _onboardingDebugLog('DEBUG: Submitting ${answers.length} answers...');
       // Format answers for API
-      final formattedAnswers = answers.values.map((a) => {
-        'question_id': a.questionId,
-        if (a.selectedOption != null) 'selected_option': a.selectedOption,
-        if (a.answerText != null) 'answer_text': a.answerText,
-      }).toList();
+      final formattedAnswers = answers.values
+          .map((a) => {
+                'question_id': a.questionId,
+                if (a.selectedOption != null)
+                  'selected_option': a.selectedOption,
+                if (a.answerText != null) 'answer_text': a.answerText,
+              })
+          .toList();
 
-      print('DEBUG: Calling API submitAnswers...');
+      _onboardingDebugLog('DEBUG: Calling API submitAnswers...');
       // Submit answers
       await _api.submitAnswers(formattedAnswers, token);
-      print('DEBUG: ✅ Answers submitted successfully');
+      _onboardingDebugLog('DEBUG: ✅ Answers submitted successfully');
 
-      print('DEBUG: Calling API generatePersonality...');
+      _onboardingDebugLog('DEBUG: Calling API generatePersonality...');
       // Generate personality
       await _api.generatePersonality(token);
-      print('DEBUG: ✅ Personality generated successfully');
+      _onboardingDebugLog('DEBUG: ✅ Personality generated successfully');
 
       // Navigate to home (main screen with chat)
-      print('DEBUG: Navigating to home...');
+      _onboardingDebugLog('DEBUG: Navigating to home...');
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
-      print('DEBUG: Error in signup flow: $e');
+      _onboardingDebugLog('DEBUG: Error in signup flow: $e');
       setState(() {
         isGenerating = false;
         signupError = e.toString().replaceAll('Exception: ', '');
@@ -301,7 +318,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                   child: const Center(
-                    child: Icon(Icons.psychology, size: 60, color: Colors.white),
+                    child:
+                        Icon(Icons.psychology, size: 60, color: Colors.white),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -410,9 +428,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       )
                     else
                       const SizedBox(width: 100),
-                    
                     ElevatedButton(
-                      onPressed: _canProgress() && !isLoading ? _handleNext : null,
+                      onPressed:
+                          _canProgress() && !isLoading ? _handleNext : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF9333EA),
                         foregroundColor: Colors.white,
@@ -448,7 +466,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               ),
                             ),
                           if (!isLoading && currentScreen < totalScreens)
-                            const Icon(Icons.chevron_right, color: Colors.white),
+                            const Icon(Icons.chevron_right,
+                                color: Colors.white),
                         ],
                       ),
                     ),
@@ -473,7 +492,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
-          
           if (q.questionType == 'text')
             TextField(
               onChanged: (text) => _handleTextAnswer(q.id, text),
@@ -492,7 +510,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF9333EA), width: 2),
                 ),
               ),
             )
@@ -530,12 +549,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildRadioOption(int questionId, String option) {
     final isSelected = answers[questionId]?.selectedOption == option;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: InkWell(
-        onTap: () => _handleAnswer(questionId, option,
-            isOther: option == 'Other'),
+        onTap: () =>
+            _handleAnswer(questionId, option, isOther: option == 'Other'),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -556,8 +575,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Radio<String>(
                 value: option,
                 groupValue: answers[questionId]?.selectedOption,
-                onChanged: (value) =>
-                    _handleAnswer(questionId, value!, isOther: value == 'Other'),
+                onChanged: (value) => _handleAnswer(questionId, value!,
+                    isOther: value == 'Other'),
                 activeColor: const Color(0xFF9333EA),
               ),
               Expanded(
@@ -606,12 +625,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(Icons.psychology, size: 40, color: Colors.white),
+                      child: const Icon(Icons.psychology,
+                          size: 40, color: Colors.white),
                     ),
                     const SizedBox(height: 24),
                     const Text(
                       'Create Your Account',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -629,19 +650,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.red.withAlpha(77)),
                         ),
-                        child: Text(signupError, style: const TextStyle(color: Colors.red, fontSize: 14), textAlign: TextAlign.center),
+                        child: Text(signupError,
+                            style: const TextStyle(
+                                color: Colors.red, fontSize: 14),
+                            textAlign: TextAlign.center),
                       ),
                     TextField(
                       controller: _nameController,
                       decoration: InputDecoration(
                         labelText: 'Full Name',
                         hintText: 'Enter your name',
-                        prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                        prefixIcon:
+                            const Icon(Icons.person, color: Colors.white70),
                         filled: true,
                         fillColor: Colors.white.withAlpha(13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withAlpha(51))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withAlpha(51))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.white.withAlpha(51))),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.white.withAlpha(51))),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF9333EA), width: 2)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -651,12 +685,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       decoration: InputDecoration(
                         labelText: 'Email',
                         hintText: 'Enter your email',
-                        prefixIcon: const Icon(Icons.email, color: Colors.white70),
+                        prefixIcon:
+                            const Icon(Icons.email, color: Colors.white70),
                         filled: true,
                         fillColor: Colors.white.withAlpha(13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withAlpha(51))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withAlpha(51))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.white.withAlpha(51))),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.white.withAlpha(51))),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF9333EA), width: 2)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -666,12 +710,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       decoration: InputDecoration(
                         labelText: 'Password',
                         hintText: 'Min 6 characters',
-                        prefixIcon: const Icon(Icons.lock, color: Colors.white70),
+                        prefixIcon:
+                            const Icon(Icons.lock, color: Colors.white70),
                         filled: true,
                         fillColor: Colors.white.withAlpha(13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withAlpha(51))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withAlpha(51))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.white.withAlpha(51))),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.white.withAlpha(51))),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF9333EA), width: 2)),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -683,17 +737,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           backgroundColor: const Color(0xFF9333EA),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         child: isLoading
-                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Text('Create My Twin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text('Create My Twin',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: isLoading ? null : () { setState(() { showSignup = false; }); },
-                      child: const Text('← Back to questions', style: TextStyle(color: Colors.white70)),
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              setState(() {
+                                showSignup = false;
+                              });
+                            },
+                      child: const Text('← Back to questions',
+                          style: TextStyle(color: Colors.white70)),
                     ),
                   ],
                 ),

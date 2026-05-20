@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/api_service.dart';
+
+void _notificationLog(String message) {
+  if (kDebugMode) {
+    print(message);
+  }
+}
 
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print('Background message: ${message.notification?.title}');
+  _notificationLog('Background message: ${message.notification?.title}');
 }
 
 class NotificationService {
@@ -31,7 +39,8 @@ class NotificationService {
 
     try {
       // Request permission for notifications
-      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+      NotificationSettings settings =
+          await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -42,11 +51,12 @@ class NotificationService {
       );
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        print('✅ User granted notification permission');
-      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-        print('⚠️ User granted provisional notification permission');
+        _notificationLog('✅ User granted notification permission');
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.provisional) {
+        _notificationLog('⚠️ User granted provisional notification permission');
       } else {
-        print('❌ User declined notification permission');
+        _notificationLog('❌ User declined notification permission');
       }
 
       // Initialize local notifications for foreground display
@@ -91,30 +101,39 @@ class NotificationService {
 
       // Get FCM token
       _fcmToken = await _firebaseMessaging.getToken();
-      print('📱 FCM Token: $_fcmToken');
+      _notificationLog('📱 FCM token acquired');
 
       // Listen for token refresh
       _firebaseMessaging.onTokenRefresh.listen((newToken) {
         _fcmToken = newToken;
-        print('🔄 FCM Token refreshed: $newToken');
-        _sendTokenToBackend(newToken);
+        _notificationLog('🔄 FCM token refreshed');
+        syncTokenToBackend();
       });
 
       _isInitialized = true;
-      print('✅ NotificationService initialized successfully');
-      
+      _notificationLog('✅ NotificationService initialized successfully');
+
       // Send initial token
       if (_fcmToken != null) {
-        _sendTokenToBackend(_fcmToken!);
+        await syncTokenToBackend();
       }
-
     } catch (e) {
-      print('❌ Failed to initialize NotificationService: $e');
+      _notificationLog('❌ Failed to initialize NotificationService: $e');
+    }
+  }
+
+  Future<void> syncTokenToBackend() async {
+    try {
+      _fcmToken ??= await _firebaseMessaging.getToken();
+      if (_fcmToken == null) return;
+      await _sendTokenToBackend(_fcmToken!);
+    } catch (e) {
+      _notificationLog('❌ Failed to sync FCM token: $e');
     }
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('📩 Foreground message: ${message.notification?.title}');
+    _notificationLog('📩 Foreground message: ${message.notification?.title}');
 
     // Show local notification when app is in foreground
     await _showLocalNotification(
@@ -125,7 +144,9 @@ class NotificationService {
   }
 
   void _handleBackgroundMessage(RemoteMessage message) {
-    print('📩 App opened from notification: ${message.notification?.title}');
+    _notificationLog(
+      '📩 App opened from notification: ${message.notification?.title}',
+    );
     // Navigate to appropriate screen based on message data
     _handleNotificationNavigation(message.data);
   }
@@ -152,7 +173,7 @@ class NotificationService {
   }
 
   void _onNotificationTap(NotificationResponse response) {
-    print('🔔 Notification tapped: ${response.payload}');
+    _notificationLog('🔔 Notification tapped: ${response.payload}');
     // Handle navigation based on payload
   }
 
@@ -261,21 +282,26 @@ class NotificationService {
   /// Subscribe to topic for broadcast notifications
   Future<void> subscribeToTopic(String topic) async {
     await _firebaseMessaging.subscribeToTopic(topic);
-    print('📢 Subscribed to topic: $topic');
+    _notificationLog('📢 Subscribed to topic: $topic');
   }
 
   /// Unsubscribe from topic
   Future<void> unsubscribeFromTopic(String topic) async {
     await _firebaseMessaging.unsubscribeFromTopic(topic);
-    print('📢 Unsubscribed from topic: $topic');
+    _notificationLog('📢 Unsubscribed from topic: $topic');
   }
 
   Future<void> _sendTokenToBackend(String token) async {
     try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        _notificationLog('ℹ️ Skipping FCM token sync until user signs in');
+        return;
+      }
       await ApiService().updateFcmToken(token);
-      print('✅ Sent FCM token to backend');
+      _notificationLog('✅ Sent FCM token to backend');
     } catch (e) {
-      print('❌ Failed to send FCM token to backend: $e');
+      _notificationLog('❌ Failed to send FCM token to backend: $e');
     }
   }
 }

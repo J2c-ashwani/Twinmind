@@ -14,6 +14,7 @@ class _LifeCoachScreenState extends State<LifeCoachScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _programs = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -40,12 +41,13 @@ class _LifeCoachScreenState extends State<LifeCoachScreen> {
       setState(() {
         _programs = programs;
         _isLoading = false;
+        _error = null;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load programs: $e')),
-      );
+      setState(() {
+        _isLoading = false;
+        _error = 'Life Coach programs are unavailable right now.';
+      });
     }
   }
 
@@ -69,97 +71,125 @@ class _LifeCoachScreenState extends State<LifeCoachScreen> {
             ],
           ),
         ),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
-                itemCount: _programs.length,
-                itemBuilder: (context, index) {
-                  final program = _programs[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    color: Colors.white.withOpacity(0.1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProgramDetailScreen(
-                              programId: program['id'].toString(),
-                              title: program['title']?.toString() ?? 'Program',
-                            ),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
+        child: _buildProgramBody(),
+      ),
+    );
+  }
+
+  Widget _buildProgramBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    if (_programs.isEmpty) {
+      return const Center(
+        child: Text(
+          'No Life Coach programs are available yet.',
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+      itemCount: _programs.length,
+      itemBuilder: (context, index) {
+        final program = _programs[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          color: Colors.white.withOpacity(0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProgramDetailScreen(
+                    programId: program['id'].toString(),
+                    title: program['title']?.toString() ?? 'Program',
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.self_improvement,
+                          color: Colors.blueAccent,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.self_improvement,
-                                    color: Colors.blueAccent,
-                                    size: 32,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        program['title'],
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${program['duration_days']} Days • ${program['category']?.toUpperCase() ?? 'GENERAL'}',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.7),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (program['is_premium'] == true)
-                                  const Icon(Icons.lock, color: Colors.amber),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
                             Text(
-                              program['description'] ?? '',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
+                              program['title'],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${program['duration_days']} Days - ${program['category']?.toUpperCase() ?? 'GENERAL'}',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
                       ),
+                      if (program['is_premium'] == true)
+                        const Icon(Icons.lock, color: Colors.amber),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    program['description'] ?? '',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
                     ),
-                  );
-                },
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
