@@ -835,13 +835,18 @@ class ApiService {
   }
 
   Future<void> updateFcmToken(String token) async {
+    final url = '$baseUrl/api/notifications/device-token';
+    print('HTTP POST: $url');
     final response = await http.post(
-      Uri.parse('$baseUrl/api/notifications/device-token'),
+      Uri.parse(url),
       headers: _headers,
       body: json.encode({'token': token}),
     );
+    print('HTTP STATUS: ${response.statusCode}');
+    print('HTTP RESPONSE BODY: ${response.body}');
+
     if (response.statusCode != 200) {
-      throw HttpException('Failed to update FCM token', response.statusCode);
+      throw HttpException('Failed to update FCM token (Status ${response.statusCode}: ${response.body})', response.statusCode);
     }
   }
 }
