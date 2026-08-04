@@ -190,12 +190,13 @@ class NotificationService {
   ) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'twinmind_high_importance',
+      'twingenie_channel_v1',
       'TwinGenie Notifications',
       channelDescription: 'Important notifications from your AI Twin',
-      importance: Importance.high,
+      importance: Importance.max,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
       color: Color(0xFF9333EA),
     );
 
