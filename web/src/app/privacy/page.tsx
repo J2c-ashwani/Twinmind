@@ -42,7 +42,7 @@ export default function PrivacyPolicy() {
             <section className="space-y-4">
                 <h2 className="text-xl font-semibold">5. Contact Us</h2>
                 <p>
-                    If you have any questions about this Privacy Policy, please contact us at support@twinmind.app.
+                    If you have any questions about this Privacy Policy, please contact us at hello@fsidigital.ca.
                 </p>
             </section>
         </div>

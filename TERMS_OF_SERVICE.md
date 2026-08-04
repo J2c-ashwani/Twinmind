@@ -88,7 +88,7 @@ These Terms are governed by the laws of [Your Jurisdiction].
 ## 13. Contact
 
 For questions about these Terms:
-- Email: support@twinmind.app
+- Email: hello@fsidigital.ca
 - Website: [twinmind.app/terms]
 
 ---
