@@ -124,11 +124,17 @@ class NotificationService {
 
   Future<void> syncTokenToBackend() async {
     try {
-      _fcmToken ??= await _firebaseMessaging.getToken();
-      if (_fcmToken == null) return;
-      await _sendTokenToBackend(_fcmToken!);
+      final token = await _firebaseMessaging.getToken();
+      print('FCM TOKEN: $token');
+
+      if (token == null) {
+        print('❌ FCM TOKEN IS NULL');
+        return;
+      }
+      _fcmToken = token;
+      await _sendTokenToBackend(token);
     } catch (e) {
-      _notificationLog('❌ Failed to sync FCM token: $e');
+      print('❌ FCM TOKEN ACQUISITION ERROR: $e');
     }
   }
 
@@ -295,13 +301,14 @@ class NotificationService {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
-        _notificationLog('ℹ️ Skipping FCM token sync until user signs in');
+        print('ℹ️ Skipping FCM token sync until user signs in (session is null)');
         return;
       }
+      print('Uploading token to backend: $token');
       await ApiService().updateFcmToken(token);
-      _notificationLog('✅ Sent FCM token to backend');
+      print('✅ TOKEN UPLOAD HTTP SUCCESS');
     } catch (e) {
-      _notificationLog('❌ Failed to send FCM token to backend: $e');
+      print('❌ TOKEN UPLOAD HTTP ERROR: $e');
     }
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../models/chat_message.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -78,6 +79,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _api = ApiService();
     _api.setToken(token);
+    NotificationService().syncTokenToBackend();
 
     try {
       // Load profile
