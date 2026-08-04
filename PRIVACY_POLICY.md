@@ -43,7 +43,7 @@ You have the right to:
 - **Export**: Download your data in a portable format
 - **Opt-Out**: Unsubscribe from non-essential communications
 
-To exercise these rights, contact us at: [support@twinmind.app]
+To exercise these rights, contact us at: hello@fsidigital.ca
 
 ## Data Retention
 
@@ -70,7 +70,7 @@ We may update this Privacy Policy periodically. We will notify you of significan
 ## Contact Us
 
 For privacy questions or concerns:
-- Email: support@twinmind.app
+- Email: hello@fsidigital.ca
 - Website: [twinmind.app/privacy]
 
 ---
