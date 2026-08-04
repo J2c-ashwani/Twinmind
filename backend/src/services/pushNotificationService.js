@@ -111,7 +111,9 @@ export async function sendPushNotification(userId, title, body, data = {}) {
             android: {
                 priority: 'high',
                 notification: {
-                    channelId: 'twinmind_high_importance' // Must match Android channel ID in mobile app
+                    channelId: 'twingenie_channel_v1', // Must match Android channel ID in mobile app
+                    icon: 'ic_notification',
+                    color: '#9333EA'
                 }
             },
             apns: {

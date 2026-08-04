@@ -66,40 +66,45 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initializeApp() async {
     try {
-      setState(() => _status = 'Connecting to services...');
+      if (mounted) setState(() => _status = 'Preparing your AI twin...');
 
-      // Initialize Supabase
-      setState(() => _status = 'Syncing data...');
+      // 1. Initialize Supabase
       await Supabase.initialize(
         url: 'https://lhwtfjgtripwikxwookp.supabase.co',
         anonKey:
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDU0NDYsImV4cCI6MjA4MDE4MTQ0Nn0.irdLKmMu1d_-Uiyv4zNEaH4rUwL8KCZ8FHhf30MABlU',
         authOptions: const FlutterAuthClientOptions(
           authFlowType: AuthFlowType.pkce,
-          autoRefreshToken: true, // Auto-refresh tokens before expiry
+          autoRefreshToken: true,
         ),
       );
 
-      // Initialize Firebase after Supabase so FCM token sync has auth context.
+      if (mounted) setState(() => _status = 'Loading memories...');
+
+      // 2. Safely initialize Firebase & FCM while splash is visible (3s max timeout)
       if (!kIsWeb) {
         try {
           await Firebase.initializeApp();
-          await NotificationService().initialize();
+          await NotificationService().initialize().timeout(
+                const Duration(seconds: 3),
+                onTimeout: () => null,
+              );
+          final session = Supabase.instance.client.auth.currentSession;
+          if (session != null) {
+            await NotificationService().syncTokenToBackend().timeout(
+                  const Duration(seconds: 2),
+                  onTimeout: () => null,
+                );
+          }
         } catch (e) {
-          print('⚠️ Firebase warning: $e');
+          print('⚠️ Firebase/Notification init warning: $e');
         }
       }
 
-      // Sync FCM if needed
-      if (!kIsWeb) {
-        try {
-          final session = Supabase.instance.client.auth.currentSession;
-          if (session != null) {
-            await NotificationService().syncTokenToBackend();
-          }
-        } catch (_) {}
-      }
+      if (mounted) setState(() => _status = 'Almost ready...');
+      await Future.delayed(const Duration(milliseconds: 300));
 
+      // 3. Smooth transition to AuthWrapper
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AuthWrapper()),
@@ -107,10 +112,11 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     } catch (e) {
       print('🔴 Initialization Error: $e');
-      setState(() {
-        _status = 'Connection failed. Please check your internet.';
-        _hasError = true;
-      });
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+        );
+      }
     }
   }
 

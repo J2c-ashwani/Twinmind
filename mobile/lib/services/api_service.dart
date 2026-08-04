@@ -24,9 +24,7 @@ class HttpException implements Exception {
 }
 
 class ApiService {
-  static const String baseUrl = kReleaseMode
-      ? 'https://twinmind-9l6x.onrender.com'
-      : 'http://localhost:5001'; // Backend API port
+  static const String baseUrl = 'https://twinmind-9l6x.onrender.com';
 
   // Deprecated: Token is now fetched directly from Supabase client to ensure freshness
   String? _token;
