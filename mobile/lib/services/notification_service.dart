@@ -82,10 +82,10 @@ class NotificationService {
 
       // Create notification channel for Android
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'twinmind_high_importance',
+        'twingenie_channel_v1',
         'TwinGenie Notifications',
         description: 'Important notifications from your AI Twin',
-        importance: Importance.high,
+        importance: Importance.max,
       );
 
       await _localNotifications

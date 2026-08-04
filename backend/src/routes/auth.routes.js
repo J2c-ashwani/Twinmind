@@ -1,7 +1,8 @@
 import express from 'express';
-import { supabase } from '../config/supabase.js';
+import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
 import { recordReferral } from '../services/referralService.js';
+import { authenticateUser } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -13,29 +14,43 @@ const router = express.Router();
 router.post('/signup', async (req, res) => {
     try {
         const { userId, fullName, email, country, referralCode } = req.body;
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader?.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Authentication required to complete signup' });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+        if (userError || !user || user.id !== userId) {
+            return res.status(401).json({ error: 'Invalid signup session' });
+        }
 
         // Create user profile in our users table
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
             .from('users')
-            .insert({
+            .upsert({
                 id: userId,
                 full_name: fullName,
-                email: email,
+                email: email || user.email,
                 country: country || null
-            })
+            }, { onConflict: 'id' })
             .select()
             .single();
 
         if (error) throw error;
 
         // Create default free subscription
-        await supabase
+        const { error: subscriptionError } = await supabaseAdmin
             .from('subscriptions')
-            .insert({
+            .upsert({
                 user_id: userId,
                 plan_type: 'free',
                 status: 'active'
-            });
+            }, { onConflict: 'user_id' });
+
+        if (subscriptionError) throw subscriptionError;
 
         if (referralCode) {
             await recordReferral({ code: referralCode, referredUserId: userId });
@@ -53,11 +68,15 @@ router.post('/signup', async (req, res) => {
  * GET /api/auth/profile
  * Get user profile (requires authentication via Supabase RLS)
  */
-router.get('/profile/:userId', async (req, res) => {
+router.get('/profile/:userId', authenticateUser, async (req, res) => {
     try {
         const { userId } = req.params;
 
-        const { data, error } = await supabase
+        if (req.userId !== userId) {
+            return res.status(403).json({ error: 'Cannot view another user profile' });
+        }
+
+        const { data, error } = await supabaseAdmin
             .from('users')
             .select('*')
             .eq('id', userId)
@@ -77,12 +96,16 @@ router.get('/profile/:userId', async (req, res) => {
  * PUT /api/auth/profile/:userId
  * Update user profile
  */
-router.put('/profile/:userId', async (req, res) => {
+router.put('/profile/:userId', authenticateUser, async (req, res) => {
     try {
         const { userId } = req.params;
         const updates = req.body;
 
-        const { data, error } = await supabase
+        if (req.userId !== userId) {
+            return res.status(403).json({ error: 'Cannot update another user profile' });
+        }
+
+        const { data, error } = await supabaseAdmin
             .from('users')
             .update(updates)
             .eq('id', userId)

@@ -44,7 +44,12 @@ export default function SignupPage() {
                 // Create user profile in backend
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/signup`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(data.session?.access_token
+                            ? { Authorization: `Bearer ${data.session.access_token}` }
+                            : {}),
+                    },
                     body: JSON.stringify({
                         userId: data.user.id,
                         email: data.user.email,
