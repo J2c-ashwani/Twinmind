@@ -79,6 +79,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icons.credit_card_outlined,
                 () => Navigator.pushNamed(context, '/subscription'),
               ),
+              _buildActionTile(
+                'Refer a Friend',
+                'Invite friends and earn rewards',
+                Icons.card_giftcard_outlined,
+                () => Navigator.pushNamed(context, '/referral'),
+              ),
               const SizedBox(height: 32),
               _buildSectionHeader('Data Management'),
               _buildActionTile(

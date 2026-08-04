@@ -24,6 +24,7 @@ import 'screens/main_screen.dart';
 import 'screens/daily_challenges_screen.dart';
 import 'screens/growth_story_screen.dart';
 import 'screens/twin_match_screen.dart';
+import 'screens/referral_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'providers/gamification_provider.dart';
@@ -225,6 +226,7 @@ class TwinGenieApp extends StatelessWidget {
           '/insights': (context) => const InsightsScreen(),
           '/growth-story': (context) => const GrowthStoryScreen(),
           '/twin-match': (context) => const TwinMatchScreen(),
+          '/referral': (context) => const ReferralScreen(),
         },
       ),
     );
