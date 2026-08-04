@@ -255,9 +255,13 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve standalone public Privacy Policy page
+// Serve standalone public Privacy Policy & Terms of Service pages
 app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'privacy.html'));
+});
+
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'terms.html'));
 });
 
 // Handle SPA routing - send index.html for any non-API route
