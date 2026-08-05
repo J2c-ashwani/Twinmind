@@ -1,7 +1,7 @@
 name: twinmind
 description: TwinGenie - Your AI Digital Twin
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -34,7 +34,8 @@ dependencies:
   
   # Payments
   flutter_stripe: ^10.1.1
-  in_app_purchase: ^3.1.11
+  in_app_purchase: ^3.2.0
+  in_app_purchase_android: ^0.5.2
   
   # Notifications - Updated to latest compatible versions
   firebase_messaging: ^15.0.0
