@@ -3,7 +3,8 @@ import { supabaseAdmin } from '../config/supabase.js';
 
 /**
  * Personality Style Layer
- * Advanced personalization based on Big Five traits, emotional states, and user preferences
+ * Pure-function transformation engine mapping Big Five traits, core values,
+ * emotional states, and user preferences into delimited system directives.
  */
 
 // Emotional State Modifiers
@@ -84,27 +85,27 @@ export const BIG_FIVE_MODIFIERS = {
             tone: 'imaginative',
             response_style: 'creative, explorative',
             language: 'metaphors and ideas',
-            behavior: 'encourage curiosity'
+            behavior: 'encourage curiosity and conceptual connections'
         },
         low: {
             tone: 'practical',
             response_style: 'direct, simple',
             language: 'concrete terms',
-            behavior: 'focus on stability'
+            behavior: 'focus on grounded, proven steps'
         }
     },
     conscientiousness: {
         high: {
             tone: 'organized',
             response_style: 'structured',
-            language: 'goal-based',
-            behavior: 'help create plans'
+            language: 'actionable, clear sequencing',
+            behavior: 'help organize ideas into logical steps when useful'
         },
         low: {
             tone: 'casual',
             response_style: 'relaxed',
             language: 'easy-going',
-            behavior: 'avoid pressure'
+            behavior: 'keep suggestions light and pressure-free'
         }
     },
     extraversion: {
@@ -112,13 +113,13 @@ export const BIG_FIVE_MODIFIERS = {
             tone: 'energetic',
             response_style: 'expressive',
             language: 'enthusiastic',
-            behavior: 'encourage social expression'
+            behavior: 'encourage social expression and high engagement'
         },
         low: {
             tone: 'calm',
             response_style: 'short and reflective',
             language: 'minimalistic',
-            behavior: 'respect quiet preference'
+            behavior: 'respect quiet, focused conversation'
         }
     },
     agreeableness: {
@@ -126,13 +127,13 @@ export const BIG_FIVE_MODIFIERS = {
             tone: 'warm',
             response_style: 'supportive',
             language: 'soft',
-            behavior: 'emphasize empathy'
+            behavior: 'emphasize empathy and collaborative framing'
         },
         low: {
             tone: 'honest but respectful',
             response_style: 'direct',
             language: 'clear',
-            behavior: 'avoid sugarcoating'
+            behavior: 'straightforward feedback without unnecessary fluff'
         }
     },
     neuroticism: {
@@ -140,156 +141,86 @@ export const BIG_FIVE_MODIFIERS = {
             tone: 'gentle',
             response_style: 'emotion-aware',
             language: 'reassuring',
-            behavior: 'ground and calm'
+            behavior: 'provide steady, grounding support'
         },
         low: {
             tone: 'neutral',
             response_style: 'logical',
             language: 'stable',
-            behavior: 'practical support'
+            behavior: 'pragmatic, balanced perspective'
         }
     }
 };
 
-// Decision Style Modifiers
-const DECISION_STYLE_MODIFIERS = {
-    logic_based: {
-        tone: 'analytical',
-        response_style: 'structured reasoning',
-        behavior: 'explain logic'
-    },
-    emotion_based: {
-        tone: 'empathetic',
-        response_style: 'feelings-first',
-        behavior: 'validate emotions'
-    },
-    intuition_based: {
-        tone: 'insightful',
-        response_style: 'pattern-based',
-        behavior: 'explore inner sense'
-    }
-};
-
-// Communication Style Modifiers
-const COMMUNICATION_STYLE_MODIFIERS = {
-    direct: {
-        language: 'clear and concise',
-        filter_level: 'low',
-        behavior: 'straight to point'
-    },
-    diplomatic: {
-        language: 'soft phrasing',
-        filter_level: 'medium',
-        behavior: 'gentle communication'
-    }
-};
-
-// Relationship Orientation Modifiers
-const RELATIONSHIP_ORIENTATION_MODIFIERS = {
-    independent: {
-        tone: 'respectful',
-        behavior: 'encourage autonomy',
-        followup_style: 'light'
-    },
-    connected: {
-        tone: 'warm',
-        behavior: 'supportive',
-        followup_style: 'deep'
-    }
-};
-
-// Trust Memory Influence
-const TRUST_MEMORY_INFLUENCE = {
-    low_trust: {
-        tone: 'formal',
-        use_memory: false
-    },
-    medium_trust: {
-        tone: 'warm',
-        use_memory: 'light'
-    },
-    high_trust: {
-        tone: 'familiar',
-        use_memory: 'normal'
-    }
-};
-
-// Cultural Modifiers
-const CULTURAL_MODIFIERS = {
-    india: {
-        tone: 'respectful',
-        language: 'warm and polite'
-    },
-    default: {
-        tone: 'neutral',
-        language: 'global standard'
-    }
-};
-
-// Conflict Resolution Priority Order
-const PRIORITY_ORDER = [
-    'emotional_state',
-    'big_five',
-    'communication_style',
-    'decision_style',
-    'relationship_orientation',
-    'trust_memory_influence',
-    'cultural_modifiers'
-];
-
 /**
- * Get user's personality profile from database
+ * ============================================================
+ * STEP 0 + 2: PURE FUNCTION PROFILE NORMALIZER
+ * Converts real production personality_json (or null/malformed)
+ * into a safe, normalized profile structure.
+ * ============================================================
  */
-export async function getUserPersonalityProfile(userId) {
-    try {
-        const { data, error } = await supabaseAdmin
-            .from('personality_answers')
-            .select('question_id, selected_option, answer_text')
-            .eq('user_id', userId);
-
-        if (error) throw error;
-
-        // Calculate Big Five scores from answers
-        const bigFive = calculateBigFiveScores(data || []);
-
-        // Get additional preferences
-        const { data: profile } = await supabaseAdmin
-            .from('user_profiles')
-            .select('preferences')
-            .eq('user_id', userId)
-            .single();
-
-        return {
-            big_five: bigFive,
-            decision_style: profile?.preferences?.decision_style || 'balanced',
-            communication_style: profile?.preferences?.communication_style || 'diplomatic',
-            relationship_orientation: profile?.preferences?.relationship_orientation || 'connected',
-            culture: profile?.preferences?.culture || 'default'
-        };
-    } catch (error) {
-        logger.error('Error getting personality profile:', error);
+export function normalizePersonalityProfile(rawJson) {
+    if (!rawJson || typeof rawJson !== 'object') {
         return getDefaultPersonalityProfile();
     }
-}
 
-/**
- * Calculate Big Five scores from personality answers
- */
-function calculateBigFiveScores(answers) {
-    // Simplified calculation - in production, map questions to traits
+    const bigFive = rawJson.big_five || {};
+
+    // Helper to clamp values to 0.0 - 1.0 range
+    const normalizeScore = (val, defaultVal = 50) => {
+        if (typeof val !== 'number' || isNaN(val)) val = defaultVal;
+        if (val > 1) val = val / 100; // Handle 1-100 scale to 0-1
+        return Math.max(0, Math.min(1, val));
+    };
+
+    // Calculate neuroticism from emotional_stability if needed (emotional_stability = 100 - neuroticism)
+    let neuroticismVal = bigFive.neuroticism;
+    if (neuroticismVal === undefined && bigFive.emotional_stability !== undefined) {
+        neuroticismVal = 100 - bigFive.emotional_stability;
+    }
+
+    // Extract core values array
+    let coreValues = [];
+    if (Array.isArray(rawJson.core_values)) {
+        coreValues = rawJson.core_values.filter(v => typeof v === 'string');
+    }
+
+    // Extract communication style directness / tone
+    let commDirectness = 'diplomatic';
+    if (typeof rawJson.communication_style === 'object' && rawJson.communication_style !== null) {
+        commDirectness = rawJson.communication_style.directness || rawJson.communication_style.tone || 'diplomatic';
+    } else if (typeof rawJson.communication_style === 'string') {
+        commDirectness = rawJson.communication_style;
+    }
+
+    // Extract decision making style
+    let decStyle = 'balanced';
+    if (typeof rawJson.decision_making === 'object' && rawJson.decision_making !== null) {
+        decStyle = rawJson.decision_making.style || 'balanced';
+    } else if (typeof rawJson.decision_making === 'string') {
+        decStyle = rawJson.decision_making;
+    }
+
     return {
-        openness: 0.5,      // 0-1 scale
-        conscientiousness: 0.5,
-        extraversion: 0.5,
-        agreeableness: 0.5,
-        neuroticism: 0.5
+        big_five: {
+            openness: normalizeScore(bigFive.openness, 50),
+            conscientiousness: normalizeScore(bigFive.conscientiousness, 50),
+            extraversion: normalizeScore(bigFive.extraversion, 50),
+            agreeableness: normalizeScore(bigFive.agreeableness, 50),
+            neuroticism: normalizeScore(neuroticismVal, 50)
+        },
+        coreValues,
+        decisionStyle: decStyle,
+        communicationStyle: commDirectness,
+        relationshipOrientation: 'connected',
+        culture: 'default'
     };
 }
 
 /**
- * Get default personality profile
+ * Get default baseline personality profile
  */
-function getDefaultPersonalityProfile() {
+export function getDefaultPersonalityProfile() {
     return {
         big_five: {
             openness: 0.5,
@@ -298,11 +229,37 @@ function getDefaultPersonalityProfile() {
             agreeableness: 0.5,
             neuroticism: 0.5
         },
-        decision_style: 'balanced',
-        communication_style: 'diplomatic',
-        relationship_orientation: 'connected',
+        coreValues: [],
+        decisionStyle: 'balanced',
+        communicationStyle: 'diplomatic',
+        relationshipOrientation: 'connected',
         culture: 'default'
     };
+}
+
+/**
+ * ============================================================
+ * DATA ACCESS HELPER
+ * Fetches user's personality_json from database
+ * ============================================================
+ */
+export async function getUserPersonalityProfile(userId) {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('personality_profiles')
+            .select('personality_json')
+            .eq('user_id', userId)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            logger.warn(`Notice fetching personality profile for ${userId}: ${error.message}`);
+        }
+
+        return normalizePersonalityProfile(data?.personality_json);
+    } catch (error) {
+        logger.error('Error getting personality profile:', error);
+        return getDefaultPersonalityProfile();
+    }
 }
 
 /**
@@ -313,7 +270,6 @@ export function detectEmotionalState(detectedEvents) {
         return 'neutral';
     }
 
-    // Map emotional events to emotional states
     const eventToState = {
         sadness: 'sad',
         loneliness: 'lonely',
@@ -339,82 +295,74 @@ export function getIntensityLevel(intensity) {
 }
 
 /**
- * Generate personality-based directives
+ * ============================================================
+ * 5-TIER PRIORITY PROMPT GENERATOR
+ * Pure function: Receives normalized profile and returns XML-delimited directives.
+ * ============================================================
  */
-export function generatePersonalityDirectives(personalityProfile, emotionalState, intensityLevel, trustLevel) {
-    let directives = `\n## PERSONALITY STYLE LAYER\n\n`;
+export function generatePersonalityDirectives(personalityProfile, emotionalState = 'neutral', intensityLevel = 'low', trustLevel = 50) {
+    // Feature Flag Check
+    if (process.env.PERSONALITY_STYLE_LAYER_ENABLED === 'false') {
+        return '';
+    }
 
-    // 1. Emotional State Modifiers (Highest Priority)
+    const profile = personalityProfile || getDefaultPersonalityProfile();
+
+    let directives = `\n<user_personality_profile>\n`;
+    directives += `NOTICE TO MODEL: The following profile describes the user's personality tendencies, core values, and style preferences.\n`;
+    directives += `5-TIER HIERARCHY RULES:\n`;
+    directives += `1. System Safety Requirements (ALWAYS HIGHEST PRIORITY)\n`;
+    directives += `2. Current Explicit User Request (Directives yield to what user asks RIGHT NOW)\n`;
+    directives += `3. Current Emotional State (De-escalation and emotional support)\n`;
+    directives += `4. Stable Personality Preferences (Tone, structure, framing context below)\n`;
+    directives += `5. Default Conversational Baseline\n\n`;
+
+    // 1. Emotional State Modifiers
     const stateModifier = EMOTIONAL_STATE_MODIFIERS[emotionalState];
-    if (stateModifier) {
-        directives += `### Current Emotional State: ${emotionalState.toUpperCase()}\n`;
-        directives += `- TONE: ${stateModifier.tone.toUpperCase()}\n`;
-        directives += `- LANGUAGE: ${stateModifier.language}\n`;
-        directives += `- BEHAVIOR: ${stateModifier.behavior}\n`;
-        directives += `- RESPONSE STYLE: ${stateModifier.response_style}\n\n`;
+    if (stateModifier && emotionalState !== 'neutral') {
+        directives += `EMOTIONAL STATE (${emotionalState.toUpperCase()}):\n`;
+        directives += `- Tone: ${stateModifier.tone}\n`;
+        directives += `- Behavior: ${stateModifier.behavior}\n\n`;
     }
 
-    // 2. Intensity Modifiers
-    const intensityModifier = EMOTION_INTENSITY_MODIFIERS[intensityLevel];
-    if (intensityModifier && intensityLevel !== 'low') {
-        directives += `### Emotion Intensity: ${intensityLevel.toUpperCase()}\n`;
-        directives += `- TONE SHIFT: ${intensityModifier.tone_shift}\n`;
-        directives += `- LENGTH: ${intensityModifier.length_multiplier}x\n`;
-        directives += `- EMPATHY BOOST: +${Math.round(intensityModifier.empathy_boost * 100)}%\n\n`;
-    }
-
-    // 3. Big Five Modifiers
-    directives += `### Big Five Personality Traits:\n`;
-    for (const [trait, score] of Object.entries(personalityProfile.big_five)) {
-        const level = score >= 0.6 ? 'high' : (score <= 0.4 ? 'low' : 'medium');
-        if (level !== 'medium') {
-            const modifier = BIG_FIVE_MODIFIERS[trait][level];
-            directives += `**${trait.toUpperCase()}** (${level}): ${modifier.tone} tone, ${modifier.response_style}\n`;
+    // 2. Graded Big Five Signals (Using continuous strength thresholding: High >= 0.60, Low <= 0.40)
+    const activeTraits = [];
+    for (const [trait, score] of Object.entries(profile.big_five)) {
+        if (score >= 0.60) {
+            const mod = BIG_FIVE_MODIFIERS[trait]?.high;
+            if (mod) activeTraits.push(`- High ${trait.toUpperCase()}: ${mod.behavior} (${mod.response_style})`);
+        } else if (score <= 0.40) {
+            const mod = BIG_FIVE_MODIFIERS[trait]?.low;
+            if (mod) activeTraits.push(`- Low ${trait.toUpperCase()}: ${mod.behavior} (${mod.response_style})`);
         }
     }
-    directives += `\n`;
 
-    // 4. Decision Style
-    const decisionModifier = DECISION_STYLE_MODIFIERS[personalityProfile.decision_style];
-    if (decisionModifier) {
-        directives += `### Decision Style: ${personalityProfile.decision_style.toUpperCase()}\n`;
-        directives += `- ${decisionModifier.tone} tone, ${decisionModifier.response_style}, ${decisionModifier.behavior}\n\n`;
+    if (activeTraits.length > 0) {
+        directives += `TRAIT SIGNALS:\n${activeTraits.join('\n')}\n\n`;
     }
 
-    // 5. Communication Style
-    const commModifier = COMMUNICATION_STYLE_MODIFIERS[personalityProfile.communication_style];
-    if (commModifier) {
-        directives += `### Communication Style: ${personalityProfile.communication_style.toUpperCase()}\n`;
-        directives += `- ${commModifier.language}, ${commModifier.behavior}\n\n`;
+    // 3. Multi-Select Core Values Context
+    if (Array.isArray(profile.coreValues) && profile.coreValues.length > 0) {
+        directives += `USER CORE VALUES:\n`;
+        profile.coreValues.forEach(val => {
+            directives += `- ${val.trim()}\n`;
+        });
+        directives += `(Align advice and framing with these values when applicable)\n\n`;
     }
 
-    // 6. Relationship Orientation
-    const relModifier = RELATIONSHIP_ORIENTATION_MODIFIERS[personalityProfile.relationship_orientation];
-    if (relModifier) {
-        directives += `### Relationship Orientation: ${personalityProfile.relationship_orientation.toUpperCase()}\n`;
-        directives += `- ${relModifier.tone} tone, ${relModifier.behavior}, ${relModifier.followup_style} follow-ups\n\n`;
-    }
-
-    // 7. Trust Level Influence
-    const trustCategory = trustLevel >= 60 ? 'high_trust' : (trustLevel >= 30 ? 'medium_trust' : 'low_trust');
-    const trustModifier = TRUST_MEMORY_INFLUENCE[trustCategory];
-    directives += `### Trust Level: ${trustCategory.toUpperCase().replace('_', ' ')}\n`;
-    directives += `- ${trustModifier.tone} tone, memory use: ${trustModifier.use_memory}\n\n`;
-
-    // 8. Cultural Modifiers
-    const cultureModifier = CULTURAL_MODIFIERS[personalityProfile.culture] || CULTURAL_MODIFIERS.default;
-    if (personalityProfile.culture !== 'default') {
-        directives += `### Cultural Context: ${personalityProfile.culture.toUpperCase()}\n`;
-        directives += `- ${cultureModifier.tone} tone, ${cultureModifier.language}\n\n`;
-    }
-
-    directives += `⚠️ PRIORITY ORDER: Emotional state takes precedence, followed by Big Five traits, then communication/decision styles.\n`;
+    // 4. Communication & Decision Style Context
+    directives += `COMMUNICATION PREFERENCES:\n`;
+    directives += `- Decision Style: ${profile.decisionStyle}\n`;
+    directives += `- Style Tendency: ${profile.communicationStyle}\n`;
+    directives += `</user_personality_profile>\n`;
 
     return directives;
 }
 
 export default {
     getUserPersonalityProfile,
+    normalizePersonalityProfile,
+    getDefaultPersonalityProfile,
     generatePersonalityDirectives,
     detectEmotionalState,
     getIntensityLevel,
