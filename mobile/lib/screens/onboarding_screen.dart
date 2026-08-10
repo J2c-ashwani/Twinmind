@@ -28,6 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   List<Question> questions = [];
   Map<int, QuestionAnswer> answers = {};
   Map<int, String> otherTextInputs = {};
+  Map<int, Set<String>> multiSelectAnswers = {};
 
   bool isLoading = false;
   bool isGenerating = false;
@@ -80,6 +81,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
+  void _handleMultiSelect(int questionId, String option, bool selected) {
+    setState(() {
+      multiSelectAnswers[questionId] ??= {};
+      if (selected) {
+        multiSelectAnswers[questionId]!.add(option);
+      } else {
+        multiSelectAnswers[questionId]!.remove(option);
+      }
+      // Store as comma-separated in answers map for API submission
+      if (multiSelectAnswers[questionId]!.isNotEmpty) {
+        answers[questionId] = QuestionAnswer(
+          questionId: questionId,
+          selectedOption: multiSelectAnswers[questionId]!.join(', '),
+          answerText: null,
+        );
+      } else {
+        answers.remove(questionId);
+      }
+    });
+  }
+
   void _handleOtherText(int questionId, String text) {
     setState(() {
       otherTextInputs[questionId] = text;
@@ -111,10 +133,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final answer = answers[q.id];
       if (answer == null) return false;
 
-      if (q.questionType == 'text') {
-        // For text questions: require text input
+      if (q.questionType == 'text' || q.questionType == 'number') {
+        // For text/number questions: require text input
         return answer.answerText != null &&
             answer.answerText!.trim().isNotEmpty;
+      }
+
+      if (q.questionType == 'multiple_select') {
+        // For multi-select: require at least one selection
+        final selections = multiSelectAnswers[q.id];
+        return selections != null && selections.isNotEmpty;
       }
 
       // For single_choice questions
@@ -131,17 +159,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
+  String _getScreenTitle() {
+    switch (currentScreen) {
+      case 1:
+        return "Let's get to know you";
+      case 2:
+        return 'Your personality';
+      case 3:
+        return 'Your mindset';
+      case 4:
+        return 'Your values & lifestyle';
+      case 5:
+        return 'Your goals & decisions';
+      default:
+        return 'Tell us about yourself';
+    }
+  }
+
   Future<void> _handleNext() async {
     if (currentScreen < totalScreens) {
       setState(() {
         currentScreen++;
       });
-      // Scroll to top of next screen
-      _scrollController.animateTo(
-        0.0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      // Scroll to top of next screen after frame renders
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     } else {
       // All questions answered - show signup form
       setState(() {
@@ -397,9 +446,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Tell us about yourself',
-                          style: TextStyle(
+                        Text(
+                          _getScreenTitle(),
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
@@ -492,12 +541,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
-          if (q.questionType == 'text')
+          if (q.questionType == 'text' || q.questionType == 'number')
             TextField(
               onChanged: (text) => _handleTextAnswer(q.id, text),
-              maxLines: 3,
+              maxLines: q.questionType == 'number' ? 1 : 3,
+              keyboardType: q.questionType == 'number'
+                  ? TextInputType.number
+                  : TextInputType.multiline,
               decoration: InputDecoration(
-                hintText: 'Share your thoughts...',
+                hintText: q.questionType == 'number'
+                    ? 'Enter a number...'
+                    : 'Share your thoughts...',
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.05),
                 border: OutlineInputBorder(
@@ -514,6 +568,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       const BorderSide(color: Color(0xFF9333EA), width: 2),
                 ),
               ),
+            )
+          else if (q.questionType == 'multiple_select')
+            Column(
+              children: [
+                ...q.options!.map((option) => _buildCheckboxOption(q.id, option)),
+                if (q.allowOther)
+                  _buildCheckboxOption(q.id, 'Other'),
+                if (q.allowOther && (multiSelectAnswers[q.id]?.contains('Other') ?? false))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 8),
+                    child: TextField(
+                      onChanged: (text) => _handleOtherText(q.id, text),
+                      decoration: InputDecoration(
+                        hintText: 'Please specify...',
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             )
           else
             Column(
@@ -543,6 +620,61 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ],
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCheckboxOption(int questionId, String option) {
+    final isSelected = multiSelectAnswers[questionId]?.contains(option) ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: InkWell(
+        onTap: () => _handleMultiSelect(questionId, option, !isSelected),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF9333EA).withOpacity(0.1)
+                : Colors.white.withOpacity(0.05),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF9333EA)
+                  : Colors.white.withOpacity(0.2),
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Checkbox(
+                value: isSelected,
+                onChanged: (value) =>
+                    _handleMultiSelect(questionId, option, value ?? false),
+                activeColor: const Color(0xFF9333EA),
+                checkColor: Colors.white,
+                side: BorderSide(
+                  color: isSelected
+                      ? const Color(0xFF9333EA)
+                      : Colors.white.withOpacity(0.5),
+                  width: 2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  option,
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Color(0xFF9333EA), size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

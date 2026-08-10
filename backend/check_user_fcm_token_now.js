@@ -1,61 +1,59 @@
-import { supabaseAdmin } from './src/config/supabase.js';
+import { createClient } from '@supabase/supabase-js';
+import firebaseAdmin from './src/config/firebase.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const EMAIL = 'join2campus@gmail.com';
+const supabase = createClient(
+    process.env.SUPABASE_URL || 'https://lhwtfjgtripwikxwookp.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDYwNTQ0NiwiZXhwIjoyMDgwMTgxNDQ2fQ.hN8Zk_lM2J1mS0l_-Xn7rGZ9hC8x1A9N7d8K4h1W4h8'
+);
 
-async function checkTokenNow() {
-    console.log(`\n======================================================`);
-    console.log(`🔍 CHECKING SUPABASE PRODUCTION DATABASE FOR: ${EMAIL}`);
-    console.log(`======================================================\n`);
+async function checkAndSend() {
+    console.log('Querying Supabase push_device_tokens table for latest active token...');
+    const { data, error } = await supabase
+        .from('push_device_tokens')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(5);
 
-    try {
-        const { data: user, error: userError } = await supabaseAdmin
-            .from('users')
-            .select('id, email, fcm_token, updated_at')
-            .eq('email', EMAIL)
-            .single();
+    if (error) {
+        console.error('Error fetching tokens:', error);
+        process.exit(1);
+    }
 
-        if (userError || !user) {
-            console.log(`❌ User not found:`, userError);
-            process.exit(1);
+    console.log('Raw DB Records:', JSON.stringify(data, null, 2));
+
+    for (const record of data) {
+        const tokenVal = record.fcm_token || record.device_token || record.token;
+        if (!tokenVal) continue;
+
+        console.log(`\nAttempting to send push to token: ${tokenVal.substring(0, 30)}...`);
+
+        const message = {
+            token: tokenVal,
+            notification: {
+                title: '✨ TwinGenie Update Test',
+                body: 'Testing live notification with updated TwinGenie brain icon!'
+            },
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'twingenie_channel_v1',
+                    icon: 'ic_notification',
+                    color: '#9333EA'
+                }
+            }
+        };
+
+        try {
+            const response = await firebaseAdmin.messaging().send(message);
+            console.log(`✅ LIVE CLOUD PUSH DELIVERED! Message ID: ${response}`);
+            break; // Stop after first successful send
+        } catch (e) {
+            console.error(`❌ Token failed (${e.code || e.message}): trying next token...`);
         }
-
-        console.log(`1️⃣ USERS TABLE:`);
-        console.log(`   User ID: ${user.id}`);
-        console.log(`   fcm_token: ${user.fcm_token ? user.fcm_token : '❌ STILL NULL'}`);
-
-        console.log(`\n2️⃣ PUSH_DEVICE_TOKENS TABLE:`);
-        const { data: deviceTokens, error: dtError } = await supabaseAdmin
-            .from('push_device_tokens')
-            .select('*')
-            .eq('user_id', user.id);
-
-        if (dtError) {
-            console.log(`   Error:`, dtError.message);
-        } else if (!deviceTokens || deviceTokens.length === 0) {
-            console.log(`   ❌ 0 rows in push_device_tokens`);
-        } else {
-            console.log(`   Found ${deviceTokens.length} record(s):`);
-            deviceTokens.forEach(dt => console.log(`   - Token: ${dt.token} | Enabled: ${dt.enabled} | Last Seen: ${dt.last_seen_at}`));
-        }
-
-        console.log(`\n3️⃣ RECENT CHATS:`);
-        const { data: chats } = await supabaseAdmin
-            .from('chat_history')
-            .select('created_at, sender, message')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(3);
-
-        if (chats) {
-            chats.forEach(c => console.log(`   [${c.created_at}] (${c.sender}): ${c.message}`));
-        }
-
-    } catch (e) {
-        console.error('Error:', e);
     }
     process.exit(0);
 }
 
-checkTokenNow();
+checkAndSend();
