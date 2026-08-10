@@ -120,27 +120,32 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             const isEmotional = detectEmotionalContent(message);
             const hasGoals = detectGoalContent(message);
 
-            // Track message for engagement metrics
-            await trackMessage(userId, message, isEmotional, hasGoals);
+            // Execute independent database queries Concurrently in parallel via Promise.all
+            const [
+                _trackRes,
+                emotionalMetrics,
+                userContext,
+                personalityProfile,
+                styleMode
+            ] = await Promise.all([
+                trackMessage(userId, message, isEmotional, hasGoals),
+                getEmotionalMetrics(userId),
+                getUserPersonalizationContext(userId),
+                getUserPersonalityProfile(userId),
+                getUserStyleMode(userId)
+            ]);
 
             // Get behavioral modifiers based on user's psychological state
             const behavioralModifiers = getBehavioralModifiers(engagementState);
-
-            // Get emotional metrics (before update)
-            const emotionalMetrics = await getEmotionalMetrics(userId);
 
             // Detect emotional events from message (before generating response)
             const detectedEvents = detectEmotionalEvents(message);
             const detectedIntensity = detectEmotionalIntensity(message);
 
-            // Get user personalization context
-            const userContext = await getUserPersonalizationContext(userId);
-
             // Get emotional behavior modifiers with detected events, intensity, and personalization
             let emotionalModifiers = getEmotionalBehaviorModifiers(emotionalMetrics, detectedEvents, detectedIntensity, userContext);
 
             // Apply personality style layer
-            const personalityProfile = await getUserPersonalityProfile(userId);
             const emotionalState = detectEmotionalState(detectedEvents);
             const intensityLevel = getIntensityLevel(detectedIntensity);
             const personalityDirectives = generatePersonalityDirectives(personalityProfile, emotionalState, intensityLevel, emotionalMetrics.trust_level);
@@ -148,7 +153,6 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             emotionalModifiers += personalityDirectives;
 
             // Apply emotional style adapter
-            const styleMode = await getUserStyleMode(userId);
             emotionalModifiers = adjustModifiersForStyle(emotionalModifiers, styleMode);
 
             // Combine both behavioral and emotional modifiers
