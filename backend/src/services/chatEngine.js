@@ -178,7 +178,14 @@ async function isFirstMessageEver(userId) {
     }
 }
 
-const FIRST_MESSAGE_DISCLOSURE = "Hey — just so you know, I'm your AI companion for reflection and support. I'm not a human, but I'm here to listen and help. Now, what's on your mind?";
+const FIRST_MESSAGE_DISCLOSURE_PREFIX = "Hey — just so you know, I'm your AI companion for reflection and support. I'm not a human, but I'm here to listen and help.";
+const FIRST_MESSAGE_DISCLOSURE = `${FIRST_MESSAGE_DISCLOSURE_PREFIX} Now, what's on your mind?`;
+
+function isPureGreeting(message = "") {
+    const clean = message.toLowerCase().trim().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
+    const pureGreetings = ['hey', 'hello', 'hi', 'sup', 'yo', 'greetings', 'hiya'];
+    return pureGreetings.includes(clean);
+}
 
 function detectEmotion(message = "") {
     const s = message.toLowerCase();
@@ -242,17 +249,23 @@ export async function generateChatResponse(
 
         /* 0b. MD RULE 1: FIRST-MESSAGE DISCLOSURE */
         const isFirst = await isFirstMessageEver(userId);
+        let isFirstMeaningful = false;
+
         if (isFirst) {
-            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
-            storeChatMemory(userId, FIRST_MESSAGE_DISCLOSURE, "ai", mode).catch(() => { });
-            recordDailyMetrics(userId).catch(() => { });
-            return {
-                message: FIRST_MESSAGE_DISCLOSURE,
-                mode,
-                timestamp: new Date().toISOString(),
-                genZ: false,
-                tokensSaved: 0
-            };
+            if (isPureGreeting(userMessage)) {
+                storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
+                storeChatMemory(userId, FIRST_MESSAGE_DISCLOSURE, "ai", mode).catch(() => { });
+                recordDailyMetrics(userId).catch(() => { });
+                return {
+                    message: FIRST_MESSAGE_DISCLOSURE,
+                    mode,
+                    timestamp: new Date().toISOString(),
+                    genZ: false,
+                    tokensSaved: 0
+                };
+            }
+            // Non-greeting first message: proceed with LLM pipeline and deterministically prepend disclosure
+            isFirstMeaningful = true;
         }
 
         /* 0c. INSTANT GREETING CHECK (Optimized) */
@@ -402,6 +415,13 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
 
         if (genZ.isGenZ && (emotion === "neutral" || emotion === "excited")) {
             aiMessage = mirrorUserStyle(userMessage, aiMessage);
+        }
+
+        /* 9.6 DETERMINISTIC FIRST-MESSAGE DISCLOSURE PREPEND */
+        if (isFirstMeaningful) {
+            if (!aiMessage.startsWith(FIRST_MESSAGE_DISCLOSURE_PREFIX)) {
+                aiMessage = `${FIRST_MESSAGE_DISCLOSURE_PREFIX}\n\n${aiMessage}`;
+            }
         }
 
         /* 11. BACKGROUND TASKS (fire-and-forget, don't await) */
