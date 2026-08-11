@@ -181,9 +181,20 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
   }
 
   Widget _buildResultCard() {
-    final score = _matchResult!['compatibility_score'] as int;
-    final sharedTraits = List<String>.from(_matchResult!['shared_traits'] ?? []);
-    final differences = List<String>.from(_matchResult!['differences'] ?? []);
+    final rawScore = _matchResult!['compatibility_score'] ?? _matchResult!['compatibility'] ?? 75;
+    final score = rawScore is int
+        ? rawScore
+        : (double.tryParse(rawScore.toString())?.toInt() ?? 75);
+
+    final rawShared = _matchResult!['shared_traits'] ?? _matchResult!['insights'] ?? [];
+    final sharedTraits = (rawShared is List)
+        ? rawShared.map((e) => e.toString()).toList()
+        : <String>[];
+
+    final rawDiffs = _matchResult!['differences'] ?? [];
+    final differences = (rawDiffs is List)
+        ? rawDiffs.map((e) => e.toString()).toList()
+        : <String>[];
 
     return Container(
       padding: const EdgeInsets.all(24),

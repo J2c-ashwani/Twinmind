@@ -62,7 +62,6 @@ class _WeeklyMotivationCardWidgetState
       final authService = Provider.of<AuthService>(context, listen: false);
       final token = authService.getAccessToken();
 
-      // Skip API call if not authenticated
       if (token == null) {
         setState(() {
           _isGenerating = false;
@@ -74,15 +73,41 @@ class _WeeklyMotivationCardWidgetState
       api.setToken(token);
 
       final data = await api.generateMotivationCard();
-      setState(() {
-        _card = data['card'];
-        _isGenerating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _card = data['card'];
+          _isGenerating = false;
+        });
+
+        if (_card != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Weekly Motivation Card generated! ✨'),
+              backgroundColor: Color(0xFF9333EA),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not generate card. Chat a bit more with your Twin!'),
+              backgroundColor: Colors.orangeAccent,
+            ),
+          );
+        }
+      }
     } catch (e) {
       print('Failed to generate card: $e');
-      setState(() {
-        _isGenerating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate card: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 

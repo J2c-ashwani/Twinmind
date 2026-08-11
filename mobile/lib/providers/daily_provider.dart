@@ -36,11 +36,17 @@ class DailyProvider with ChangeNotifier {
   
   List<DailyChallenge> _challenges = [];
   bool _isLoading = true; // Default to true to show loading initially
-  String? _error;
+  String? _actionError;
 
   List<DailyChallenge> get challenges => _challenges;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get actionError => _actionError;
+
+  void clearActionError() {
+    _actionError = null;
+    notifyListeners();
+  }
 
   int get completedCount => _challenges.where((c) => c.completed).length;
   int get totalCount => _challenges.length;
@@ -48,6 +54,7 @@ class DailyProvider with ChangeNotifier {
   Future<void> loadChallenges([String? token]) async {
     _isLoading = true;
     _error = null;
+    _actionError = null;
     notifyListeners();
 
     try {
@@ -68,7 +75,7 @@ class DailyProvider with ChangeNotifier {
           .toList();
           
     } catch (e) {
-      print('🔴 DailyProvider Error: $e');
+      print('🔴 DailyProvider Load Error: $e');
       _error = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
@@ -76,26 +83,34 @@ class DailyProvider with ChangeNotifier {
     }
   }
 
-  Future<void> completeChallenge(String challengeId) async {
+  Future<Map<String, dynamic>?> completeChallenge(String challengeId, {Map<String, dynamic>? inputs}) async {
+    _actionError = null;
+    
+    // Find challenge
+    final index = _challenges.indexWhere((c) => c.id == challengeId);
+    if (index == -1) return null;
+    
+    final challenge = _challenges[index];
+    
+    // Mark as completed locally immediately for instant feedback
+    _challenges[index] = DailyChallenge(
+      id: challenge.id,
+      type: challenge.type,
+      task: challenge.task,
+      reward: challenge.reward,
+      completed: true,
+      timeWindow: challenge.timeWindow,
+    );
+    notifyListeners();
+
     try {
-      await _apiService.completeChallenge(challengeId);
-      
-      final index = _challenges.indexWhere((c) => c.id == challengeId);
-      if (index != -1) {
-        final challenge = _challenges[index];
-        _challenges[index] = DailyChallenge(
-          id: challenge.id,
-          type: challenge.type,
-          task: challenge.task,
-          reward: challenge.reward,
-          completed: true,
-          timeWindow: challenge.timeWindow,
-        );
-        notifyListeners();
-      }
+      final res = await _apiService.completeChallenge(challengeId, inputs: inputs);
+      return res;
     } catch (e) {
-      _error = e.toString();
+      print('🔴 DailyProvider Action Error: $e');
+      _actionError = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
+      return null;
     }
   }
 
@@ -103,7 +118,7 @@ class DailyProvider with ChangeNotifier {
     try {
       await _apiService.submitMoodCheckIn(mood, note);
     } catch (e) {
-      _error = e.toString();
+      _actionError = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
     }
   }

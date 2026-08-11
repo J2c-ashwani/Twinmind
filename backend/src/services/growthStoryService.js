@@ -111,7 +111,20 @@ export async function generateInsights(userId, period = 'year') {
         ]);
 
         if (!moodData.data || moodData.data.length === 0) {
-            return null;
+            return {
+                period,
+                totalCheckIns: 0,
+                averageMood: 4.0,
+                happiestDay: 'Today',
+                mostActiveTime: '12:00',
+                trend: 'stable',
+                insights: [
+                    "Welcome to your Growth Story! Log your daily mood check-ins to unlock personal emotional trends over time.",
+                    "Your journey towards self-awareness starts with your first check-in.",
+                    "Chat regularly with your AI Twin to track your personal progress."
+                ],
+                generatedAt: new Date().toISOString()
+            };
         }
 
         // Calculate patterns
@@ -140,7 +153,8 @@ Create insights that are:
 
 Format as JSON array: ["insight1", "insight2", "insight3"]`;
 
-        const aiResponse = await aiService.generateResponse(prompt, 'flash');
+        const aiResult = await aiService.generateChatResponse(prompt);
+        const aiResponse = aiResult?.text || '';
 
         let insights;
         try {

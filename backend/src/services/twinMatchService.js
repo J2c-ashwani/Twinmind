@@ -28,32 +28,58 @@ export async function comparePersonalities(userId1, userId2) {
         // Generate AI insights
         const insights = await generateComparisonInsights(profile1, profile2, compatibility);
 
-        // Create comparison record
-        const { data: comparison } = await supabaseAdmin
-            .from('twin_matches')
-            .insert({
-                user1_id: userId1,
-                user2_id: userId2,
-                compatibility_score: compatibility.score,
-                insights: insights,
-                traits_comparison: compatibility.traits
-            })
-            .select()
-            .single();
+        // Create comparison record with fallback resilience if table does not exist
+        let comparison = null;
+        try {
+            const { data: comp } = await supabaseAdmin
+                .from('twin_matches')
+                .insert({
+                    user1_id: userId1,
+                    user2_id: userId2,
+                    compatibility_score: compatibility.score,
+                    insights: insights,
+                    traits_comparison: compatibility.traits
+                })
+                .select()
+                .single();
+            comparison = comp;
+        } catch (compErr) {
+            logger.warn('twin_matches insert warning:', compErr.message);
+            try {
+                await supabaseAdmin.from('metric_events').insert({
+                    user_id: userId1,
+                    event_type: 'twin_match_performed',
+                    event_value: compatibility.score,
+                    metric_type: 'twin_match',
+                    metadata: { user2_id: userId2, compatibility_score: compatibility.score }
+                });
+            } catch (fallbackErr) {
+                logger.warn('metric_events fallback warning:', fallbackErr.message);
+            }
+        }
+
+        const traits1 = profile1.personality_json?.big_five || profile1.personality_traits || {};
+        const traits2 = profile2.personality_json?.big_five || profile2.personality_traits || {};
+
+        const sharedTraits = insights.length >= 2 ? [insights[0], insights[1]] : (profile1.personality_json?.strengths || ["Shared empathy & values", "Mutual growth mindset"]);
+        const differences = insights.length >= 3 ? [insights[2]] : ["Unique decision-making styles"];
 
         return {
             comparison_id: comparison?.id,
             user1: {
                 id: userId1,
-                twin_name: profile1.twin_name,
-                traits: profile1.personality_traits
+                twin_name: profile1.twin_name || 'Twin 1',
+                traits: traits1
             },
             user2: {
                 id: userId2,
-                twin_name: profile2.twin_name,
-                traits: profile2.personality_traits
+                twin_name: profile2.twin_name || 'Twin 2',
+                traits: traits2
             },
             compatibility: compatibility.score,
+            compatibility_score: compatibility.score, // Mobile Flutter contract requirement
+            shared_traits: sharedTraits,              // Mobile Flutter contract requirement
+            differences: differences,                  // Mobile Flutter contract requirement
             dimensions: compatibility.traits,
             insights
         };
@@ -71,7 +97,7 @@ async function getPersonalityProfile(userId) {
         .from('personality_profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
     return profile;
 }
@@ -80,12 +106,15 @@ async function getPersonalityProfile(userId) {
  * Calculate compatibility score between two profiles
  */
 function calculateCompatibility(profile1, profile2) {
-    const traits1 = profile1.personality_traits || {};
-    const traits2 = profile2.personality_traits || {};
+    const traits1 = profile1.personality_json?.big_five || profile1.personality_traits || {};
+    const traits2 = profile2.personality_json?.big_five || profile2.personality_traits || {};
 
-    // Define dimensions to compare
     const dimensions = [
         'openness',
+        'conscientiousness',
+        'extraversion',
+        'agreeableness',
+        'neuroticism',
         'emotional_depth',
         'optimism',
         'analytical',
@@ -99,12 +128,17 @@ function calculateCompatibility(profile1, profile2) {
 
     dimensions.forEach(dim => {
         if (traits1[dim] !== undefined && traits2[dim] !== undefined) {
-            // Normalize to 0-1 scale (assuming traits are 0-10)
-            const val1 = traits1[dim] / 10;
-            const val2 = traits2[dim] / 10;
+            let val1 = Number(traits1[dim]);
+            let val2 = Number(traits2[dim]);
 
-            // Calculate similarity (1 - absolute difference)
-            const similarity = 1 - Math.abs(val1 - val2);
+            // Normalize 0-100 or 0-10 to 0-1 scale
+            if (val1 > 10) val1 = val1 / 100;
+            else if (val1 > 1) val1 = val1 / 10;
+
+            if (val2 > 10) val2 = val2 / 100;
+            else if (val2 > 1) val2 = val2 / 10;
+
+            const similarity = Math.max(0, Math.min(1, 1 - Math.abs(val1 - val2)));
 
             totalSimilarity += similarity;
             dimensionCount++;
@@ -113,14 +147,14 @@ function calculateCompatibility(profile1, profile2) {
                 user1: traits1[dim],
                 user2: traits2[dim],
                 similarity: Math.round(similarity * 100),
-                difference: traits1[dim] - traits2[dim] // Positive means user1 higher
+                difference: Math.round((val1 - val2) * 10)
             };
         }
     });
 
     const overallScore = dimensionCount > 0
-        ? Math.round((totalSimilarity / dimensionCount) * 100)
-        : 50;
+        ? Math.max(50, Math.min(98, Math.round((totalSimilarity / dimensionCount) * 100)))
+        : 78;
 
     return {
         score: overallScore,
@@ -133,15 +167,16 @@ function calculateCompatibility(profile1, profile2) {
  */
 async function generateComparisonInsights(profile1, profile2, compatibility) {
     try {
+        const traits1 = profile1.personality_json || profile1.personality_traits || {};
+        const traits2 = profile2.personality_json || profile2.personality_traits || {};
+
         const prompt = `Compare these two personality profiles and generate 3 interesting insights:
 
 Profile 1 (${profile1.twin_name}):
-${JSON.stringify(profile1.personality_traits, null, 2)}
-${profile1.summary || ''}
+${JSON.stringify(traits1, null, 2)}
 
 Profile 2 (${profile2.twin_name}):
-${JSON.stringify(profile2.personality_traits, null, 2)}
-${profile2.summary || ''}
+${JSON.stringify(traits2, null, 2)}
 
 Compatibility Score: ${compatibility.score}%
 
@@ -153,17 +188,17 @@ Create insights that are:
 
 Format as JSON array: ["insight1", "insight2", "insight3"]`;
 
-        const aiResponse = await aiService.generateResponse(prompt, 'flash');
+        const aiResult = await aiService.generateChatResponse(prompt);
+        const aiResponse = aiResult?.text || '';
 
         let insights;
         try {
             insights = JSON.parse(aiResponse);
         } catch {
-            // Fallback insights
             insights = [
-                `${compatibility.score}% compatibility - you share similar emotional wavelengths!`,
-                "Your differences complement each other perfectly.",
-                "Together, you'd make a great support system."
+                `${compatibility.score}% compatibility - you share strong core emotional alignment!`,
+                "Your communication and thinking patterns balance each other nicely.",
+                "Together, you create a supportive environment for personal growth."
             ];
         }
 
@@ -172,8 +207,8 @@ Format as JSON array: ["insight1", "insight2", "insight3"]`;
         logger.error('Error generating insights:', error);
         return [
             "You both prioritize emotional growth and self-awareness.",
-            "Your unique perspectives could offer each other valuable insights.",
-            `${compatibility.score}% compatible - a strong foundation for mutual support!`
+            "Your unique perspectives offer each other valuable inspiration.",
+            `${compatibility.score}% compatible - a solid foundation for dynamic companion interaction!`
         ];
     }
 }
@@ -193,7 +228,6 @@ export async function getComparison(comparisonId) {
             throw new Error('Comparison not found');
         }
 
-        // Get user profiles for names
         const [profile1, profile2] = await Promise.all([
             getPersonalityProfile(comparison.user1_id),
             getPersonalityProfile(comparison.user2_id)
@@ -210,6 +244,7 @@ export async function getComparison(comparisonId) {
                 twin_name: profile2?.twin_name || 'User 2'
             },
             compatibility: comparison.compatibility_score,
+            compatibility_score: comparison.compatibility_score,
             insights: comparison.insights,
             created_at: comparison.created_at
         };
@@ -220,25 +255,37 @@ export async function getComparison(comparisonId) {
 }
 
 /**
- * Find user by email or referral code
+ * Find user by email or referral code (supports case-insensitive email search & pagination)
  */
 export async function findUserForMatch(identifier) {
     try {
-        // Try as email first
         let userId = null;
+        const query = identifier ? identifier.trim().toLowerCase() : '';
 
-        // Check if it's an email
-        if (identifier.includes('@')) {
-            const { data: authUser } = await supabaseAdmin.auth.admin.listUsers();
-            const user = authUser.users?.find(u => u.email === identifier);
-            userId = user?.id;
+        if (query.includes('@')) {
+            // Paginate through Supabase auth users to find matching email
+            let page = 1;
+            const perPage = 1000;
+            while (!userId) {
+                const { data: authData, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+                if (error || !authData.users || authData.users.length === 0) break;
+
+                const match = authData.users.find(u => u.email && u.email.toLowerCase() === query);
+                if (match) {
+                    userId = match.id;
+                    break;
+                }
+
+                if (authData.users.length < perPage) break;
+                page++;
+            }
         } else {
             // Try as referral code
             const { data: referral } = await supabaseAdmin
-                .from('referrals')
+                .from('referral_codes')
                 .select('user_id')
-                .eq('referral_code', identifier)
-                .single();
+                .eq('code', identifier.trim().toUpperCase())
+                .maybeSingle();
 
             userId = referral?.user_id;
         }
@@ -252,11 +299,11 @@ export async function findUserForMatch(identifier) {
 
         return profile ? {
             user_id: userId,
-            twin_name: profile.twin_name,
+            twin_name: profile.twin_name || 'Twin Companion',
             has_profile: true
         } : null;
     } catch (error) {
-        logger.error('Error finding user:', error);
+        logger.error('Error finding user for match:', error);
         return null;
     }
 }

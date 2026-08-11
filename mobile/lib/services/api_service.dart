@@ -91,14 +91,16 @@ class ApiService {
     throw Exception('Failed to load challenges');
   }
 
-  Future<void> completeChallenge(String challengeId) async {
+  Future<Map<String, dynamic>> completeChallenge(String challengeId, {Map<String, dynamic>? inputs}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/daily/challenges/$challengeId/complete'),
       headers: _headers,
+      body: json.encode(inputs ?? {}),
     );
-    if (response.statusCode != 200) {
-      throw Exception('Failed to complete challenge');
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
     }
+    throw Exception('Failed to complete challenge (Status ${response.statusCode})');
   }
 
   Future<void> submitMoodCheckIn(int mood, String? note) async {

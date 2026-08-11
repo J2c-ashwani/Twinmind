@@ -321,18 +321,18 @@ export async function addExperiencePoints(userId, points) {
                     level_number: 1,
                     experience_points: points
                 });
-            return { leveled_up: false, new_level: 1 };
+            return { leveled_up: false, new_level: 1, experience_points: points };
         }
 
-        const newXP = level.experience_points + points;
-        const currentLevelDef = LEVELS[level.level_number];
+        const newXP = (level.experience_points || 0) + points;
+        const currentLevelDef = LEVELS[level.level_number || 1] || LEVELS[1];
 
-        let newLevelNumber = level.level_number;
-        let newLevelName = level.current_level;
+        let newLevelNumber = level.level_number || 1;
+        let newLevelName = level.current_level || 'stranger';
         let leveledUp = false;
 
         // Check for level up
-        if (newXP >= currentLevelDef.max_xp) {
+        if (currentLevelDef && newXP >= currentLevelDef.max_xp && LEVELS[newLevelNumber + 1]) {
             newLevelNumber += 1;
             newLevelName = LEVELS[newLevelNumber].name;
             leveledUp = true;
@@ -348,7 +348,7 @@ export async function addExperiencePoints(userId, points) {
             })
             .eq('user_id', userId);
 
-        return { leveled_up: leveledUp, new_level: newLevelNumber, new_level_name: newLevelName };
+        return { leveled_up: leveledUp, new_level: newLevelNumber, new_level_name: newLevelName, experience_points: newXP };
 
     } catch (error) {
         logger.error('Error adding XP:', error);
