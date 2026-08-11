@@ -83,6 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // Load profile
       try {
         final profile = await _api.getPersonalityProfile();
+        if (!mounted) return;
         setState(() {
           _twinName = profile['personality']['twin_name'] ?? 'Your Twin';
         });
@@ -93,11 +94,13 @@ class _ChatScreenState extends State<ChatScreen> {
       // Load modes
       try {
         final modes = await _api.getModes();
+        if (!mounted) return;
         setState(() {
           _modes = List<Map<String, dynamic>>.from(modes);
         });
       } catch (e) {
         print('Modes load failed: $e');
+        if (!mounted) return;
         setState(() {
           _modes = [
             {

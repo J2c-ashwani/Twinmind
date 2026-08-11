@@ -171,8 +171,8 @@ export async function getRecentConversationSummary(userId, days = 7) {
         start.setDate(start.getDate() - days);
 
         const { data, error } = await supabaseAdmin
-            .from("messages")
-            .select("content, created_at, sender_type")
+            .from("chat_history")
+            .select("message, created_at, sender")
             .eq("user_id", userId)
             .gte("created_at", start.toISOString())
             .order("created_at", { ascending: false });
@@ -186,7 +186,8 @@ export async function getRecentConversationSummary(userId, days = 7) {
 
         // Extract simple keywords
         data.forEach((msg) => {
-            const words = msg.content.toLowerCase().split(" ");
+            const contentText = msg.message || "";
+            const words = contentText.toLowerCase().split(" ");
             const keywords = words.filter((w) => w.length > 5);
 
             keywords.forEach((word) => {
@@ -212,8 +213,8 @@ export async function getRecentConversationSummary(userId, days = 7) {
 export async function buildConversationHistory(userId, conversationId, limit = 20) {
     try {
         const { data, error } = await supabaseAdmin
-            .from("messages")
-            .select("content, sender_type, created_at")
+            .from("chat_history")
+            .select("message, sender, created_at")
             .eq("conversation_id", conversationId)
             .order("created_at", { ascending: true })
             .limit(limit);
@@ -221,8 +222,8 @@ export async function buildConversationHistory(userId, conversationId, limit = 2
         if (error) throw error;
 
         return (data || []).map((msg) => ({
-            role: msg.sender_type === "user" ? "user" : "assistant",
-            content: msg.content,
+            role: msg.sender === "user" ? "user" : "assistant",
+            content: msg.message,
         }));
     } catch (error) {
         logger.error("❌ Error building conversation history:", error.message);

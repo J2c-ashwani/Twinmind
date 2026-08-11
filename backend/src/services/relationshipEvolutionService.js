@@ -178,7 +178,7 @@ export async function getRelationshipStats(userId) {
 
         // Message count
         const { count: totalMessages } = await supabaseAdmin
-            .from("messages")
+            .from("chat_history")
             .select("*", { count: "exact", head: true })
             .eq("user_id", userId);
 
@@ -227,7 +227,7 @@ export async function getRelationshipStats(userId) {
 async function calculateStreak(userId) {
     try {
         const { data, error } = await supabaseAdmin
-            .from("messages")
+            .from("chat_history")
             .select("created_at")
             .eq("user_id", userId)
             .order("created_at", { ascending: false })
