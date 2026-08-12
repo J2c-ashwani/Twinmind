@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import 'mood_checkin_dialog.dart';
 
 class MoodHistoryWidget extends StatefulWidget {
   const MoodHistoryWidget({super.key});
@@ -85,18 +86,56 @@ class _MoodHistoryWidgetState extends State<MoodHistoryWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Color(0xFFC084FC), Color(0xFFF472B6)], // Purple to Pink
-            ).createShader(bounds),
-            child: const Text(
-              'Mood History',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Color(0xFFC084FC), Color(0xFFF472B6)], // Purple to Pink
+                ).createShader(bounds),
+                child: const Text(
+                  'Mood History',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
+              InkWell(
+                onTap: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (context) => const MoodCheckInDialog(),
+                  );
+                  _loadHistory();
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC084FC).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 14, color: Color(0xFFC084FC)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Log Mood',
+                        style: TextStyle(
+                          color: Color(0xFFC084FC),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           SizedBox(

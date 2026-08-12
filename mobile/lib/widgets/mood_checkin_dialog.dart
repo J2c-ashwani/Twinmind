@@ -15,11 +15,11 @@ class _MoodCheckInDialogState extends State<MoodCheckInDialog> {
   bool _isSubmitting = false;
 
   final List<Map<String, dynamic>> _moods = [
-    {'value': 2, 'emoji': '😊', 'label': 'Great', 'color': Colors.green},
-    {'value': 1, 'emoji': '😌', 'label': 'Good', 'color': Colors.blue},
-    {'value': 0, 'emoji': '😐', 'label': 'Okay', 'color': Colors.grey},
-    {'value': -1, 'emoji': '😔', 'label': 'Down', 'color': Colors.orange},
-    {'value': -2, 'emoji': '😢', 'label': 'Struggling', 'color': Colors.red},
+    {'value': 5, 'emoji': '😊', 'label': 'Great', 'color': Colors.green},
+    {'value': 4, 'emoji': '😌', 'label': 'Good', 'color': Colors.lightGreen},
+    {'value': 3, 'emoji': '😐', 'label': 'Okay', 'color': Colors.amber},
+    {'value': 2, 'emoji': '😔', 'label': 'Down', 'color': Colors.orange},
+    {'value': 1, 'emoji': '😢', 'label': 'Struggling', 'color': Colors.red},
   ];
 
   @override
