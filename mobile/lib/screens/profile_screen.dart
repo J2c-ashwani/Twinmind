@@ -84,6 +84,8 @@ class ProfileScreen extends StatelessWidget {
                                 color: Colors.white.withOpacity(0.6),
                                 fontSize: 14,
                               ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                             if (isPro) ...[
                               const SizedBox(height: 12),
