@@ -176,8 +176,6 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 combinedModifiers,  // Pass combined engagement + emotional intelligence layer
                 targetConversationId // Pass conversation ID for context isolation
             );
-            const T5 = Date.now();
-            logger.info(`⏱ [LATENCY] T4→T5 llm_generation: ${T5 - T4}ms  ← AI provider time`);
 
             // Robust message extraction - handle any nesting level
             const extractMessageText = (obj) => {
