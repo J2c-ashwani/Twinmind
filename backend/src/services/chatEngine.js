@@ -303,6 +303,8 @@ export async function generateChatResponse(
         let [personality, userData, recentChats, contextPrompt, evolutionPrompt] = await Promise.all([
             getPersonality(userId),
             supabaseAdmin.from("users").select("full_name").eq("id", userId).single(),
+            // INTENTIONAL: reads last 6 messages across ALL conversations (continuity model).
+            // The AI twin retains cross-session context by design. Do NOT scope this to conversation_id.
             supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
             getContextForPrompt(userId, 10).catch(() => ""),
             getEvolutionSummaryForPrompt(userId).catch(() => "")

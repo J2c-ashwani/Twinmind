@@ -64,7 +64,7 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 .eq('user_id', userId)
                 .order('updated_at', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
 
             // Check if the recent conversation is from today
             const isToday = (date) => {

@@ -113,7 +113,7 @@ router.post('/message', verifyToken, checkSubscription, voiceLimiter, upload.sin
                         year: 'numeric'
                     });
 
-                    const { data: newConv } = await supabaseAdmin
+                    const { data: newConv, error: convCreateError } = await supabaseAdmin
                         .from('conversations')
                         .insert([{
                             user_id: userId,
@@ -123,7 +123,8 @@ router.post('/message', verifyToken, checkSubscription, voiceLimiter, upload.sin
                         }])
                         .select()
                         .single();
-                    if (newConv) targetConversationId = newConv.id;
+                    if (!newConv || convCreateError) throw new Error('Failed to create conversation for voice message');
+                    targetConversationId = newConv.id;
                 }
             } catch (err) {
                 logger.error("Error determining conversation:", err);
