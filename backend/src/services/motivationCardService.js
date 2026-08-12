@@ -15,18 +15,18 @@ async function extractWeeklyInsights(userId, weekStart, weekEnd) {
         // 1. Try to get chat messages from this week first
         let { data: messages } = await supabaseAdmin
             .from('chat_history')
-            .select('message, response, created_at')
+            .select('message, sender, created_at')
             .eq('user_id', userId)
             .gte('created_at', weekStart)
             .lte('created_at', weekEnd)
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: true })
             .limit(50);
 
         // 2. Fallback: If no messages this week, get the latest chat history overall
         if (!messages || messages.length === 0) {
             const { data: recentMessages } = await supabaseAdmin
                 .from('chat_history')
-                .select('message, response, created_at')
+                .select('message, sender, created_at')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(50);
@@ -38,10 +38,10 @@ async function extractWeeklyInsights(userId, weekStart, weekEnd) {
             return null;
         }
 
-        // Combine messages into context
+        // Build conversation context from sender-based rows
         const conversationContext = messages
-            .map(m => `User: ${m.message}\nTwin: ${m.response || ''}`)
-            .join('\n\n');
+            .map(m => `${m.sender === 'ai' ? 'Twin' : 'User'}: ${m.message}`)
+            .join('\n');
 
         return {
             messages,
@@ -71,7 +71,8 @@ ${conversationContext}
 
 Return ONLY the quote, nothing else. No quotation marks, no attribution, just the quote text.`;
 
-        const quote = await aiService.generateResponse(prompt, 'flash');
+        const response = await aiService.generateChatResponse(prompt, [], '', 'motivation');
+        const quote = (typeof response === 'string' ? response : response?.text);
         return quote ? quote.trim() : "Every step you take towards self-awareness shapes your journey.";
     } catch (error) {
         logger.error('Error selecting quote:', error);

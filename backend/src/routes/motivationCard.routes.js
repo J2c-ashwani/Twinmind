@@ -6,9 +6,18 @@ import {
     generateMotivationCard,
     markCardShared
 } from '../services/motivationCardService.js';
+import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
+
+// Helper: Get Monday of current week
+function getMonday(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+}
 
 /**
  * GET /api/motivation-cards/weekly
@@ -54,6 +63,15 @@ router.get('/history', authenticateUser, async (req, res) => {
 router.post('/generate', authenticateUser, async (req, res) => {
     try {
         const userId = req.userId;
+
+        // Delete existing card for this week so generateMotivationCard creates a fresh one
+        const weekStart = getMonday(new Date()).toISOString().split('T')[0];
+        await supabaseAdmin
+            .from('motivation_cards')
+            .delete()
+            .eq('user_id', userId)
+            .eq('week_start', weekStart);
+
         const card = await generateMotivationCard(userId);
 
         if (!card) {
