@@ -101,18 +101,55 @@ export async function checkUsageLimits(req, res, next) {
 }
 
 /**
- * Track usage for a user
+ * Track usage for a user — writes to usage_tracking table
+ * Designed as a time-bucketed counter: one row per (user, action_type, day)
+ * Used for: analytics dashboard, per-user behaviour metrics, admin reporting
  */
-export async function trackUsage(userId) {
+export async function trackUsage(userId, actionType = 'chat_message') {
     try {
-        // This is a placeholder for more complex tracking logic
-        // Currently, usage is tracked via chat_history counts
+        const now = new Date();
+        // Day bucket: period covers the full calendar day (UTC)
+        const periodStart = new Date(Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0
+        ));
+        const periodEnd = new Date(Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59
+        ));
+
+        // Upsert: find existing row for today and increment, or create a new one
+        const { data: existing } = await supabaseAdmin
+            .from('usage_tracking')
+            .select('id, count')
+            .eq('user_id', userId)
+            .eq('action_type', actionType)
+            .eq('period_start', periodStart.toISOString())
+            .maybeSingle();
+
+        if (existing) {
+            await supabaseAdmin
+                .from('usage_tracking')
+                .update({ count: existing.count + 1 })
+                .eq('id', existing.id);
+        } else {
+            await supabaseAdmin
+                .from('usage_tracking')
+                .insert({
+                    user_id: userId,
+                    action_type: actionType,
+                    count: 1,
+                    period_start: periodStart.toISOString(),
+                    period_end: periodEnd.toISOString(),
+                });
+        }
+
         return true;
     } catch (error) {
-        logger.error('Error tracking usage:', error);
+        // Non-critical — log and continue
+        logger.error('Error tracking usage:', error.message);
         return false;
     }
 }
+
 
 /**
  * Get monthly usage stats

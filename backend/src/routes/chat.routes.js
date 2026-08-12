@@ -253,8 +253,8 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                             engagementState.total_messages, aiMessageString
                         ).catch(e => logger.warn('updateEmotionalMetrics bg error:', e.message)),
 
-                        // 4. Track usage
-                        trackUsage(userId)
+                        // 4. Track usage — writes to usage_tracking table for analytics
+                        trackUsage(userId, 'chat_message')
                             .catch(e => logger.warn('trackUsage bg error:', e.message)),
                     ]);
 

@@ -5,7 +5,7 @@ import fs from 'fs';
 import { promisify } from 'util';
 import rateLimit from 'express-rate-limit';
 import { verifyToken } from '../middleware/authMiddleware.js';
-import { checkSubscription } from '../middleware/subscriptionMiddleware.js';
+import { checkSubscription, trackUsage } from '../middleware/subscriptionMiddleware.js';
 import { transcribeAudio } from '../services/whisperService.js';
 import { textToSpeech } from '../services/ttsService.js';
 import { generateChatResponse } from '../services/chatEngine.js';
@@ -258,6 +258,12 @@ router.post('/message', verifyToken, checkSubscription, voiceLimiter, upload.sin
             aiResponse: aiMessageText,
             audioUrl: aiAudioUrl
         });
+
+        // Track voice usage in background (non-blocking)
+        trackUsage(userId, 'voice_message').catch(e =>
+            logger.warn('trackUsage voice bg error:', e.message)
+        );
+
 
     } catch (error) {
         logger.error('Voice processing error:', error);
