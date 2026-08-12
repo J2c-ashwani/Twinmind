@@ -39,6 +39,7 @@ const router = express.Router();
  * Send a message and get AI twin response with behavioral engagement tracking
  */
 router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, async (req, res) => {
+    const T1 = Date.now(); // T1: request received by backend
     try {
         const { message, mode = 'normal', conversation_id } = req.body;
         const userId = req.userId;
@@ -108,6 +109,9 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             }
         }
 
+        const T2 = Date.now();
+        logger.info(`⏱ [LATENCY] T1→T2 conversation_resolve: ${T2 - T1}ms`);
+
         try {
             // Initialize engagement targeting if first message
             let engagementState = await getUserEngagementState(userId);
@@ -120,6 +124,7 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             const isEmotional = detectEmotionalContent(message);
             const hasGoals = detectGoalContent(message);
 
+            const T3start = Date.now();
             // Execute independent database queries Concurrently in parallel via Promise.all
             const [
                 _trackRes,
@@ -134,6 +139,8 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 getUserPersonalityProfile(userId),
                 getUserStyleMode(userId)
             ]);
+            const T3 = Date.now();
+            logger.info(`⏱ [LATENCY] T2→T3 parallel_db_fetches: ${T3 - T3start}ms`);
 
             // Get behavioral modifiers based on user's psychological state
             const behavioralModifiers = getBehavioralModifiers(engagementState);
@@ -159,6 +166,9 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             const combinedModifiers = behavioralModifiers + emotionalModifiers;
 
             // Generate AI response with complete psychological context
+            const T4 = Date.now();
+            logger.info(`⏱ [LATENCY] T3→T4 pre_llm_processing: ${T4 - T3}ms`);
+
             const response = await generateChatResponse(
                 userId,
                 message,
@@ -166,6 +176,8 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 combinedModifiers,  // Pass combined engagement + emotional intelligence layer
                 targetConversationId // Pass conversation ID for context isolation
             );
+            const T5 = Date.now();
+            logger.info(`⏱ [LATENCY] T4→T5 llm_generation: ${T5 - T4}ms  ← AI provider time`);
 
             // Robust message extraction - handle any nesting level
             const extractMessageText = (obj) => {
@@ -192,6 +204,9 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 engagementState.total_messages,
                 aiMessageString  // Pass AI response string to detect "remembering" behavior
             );
+
+            const T6 = Date.now();
+            logger.info(`⏱ [LATENCY] T5→T6 post_llm_processing: ${T6 - T5}ms`);
 
             // Track usage
             await trackUsage(userId);
@@ -231,6 +246,9 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 .update({ updated_at: new Date().toISOString() })
                 .eq('id', targetConversationId);
 
+            const T7 = Date.now();
+            logger.info(`⏱ [LATENCY] T6→T7 db_writes: ${T7 - T6}ms`);
+            logger.info(`⏱ [LATENCY] TOTAL T1→T7 backend_total: ${T7 - T1}ms  (userId=${userId})`);
 
             res.json({
                 message: aiMessageString,  // Return string, not object
