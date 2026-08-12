@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logger } from '../config/logger.js';
 
 class GeminiService {
     constructor(apiKey) {
@@ -26,7 +27,9 @@ class GeminiService {
                 },
             });
 
-            this.embeddingModel = this.genAI.getGenerativeModel({ model: "models/text-embedding-004" });
+            // text-embedding-004 (without 'models/' prefix) uses the stable v1 API.
+            // 'models/text-embedding-004' was returning 404 on v1beta.
+            this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
             console.log('✅ Gemini Service initialized (Using models/gemini-2.0-flash)');
         } else {
             console.log('⚠️  Gemini API key not found');
@@ -268,15 +271,15 @@ Return only the JSON object.`;
         try {
             const result = await this.embeddingModel.embedContent(text);
             const embedding = result.embedding.values;
-            // Pad to 1536 dimensions if needed (openai-compatibility hack)
+            // Gemini text-embedding-004 returns 768 dims; pad to 1536 for pgvector compat
             if (embedding.length === 768) {
-                return [...embedding, ...embedding]; // Duplicate to reach 1536
+                return [...embedding, ...embedding];
             }
             return embedding;
         } catch (error) {
-            console.error('Error generating embedding:', error);
-            // Fallback to empty array or throw
-            return Array(1536).fill(0);
+            // Log concisely — this is fire-and-forget memory storage, not user-blocking
+            logger.warn(`Embedding failed (${error.status ?? error.code ?? 'unknown'}): ${error.message?.slice(0, 80)}`);
+            return Array(1536).fill(0); // zero vector — memory row still saved, just not searchable
         }
     }
 }
