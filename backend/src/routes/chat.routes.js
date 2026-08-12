@@ -195,78 +195,74 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             const aiMessageString = extractMessageText(response);
             logger.info(`AI Response extracted: ${aiMessageString.substring(0, 100)}...`);
 
-            // Update emotional metrics AFTER getting AI response (to detect memory callbacks)
-            await updateEmotionalMetrics(
-                userId,
-                message,
-                isEmotional,
-                hasGoals,
-                engagementState.total_messages,
-                aiMessageString  // Pass AI response string to detect "remembering" behavior
-            );
+            const T5 = Date.now();
+            logger.info(`⏱ [LATENCY] T4→T5 llm_generation: ${T5 - T4}ms  ← AI provider time`);
 
-            const T6 = Date.now();
-            logger.info(`⏱ [LATENCY] T5→T6 post_llm_processing: ${T6 - T5}ms`);
-
-            // Track usage
-            await trackUsage(userId);
-
-            // Get updated usage stats
-            const usage = await getMonthlyUsage(userId);
-
-            // Get fresh emotional metrics after update
-            const updatedEmotionalMetrics = await getEmotionalMetrics(userId);
-
-            // Store chat messages in history with conversation_id
-            const userTime = new Date();
-            const aiTime = new Date(userTime.getTime() + 100); // Add 100ms to ensure AI comes after User
-
-            await supabaseAdmin.from('chat_history').insert([
-                {
-                    user_id: userId,
-                    conversation_id: targetConversationId,
-                    message: message,
-                    sender: 'user',
-                    mode: mode,
-                    created_at: userTime.toISOString()
-                },
-                {
-                    user_id: userId,
-                    conversation_id: targetConversationId,
-                    message: aiMessageString, // Store string, not object
-                    sender: 'ai',
-                    mode: mode,
-                    created_at: aiTime.toISOString()
-                }
-            ]);
-
-            // Update conversation timestamp
-            await supabaseAdmin
-                .from('conversations')
-                .update({ updated_at: new Date().toISOString() })
-                .eq('id', targetConversationId);
-
-            const T7 = Date.now();
-            logger.info(`⏱ [LATENCY] T6→T7 db_writes: ${T7 - T6}ms`);
-            logger.info(`⏱ [LATENCY] TOTAL T1→T7 backend_total: ${T7 - T1}ms  (userId=${userId})`);
-
+            // ─── RESPOND IMMEDIATELY — user is waiting ───────────────────
+            // Flutter only reads 'message' and 'conversation_id'.
+            // Everything else is post-processing that does NOT need to block.
             res.json({
-                message: aiMessageString,  // Return string, not object
+                message: aiMessageString,
                 conversation_id: targetConversationId,
                 mode,
                 timestamp: new Date().toISOString(),
-                usage,
-                engagement_state: engagementState.current_state,
-                consecutive_days: engagementState.consecutive_days,
-                emotional_state: updatedEmotionalMetrics.emotional_state,
-                emotional_metrics: {
-                    trust_level: updatedEmotionalMetrics.trust_level,
-                    dependency_score: updatedEmotionalMetrics.dependency_score,
-                    relationship_depth: updatedEmotionalMetrics.relationship_depth,
-                    weighted_score: updatedEmotionalMetrics.weighted_score
+            });
+            logger.info(`⏱ [LATENCY] T5→RESPONSE (user unblocked): ${Date.now() - T5}ms`);
+            logger.info(`⏱ [LATENCY] TOTAL T1→RESPONSE: ${Date.now() - T1}ms  (userId=${userId})`);
+
+            // ─── BACKGROUND POST-PROCESSING (fire-and-forget) ────────────
+            // None of these block the user. Errors are logged but swallowed.
+            setImmediate(async () => {
+                try {
+                    const Tbg = Date.now();
+
+                    const userTime = new Date();
+                    const aiTime = new Date(userTime.getTime() + 100);
+
+                    // Parallelize all background work
+                    await Promise.all([
+                        // 1. Store chat history (both rows in one insert)
+                        supabaseAdmin.from('chat_history').insert([
+                            {
+                                user_id: userId,
+                                conversation_id: targetConversationId,
+                                message: message,
+                                sender: 'user',
+                                mode: mode,
+                                created_at: userTime.toISOString()
+                            },
+                            {
+                                user_id: userId,
+                                conversation_id: targetConversationId,
+                                message: aiMessageString,
+                                sender: 'ai',
+                                mode: mode,
+                                created_at: aiTime.toISOString()
+                            }
+                        ]),
+
+                        // 2. Update conversation timestamp
+                        supabaseAdmin
+                            .from('conversations')
+                            .update({ updated_at: new Date().toISOString() })
+                            .eq('id', targetConversationId),
+
+                        // 3. Update emotional metrics
+                        updateEmotionalMetrics(
+                            userId, message, isEmotional, hasGoals,
+                            engagementState.total_messages, aiMessageString
+                        ).catch(e => logger.warn('updateEmotionalMetrics bg error:', e.message)),
+
+                        // 4. Track usage
+                        trackUsage(userId)
+                            .catch(e => logger.warn('trackUsage bg error:', e.message)),
+                    ]);
+
+                    logger.info(`⏱ [LATENCY] background_postprocess: ${Date.now() - Tbg}ms`);
+                } catch (bgErr) {
+                    logger.error('Background post-process error (non-blocking):', bgErr.message);
                 }
             });
-
 
         } catch (innerError) {
             // STRICT MODE: No mock responses. Fail properly.
