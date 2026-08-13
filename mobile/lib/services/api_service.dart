@@ -614,7 +614,13 @@ class ApiService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to generate card');
+    try {
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['error'] ?? 'Failed to generate card');
+    } catch (e) {
+      if (e is Exception && !e.toString().contains('FormatException')) throw e;
+      throw Exception('Failed to generate card (${response.statusCode})');
+    }
   }
 
   Future<void> markCardShared(String cardId, String platform) async {

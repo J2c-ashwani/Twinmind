@@ -83,23 +83,33 @@ Return ONLY the quote, nothing else. No quotation marks, no attribution, just th
 /**
  * Generate motivation card for user
  */
-export async function generateMotivationCard(userId, weekStart = null) {
+export async function generateMotivationCard(userId, weekStart = null, force = false) {
     try {
         // Calculate week start/end
         const start = weekStart || getMonday(new Date());
         const end = new Date(start);
         end.setDate(end.getDate() + 6);
+        const weekStartStr = start.toISOString().split('T')[0];
 
-        // Check if card already exists
-        const { data: existing } = await supabaseAdmin
-            .from('motivation_cards')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('week_start', start.toISOString().split('T')[0])
-            .maybeSingle();
+        if (force) {
+            // Delete existing card if force regenerating
+            await supabaseAdmin
+                .from('motivation_cards')
+                .delete()
+                .eq('user_id', userId)
+                .eq('week_start', weekStartStr);
+        } else {
+            // Check if card already exists
+            const { data: existing } = await supabaseAdmin
+                .from('motivation_cards')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('week_start', weekStartStr)
+                .maybeSingle();
 
-        if (existing) {
-            return existing;
+            if (existing) {
+                return existing;
+            }
         }
 
         // Get user's twin name
