@@ -117,7 +117,10 @@ app.use(express.json({
   limit: '10mb',
   verify: (req, res, buf) => {
     try {
-      JSON.parse(buf);
+      // Only parse if body buffer is non-empty
+      if (buf && buf.length > 0) {
+        JSON.parse(buf);
+      }
     } catch (e) {
       // Mark request as having invalid JSON - don't send response here
       // Let the error handler deal with it

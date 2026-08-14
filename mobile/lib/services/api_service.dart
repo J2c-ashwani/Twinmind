@@ -610,6 +610,7 @@ class ApiService {
     final response = await http.post(
       Uri.parse('$baseUrl/api/motivation-cards/generate'),
       headers: _headers,
+      body: json.encode({}),
     );
     if (response.statusCode == 200) {
       return json.decode(response.body);
