@@ -11,6 +11,12 @@ import logger from '../config/logger.js';
 
 const router = express.Router();
 
+// Raw request logger — fires BEFORE auth so we see every hit including 401s
+router.use((req, res, next) => {
+    logger.info(`📬 motivation-cards route hit: ${req.method} ${req.path} | auth: ${req.headers.authorization ? 'present' : 'MISSING'}`);
+    next();
+});
+
 // Helper: Get Monday of current week
 function getMonday(date) {
     const d = new Date(date);
