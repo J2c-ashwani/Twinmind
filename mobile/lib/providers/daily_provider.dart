@@ -10,6 +10,8 @@ class DailyChallenge {
   final bool completed;
   final String? timeWindow;
 
+  String get description => task;
+
   DailyChallenge({
     required this.id,
     required this.type,
@@ -23,7 +25,7 @@ class DailyChallenge {
     return DailyChallenge(
       id: json['id']?.toString() ?? '',
       type: json['type'] ?? '',
-      task: json['task'] ?? '',
+      task: json['task'] ?? json['description'] ?? '',
       reward: json['reward'] ?? 0,
       completed: json['completed'] ?? false,
       timeWindow: json['time_window'],
@@ -36,6 +38,7 @@ class DailyProvider with ChangeNotifier {
   
   List<DailyChallenge> _challenges = [];
   bool _isLoading = true; // Default to true to show loading initially
+  String? _error;
   String? _actionError;
 
   List<DailyChallenge> get challenges => _challenges;
