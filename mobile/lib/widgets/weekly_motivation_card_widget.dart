@@ -130,12 +130,12 @@ class _WeeklyMotivationCardWidgetState
       final file = File(filePath);
       await file.writeAsBytes(byteData.buffer.asUint8List());
 
-      // 3. Share the image file with caption
+      // 3. Share the image file with caption & direct Play Store link
       await Share.shareXFiles(
         [XFile(filePath, mimeType: 'image/png')],
         text:
-            'My weekly motivation from my AI Twin! 🌟\n\nGet yours at TwinGenie',
-        subject: 'My Weekly Motivation',
+            'What would your Future Self tell you today? 🔮\n\nDownload TwinGenie on Google Play:\nhttps://play.google.com/store/apps/details?id=com.asmind.app',
+        subject: 'My TwinGenie Future Reflection',
       );
 
       // 4. Mark as shared in backend (fire-and-forget, non-blocking)
@@ -151,8 +151,8 @@ class _WeeklyMotivationCardWidgetState
   Future<void> _shareAsText() async {
     try {
       await Share.share(
-        '"${_card!['quote']}" — ${_card!['twin_name']}\n\nGet your own AI companion at TwinGenie',
-        subject: 'My Weekly Motivation',
+        '"${_card!['quote']}" — ${_card!['twin_name']}\n\nWhat would your Future Self tell you today? 🔮\nDownload TwinGenie on Google Play:\nhttps://play.google.com/store/apps/details?id=com.asmind.app',
+        subject: 'My TwinGenie Future Reflection',
       );
       _markSharedInBackground();
     } catch (_) {}
@@ -305,15 +305,16 @@ class _WeeklyMotivationCardWidgetState
                 ),
                 const SizedBox(height: 8),
 
-                // Subtle TwinGenie branding shown in the shared image
+                // TwinGenie acquisition branding shown in the shared image
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'TwinGenie',
+                    'TwinGenie • Ask Your Future Self → Google Play',
                     style: TextStyle(
                         fontSize: 10,
-                        color: Colors.purpleAccent.withOpacity(0.6),
-                        letterSpacing: 1.2),
+                        fontWeight: FontWeight.w500,
+                        color: Colors.purpleAccent.withOpacity(0.8),
+                        letterSpacing: 0.8),
                   ),
                 ),
               ],
