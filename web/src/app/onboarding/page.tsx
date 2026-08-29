@@ -28,6 +28,7 @@ export default function OnboardingPage() {
     const [questions, setQuestions] = useState<Question[]>([])
     const [answers, setAnswers] = useState<Record<number, Answer>>({})
     const [otherTextInputs, setOtherTextInputs] = useState<Record<number, string>>({})
+    const [multiSelectAnswers, setMultiSelectAnswers] = useState<Record<number, Set<string>>>({})
     const [loading, setLoading] = useState(false)
     const [generating, setGenerating] = useState(false)
     const [showSignup, setShowSignup] = useState(false)
@@ -113,15 +114,52 @@ export default function OnboardingPage() {
         }))
     }
 
+    function handleMultiSelect(questionId: number, option: string, selected: boolean) {
+        setMultiSelectAnswers(prev => {
+            const current = new Set(prev[questionId] || [])
+            if (selected) {
+                current.add(option)
+            } else {
+                current.delete(option)
+            }
+            const updated = { ...prev, [questionId]: current }
+
+            // Sync to answers map as comma-separated for API submission
+            if (current.size > 0) {
+                setAnswers(a => ({
+                    ...a,
+                    [questionId]: {
+                        question_id: questionId,
+                        selected_option: Array.from(current).join(', '),
+                        answer_text: null
+                    }
+                }))
+            } else {
+                setAnswers(a => {
+                    const { [questionId]: _, ...rest } = a
+                    return rest
+                })
+            }
+
+            return updated
+        })
+    }
+
     function canProgress() {
         // Check if all questions on current screen are answered
         return currentQuestions.every(q => {
             const answer = answers[q.id]
             if (!answer) return false
 
-            if (q.question_type === 'text') {
-                // For text questions: require text input
+            if (q.question_type === 'text' || q.question_type === 'number') {
+                // For text/number questions: require text input
                 return answer.answer_text && answer.answer_text.trim().length > 0
+            }
+
+            if (q.question_type === 'multiple_select') {
+                // For multi-select: require at least one selection
+                const selections = multiSelectAnswers[q.id]
+                return selections != null && selections.size > 0
             }
 
             // For single_choice questions
@@ -148,6 +186,17 @@ export default function OnboardingPage() {
 
             // Now show signup form for new account
             setShowSignup(true)
+        }
+    }
+
+    function getScreenTitle() {
+        switch (currentScreen) {
+            case 1: return "Let's get to know you"
+            case 2: return 'Your personality'
+            case 3: return 'Your mindset'
+            case 4: return 'Your values & lifestyle'
+            case 5: return 'Your goals & decisions'
+            default: return 'Tell us about yourself'
         }
     }
 
@@ -412,7 +461,7 @@ export default function OnboardingPage() {
                         transition={{ duration: 0.3 }}
                         className="glass-card p-8 mb-6"
                     >
-                        <h2 className="text-2xl font-bold mb-6">Tell us about yourself</h2>
+                        <h2 className="text-2xl font-bold mb-6">{getScreenTitle()}</h2>
 
                         <div className="space-y-8">
                             {currentQuestions.map((q) => (
@@ -432,6 +481,85 @@ export default function OnboardingPage() {
                                             rows={3}
                                             placeholder="Share your thoughts..."
                                         />
+                                    ) : q.question_type === 'number' ? (
+                                        // Numeric input
+                                        <input
+                                            type="number"
+                                            value={answers[q.id]?.answer_text || ''}
+                                            onChange={(e) => handleTextAnswer(q.id, e.target.value)}
+                                            className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl 
+                               focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 
+                               outline-none transition-all"
+                                            placeholder="Enter a number..."
+                                        />
+                                    ) : q.question_type === 'multiple_select' ? (
+                                        // Checkboxes for multi-select
+                                        <div className="space-y-2">
+                                            {q.options_json?.map((option) => {
+                                                const isSelected = multiSelectAnswers[q.id]?.has(option) ?? false
+                                                return (
+                                                    <label
+                                                        key={option}
+                                                        className={`flex items-center p-4 rounded-xl border-2 transition-all cursor-pointer
+                                ${isSelected
+                                                                ? 'border-purple-500 bg-purple-500/10'
+                                                                : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                            }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={(e) => handleMultiSelect(q.id, option, e.target.checked)}
+                                                            className="mr-3 w-5 h-5 text-purple-600 focus:ring-purple-500 rounded"
+                                                        />
+                                                        <span className="text-base">{option}</span>
+                                                        {isSelected && (
+                                                            <svg className="ml-auto w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                        )}
+                                                    </label>
+                                                )
+                                            })}
+
+                                            {/* "Other" option for multi-select */}
+                                            {q.allow_other && (() => {
+                                                const isOtherSelected = multiSelectAnswers[q.id]?.has('Other') ?? false
+                                                return (
+                                                    <div className="space-y-2">
+                                                        <label
+                                                            className={`flex items-center p-4 rounded-xl border-2 transition-all cursor-pointer
+                                  ${isOtherSelected
+                                                                    ? 'border-purple-500 bg-purple-500/10'
+                                                                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                                                                }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isOtherSelected}
+                                                                onChange={(e) => handleMultiSelect(q.id, 'Other', e.target.checked)}
+                                                                className="mr-3 w-5 h-5 text-purple-600 focus:ring-purple-500 rounded"
+                                                            />
+                                                            <span className="text-base">Other</span>
+                                                        </label>
+
+                                                        {isOtherSelected && (
+                                                            <motion.input
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                type="text"
+                                                                value={otherTextInputs[q.id] || ''}
+                                                                onChange={(e) => handleOtherText(q.id, e.target.value)}
+                                                                placeholder="Please specify..."
+                                                                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl 
+                                       focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 
+                                       outline-none transition-all ml-8"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                )
+                                            })()}
+                                        </div>
                                     ) : (
                                         // Radio buttons for single choice
                                         <div className="space-y-2">
@@ -513,7 +641,7 @@ export default function OnboardingPage() {
 
                     <button
                         onClick={handleNext}
-                        disabled={loading}
+                        disabled={loading || !canProgress()}
                         className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl 
                      font-semibold disabled:opacity-50 disabled:cursor-not-allowed
                      hover:scale-105 transition-transform flex items-center gap-2"
