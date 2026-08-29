@@ -24,7 +24,7 @@ class HttpException implements Exception {
 }
 
 class ApiService {
-  static const String baseUrl = 'https://twinmind-9l6x.onrender.com';
+  static const String baseUrl = 'https://twingenie.app';
 
   // Deprecated: Token is now fetched directly from Supabase client to ensure freshness
   String? _token;

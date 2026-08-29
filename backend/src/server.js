@@ -79,7 +79,9 @@ const allowedOrigins = corsOriginConfig
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173',
-    'https://twinmind-9l6x.onrender.com' // Production domain
+    'https://twinmind-9l6x.onrender.com',
+    'https://twingenie.app',
+    'https://www.twingenie.app'
   ];
 app.use(cors({
   origin: (origin, callback) => {
