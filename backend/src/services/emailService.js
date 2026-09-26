@@ -71,7 +71,7 @@ export async function sendEmail({ to, subject, html, text, from = DEFAULT_FROM }
 export async function sendRecoveryEmail({ email, name, twinName, twinSummary }) {
     const displayName = name || 'there';
     const resolvedTwinName = twinName || 'Your AI Twin';
-    const appUrl = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=app.twingenie.twingenie';
+    const appUrl = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app';
 
     const subject = `Your AI Twin is ready to chat! 🪞`;
 
@@ -144,7 +144,7 @@ export async function sendRecoveryEmail({ email, name, twinName, twinSummary }) 
 export async function sendProductUpdateEmail({ email, name, version, title, highlights = [], actionUrl, actionText }) {
     const displayName = name || 'there';
     const resolvedTitle = title || `New Update: TwinGenie ${version || ''}`;
-    const targetUrl = actionUrl || 'https://play.google.com/store/apps/details?id=app.twingenie.twingenie';
+    const targetUrl = actionUrl || 'https://play.google.com/store/apps/details?id=com.asmind.app';
     const buttonText = actionText || 'Update & Open TwinGenie';
 
     const highlightsHtml = highlights.map(item => `<li style="margin-bottom: 8px;">${item}</li>`).join('');
@@ -209,7 +209,7 @@ export async function sendWelcomeEmail({ email, name, twinName, twinSummary, arc
     const displayName = name || 'there';
     const resolvedTwinName = twinName || 'Your AI Twin';
     const resolvedSummary = twinSummary || 'Your thinking partner, decision support, and digital mirror.';
-    const appUrl = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=app.twingenie.twingenie';
+    const appUrl = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app';
 
     const subject = `Welcome to TwinGenie – Meet your AI Twin 🪞`;
 
@@ -289,7 +289,7 @@ export async function sendWelcomeEmail({ email, name, twinName, twinSummary, arc
 export async function sendCheekyReEngagementEmail({ email, name, twinName, twinSummary }) {
     const displayName = name || 'there';
     const resolvedTwinName = twinName || 'Your AI Twin';
-    const appUrl = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=app.twingenie.twingenie';
+    const appUrl = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app';
 
     const subject = `Did you forget you created another version of yourself? 🪞`;
 
