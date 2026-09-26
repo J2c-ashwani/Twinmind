@@ -313,7 +313,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> sendMessage(String message, String mode,
-      {String? token, String? conversationId}) async {
+      {String? token, String? conversationId, String? starterPromptVariant}) async {
     final currentToken = token ??
         Supabase.instance.client.auth.currentSession?.accessToken ??
         _token;
@@ -330,6 +330,7 @@ class ApiService {
         'message': message,
         'mode': mode,
         if (conversationId != null) 'conversation_id': conversationId,
+        if (starterPromptVariant != null) 'starter_prompt_variant': starterPromptVariant,
       }),
     );
     if (response.statusCode == 200) {
@@ -339,6 +340,28 @@ class ApiService {
       throw RateLimitException();
     }
     throw Exception('Failed to send message');
+  }
+
+  /// Track funnel and activation events
+  Future<void> trackEvent(String eventType, [Map<String, dynamic>? metadata]) async {
+    try {
+      final currentToken =
+          Supabase.instance.client.auth.currentSession?.accessToken ?? _token;
+      if (currentToken == null) return;
+      await http.post(
+        Uri.parse('$baseUrl/api/chat/track-event'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $currentToken',
+        },
+        body: json.encode({
+          'event_type': eventType,
+          'metadata': metadata ?? {},
+        }),
+      );
+    } catch (_) {
+      // Non-blocking telemetry
+    }
   }
 
   // Insights endpoints

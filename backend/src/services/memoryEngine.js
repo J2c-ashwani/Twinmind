@@ -85,11 +85,18 @@ export async function storeMemory(userId, content, metadata = {}) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === "23503") {
+                logger.warn(`⚠️ Skipped memory storage for user ${userId}: user not found or deleted.`);
+                return null;
+            }
+            throw error;
+        }
 
         logger.info(`✨ Memory stored: ${data.id}`);
         return data;
     } catch (err) {
+        if (err.code === "23503") return null;
         logger.error("❌ Error storing memory:", err);
         throw err;
     }

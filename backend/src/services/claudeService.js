@@ -2,36 +2,78 @@ import Anthropic from '@anthropic-ai/sdk';
 
 class ClaudeService {
     constructor() {
-        this.client = new Anthropic({
-            apiKey: process.env.CLAUDE_API_KEY || 'dummy_key',
-        });
-        this.isEnabled = !!process.env.CLAUDE_API_KEY;
+        this.apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+        this.model = process.env.ANTHROPIC_MODEL || process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022';
+        this.fallbackModel = process.env.ANTHROPIC_FALLBACK_MODEL || 'claude-3-haiku-20240307';
+
+        if (this.apiKey) {
+            this.client = new Anthropic({ apiKey: this.apiKey });
+            console.log(`✅ Claude Service initialized (Model: ${this.model})`);
+        } else {
+            this.client = null;
+            console.log('⚠️  Claude/Anthropic API key not found');
+        }
+        this.isEnabled = !!this.apiKey;
+    }
+
+    get isConfigured() {
+        return !!this.apiKey;
     }
 
     /**
-     * Generate chat response using Claude
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
-        if (!this.isEnabled) {
-            throw new Error('Claude API key not configured');
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
+        if (!this.isEnabled || !this.client) {
+            throw new Error('Claude/Anthropic API key not configured');
+        }
+
+        let messagesArray = [];
+        let systemPrompt = undefined;
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            systemPrompt = input.systemPrompt || undefined;
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [{ role: 'user', content: input.userMessage }];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
         }
 
         try {
-            // Extract system prompt
-            const systemMsg = messagesArray.find(m => m.role === 'system');
-            const systemPrompt = systemMsg ? systemMsg.content : undefined;
+            // Extract system prompt if present in messages
+            if (!systemPrompt) {
+                const systemMsg = messagesArray.find(m => m.role === 'system');
+                systemPrompt = systemMsg ? systemMsg.content : undefined;
+            }
 
-            // Filter out system prompt for the messages array
-            const anthropicMessages = messagesArray.filter(m => m.role !== 'system');
+            const anthropicMessages = messagesArray
+                .filter(m => m.role !== 'system')
+                .map(m => ({
+                    role: m.role === 'user' ? 'user' : 'assistant',
+                    content: m.content || ' '
+                }));
 
-            const response = await this.client.messages.create({
-                model: 'claude-3-haiku-20240307', // Free tier available
-                max_tokens: 2048,
-                system: systemPrompt,
-                messages: anthropicMessages,
-            });
+            const callClaude = async (modelId) => {
+                const response = await this.client.messages.create({
+                    model: modelId,
+                    max_tokens: 2048,
+                    system: systemPrompt,
+                    messages: anthropicMessages,
+                });
+                return response.content[0].text;
+            };
 
-            return response.content[0].text;
+            try {
+                return await callClaude(this.model);
+            } catch (err) {
+                if (this.fallbackModel && this.fallbackModel !== this.model) {
+                    console.warn(`Claude model ${this.model} failed, retrying with ${this.fallbackModel}...`);
+                    return await callClaude(this.fallbackModel);
+                }
+                throw err;
+            }
         } catch (error) {
             console.error('Claude API error:', error);
             throw new Error('Failed to generate AI response: ' + error.message);

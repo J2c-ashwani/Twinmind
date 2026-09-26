@@ -4,11 +4,10 @@ class CloudflareService {
     constructor() {
         this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
         this.apiToken = process.env.CLOUDFLARE_API_TOKEN;
-        // Using Llama 3 8B Instruct (Free Beta)
-        this.model = '@cf/meta/llama-3-8b-instruct';
+        this.model = process.env.CLOUDFLARE_MODEL || '@cf/meta/llama-3-8b-instruct';
 
         if (this.accountId && this.apiToken) {
-            console.log('✅ Cloudflare Service initialized');
+            console.log(`✅ Cloudflare Service initialized (Model: ${this.model})`);
         } else {
             console.log('⚠️  Cloudflare credentials not found (Service disabled)');
         }
@@ -19,11 +18,25 @@ class CloudflareService {
     }
 
     /**
-     * Generate chat response
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
         if (!this.accountId || !this.apiToken) {
             throw new Error('Cloudflare credentials not configured');
+        }
+
+        let messagesArray = [];
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [
+                    ...(input.systemPrompt ? [{ role: 'system', content: input.systemPrompt }] : []),
+                    { role: 'user', content: input.userMessage }
+                ];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
         }
 
         try {

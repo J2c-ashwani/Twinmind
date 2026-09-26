@@ -38,6 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _showEmojiPicker = false;
   bool _showVoiceRecorder = false;
   bool _showModeDropdown = false;
+  bool _starterPromptTracked = false;
   FocusNode _focusNode = FocusNode();
 
   @override
@@ -78,6 +79,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _api = ApiService();
     _api.setToken(token);
+    _api.trackEvent('chat_screen_opened');
 
     try {
       // Load profile
@@ -146,8 +148,10 @@ class _ChatScreenState extends State<ChatScreen> {
         _conversations = conversations;
       });
 
-      // Don't auto-select - start with empty chat
-      // User can select from sidebar if they want to resume a conversation
+      // Auto-select latest conversation if none is active so user immediately sees Twin greeting
+      if (_currentConversationId == null && conversations.isNotEmpty) {
+        await _selectConversation(conversations.first['id']);
+      }
     } catch (e) {
       print('Conversations load failed: $e');
     }
@@ -204,6 +208,9 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _isLoading = false;
       });
+      if (_messages.isNotEmpty && _messages.first.sender == 'ai' && _messages.length == 1) {
+        _api.trackEvent('opening_message_shown');
+      }
       _scrollToBottom();
     } catch (e) {
       print('Messages load failed: $e');
@@ -253,11 +260,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _isLoading) return;
+  Future<void> _sendMessage([String? customText, String? starterVariant]) async {
+    final messageText = (customText ?? _messageController.text).trim();
+    if (messageText.isEmpty || _isLoading) return;
 
-    final messageText = _messageController.text.trim();
-    _messageController.clear();
+    if (customText == null) {
+      _messageController.clear();
+    }
 
     setState(() {
       _messages.insert(
@@ -279,6 +288,7 @@ class _ChatScreenState extends State<ChatScreen> {
         messageText,
         _currentMode,
         conversationId: _currentConversationId,
+        starterPromptVariant: starterVariant,
       );
 
       // Update conversation ID from response (for new conversations)
@@ -765,39 +775,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Messages
                 Expanded(
                   child: _messages.isEmpty && !_isLoading
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.chat_bubble_outline,
-                                    size: 48, color: Colors.white54),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Start a new conversation',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Your twin is ready to chat',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.4),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
+                      ? Center(child: _buildProactiveGreeting())
                       : ListView.builder(
                           reverse: true, // Start from bottom
                           controller: _scrollController,
@@ -1269,6 +1247,194 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildProactiveGreeting() {
+    if (!_starterPromptTracked) {
+      _starterPromptTracked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _api.trackEvent('starter_prompt_shown');
+      });
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1435).withOpacity(0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: const Color(0xFF9333EA).withOpacity(0.35),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF9333EA).withOpacity(0.15),
+              blurRadius: 24,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF9333EA), Color(0xFF3B82F6)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF9333EA).withOpacity(0.4),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.psychology, color: Colors.white, size: 28),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Hey, I’m your AI Twin.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (_twinName.isNotEmpty && _twinName != 'Your Twin') ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _twinName,
+                          style: const TextStyle(
+                            color: Color(0xFFC084FC),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              "I've built your initial profile from the way you answered the questions.",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14.5,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'What would you like to explore first?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _buildStarterActionChip(
+              icon: Icons.chat_bubble_outline_rounded,
+              label: "Tell me what's on my mind",
+              color: const Color(0xFF9333EA),
+              onTap: () {
+                _api.trackEvent('starter_prompt_clicked', {'variant': 'reflection'});
+                _sendMessage("Tell me what's on my mind based on my personality", 'reflection');
+              },
+            ),
+            const SizedBox(height: 10),
+            _buildStarterActionChip(
+              icon: Icons.auto_awesome_rounded,
+              label: "Show me my personality",
+              color: const Color(0xFF3B82F6),
+              onTap: () {
+                _api.trackEvent('starter_prompt_clicked', {'variant': 'personality'});
+                _sendMessage("Show me my personality summary and what you know about me", 'personality');
+              },
+            ),
+            const SizedBox(height: 10),
+            _buildStarterActionChip(
+              icon: Icons.hourglass_top_rounded,
+              label: "Talk to Future Twin",
+              color: const Color(0xFFF59E0B),
+              onTap: () {
+                _api.trackEvent('starter_prompt_clicked', {'variant': 'future'});
+                setState(() {
+                  _currentMode = 'future';
+                });
+                _sendMessage("Hey Future Twin, what advice do you have for me right now?", 'future');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStarterActionChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: color.withOpacity(0.35),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: Colors.white.withOpacity(0.4), size: 14),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override

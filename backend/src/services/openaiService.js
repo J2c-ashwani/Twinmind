@@ -9,34 +9,53 @@ class OpenAIService {
                 apiKey: process.env.OPENAI_API_KEY,
             });
 
-            this.model = "gpt-4o-mini"; // Fast + cheap
-            console.log("✅ OpenAI Service initialized (gpt-4o-mini)");
+            this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+            console.log(`✅ OpenAI Service initialized (Model: ${this.model})`);
         } else {
             console.log("⚠️ OpenAI API key missing — OpenAI disabled");
             this.client = null;
         }
     }
 
+    get isConfigured() {
+        return !!(this.client && process.env.OPENAI_API_KEY);
+    }
+
     /**
-     * NEW SIGNATURE (must match aiService.js):
-     * generateChatResponse(messagesArray, userMessage, conversationHistory)
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
         if (!this.client) throw new Error("OpenAI not configured");
 
-        try {
-            // messagesArray already includes:
-            // - system prompt
-            // - conversation history
-            // - user message
-            // So we pass it directly to OpenAI
+        let messagesArray = [];
+        let responseFormat = 'text';
 
-            const response = await this.client.chat.completions.create({
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            responseFormat = input.responseFormat || 'text';
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [
+                    ...(input.systemPrompt ? [{ role: 'system', content: input.systemPrompt }] : []),
+                    { role: 'user', content: input.userMessage }
+                ];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+        }
+
+        try {
+            const completionParams = {
                 model: this.model,
                 messages: messagesArray,
-                temperature: 0.9,
-                max_tokens: 900,
-            });
+                temperature: 0.7,
+                max_tokens: 2048,
+            };
+
+            if (responseFormat === 'json') {
+                completionParams.response_format = { type: "json_object" };
+            }
+
+            const response = await this.client.chat.completions.create(completionParams);
 
             return response.choices[0].message.content;
         } catch (error) {
@@ -76,7 +95,7 @@ class OpenAIService {
      * Embeddings (used for memory + semantic search)
      */
     async generateEmbedding(text) {
-        if (!this.client) throw new Error("OpenAI not configured");
+        if (!this.client || this.embeddingDisabled) throw new Error("OpenAI embeddings unavailable");
 
         try {
             const response = await this.client.embeddings.create({
@@ -87,7 +106,10 @@ class OpenAIService {
 
             return response.data[0].embedding;
         } catch (error) {
-            console.error("❌ OpenAI Embedding Error:", error.message);
+            if (error.status === 429 || error.message?.includes("credits")) {
+                this.embeddingDisabled = true;
+                console.warn("⚠️ OpenAI Embedding Quota exceeded — disabled until restart.");
+            }
             throw error;
         }
     }

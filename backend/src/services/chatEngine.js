@@ -160,32 +160,7 @@ function detectIdentityQuestion(message) {
     return IDENTITY_PATTERNS.some(p => p.test(message));
 }
 
-/* ---------------------------------------
-   MD RULE 1: ONE-TIME ENTRY DISCLOSURE
-   Check if this is the user's very first message ever.
-   If so, prepend a transparent disclosure.
---------------------------------------- */
-async function isFirstMessageEver(userId) {
-    try {
-        const { count } = await supabaseAdmin
-            .from('chat_history')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .eq('sender', 'user');
-        return (count || 0) === 0;
-    } catch {
-        return false;
-    }
-}
 
-const FIRST_MESSAGE_DISCLOSURE_PREFIX = "Hey — just so you know, I'm your AI companion for reflection and support. I'm not a human, but I'm here to listen and help.";
-const FIRST_MESSAGE_DISCLOSURE = `${FIRST_MESSAGE_DISCLOSURE_PREFIX} Now, what's on your mind?`;
-
-function isPureGreeting(message = "") {
-    const clean = message.toLowerCase().trim().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
-    const pureGreetings = ['hey', 'hello', 'hi', 'sup', 'yo', 'greetings', 'hiya'];
-    return pureGreetings.includes(clean);
-}
 
 function detectEmotion(message = "") {
     const s = message.toLowerCase();
@@ -247,57 +222,6 @@ export async function generateChatResponse(
             };
         }
 
-        /* 0b. MD RULE 1: FIRST-MESSAGE DISCLOSURE */
-        const isFirst = await isFirstMessageEver(userId);
-        let isFirstMeaningful = false;
-
-        if (isFirst) {
-            if (isPureGreeting(userMessage)) {
-                storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
-                storeChatMemory(userId, FIRST_MESSAGE_DISCLOSURE, "ai", mode).catch(() => { });
-                recordDailyMetrics(userId).catch(() => { });
-                return {
-                    message: FIRST_MESSAGE_DISCLOSURE,
-                    mode,
-                    timestamp: new Date().toISOString(),
-                    genZ: false,
-                    tokensSaved: 0
-                };
-            }
-            // Non-greeting first message: proceed with LLM pipeline and deterministically prepend disclosure
-            isFirstMeaningful = true;
-        }
-
-        /* 0c. INSTANT GREETING CHECK (Optimized) */
-        const cleanMsg = userMessage.toLowerCase().trim().replace(/[^a-z]/g, '');
-        const greetings = ['hey', 'hello', 'hi', 'sup', 'yo', 'greetings', 'hiya'];
-
-        if (greetings.includes(cleanMsg)) {
-            let replies = ["Hey, what's up?", "Hey.", "Yo, what's good?", "Hi there.", "Sup?", "Hey!"];
-
-            if (mode === 'therapist') {
-                replies = ["Hello.", "Hi there.", "I'm listening.", "Hi. How are you feeling?", "I'm here."];
-            } else if (mode === 'dark') {
-                replies = ["What?", "You're back.", "Speak.", "What now?", "I'm listening."];
-            } else if (mode === 'future') {
-                replies = ["Greetings.", "Hello.", "I'm here.", "Let's focus.", "Hi."];
-            }
-
-            const aiMessage = replies[Math.floor(Math.random() * replies.length)];
-
-            // Background tasks (Replicated for early return)
-            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
-            storeChatMemory(userId, aiMessage, "ai", mode).catch(() => { });
-            recordDailyMetrics(userId).catch(() => { });
-
-            return {
-                message: aiMessage,
-                mode,
-                timestamp: new Date().toISOString(),
-                genZ: false,
-                tokensSaved: 0
-            };
-        }
 
         /* 1. LOAD DATA IN PARALLEL (faster!) */
         let [personality, userData, recentChats, contextPrompt, evolutionPrompt] = await Promise.all([
@@ -419,12 +343,6 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
             aiMessage = mirrorUserStyle(userMessage, aiMessage);
         }
 
-        /* 9.6 DETERMINISTIC FIRST-MESSAGE DISCLOSURE PREPEND */
-        if (isFirstMeaningful) {
-            if (!aiMessage.startsWith(FIRST_MESSAGE_DISCLOSURE_PREFIX)) {
-                aiMessage = `${FIRST_MESSAGE_DISCLOSURE_PREFIX}\n\n${aiMessage}`;
-            }
-        }
 
         /* 11. BACKGROUND TASKS (fire-and-forget, don't await) */
         // Store memories in background

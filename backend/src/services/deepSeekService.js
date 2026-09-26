@@ -14,30 +14,58 @@ class DeepSeekService {
             return;
         }
 
+        this.model = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+
         this.client = new OpenAI({
             baseURL: 'https://api.deepseek.com',
             apiKey: this.apiKey,
         });
 
-        logger.info('✅ DeepSeek Service initialized');
+        logger.info(`✅ DeepSeek Service initialized (Model: ${this.model})`);
+    }
+
+    get isConfigured() {
+        return !!this.apiKey;
     }
 
     /**
-     * Generate response using DeepSeek Chat (V3)
-     * Best for: General conversation, coding, fast responses
+     * Unified generateChatResponse accepting object contract or legacy parameters
      */
-    async generateChatResponse(messages, systemPrompt = null) {
-        try {
-            const formattedMessages = [
-                ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                ...messages
-            ];
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
+        if (!this.client) {
+            throw new Error('DeepSeek API key not configured');
+        }
 
-            const completion = await this.client.chat.completions.create({
-                messages: formattedMessages,
-                model: 'deepseek-chat',
-                temperature: 1.0, // Recommended for V3
-            });
+        let messagesArray = [];
+        let systemPrompt = null;
+        let responseFormat = 'text';
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            systemPrompt = input.systemPrompt || null;
+            responseFormat = input.responseFormat || 'text';
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [
+                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                    { role: 'user', content: input.userMessage }
+                ];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+        }
+
+        try {
+            const completionParams = {
+                messages: messagesArray,
+                model: this.model,
+                temperature: 1.0,
+            };
+
+            if (responseFormat === 'json') {
+                completionParams.response_format = { type: 'json_object' };
+            }
+
+            const completion = await this.client.chat.completions.create(completionParams);
 
             return completion.choices[0].message.content;
         } catch (error) {

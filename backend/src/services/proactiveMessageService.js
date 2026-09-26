@@ -61,11 +61,15 @@ async function detectProactiveTriggers(userId) {
             .eq('user_id', userId)
             .single();
 
-        if (!pattern) return triggers;
-
-        const now = new Date();
-        const lastActivity = new Date(pattern.last_activity);
-        const hoursSinceActivity = (now - lastActivity) / (1000 * 60 * 60);
+        if (!pattern) {
+            // For unengaged or new users without activity patterns, send a friendly re-engagement trigger
+            triggers.push({
+                type: 'missed_you',
+                condition: { hours_since_activity: 48 },
+                priority: 'medium'
+            });
+            return triggers;
+        }
 
         // Trigger: Missed you (no activity for 24+ hours)
         if (hoursSinceActivity >= 24) {
@@ -305,15 +309,24 @@ async function recordUserResponse(messageId, responseTime) {
  */
 async function runProactiveMessageCheck() {
     try {
-        // Get all active users
+        // Get all users from users table and push tokens
         const { data: users } = await supabaseAdmin
             .from('users')
             .select('id');
 
-        if (!users) return;
+        const { data: tokenUsers } = await supabaseAdmin
+            .from('push_device_tokens')
+            .select('user_id')
+            .eq('enabled', true);
 
-        for (const user of users) {
-            const triggers = await detectProactiveTriggers(user.id);
+        const allUserIds = new Set();
+        if (users) users.forEach(u => u.id && allUserIds.add(u.id));
+        if (tokenUsers) tokenUsers.forEach(t => t.user_id && allUserIds.add(t.user_id));
+
+        if (allUserIds.size === 0) return;
+
+        for (const userId of allUserIds) {
+            const triggers = await detectProactiveTriggers(userId);
 
             // Schedule highest priority trigger
             if (triggers.length > 0) {
@@ -322,11 +335,11 @@ async function runProactiveMessageCheck() {
                     return priority[b.priority] - priority[a.priority];
                 })[0];
 
-                await scheduleProactiveMessage(user.id, highestPriority);
+                await scheduleProactiveMessage(userId, highestPriority);
             }
         }
 
-        logger.info('Proactive message check completed');
+        logger.info(`Proactive message check completed for ${allUserIds.size} users`);
 
     } catch (error) {
         logger.error('Error in proactive message check:', error);

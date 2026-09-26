@@ -254,6 +254,44 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                         // 4. Track usage — writes to usage_tracking table for analytics
                         trackUsage(userId, 'chat_message')
                             .catch(e => logger.warn('trackUsage bg error:', e.message)),
+
+                        // 5. Track funnel metrics (first_message_sent, second_message_sent, conversation_completed)
+                        (async () => {
+                            const { count: priorMsgCount } = await supabaseAdmin
+                                .from('chat_history')
+                                .select('*', { count: 'exact', head: true })
+                                .eq('user_id', userId)
+                                .eq('sender', 'user');
+
+                            if (priorMsgCount === 1) {
+                                await supabaseAdmin.from('metric_events').insert({
+                                    user_id: userId,
+                                    event_type: 'first_message_sent',
+                                    metric_type: 'funnel',
+                                    metadata: {
+                                        source: req.body.starter_prompt_variant ? 'starter_prompt' : 'custom_input',
+                                        variant: req.body.starter_prompt_variant || null
+                                    },
+                                    created_at: new Date().toISOString()
+                                });
+                            } else if (priorMsgCount === 2) {
+                                await supabaseAdmin.from('metric_events').insert({
+                                    user_id: userId,
+                                    event_type: 'second_message_sent',
+                                    metric_type: 'funnel',
+                                    metadata: {},
+                                    created_at: new Date().toISOString()
+                                });
+                            } else if (priorMsgCount === 5) {
+                                await supabaseAdmin.from('metric_events').insert({
+                                    user_id: userId,
+                                    event_type: 'conversation_completed',
+                                    metric_type: 'funnel',
+                                    metadata: { total_messages: priorMsgCount },
+                                    created_at: new Date().toISOString()
+                                });
+                            }
+                        })().catch(e => logger.warn('Funnel metric tracking error:', e.message)),
                     ]);
 
                     logger.info(`⏱ [LATENCY] background_postprocess: ${Date.now() - Tbg}ms`);
@@ -271,6 +309,34 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
     } catch (error) {
         logger.error('Error in chat message:', error);
         res.status(500).json({ error: 'Failed to process message' });
+    }
+});
+
+/**
+ * POST /api/chat/track-event
+ * Track client-side funnel events (e.g., starter_prompt_shown, starter_prompt_clicked)
+ */
+router.post('/track-event', authenticateUser, async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { event_type, metadata } = req.body;
+
+        if (!event_type) {
+            return res.status(400).json({ error: 'event_type is required' });
+        }
+
+        await supabaseAdmin.from('metric_events').insert({
+            user_id: userId,
+            event_type,
+            metric_type: 'funnel',
+            metadata: metadata || {},
+            created_at: new Date().toISOString()
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.warn('Error recording funnel event (non-blocking):', error.message);
+        res.status(200).json({ success: false });
     }
 });
 

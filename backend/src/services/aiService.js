@@ -163,42 +163,41 @@ class AIService {
 
         const msg = (status.lastError).toLowerCase();
 
-        // ⚠️ 10. Improve Error Categorization
+        // Sensible, operational cooldowns (never 30-day memory lock)
         if (msg.includes('402') || msg.includes('insufficient balance')) {
-            // 30 Days lockout for billing issues
+            // 30 Minutes lockout for billing issues (gives admin time to refill or auto-recharge)
             status.isExhausted = true;
-            status.cooldownUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-            console.warn(`💸 Provider ${providerName} DISABLED (Insufficient Balance) - Cooldown 30 Days`);
+            status.cooldownUntil = new Date(Date.now() + 30 * 60 * 1000);
+            console.warn(`💸 Provider ${providerName} DISABLED (Insufficient Balance) - Cooldown 30m`);
         }
         else if (msg.includes('401') || msg.includes('invalid') || msg.includes('unauthorized')) {
-            // 24 Hours lockout for config issues
+            // 15 Minutes lockout for config issues
             status.isExhausted = true;
-            status.cooldownUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-            console.warn(`🔑 Provider ${providerName} DISABLED (Auth Failed) - Cooldown 24 Hours`);
+            status.cooldownUntil = new Date(Date.now() + 15 * 60 * 1000);
+            console.warn(`🔑 Provider ${providerName} DISABLED (Auth Failed) - Cooldown 15m`);
         }
-        else if (msg.includes('404') || msg.includes('not found')) {
-            // 6 Hours lockout for Model Not Found (Gemini fix)
+        else if (msg.includes('404') || msg.includes('not found') || msg.includes('deprecated')) {
+            // 15 Minutes lockout for Model Not Found / Deprecated
             status.isExhausted = true;
-            status.cooldownUntil = new Date(Date.now() + 6 * 60 * 60 * 1000);
-            console.warn(`🚫 Provider ${providerName} DISABLED (Model Not Found) - Cooldown 6 Hours`);
+            status.cooldownUntil = new Date(Date.now() + 15 * 60 * 1000);
+            console.warn(`🚫 Provider ${providerName} DISABLED (Model Not Found / Deprecated) - Cooldown 15m`);
         }
         else if (msg.includes('429') || msg.includes('quota') || msg.includes('limit') || msg.includes('exhausted')) {
-            // 1 Hour for Rate Limits
+            // 2 Minutes for Rate Limits
             status.isExhausted = true;
-            status.cooldownUntil = new Date(Date.now() + 60 * 60 * 1000);
-            console.warn(`⏳ Provider ${providerName} Throttled (Rate Limit) - Cooldown 1 Hour`);
+            status.cooldownUntil = new Date(Date.now() + 2 * 60 * 1000);
+            console.warn(`⏳ Provider ${providerName} Throttled (Rate Limit) - Cooldown 2m`);
         }
         else if (msg.includes('timeout') || msg.includes('network') || msg.includes('socket')) {
-            // 2 Minute temporary backoff
-            status.cooldownUntil = new Date(Date.now() + 2 * 60 * 1000);
+            // 30 Seconds temporary backoff
+            status.cooldownUntil = new Date(Date.now() + 30 * 1000);
         }
         else if (status.consecutiveFailures >= this.CIRCUIT_BREAKER_THRESHOLD) {
-            // Circuit Breaker
+            // Circuit Breaker: 15 min
             status.cooldownUntil = new Date(Date.now() + this.CIRCUIT_BREAKER_COOLDOWN);
             console.warn(`🔴 Circuit OPEN for ${providerName} (${status.consecutiveFailures} failures) - Cooldown 15m`);
         } else {
-            // Standard small backoff
-            status.cooldownUntil = new Date(Date.now() + 30 * 1000);
+            status.cooldownUntil = new Date(Date.now() + 15 * 1000);
         }
 
         this.stats.providerUsage[providerName].errors++;
@@ -227,7 +226,9 @@ class AIService {
                 messages.push({ role, content: item.content });
             });
         }
-        messages.push({ role: 'user', content: userMessage });
+        if (userMessage) {
+            messages.push({ role: 'user', content: userMessage });
+        }
         return messages;
     }
 
@@ -235,14 +236,13 @@ class AIService {
        Execution Logic
        --------------------- */
 
-    async callProvider(provider, messagesArray, userMessage, conversationHistory) {
+    async callProvider(provider, providerParams) {
         const svc = provider.service;
         this.stats.providerUsage[provider.name].requests++;
         this.providerStatus[provider.name].requestsToday++;
 
         const timeoutMs = this.getTimeoutForProvider(provider.name);
 
-        // Timeout Wrapper
         const withTimeout = (promise) => Promise.race([
             promise,
             new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout (${timeoutMs}ms)`)), timeoutMs))
@@ -250,19 +250,17 @@ class AIService {
 
         let rawResponse;
 
-        // Try Unified Interface
+        // Try Unified Object Interface (Priority 1)
         if (typeof svc.generateChatResponse === 'function') {
-            rawResponse = await withTimeout(svc.generateChatResponse(messagesArray, userMessage, conversationHistory));
+            rawResponse = await withTimeout(svc.generateChatResponse(providerParams, providerParams.userMessage, providerParams.conversationHistory));
         }
         // Try Legacy Context Interface
         else if (typeof svc.generateWithContext === 'function') {
-            const systemPrompt = messagesArray.find(m => m.role === 'system')?.content || '';
-            rawResponse = await withTimeout(svc.generateWithContext(systemPrompt, userMessage));
+            rawResponse = await withTimeout(svc.generateWithContext(providerParams.systemPrompt, providerParams.userMessage));
         } else {
-            throw new Error(`Provider ${provider.name} missing methods`);
+            throw new Error(`Provider ${provider.name} missing execution methods`);
         }
 
-        // ⚠️ 11. Normalize Return
         const text = (typeof rawResponse === 'string') ? rawResponse :
             (rawResponse?.text || rawResponse?.message || rawResponse?.content || JSON.stringify(rawResponse));
 
@@ -285,12 +283,36 @@ class AIService {
 
     getProvidersForTask(taskType) {
         const preferred = this.routingMap[taskType] || this.routingMap.default;
-        // Map names to objects
         return preferred.map(name => this.providers.find(p => p.name === name)).filter(Boolean);
     }
 
-    async generateChatResponse(userMessage, conversationHistory = [], systemPrompt = '', taskType = 'default') {
+    /**
+     * Unified generateChatResponse accepting an object contract:
+     * { messages, userMessage, conversationHistory, systemPrompt, taskType, responseFormat }
+     * Or legacy positional arguments: (userMessage, conversationHistory, systemPrompt, taskType)
+     */
+    async generateChatResponse(input, legacyHistory = [], legacySystemPrompt = '', legacyTaskType = 'default') {
         this.stats.totalRequests++;
+
+        let userMessage = '';
+        let conversationHistory = [];
+        let systemPrompt = '';
+        let taskType = 'default';
+        let responseFormat = 'text'; // 'text' | 'json'
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            userMessage = input.userMessage || input.prompt || input.message || '';
+            conversationHistory = input.conversationHistory || input.history || [];
+            systemPrompt = input.systemPrompt || '';
+            taskType = input.taskType || 'default';
+            responseFormat = input.responseFormat || 'text';
+        } else {
+            userMessage = input || '';
+            conversationHistory = legacyHistory || [];
+            systemPrompt = legacySystemPrompt || '';
+            taskType = legacyTaskType || 'default';
+            responseFormat = 'text';
+        }
 
         if (!taskType || taskType === 'default') {
             taskType = this.detectTaskType(userMessage, systemPrompt);
@@ -299,66 +321,105 @@ class AIService {
         const messagesArray = this.buildMessagesArray(systemPrompt, conversationHistory, userMessage);
         const preferredProviders = this.getProvidersForTask(taskType);
 
-        // ⚠️ 3. Unique & Duplicate Prevention
-        // Filter unique providers that are AVAILABLE
         const uniqueAvailable = [];
         const seen = new Set();
 
         for (const p of preferredProviders) {
             if (!seen.has(p.name) && this.isProviderAvailable(p)) {
-
-                // ⚠️ 6. Reduce Large Prompt Failures
                 if (systemPrompt.length > 3000 && ['HuggingFace', 'Cloudflare'].includes(p.name)) {
-                    continue; // Skip small context providers
+                    continue;
                 }
-
                 uniqueAvailable.push(p);
                 seen.add(p.name);
             }
         }
 
-        // ⚠️ 9. Prevent Infinite Retry - If NO providers, fail immediately
+        const providerParams = {
+            messages: messagesArray,
+            userMessage,
+            conversationHistory,
+            systemPrompt,
+            taskType,
+            responseFormat
+        };
+
         if (uniqueAvailable.length === 0) {
             console.error('aiService: NO Available Providers for task ' + taskType);
             this.stats.failedRequests++;
-            return { provider: null, text: SAFE_FALLBACK_REPLY, error: 'ALL_PROVIDERS_FAILED' };
+            if (responseFormat === 'json') {
+                return { success: false, provider: null, text: null, parsed: null, error: 'NO_PROVIDERS_AVAILABLE' };
+            }
+            return { success: false, provider: null, text: SAFE_FALLBACK_REPLY, error: 'NO_PROVIDERS_AVAILABLE' };
         }
 
-        // Try Loop
         for (const provider of uniqueAvailable) {
             try {
-                // ⚠️ 12. Logging
-                // console.log(`Attempting ${provider.name}...`); 
+                const result = await this.callProvider(provider, providerParams);
 
-                const result = await this.callProvider(provider, messagesArray, userMessage, conversationHistory);
+                let cleaned = (result.text || '').replace(/^["']|["']$/g, '').trim();
 
-                // Success
+                // Structured output validation (Priority 2)
+                if (responseFormat === 'json') {
+                    let jsonStr = cleaned.replace(/```json|```/gi, '').trim();
+                    const first = jsonStr.indexOf('{');
+                    const last = jsonStr.lastIndexOf('}');
+                    if (first !== -1 && last !== -1) {
+                        jsonStr = jsonStr.substring(first, last + 1);
+                    }
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        this.markProviderSuccess(provider.name);
+                        this.stats.successfulRequests++;
+                        return {
+                            success: true,
+                            provider: provider.name,
+                            text: cleaned,
+                            parsed,
+                            raw: result.raw
+                        };
+                    } catch (parseErr) {
+                        console.warn(`⚠️ ${provider.name} returned non-JSON for structured request. Trying next...`);
+                        this.markProviderError(provider.name, new Error('INVALID_JSON_OUTPUT'));
+                        continue;
+                    }
+                }
+
                 this.markProviderSuccess(provider.name);
                 this.stats.successfulRequests++;
-                this.stats.providerUsage[provider.name].requests = (this.stats.providerUsage[provider.name].requests || 0); // usage incremented in callProvider? Yes.
-
-                // Sanitize
-                let cleaned = result.text;
-                cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
 
                 return {
+                    success: true,
                     provider: provider.name,
                     text: cleaned,
                     raw: result.raw
                 };
 
             } catch (err) {
-                // Failure
                 console.warn(`❌ ${provider.name} Failed: ${err.message}. Trying next...`);
                 this.markProviderError(provider.name, err);
-                continue; // Try next
+                continue;
             }
         }
 
-        // All failed
         this.stats.failedRequests++;
         console.error('aiService: All attempted providers failed.');
-        return { provider: null, text: SAFE_FALLBACK_REPLY, error: 'ALL_PROVIDERS_FAILED' };
+
+        if (responseFormat === 'json') {
+            return {
+                success: false,
+                provider: null,
+                text: null,
+                parsed: null,
+                error: 'ALL_PROVIDERS_FAILED'
+            };
+        }
+
+        return {
+            success: false,
+            provider: null,
+            text: SAFE_FALLBACK_REPLY,
+            error: 'ALL_PROVIDERS_FAILED'
+        };
     }
 
     // Streaming placeholder (returns null for now to force standard)
@@ -370,7 +431,16 @@ class AIService {
     async analyzeEmotion(text) { return await geminiService.analyzeEmotion(text); }
     async extractEntities(text) { return await geminiService.extractEntities(text); }
     async detectMemorableMoment(text) { return await geminiService.detectMemorableMoment(text); }
-    async generateEmbedding(text) { return await geminiService.generateEmbedding(text); }
+    async generateEmbedding(text) {
+        if (openaiService && openaiService.isConfigured) {
+            try {
+                return await openaiService.generateEmbedding(text);
+            } catch (err) {
+                // OpenAI embedding failed, proceed to Gemini fallback
+            }
+        }
+        return await geminiService.generateEmbedding(text);
+    }
 
     getStats() {
         return {

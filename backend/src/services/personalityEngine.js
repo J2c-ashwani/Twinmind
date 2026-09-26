@@ -4,6 +4,7 @@ import aiService from './aiService.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
 import { MODELS } from '../config/openai.js';
+import { calculateDeterministicPersonality } from './deterministicPersonality.js';
 
 /**
  * ================================
@@ -81,72 +82,103 @@ export async function generatePersonality(userId, answers, userData = {}) {
     try {
         logger.info(`🧠 Generating personality for user ${userId}`);
 
-        // Format user answers
-        const formattedAnswers = answers
-            .map((a, i) => `Q${i + 1}: ${a.question}\nA: ${a.answer}`)
-            .join('\n\n');
-
-        const prompt = PERSONALITY_GENERATION_PROMPT
-            .replace('{answers}', formattedAnswers)
-            .replace('{name}', userData.name || 'User')
-            .replace('{background}', userData.background || 'Not provided');
-
-        const systemPrompt = "You are an expert psychologist. Return valid JSON only.";
-
-        // IMPORTANT: aiService expects: (prompt, conversationHistory, systemPrompt)
-        // Wait, aiService new signature is generateChatResponse(userMessage, history, systemPrompt)
-        // Or generateChatResponse(messagesArray...) ?
-        // aiService.js has: async generateChatResponse(userMessage, conversationHistory = [], systemPrompt = '', taskType = 'default')
-        // So passing (prompt, [], systemPrompt) is correct for the main entry point logic.
-        const rawResponse = await aiService.generateChatResponse(prompt, [], systemPrompt, 'personality_core');
-
-        // Note: aiService returns an object { provider, text, raw } OR just text if older version?
-        // New aiService returns { provider, text, raw }.
-        // BUT wait, aiService.js I wrote earlier returns an object:
-        // return { provider: provider.name, text: cleaned, raw };
-        // So rawResponse.text is what we want.
-
-        let finalText = rawResponse.text || rawResponse; // Handle both object and string just in case
-        if (typeof finalText !== 'string') finalText = JSON.stringify(finalText);
-
-        // --- CLEAN JSON ---
-        let clean = finalText.replace(/```json|```/gi, '').trim();
-
-        const first = clean.indexOf('{');
-        const last = clean.lastIndexOf('}');
-        if (first !== -1 && last !== -1) {
-            clean = clean.substring(first, last + 1);
+        // Resilience: If answers is omitted or passed as userData object, fetch answers from DB
+        let resolvedAnswers = answers;
+        let resolvedUserData = userData;
+        if (!Array.isArray(answers)) {
+            if (answers && typeof answers === 'object') {
+                resolvedUserData = answers;
+            }
+            const { data: dbAnswers } = await supabaseAdmin
+                .from('personality_answers')
+                .select('*')
+                .eq('user_id', userId);
+            resolvedAnswers = dbAnswers || [];
         }
 
-        const personalityJSON = JSON.parse(clean);
+        // STEP 1: Compute authentic deterministic baseline immediately from answers
+        const deterministicProfile = calculateDeterministicPersonality(resolvedAnswers, resolvedUserData);
+        const twinName = deterministicProfile.twin_name;
+        const twinSummary = deterministicProfile.twin_summary;
 
-        const twinName = `${userData.name || 'Your'} Twin`;
-        const twinSummary = personalityJSON.summary || 'Your AI Digital Twin';
+        let finalPersonalityJSON = deterministicProfile;
+        let aiModelUsed = 'deterministic_baseline';
 
-        // --- UPSERT personality profile ---
-        const { data, error } = await supabaseAdmin
+        // STEP 2: Persist deterministic baseline FIRST so onboarding NEVER fails!
+        const { data: initialProfile, error: saveError } = await supabaseAdmin
             .from('personality_profiles')
             .upsert({
                 user_id: userId,
-                personality_json: personalityJSON,
+                personality_json: finalPersonalityJSON,
                 twin_name: twinName,
                 twin_summary: twinSummary,
-                generation_prompt: prompt,
-                ai_model: MODELS.CHAT,
+                generation_prompt: 'Deterministic baseline derived from 35 OCEAN answers',
+                ai_model: aiModelUsed,
                 updated_at: new Date().toISOString()
             })
             .select()
             .single();
 
-        if (error) throw error;
+        if (saveError) {
+            logger.error('Failed to save deterministic personality baseline:', saveError);
+            throw saveError;
+        }
 
-        logger.info(`✅ Personality generated and saved for user ${userId}`);
+        logger.info(`✅ Baseline personality profile secured for user ${userId}`);
+
+        // STEP 3: Optional AI Enrichment (Graceful Degradation)
+        try {
+            const formattedAnswers = resolvedAnswers
+                .map((a, i) => `Q${i + 1}: ${a.question || a.question_text || ''}\nA: ${a.answer || a.selected_option || ''}`)
+                .join('\n\n');
+
+            const prompt = PERSONALITY_GENERATION_PROMPT
+                .replace('{answers}', formattedAnswers)
+                .replace('{name}', resolvedUserData.name || resolvedUserData.full_name || 'User')
+                .replace('{background}', resolvedUserData.background || 'Not provided');
+
+            const systemPrompt = "You are an expert psychologist. Return valid JSON only.";
+
+            // Request structured JSON using the unified object contract
+            const aiResponse = await aiService.generateChatResponse({
+                systemPrompt,
+                userMessage: prompt,
+                taskType: 'personality_core',
+                responseFormat: 'json'
+            });
+
+            if (aiResponse && aiResponse.success && aiResponse.parsed) {
+                finalPersonalityJSON = {
+                    ...deterministicProfile,
+                    ...aiResponse.parsed,
+                    big_five: aiResponse.parsed.big_five || deterministicProfile.big_five
+                };
+                aiModelUsed = aiResponse.provider || 'ai_enriched';
+
+                await supabaseAdmin
+                    .from('personality_profiles')
+                    .update({
+                        personality_json: finalPersonalityJSON,
+                        twin_summary: finalPersonalityJSON.summary || twinSummary,
+                        ai_model: aiModelUsed,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', userId);
+
+                logger.info(`✨ Personality enriched by AI provider: ${aiModelUsed}`);
+            } else {
+                logger.warn(`⚠️ AI enrichment returned non-JSON or unavailable. Baseline profile is active.`);
+            }
+        } catch (aiErr) {
+            logger.warn(`⚠️ AI enrichment skipped (${aiErr.message}). Baseline profile is active.`);
+        }
 
         return {
             success: true,
-            personality: data,
+            personality: initialProfile,
             twinName,
-            twinSummary
+            twinSummary,
+            aiModel: aiModelUsed
         };
 
     } catch (error) {

@@ -3,37 +3,28 @@ import { logger } from '../config/logger.js';
 
 class GeminiService {
     constructor(apiKey) {
-        this.apiKey = apiKey || process.env.GEMINI_API_KEY;
+        this.apiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+        this.modelName = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').replace(/^models\//, '');
+        this.fallbackModelName = (process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-flash').replace(/^models\//, '');
+
         if (this.apiKey) {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
-            // Use Gemini 2.0 Flash (Multimodal: Audio/Image/Text) - CONFIRMED AVAILABLE
             this.flashModel = this.genAI.getGenerativeModel({
-                model: 'models/gemini-2.0-flash',
+                model: this.modelName,
                 generationConfig: {
-                    temperature: 0.9,
-                    topK: 40,
-                    topP: 0.95,
+                    temperature: 0.8,
                     maxOutputTokens: 2048,
                 },
             });
-            // Use Gemini 2.0 Flash (or 2.5-pro if available/needed)
-            this.proModel = this.genAI.getGenerativeModel({
-                model: 'models/gemini-2.0-flash',
-                generationConfig: {
-                    temperature: 0.9,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 2048,
-                },
-            });
-
-            // text-embedding-004 (without 'models/' prefix) uses the stable v1 API.
-            // 'models/text-embedding-004' was returning 404 on v1beta.
             this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
-            console.log('✅ Gemini Service initialized (Using models/gemini-2.0-flash)');
+            console.log(`✅ Gemini Service initialized (Configured model: ${this.modelName})`);
         } else {
             console.log('⚠️  Gemini API key not found');
         }
+    }
+
+    get isConfigured() {
+        return !!this.apiKey;
     }
 
     /**
@@ -42,95 +33,93 @@ class GeminiService {
     _formatHistory(conversationHistory) {
         return conversationHistory.map(msg => ({
             role: msg.sender_type === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.content || ' ' }], // Ensure text is never empty
+            parts: [{ text: msg.content || ' ' }],
         }));
     }
 
     /**
-     * Generate chat response
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    /**
-     * Generate chat response
-     * Signatuure: generateChatResponse(messagesArray, userMessage, conversationHistory)
-     * Note: messagesArray contains { role: 'system'|'user'|'assistant', content: string }
-     */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
         if (!this.genAI) {
             throw new Error('Gemini not configured');
         }
 
+        let messagesArray = [];
+        let userMessage = '';
+        let systemPrompt = null;
+        let responseFormat = 'text';
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            userMessage = input.userMessage || '';
+            systemPrompt = input.systemPrompt || null;
+            responseFormat = input.responseFormat || 'text';
+        } else {
+            messagesArray = input || [];
+            userMessage = legacyUserMessage || '';
+        }
+
         try {
-            // 1. Extract System Prompt
-            const systemMsg = messagesArray.find(m => m.role === 'system');
-            const systemPrompt = systemMsg ? systemMsg.content : null;
-
-            // 2. Filter out System Prompt from history because Gemini handles it separately via systemInstruction
-            //    And convert 'assistant' -> 'model'
-            const history = messagesArray
-                .filter(m => m.role !== 'system' && m.content !== userMessage) // Exclude current user message to avoid duplication if passed in array
-                .map(m => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.content || ' ' }],
-                }));
-
-            // Note: The loop in aiService often constructs [system, ...history, user].
-            // We need to be careful not to duplicate.
-            // But usually the history passed to startChat should exclude the final new message.
-            // Let's assume messagesArray includes the final message. 
-            // Gemini startChat takes history (past) + sendMessage (current).
-            // So we slice off the last element if it matches userMessage.
+            // Extract System Prompt if not explicitly provided
+            if (!systemPrompt) {
+                const systemMsg = messagesArray.find(m => m.role === 'system');
+                systemPrompt = systemMsg ? systemMsg.content : null;
+            }
 
             let finalHistory = messagesArray.filter(m => m.role !== 'system');
             const lastMsg = finalHistory[finalHistory.length - 1];
             let currentPrompt = userMessage;
 
             if (lastMsg && lastMsg.role === 'user' && lastMsg.content === userMessage) {
-                finalHistory.pop(); // Remove last message to send it via sendMessage
+                finalHistory.pop();
             } else if (!userMessage && lastMsg && lastMsg.role === 'user') {
-                // If userMessage arg is empty but array has it
                 currentPrompt = finalHistory.pop().content;
             }
 
-            // Convert to Gemini format
             const geminiHistory = finalHistory.map(m => ({
                 role: m.role === 'user' ? 'user' : 'model',
                 parts: [{ text: m.content || ' ' }],
             }));
 
-            // Select model based on complexity heuristic
-            const usePro = currentPrompt.length > 500 ||
-                currentPrompt.toLowerCase().includes('analyze') ||
-                currentPrompt.toLowerCase().includes('why') ||
-                (systemPrompt && systemPrompt.toLowerCase().includes('reasoning'));
+            // Generation config with structured output support if JSON requested
+            const generationConfig = {
+                temperature: 0.7,
+                maxOutputTokens: 2048,
+                ...(responseFormat === 'json' ? { responseMimeType: 'application/json' } : {})
+            };
 
-            // Create model instance per request to support dynamic systemPrompt
-            const model = this.genAI.getGenerativeModel({
-                model: 'models/gemini-2.0-flash', // CONFIRMED AVAILABLE
-                systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }], role: 'model' } : undefined,
-                generationConfig: {
-                    temperature: 0.9,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 1000,
-                },
-            });
+            const sendWithModel = async (modelId) => {
+                const model = this.genAI.getGenerativeModel({
+                    model: modelId,
+                    systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }], role: 'model' } : undefined,
+                    generationConfig,
+                });
 
-            const chat = model.startChat({
-                history: geminiHistory,
-            });
+                const chat = model.startChat({ history: geminiHistory });
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Gemini API timeout')), 15000)
+                );
 
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Gemini API timeout')), 15000)
-            );
+                const result = await Promise.race([
+                    chat.sendMessage(currentPrompt),
+                    timeoutPromise
+                ]);
 
-            const result = await Promise.race([
-                chat.sendMessage(currentPrompt),
-                timeoutPromise
-            ]);
+                const response = await result.response;
+                return response.text();
+            };
 
-            const response = await result.response;
-            return response.text();
+            try {
+                return await sendWithModel(this.modelName);
+            } catch (primaryErr) {
+                // If primary model failed with 404/not found or deprecation, fallback to secondary model
+                if (this.fallbackModelName && this.fallbackModelName !== this.modelName) {
+                    console.warn(`Gemini model ${this.modelName} failed, retrying with fallback model ${this.fallbackModelName}...`);
+                    return await sendWithModel(this.fallbackModelName);
+                }
+                throw primaryErr;
+            }
         } catch (error) {
             console.error('Gemini API error:', error);
             throw new Error('Failed to generate AI response: ' + error.message);

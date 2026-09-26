@@ -6,25 +6,56 @@ class MistralService {
     constructor() {
         this.apiKey = process.env.MISTRAL_API_KEY;
         this.baseUrl = "https://api.mistral.ai/v1";
-        this.model = "mistral-tiny"; // Fast + cheap
+        this.model = process.env.MISTRAL_MODEL || "mistral-small-latest";
+        this.fallbackModel = process.env.MISTRAL_FALLBACK_MODEL || "open-mistral-7b";
 
         if (this.apiKey) {
-            console.log("✅ Mistral Service initialized");
+            console.log(`✅ Mistral Service initialized (Model: ${this.model})`);
         } else {
             console.log("⚠️ Mistral API key missing — service disabled");
         }
     }
 
+    get isConfigured() {
+        return !!this.apiKey;
+    }
+
     /**
-     * REQUIRED SIGNATURE (must match aiService)
-     * generateChatResponse(messagesArray, userMessage, conversationHistory)
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
         if (!this.apiKey) {
             throw new Error("Mistral API key not configured");
         }
 
-        try {
+        let messagesArray = [];
+        let responseFormat = 'text';
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            responseFormat = input.responseFormat || 'text';
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [
+                    ...(input.systemPrompt ? [{ role: 'system', content: input.systemPrompt }] : []),
+                    { role: 'user', content: input.userMessage }
+                ];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+        }
+
+        const callMistral = async (modelId) => {
+            const bodyPayload = {
+                model: modelId,
+                messages: messagesArray,
+                temperature: 0.7,
+                max_tokens: 2048,
+            };
+
+            if (responseFormat === 'json') {
+                bodyPayload.response_format = { type: "json_object" };
+            }
+
             const response = await fetch(`${this.baseUrl}/chat/completions`, {
                 method: "POST",
                 headers: {
@@ -32,22 +63,30 @@ class MistralService {
                     "Content-Type": "application/json",
                     "Accept": "application/json"
                 },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: messagesArray,  // already assembled correctly
-                    temperature: 0.9,
-                    max_tokens: 900,
-                }),
+                body: JSON.stringify(bodyPayload),
             });
 
             if (!response.ok) {
                 const err = await response.text();
-                throw new Error(`Mistral API Error: ${err}`);
+                throw new Error(`Mistral API Error (${response.status}): ${err}`);
             }
 
             const data = await response.json();
             return data?.choices?.[0]?.message?.content || "";
+        };
+
+        try {
+            return await callMistral(this.model);
         } catch (error) {
+            if (this.fallbackModel && this.fallbackModel !== this.model) {
+                console.warn(`Mistral model ${this.model} failed, retrying with ${this.fallbackModel}...`);
+                try {
+                    return await callMistral(this.fallbackModel);
+                } catch (fallbackErr) {
+                    console.error("❌ Mistral generateChatResponse Error:", fallbackErr.message);
+                    throw fallbackErr;
+                }
+            }
             console.error("❌ Mistral generateChatResponse Error:", error.message);
             throw error;
         }

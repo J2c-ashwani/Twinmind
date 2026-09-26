@@ -2,18 +2,44 @@ import { CohereClient } from 'cohere-ai';
 
 class CohereService {
     constructor() {
-        this.cohere = new CohereClient({
-            token: process.env.COHERE_API_KEY || 'dummy_key',
-        });
-        this.isEnabled = !!process.env.COHERE_API_KEY;
+        this.apiKey = process.env.COHERE_API_KEY;
+        this.model = process.env.COHERE_MODEL || 'command-r';
+        if (this.apiKey) {
+            this.cohere = new CohereClient({ token: this.apiKey });
+            console.log(`✅ Cohere Service initialized (Model: ${this.model})`);
+        } else {
+            this.cohere = null;
+            console.log('⚠️  Cohere API key not found');
+        }
+        this.isEnabled = !!this.apiKey;
+    }
+
+    get isConfigured() {
+        return !!this.apiKey;
     }
 
     /**
-     * Generate chat response using Cohere
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
-        if (!this.isEnabled) {
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
+        if (!this.isEnabled || !this.cohere) {
             throw new Error('Cohere API key not configured');
+        }
+
+        let messagesArray = [];
+        let userMessage = '';
+        let systemPrompt = undefined;
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            userMessage = input.userMessage || '';
+            systemPrompt = input.systemPrompt || undefined;
+            if (messagesArray.length === 0 && userMessage) {
+                messagesArray = [{ role: 'user', content: userMessage }];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+            userMessage = legacyUserMessage || '';
         }
 
         try {

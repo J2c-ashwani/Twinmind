@@ -101,7 +101,13 @@ export async function recordDailyMetrics(userId) {
                 onConflict: 'user_id,date'
             });
 
-        if (error && error.code !== "23505") throw error;
+        if (error && error.code !== "23505") {
+            if (error.code === "23503") {
+                logger.warn(`⚠️ Skipped daily metrics for user ${userId}: user record not present.`);
+                return;
+            }
+            throw error;
+        }
 
     } catch (error) {
         logger.error("❌ Error recording daily metrics:", error);
@@ -233,7 +239,7 @@ async function calculateStreak(userId) {
             .order("created_at", { ascending: false })
             .limit(50);
 
-        if (error || !data) return 0;
+        if (error || !data || data.length === 0) return 0;
 
         let streak = 1;
         let lastDate = new Date(data[0].created_at);

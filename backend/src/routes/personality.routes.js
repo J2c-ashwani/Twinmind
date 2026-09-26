@@ -3,6 +3,7 @@ import { authenticateUser } from '../middleware/authMiddleware.js';
 import { generatePersonality, getPersonality, regeneratePersonality } from '../services/personalityEngine.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+import emailService from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -98,6 +99,7 @@ router.post('/generate', authenticateUser, async (req, res) => {
         const { data: answerData, error: fetchError } = await supabaseAdmin
             .from('personality_answers')
             .select(`
+        question_id,
         selected_option,
         answer_text,
         personality_questions (
@@ -123,7 +125,10 @@ router.post('/generate', authenticateUser, async (req, res) => {
 
         // Format answers - combine selected_option and answer_text
         const formattedAnswers = answerData.map(a => ({
-            question: a.personality_questions.question_text,
+            question_id: a.question_id,
+            question: a.personality_questions?.question_text,
+            selected_option: a.selected_option,
+            answer_text: a.answer_text,
             answer: a.selected_option ?
                 (a.answer_text ? `${a.selected_option} (${a.answer_text})` : a.selected_option) :
                 a.answer_text
@@ -133,6 +138,78 @@ router.post('/generate', authenticateUser, async (req, res) => {
         const result = await generatePersonality(userId, formattedAnswers, {
             name: user?.full_name,
             email: user?.email
+        });
+
+        // -------------------------------------------------------------
+        // AUTO-INITIATE CONVERSATION & SEND WELCOME EMAIL (Async / Non-blocking)
+        // -------------------------------------------------------------
+        setImmediate(async () => {
+            try {
+                // 1. Check if user already has an active conversation
+                const { data: existingConvs } = await supabaseAdmin
+                    .from('conversations')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                let conversationId;
+                if (!existingConvs || existingConvs.length === 0) {
+                    const { data: newConv, error: convError } = await supabaseAdmin
+                        .from('conversations')
+                        .insert([{
+                            user_id: userId,
+                            title: 'Meeting Your Twin',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
+
+                    if (!convError && newConv) {
+                        conversationId = newConv.id;
+                    }
+                } else {
+                    conversationId = existingConvs[0].id;
+                }
+
+                // 2. Check if user has any messages in chat_history
+                const { count } = await supabaseAdmin
+                    .from('chat_history')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', userId);
+
+                if ((count === 0 || count === null) && conversationId) {
+                    const firstName = user?.full_name ? user.full_name.split(' ')[0] : 'there';
+                    const openingMsg = `Hey ${firstName}, I'm your AI Twin. 🪞\n\nI've built your initial profile from the way you answered the questions.\n\nWhat would you like to explore first?`;
+
+                    await supabaseAdmin
+                        .from('chat_history')
+                        .insert([{
+                            user_id: userId,
+                            conversation_id: conversationId,
+                            sender: 'ai',
+                            message: openingMsg,
+                            mode: 'normal',
+                            created_at: new Date().toISOString()
+                        }]);
+
+                    logger.info(`✅ Twin Opening Message seeded for user ${userId} in conversation ${conversationId}`);
+                }
+
+                // 3. Send automated welcome email if user has email
+                if (user?.email) {
+                    await emailService.sendWelcomeEmail({
+                        email: user.email,
+                        name: user.full_name,
+                        twinName: result?.profile?.twin_name,
+                        twinSummary: result?.profile?.personality_summary,
+                        archetype: result?.profile?.archetype
+                    });
+                }
+            } catch (bgError) {
+                logger.warn('Failed background onboarding actions (welcome email / chat seeding):', bgError.message);
+            }
         });
 
         res.json(result);
