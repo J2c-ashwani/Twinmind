@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../config/supabase.js';
 import { sendEmail } from './emailService.js';
 import { sendPushNotification } from './pushNotificationService.js';
 
-const PLAY_STORE_URL = process.env.APP_DOWNLOAD_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app';
+const PLAY_STORE_URL = process.env.APP_DOWNLOAD_URL || 'https://twingenie.app/open';
 
 /**
  * 7-Day Re-engagement Drip Campaign Sequence
