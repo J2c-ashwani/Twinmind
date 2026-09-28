@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import reminderService from '../services/reminderService.js';
 import { runProactiveMessageCheck } from '../services/proactiveMessageService.js';
 import { checkMilestones } from '../services/relationshipEvolutionService.js';
+import { executeDripCampaignCheck } from '../services/dripCampaignService.js';
 import logger from '../config/logger.js';
 
 /**
@@ -23,6 +24,16 @@ export function initJobs() {
             await runProactiveMessageCheck();
         } catch (e) {
             logger.error('Proactive message check failed:', e);
+        }
+    });
+
+    // Run 7-Day Re-engagement Drip Campaign check twice daily at 10:00 AM and 6:00 PM
+    cron.schedule('0 10,18 * * *', async () => {
+        logger.info('Running scheduled job: 7-Day Re-engagement Drip Campaign');
+        try {
+            await executeDripCampaignCheck();
+        } catch (e) {
+            logger.error('Drip campaign job failed:', e);
         }
     });
 
