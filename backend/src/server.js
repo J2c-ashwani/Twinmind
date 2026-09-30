@@ -242,6 +242,17 @@ app.use('/api/proactive', proactiveRoutes);
 // 📱 SERVE WEB APP (Flutter PWA)
 // ============================================
 
+// SEO: Serve robots.txt and sitemap.xml with correct content types (before SPA catch-all)
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.sendFile(path.join(__dirname, '../public', 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.sendFile(path.join(__dirname, '../public', 'sitemap.xml'));
+});
+
 // Serve static files from 'public' directory
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
