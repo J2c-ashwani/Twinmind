@@ -243,13 +243,16 @@ app.use('/api/proactive', proactiveRoutes);
 // ============================================
 
 // SEO: Serve robots.txt and sitemap.xml with correct content types (before SPA catch-all)
-app.get('/robots.txt', (req, res) => {
+// Using regex to handle /sitemap.xml, /sitemap, or accidental double-prefix paths like /https://twingenie.app/sitemap.xml
+app.get([/robots(\.txt)?$/, '/robots.txt'], (req, res) => {
   res.type('text/plain');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, '../public', 'robots.txt'));
 });
 
-app.get('/sitemap.xml', (req, res) => {
+app.get([/sitemap(\.xml)?$/, '/sitemap.xml'], (req, res) => {
   res.type('application/xml');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, '../public', 'sitemap.xml'));
 });
 
