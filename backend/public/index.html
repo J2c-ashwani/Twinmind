@@ -246,5 +246,38 @@
   </noscript>
 
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    (function() {
+      function hideSplashScreen() {
+        var loader = document.getElementById('splash-loader');
+        if (loader && loader.style.display !== 'none') {
+          loader.style.opacity = '0';
+          loader.style.pointerEvents = 'none';
+          setTimeout(function() {
+            if (loader && loader.parentNode) {
+              loader.parentNode.removeChild(loader);
+            }
+          }, 500);
+        }
+      }
+
+      // 1. Listen for Flutter's first frame event
+      window.addEventListener('flutter-first-frame', hideSplashScreen);
+
+      // 2. Watch for Flutter glass pane / canvas being mounted
+      if (window.MutationObserver) {
+        var splashObserver = new MutationObserver(function() {
+          if (document.querySelector('flt-glass-pane') || document.querySelector('flutter-view')) {
+            setTimeout(hideSplashScreen, 300);
+            splashObserver.disconnect();
+          }
+        });
+        splashObserver.observe(document.body, { childList: true, subtree: true });
+      }
+
+      // 3. Fallback: Automatically remove after 4.5 seconds so user is never stuck
+      setTimeout(hideSplashScreen, 4500);
+    })();
+  </script>
 </body>
 </html>
