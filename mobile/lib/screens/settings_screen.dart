@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/review_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -96,18 +98,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 textColor: Colors.red,
               ),
               const SizedBox(height: 32),
-              _buildSectionHeader('Support'),
+              _buildSectionHeader('Support & Feedback'),
               _buildActionTile(
-                'Help Center',
-                'Get help with using TwinGenie',
-                Icons.help_outline,
-                () {},
+                'Send Feedback & Ideas',
+                'Share suggestions or report an issue directly with the founders',
+                Icons.feedback_outlined,
+                () => _showFeedbackDialog(context),
               ),
               _buildActionTile(
-                'About Us',
-                'Learn more about our mission',
+                'Rate on Google Play',
+                'Leave an honest review to support TwinGenie',
+                Icons.star_outline_rounded,
+                () => ReviewService.openStoreListing(),
+              ),
+              _buildActionTile(
+                'About TwinGenie',
+                'Our mission and personal AI approach',
                 Icons.info_outline,
-                () {},
+                () => _showAboutDialog(context),
               ),
               const SizedBox(height: 32),
               _buildSectionHeader('Legal'),
@@ -291,5 +299,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     }
+  }
+
+  void _showFeedbackDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Send Feedback & Ideas',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'We read every single message from our community. Send your ideas, questions, or bug reports directly to our founding team:',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.email_outlined, color: Color(0xFF818CF8), size: 20),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: SelectableText(
+                      'support@twingenie.app',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: 'support@twingenie.app'));
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Email copied: support@twingenie.app'),
+                  backgroundColor: Color(0xFF818CF8),
+                ),
+              );
+            },
+            child: const Text('Copy Email', style: TextStyle(color: Color(0xFF818CF8))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: Colors.white54)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'About TwinGenie',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'TwinGenie is your personal AI digital twin. Built with privacy and self-reflection at its core, it learns your values, goals, and cognitive style to help you navigate decisions with clarity.',
+              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+            ),
+            SizedBox(height: 14),
+            Text(
+              'Your data is encrypted and never sold or used to train public models.',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it', style: TextStyle(color: Color(0xFF818CF8))),
+          ),
+        ],
+      ),
+    );
   }
 }

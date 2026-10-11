@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../widgets/voice_recorder_widget.dart';
 import '../widgets/audio_message_bubble.dart';
 import 'package:share_plus/share_plus.dart';
+import '../services/review_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -346,6 +347,7 @@ class _ChatScreenState extends State<ChatScreen> {
       });
 
       _scrollToBottom();
+      ReviewService.checkAndPromptReview();
     } on RateLimitException {
       setState(() {
         _isLoading = false;
