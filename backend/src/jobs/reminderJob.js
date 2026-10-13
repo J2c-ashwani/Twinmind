@@ -3,6 +3,7 @@ import reminderService from '../services/reminderService.js';
 import { runProactiveMessageCheck } from '../services/proactiveMessageService.js';
 import { checkMilestones } from '../services/relationshipEvolutionService.js';
 import { executeDripCampaignCheck } from '../services/dripCampaignService.js';
+import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
 import logger from '../config/logger.js';
 
 /**
@@ -77,7 +78,31 @@ export function initJobs() {
         }
     });
 
-    logger.info('✅ All scheduled jobs initialized (including keep-alive)');
+    // ============================================
+    // 🚀 M&A ACQUISITION CAMPAIGN AUTONOMOUS RUNNER
+    // Runs every 45 minutes, evaluating interval cooling,
+    // suppression lists, and daily caps (10-12/day).
+    // ============================================
+    cron.schedule('*/45 * * * *', async () => {
+        try {
+            logger.info('Running scheduled job: M&A Acquisition Campaign Tick');
+            await acquisitionCampaignService.executeTick();
+        } catch (e) {
+            logger.error('Acquisition campaign execution tick failed:', e);
+        }
+    });
+
+    // Run first campaign check 30 seconds after server boot
+    setTimeout(async () => {
+        try {
+            logger.info('🚀 Executing initial boot tick for M&A Acquisition Campaign...');
+            await acquisitionCampaignService.executeTick();
+        } catch (e) {
+            logger.error('Initial campaign boot tick failed:', e);
+        }
+    }, 30000);
+
+    logger.info('✅ All scheduled jobs initialized (including keep-alive & M&A acquisition campaign)');
 }
 
 export default { initJobs };

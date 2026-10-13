@@ -40,3 +40,13 @@ services:
         value: premium_monthly
       - key: GOOGLE_PLAY_YEARLY_PRODUCT_ID
         value: premium_yearly
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: "Ashwani <founder@twingenie.app>"
+      - key: RESEND_REPLY_TO
+        value: "founder@twingenie.app"
+      - key: CAMPAIGN_AUTORUN
+        value: "true"
+      - key: CAMPAIGN_DAILY_MAX
+        value: "12"

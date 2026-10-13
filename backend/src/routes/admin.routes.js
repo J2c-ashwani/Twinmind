@@ -3,6 +3,7 @@ import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 import { calculateDeterministicPersonality } from '../services/deterministicPersonality.js';
 import { sendRecoveryEmail, sendProductUpdateEmail } from '../services/emailService.js';
+import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
 
 const router = express.Router();
 
@@ -366,6 +367,32 @@ router.post('/seed-proactive-greetings', verifyToken, isAdmin, requireAdminSecre
     } catch (error) {
         console.error('Seed proactive greetings error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/campaign/status
+ * Get M&A acquisition campaign status, queue, and send counters
+ */
+router.get('/campaign/status', requireAdminSecret, (req, res) => {
+    try {
+        const status = acquisitionCampaignService.getStatus();
+        res.json({ success: true, status });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/admin/campaign/trigger-next
+ * Manually trigger the next outreach send in queue
+ */
+router.post('/campaign/trigger-next', requireAdminSecret, async (req, res) => {
+    try {
+        const result = await acquisitionCampaignService.executeTick();
+        res.json({ success: true, result, status: acquisitionCampaignService.getStatus() });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

@@ -16,8 +16,16 @@ const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'TwinGenie <onboarding@res
  * @param {string} options.html - HTML content
  * @param {string} [options.text] - Plain text fallback
  * @param {string} [options.from] - Sender address
+ * @param {string} [options.reply_to] - Reply-to address
  */
-export async function sendEmail({ to, subject, html, text, from = DEFAULT_FROM }) {
+export async function sendEmail({
+    to,
+    subject,
+    html,
+    text,
+    from = DEFAULT_FROM,
+    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app'
+}) {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
@@ -34,19 +42,25 @@ export async function sendEmail({ to, subject, html, text, from = DEFAULT_FROM }
 
     try {
         const recipients = Array.isArray(to) ? to : [to];
+        const payload = {
+            from,
+            to: recipients,
+            subject,
+            html,
+            text: text || html.replace(/<[^>]*>?/gm, '')
+        };
+
+        if (reply_to) {
+            payload.reply_to = reply_to;
+        }
+
         const response = await fetch(RESEND_API_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                from,
-                to: recipients,
-                subject,
-                html,
-                text: text || html.replace(/<[^>]*>?/gm, '')
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();

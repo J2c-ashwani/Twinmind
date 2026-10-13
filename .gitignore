@@ -57,6 +57,8 @@ Thumbs.db
 # API Keys and secrets
 google-services.json
 GoogleService-Info.plist
+*.b64
+tts-credentials.b64
 
 # Node modules
 node_modules/

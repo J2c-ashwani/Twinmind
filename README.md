@@ -6,7 +6,7 @@
 
 **Create your AI Digital Twin that thinks, talks, and behaves exactly like you**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](https://twingenie.app)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 [![Flutter](https://img.shields.io/badge/Flutter-3.0-blue)](https://flutter.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
@@ -19,13 +19,13 @@
 
 ## 🌟 Overview
 
-TwinGenie is a cutting-edge AI platform that creates personalized digital twins capable of thinking, conversing, and behaving like their human counterparts. Using advanced personality modeling and GPT-4o, TwinGenie analyzes 30 carefully crafted questions to build a comprehensive psychological profile, enabling truly authentic AI conversations.
+TwinGenie is a cutting-edge AI platform that creates personalized digital twins capable of thinking, conversing, and behaving like their human counterparts. Using advanced personality modeling and multi-provider AI, TwinGenie analyzes 35 carefully crafted questions to build a comprehensive psychological profile, enabling authentic AI conversations.
 
 ### Key Highlights
 
-- **🧠 AI Personality Engine**: Scientifically-designed questionnaire analyzing Big Five traits, emotional patterns, and decision-making styles
+- **🧠 AI Personality Engine**: Big Five-inspired questionnaire analyzing traits, emotional patterns, and decision-making styles
 - **💬 Intelligent Chat**: Context-aware conversations powered by vector-based semantic memory
-- **🎭 4 Twin Modes**: Normal, Future You, Dark Twin, and Therapist Twin personalities
+- **🎭 4 Twin Modes**: Normal, Future, Honest (Dark), and Reflective (Therapist) twin perspectives
 - **📱 Cross-Platform**: Beautiful web and mobile apps with seamless data sync
 - **🔒 Privacy-First**: Your data, your twin - complete ownership and control
 
@@ -34,7 +34,7 @@ TwinGenie is a cutting-edge AI platform that creates personalized digital twins 
 ## ✨ Features
 
 ### Personality Assessment
-- 30 psychology-backed questions
+- 35 Big Five-inspired questions
 - Big Five personality traits analysis
 - Emotional intelligence mapping
 - Communication style profiling
@@ -311,24 +311,25 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 ---
 
 ## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+ 
+All rights reserved. Confidential and proprietary software. Unauthorized copying, transfer, or distribution of this software and associated documentation is strictly prohibited.
+ 
 ---
-
+ 
 ## 🙏 Acknowledgments
-
-- **OpenAI** for GPT-4o
-- **Supabase** for amazing backend infrastructure
-- **Vercel** for seamless deployments
-- **Stripe** for payment processing
-- **Flutter** & **Next.js** teams for excellent frameworks
-
+ 
+- **OpenAI, Anthropic & Groq** for multi-model AI capabilities
+- **Supabase** for backend & pgvector vector infrastructure
+- **Vercel & Render** for cloud deployments
+- **Google Play** for mobile app ecosystem
+- **Flutter** & **Next.js** teams for frontend frameworks
+ 
 ---
-
+ 
 ## 📧 Contact
-
-Project Link: [https://github.com/yourusername/twinmind](https://github.com/yourusername/twinmind)
+ 
+Website: [https://twingenie.app](https://twingenie.app)  
+Inquiries: twingenie.app@gmail.com
 
 ---
 
