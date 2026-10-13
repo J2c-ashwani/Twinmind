@@ -1,4 +1,6 @@
 import fetch from 'node-fetch';
+import fs from 'fs';
+import path from 'path';
 import logger from '../../../config/logger.js';
 
 /**
@@ -79,30 +81,99 @@ class FacebookAdapter {
         logger.info(`[FACEBOOK] Publishing to Facebook Page ${pageId}...`);
 
         try {
-            let endpoint = `${GRAPH_API_BASE}/${pageId}/feed`;
+            // Case 1: Direct Local Image Binary Upload (High-Res 1080x1350 Rendered Slides)
+            if (postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
+                if (postData.mediaPaths.length === 1) {
+                    logger.info(`[FACEBOOK] Uploading single local high-res photo binary: ${postData.mediaPaths[0]}`);
+                    const fileBuffer = fs.readFileSync(postData.mediaPaths[0]);
+                    const blob = new Blob([fileBuffer], { type: 'image/png' });
+                    const formData = new FormData();
+                    formData.append('source', blob, path.basename(postData.mediaPaths[0]));
+                    formData.append('caption', postData.caption);
+                    formData.append('access_token', accessToken);
+
+                    const response = await fetch(`${GRAPH_API_BASE}/${pageId}/photos`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (!response.ok || data.error) {
+                        logger.error('[FACEBOOK] Photo upload error:', data);
+                        return { success: false, error: data.error || data };
+                    }
+                    const postId = data.id || data.post_id;
+                    logger.info(`🎉 [FACEBOOK] Photo published successfully! ID: ${postId}`);
+                    return { success: true, platform: this.platform, postId, url: `https://facebook.com/${postId}` };
+                } else {
+                    // Multi-Image Carousel / Album Upload
+                    logger.info(`[FACEBOOK] Uploading ${postData.mediaPaths.length} photos as multi-image carousel post...`);
+                    const photoIds = [];
+                    for (const imgPath of postData.mediaPaths.slice(0, 10)) {
+                        if (fs.existsSync(imgPath)) {
+                            const fileBuffer = fs.readFileSync(imgPath);
+                            const blob = new Blob([fileBuffer], { type: 'image/png' });
+                            const formData = new FormData();
+                            formData.append('source', blob, path.basename(imgPath));
+                            formData.append('published', 'false');
+                            formData.append('access_token', accessToken);
+
+                            const photoRes = await fetch(`${GRAPH_API_BASE}/${pageId}/photos`, { method: 'POST', body: formData });
+                            const photoData = await photoRes.json();
+                            if (photoData.id) photoIds.push({ media_fbid: photoData.id });
+                        }
+                    }
+
+                    const feedPayload = {
+                        message: postData.caption,
+                        attached_media: photoIds,
+                        access_token: accessToken
+                    };
+
+                    const response = await fetch(`${GRAPH_API_BASE}/${pageId}/feed`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(feedPayload)
+                    });
+                    const data = await response.json();
+                    if (!response.ok || data.error) {
+                        logger.error('[FACEBOOK] Multi-photo feed error:', data);
+                        return { success: false, error: data.error || data };
+                    }
+                    const postId = data.id || data.post_id;
+                    logger.info(`🎉 [FACEBOOK] Multi-image post published successfully! ID: ${postId}`);
+                    return { success: true, platform: this.platform, postId, url: `https://facebook.com/${postId}` };
+                }
+            }
+
+            // Case 2: Remote Image URL
+            if (postData.pngUrls && postData.pngUrls.length > 0) {
+                const response = await fetch(`${GRAPH_API_BASE}/${pageId}/photos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: postData.pngUrls[0],
+                        caption: postData.caption,
+                        access_token: accessToken
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) return { success: false, error: data.error || data };
+                const postId = data.id || data.post_id;
+                return { success: true, platform: this.platform, postId, url: `https://facebook.com/${postId}` };
+            }
+
+            // Case 3: Text Post with Rich Link Card
             let payload = {
                 message: postData.caption,
                 access_token: accessToken
             };
+            if (postData.utmLink) payload.link = postData.utmLink;
 
-            if (postData.pngUrls && postData.pngUrls.length > 0) {
-                // Post as photo
-                endpoint = `${GRAPH_API_BASE}/${pageId}/photos`;
-                payload = {
-                    url: postData.pngUrls[0],
-                    caption: postData.caption,
-                    access_token: accessToken
-                };
-            } else if (postData.utmLink) {
-                payload.link = postData.utmLink;
-            }
-
-            const response = await fetch(endpoint, {
+            const response = await fetch(`${GRAPH_API_BASE}/${pageId}/feed`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-
             const data = await response.json();
 
             if (!response.ok || data.error) {
