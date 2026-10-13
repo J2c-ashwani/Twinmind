@@ -57,6 +57,10 @@ Thumbs.db
 # API Keys and secrets
 google-services.json
 GoogleService-Info.plist
+# Growth distribution rendered assets
+backend/public/growth_assets/
+backend/test_carousel_out/
+test_carousel_out/
 *.b64
 tts-credentials.b64
 

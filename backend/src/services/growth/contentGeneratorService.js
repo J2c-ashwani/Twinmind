@@ -79,6 +79,78 @@ class ContentGeneratorService {
         };
     }
 
+    _buildStandardSlides(theme) {
+        return [
+            {
+                type: 'cover',
+                tag: theme.tag || 'COGNITIVE ARCHITECTURE',
+                title: theme.hook,
+                subtitle: "Most AI companions are designed to be yes-men. They stroke your ego, nod along with your excuses, and forget your history.",
+                takeaways: [
+                    "Why conventional AI chatbots reinforce dangerous confirmation bias",
+                    "How 4 distinct cognitive lenses stress-test your thinking",
+                    "Why persistent vector memory turns chat into true self-growth"
+                ]
+            },
+            {
+                type: 'comparison',
+                tag: 'THE FLATTERY TRAP',
+                title: 'Normal Twin vs Honest Twin',
+                subtitle: 'Two completely different answers to the exact same excuse:',
+                left: {
+                    badge: '[ TRADITIONAL AI (THE YES-MAN) ]',
+                    user: "I feel like delaying this launch. I'm exhausted.",
+                    ai: "Totally understandable! Take as much rest as you need. Self-care comes first!",
+                    outcome: "Validates procrastination & fear of failure"
+                },
+                right: {
+                    badge: '[ TWINGENIE (HONEST PERSPECTIVE) ]',
+                    user: "I feel like delaying this launch. I'm exhausted.",
+                    ai: "Looking at your memory log from 2 weeks ago, you said the same thing before the investor pitch. You aren't exhausted—you're scared of market judgment. Let's finish the checklist.",
+                    outcome: "Exposes the blind spot & pushes you forward"
+                }
+            },
+            {
+                type: 'modes',
+                tag: 'COGNITIVE ARCHITECTURE',
+                title: 'One Context. 4 Cognitive Lenses.',
+                subtitle: 'Switch perspectives anytime without losing your conversation history:',
+                modes: [
+                    { num: "01", name: "NORMAL TWIN", desc: "Your baseline voice, daily sounding board, and routine reflection." },
+                    { num: "02", name: "REFLECTIVE TWIN", desc: "Deep psychological empathy, active listening, and emotional decompression." },
+                    { num: "03", name: "HONEST TWIN", desc: "Direct, unfiltered challenger to rationalizations and cognitive blind spots." },
+                    { num: "04", name: "FUTURE TWIN", desc: "The 5-years-wiser perspective bringing calm clarity to today's panic." }
+                ]
+            },
+            {
+                type: 'timeline',
+                tag: 'LONGITUDINAL MEMORY',
+                title: 'Why Chatbots Reset (And Why We Don\'t)',
+                subtitle: 'TwinGenie connects your thoughts across weeks using pgvector:',
+                steps: [
+                    { step: "STAGE 01", title: "35-Question Assessment", desc: "Maps your Big Five personality traits, stress responses, and core values." },
+                    { step: "STAGE 02", title: "Semantic Pattern Matching", desc: "Detects recurring self-sabotage loops that single-session chats miss completely." },
+                    { step: "STAGE 03", title: "The Compound Mirror", desc: "Your digital twin becomes sharper, wiser, and more attuned to your actual growth." }
+                ],
+                note: "• 100% Private Vector Memory — Never shared or used for third-party training"
+            },
+            {
+                type: 'cta',
+                tag: 'AVAILABLE NOW',
+                title: 'Meet Your Digital Twin Today',
+                subtitle: 'Stop talking to AI that forgets you. Start building real self-awareness.',
+                points: [
+                    "35-Question Big Five personality baseline",
+                    "4 perspectives: Normal, Reflective, Honest, Future",
+                    "Persistent semantic memory across all conversations",
+                    "100% private, self-guided reflection"
+                ],
+                button: 'Download TwinGenie on Google Play',
+                link: 'twingenie.app  •  Live on Google Play Store'
+            }
+        ];
+    }
+
     _generateLinkedInContent(theme, campaignId) {
         const utm = this.buildUtmLink('linkedin', 'carousel_pdf', campaignId);
         return {
@@ -86,38 +158,7 @@ class ContentGeneratorService {
             format: 'carousel_pdf',
             title: `${theme.name} — A Cognitive Analysis`,
             utmLink: utm,
-            slides: [
-                {
-                    title: theme.hook,
-                    content: "Most leaders operate with unchecked cognitive habits. Here is what persistent self-reflection reveals about your decision loop.",
-                    highlight: "TWINGENIE COGNITIVE STUDY",
-                    tag: theme.tag
-                },
-                {
-                    title: "The Problem With Flattery AI",
-                    content: "Conventional chat assistants agree with everything you say. They reinforce confirmation bias rather than stress-testing your judgment.",
-                    highlight: "CONFIRMATION BIAS RISK",
-                    tag: "BIAS TRAP"
-                },
-                {
-                    title: "The Four-Perspective Mirror",
-                    content: "TwinGenie maintains one shared memory pipeline across 4 conversational lenses: Normal (baseline), Reflective (empathy), Honest (unfiltered), and Future (5 years wiser).",
-                    highlight: "4 PERSPECTIVES OVER 1 CONTEXT",
-                    tag: "ARCHITECTURE"
-                },
-                {
-                    title: "Longitudinal Memory in Action",
-                    content: "By using pgvector semantic retrieval, the model tracks your patterns across weeks—spotting recurring triggers before you even notice them.",
-                    highlight: "SEMANTIC PATTERN RECOGNITION",
-                    tag: "DEEP MEMORY"
-                },
-                {
-                    title: "Meet Your Digital Twin",
-                    content: "Complete the 35-question assessment and begin structured reflection. Available live on Google Play.",
-                    highlight: "GET STARTED TODAY",
-                    tag: "TWINGENIE APP"
-                }
-            ],
+            slides: this._buildStandardSlides(theme),
             caption: `Why do conventional AI chatbots feel hollow after three conversations?
 
 Because they reset. They have zero memory of your goals, zero context on your insecurities, and a built-in bias toward pleasing you rather than helping you grow.
@@ -143,38 +184,7 @@ Swipe through the carousel to see how longitudinal reflection changes executive 
             format: 'image_carousel',
             title: theme.hook,
             utmLink: utm,
-            slides: [
-                {
-                    title: theme.hook,
-                    content: "Swipe to see what happens when your AI companion actually remembers you instead of resetting every chat.",
-                    highlight: "AI THAT REMEMBERS 🧠",
-                    tag: theme.tag
-                },
-                {
-                    title: "Normal Twin vs Honest Twin",
-                    content: "Normal Twin says: 'It makes sense you are tired.'\nHonest Twin says: 'You aren’t tired, you are avoiding the task because you are afraid of failing.'",
-                    highlight: "BRUTALLY ACCURATE 🎯",
-                    tag: "HONEST MODE"
-                },
-                {
-                    title: "35 Questions to Map Your Mind",
-                    content: "Your twin is tuned to your Big Five personality traits, stress triggers, and decision patterns.",
-                    highlight: "BIG FIVE PSYCHOLOGY 📊",
-                    tag: "ONBOARDING"
-                },
-                {
-                    title: "Never Repeat Your Story",
-                    content: "Vector memory means what you shared 3 weeks ago still informs how your twin supports you today.",
-                    highlight: "LONGITUDINAL MEMORY 🔗",
-                    tag: "SMART CONTEXT"
-                },
-                {
-                    title: "Create Your Digital Twin",
-                    content: "Download TwinGenie on Google Play. Tap the link in bio to begin.",
-                    highlight: "LINK IN BIO 📲",
-                    tag: "DOWNLOAD NOW"
-                }
-            ],
+            slides: this._buildStandardSlides(theme),
             caption: `Have you ever had an AI call you out on your own excuses? 🪞
 
 Most chatbots are yes-men. They stroke your ego and forget you the second you close the tab.
@@ -193,26 +203,27 @@ Which mode would you use first: Compassionate Reflective or Brutally Honest? Dro
     }
 
     _generateFacebookContent(theme, campaignId) {
-        const utm = this.buildUtmLink('facebook', 'image_carousel', campaignId);
+        const utm = this.buildUtmLink('facebook', 'multi_image_carousel', campaignId);
         return {
             platform: 'facebook',
-            format: 'single_image',
-            title: `Self-Growth Insight: ${theme.name}`,
+            format: 'multi_image_carousel',
+            title: `Cognitive Architecture: ${theme.name}`,
             utmLink: utm,
-            caption: `What if you had an AI that truly understood how your mind works? 💡
+            slides: this._buildStandardSlides(theme),
+            caption: `What happens when your AI companion stops flattering you and starts telling you the truth? 🪞
 
-A lot of people feel exhausted repeating themselves to AI tools that forget everything. That's why we created TwinGenie. 
+Most AI assistants agree with whatever you say. They validate your doubts, indulge your procrastination, and reset their memory the moment you close the tab.
 
-Instead of generic chat, TwinGenie:
-• Analyzes your personality through 35 Big Five-inspired questions
-• Gives you 4 perspectives (Normal, Reflective, Honest, and Future You)
-• Uses continuous memory so your conversations build on each other over time
+TwinGenie is engineered differently:
+1. Baseline Personality: Built on 35 Big Five-inspired questions
+2. Four Perspectives: Normal, Reflective, Honest, and Future You
+3. Longitudinal pgvector Memory: Connects patterns across conversations so you never start from zero
 
-If you could ask a 5-years-wiser version of yourself one question right now, what would it be?
+👉 Swipe through all 5 slides above to see how Honest Mode and Longitudinal Memory transform self-reflection.
 
-📲 Download TwinGenie on Google Play: ${utm}
+📲 Download free on Google Play: ${utm}
 
-#PersonalGrowth #Mindset #SelfReflection #AICompanion #TwinGenie`
+#PersonalGrowth #Mindset #SelfReflection #AICompanion #DigitalTwin #TwinGenie`
         };
     }
 

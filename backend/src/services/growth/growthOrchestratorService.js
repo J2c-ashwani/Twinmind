@@ -220,6 +220,7 @@ class GrowthOrchestratorService {
                 title: post.title,
                 caption: post.caption,
                 utmLink: post.utmLink,
+                mediaPaths: post.mediaPaths || [],
                 pdfPath: post.pdfPath,
                 pngUrls: post.pngUrls || [],
                 videoUrl: post.videoUrl,
