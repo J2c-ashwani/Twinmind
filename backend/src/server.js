@@ -31,6 +31,7 @@ import voiceRoutes from './routes/voice.routes.js';
 import lifeCoachRoutes from './routes/lifeCoach.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import proactiveRoutes from './routes/proactive.routes.js';
+import growthRoutes from './routes/growth.routes.js';
 import { initJobs } from './jobs/reminderJob.js';
 
 dotenv.config();
@@ -237,6 +238,7 @@ app.use('/api/voice', voiceRoutes);
 app.use('/api/life-coach', lifeCoachRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/proactive', proactiveRoutes);
+app.use('/api/admin/growth', growthRoutes);
 
 // ============================================
 // 📱 SERVE WEB APP (Flutter PWA)

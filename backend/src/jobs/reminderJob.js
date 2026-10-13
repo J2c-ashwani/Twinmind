@@ -4,6 +4,7 @@ import { runProactiveMessageCheck } from '../services/proactiveMessageService.js
 import { checkMilestones } from '../services/relationshipEvolutionService.js';
 import { executeDripCampaignCheck } from '../services/dripCampaignService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
+import { initGrowthJobs } from './growthSchedulerJob.js';
 import logger from '../config/logger.js';
 
 /**
@@ -102,7 +103,10 @@ export function initJobs() {
         }
     }, 30000);
 
-    logger.info('✅ All scheduled jobs initialized (including keep-alive & M&A acquisition campaign)');
+    // Initialize Four-Platform Growth Distribution Jobs
+    initGrowthJobs();
+
+    logger.info('✅ All scheduled jobs initialized (including keep-alive, M&A campaign, & Four-Platform Growth)');
 }
 
 export default { initJobs };
