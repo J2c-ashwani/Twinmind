@@ -14,31 +14,56 @@ const CAMPAIGN_THEMES = [
         id: 'blind_spots',
         name: 'Cognitive Blind Spots',
         hook: 'Why your biggest strength is also your blind spot',
-        tag: 'SELF-REFLECTION'
+        tag: 'SELF-REFLECTION',
+        binaryQuestion: {
+            prompt: "When you are stuck on a difficult decision or feeling overwhelmed, which AI perspective do you actually need?",
+            optionA: "🅰️ Gentle emotional validation to decompress stress (Reflective Twin)",
+            optionB: "🅱️ A brutally honest breakdown that cuts through your excuses (Honest Twin)"
+        }
     },
     {
         id: 'honest_mode',
         name: 'Normal vs Honest Twin',
         hook: 'What happens when your AI stops flattering you',
-        tag: 'HONEST PERSPECTIVE'
+        tag: 'HONEST PERSPECTIVE',
+        binaryQuestion: {
+            prompt: "Would you rather have an AI companion that:",
+            optionA: "🅰️ Agrees with your reasons for delaying the work (Flattery AI)",
+            optionB: "🅱️ Calls you out using your own words from 2 weeks ago (Honest Twin)"
+        }
     },
     {
         id: 'decision_paralysis',
         name: 'Overthinking & Decision Styles',
         hook: 'The hidden pattern behind why you procrastinate on tough calls',
-        tag: 'DECISION ARCHITECTURE'
+        tag: 'DECISION ARCHITECTURE',
+        binaryQuestion: {
+            prompt: "When you find yourself procrastinating on a high-stakes call, is it usually:",
+            optionA: "🅰️ Fear of making the wrong choice (Analysis paralysis)",
+            optionB: "🅱️ Exhaustion from juggling too many unorganized priorities?"
+        }
     },
     {
         id: 'future_perspective',
         name: 'The 5-Year Wiser Self',
         hook: 'What your future self would say about the problem stressing you today',
-        tag: 'FUTURE TWIN'
+        tag: 'FUTURE TWIN',
+        binaryQuestion: {
+            prompt: "If your 5-years-wiser self walked into the room right now, would they tell you to:",
+            optionA: "🅰️ Slow down, breathe, and protect your peace (Compassionate View)",
+            optionB: "🅱️ Stop overthinking, take the risk, and hit publish (Future Twin)"
+        }
     },
     {
         id: 'persistent_memory',
         name: 'Memory-First AI Companions',
         hook: 'Why reset-button AI chatbots fail human personal growth',
-        tag: 'LONGITUDINAL MEMORY'
+        tag: 'LONGITUDINAL MEMORY',
+        binaryQuestion: {
+            prompt: "What bothers you most about standard AI chatbots?",
+            optionA: "🅰️ They have zero memory and forget everything you told them yesterday",
+            optionB: "🅱️ They agree with everything you say like a mindless yes-man"
+        }
     }
 ];
 
@@ -54,7 +79,7 @@ class ContentGeneratorService {
     /**
      * Generates a complete 4-platform package for a specific theme
      */
-    async generateCampaignBundle(themeId = null) {
+    async generateCampaignBundle(themeId = null, options = {}) {
         const theme = CAMPAIGN_THEMES.find(t => t.id === themeId) || 
                       CAMPAIGN_THEMES[Math.floor(Math.random() * CAMPAIGN_THEMES.length)];
         const campaignId = `camp_${theme.id}_${Date.now()}`;
@@ -64,7 +89,7 @@ class ContentGeneratorService {
         // Generate content specs for each platform
         const linkedinPost = this._generateLinkedInContent(theme, campaignId);
         const instagramPost = this._generateInstagramContent(theme, campaignId);
-        const facebookPost = this._generateFacebookContent(theme, campaignId);
+        const facebookPost = this._generateFacebookContent(theme, campaignId, options.facebookFormat);
         const youtubePost = this._generateYouTubeContent(theme, campaignId);
 
         return {
@@ -179,6 +204,11 @@ Swipe through the carousel to see how longitudinal reflection changes executive 
 
     _generateInstagramContent(theme, campaignId) {
         const utm = this.buildUtmLink('instagram', 'image_carousel', campaignId);
+        const bq = theme.binaryQuestion || {
+            prompt: "Which AI perspective would you use first?",
+            optionA: "🅰️ Compassionate Reflective",
+            optionB: "🅱️ Brutally Honest"
+        };
         return {
             platform: 'instagram',
             format: 'image_carousel',
@@ -194,7 +224,13 @@ TwinGenie is built differently:
 ✨ 4 distinct modes (Normal, Reflective, Honest, Future)
 ✨ Persistent memory that remembers your past goals and patterns
 
-Which mode would you use first: Compassionate Reflective or Brutally Honest? Drop a comment below 👇
+Quick question:
+${bq.prompt}
+${bq.optionA}
+OR
+${bq.optionB}
+
+Drop A or B in the comments! 👇
 
 🔗 Download free on Google Play — Link in bio!
 
@@ -202,28 +238,56 @@ Which mode would you use first: Compassionate Reflective or Brutally Honest? Dro
         };
     }
 
-    _generateFacebookContent(theme, campaignId) {
-        const utm = this.buildUtmLink('facebook', 'multi_image_carousel', campaignId);
+    _generateFacebookContent(theme, campaignId, requestedFormat = null) {
+        // Automatically alternate between 'carousel' and 'reel' if not specified
+        const format = requestedFormat || (Math.random() > 0.5 ? 'reel' : 'carousel');
+        const utmMedium = format === 'reel' ? 'reel_video' : 'multi_image_carousel';
+        const utm = this.buildUtmLink('facebook', utmMedium, campaignId);
+
+        const bq = theme.binaryQuestion || {
+            prompt: "When you are stuck on a difficult decision or feeling overwhelmed, which AI perspective do you actually need?",
+            optionA: "🅰️ Gentle emotional validation to decompress stress (Reflective Twin)",
+            optionB: "🅱️ A brutally honest breakdown that cuts through your excuses (Honest Twin)"
+        };
+
+        const caption = `What happens when your AI companion stops flattering you and starts telling you the truth? 🪞
+
+Most AI assistants agree with whatever you say. They validate your doubts, indulge your procrastination, and reset their memory the moment you close the tab.
+
+TwinGenie is engineered differently with 4 cognitive perspectives: Normal, Reflective, Honest, and Future You.
+
+Quick question for you:
+${bq.prompt}
+
+${bq.optionA}
+OR
+${bq.optionB}
+
+Drop A or B in the comments! 👇`;
+
+        const firstComment = `📲 Experience both perspectives free on Google Play: ${utm}\nTake your 35-question Big Five personality baseline today!`;
+
+        if (format === 'reel') {
+            return {
+                platform: 'facebook',
+                format: 'reel',
+                title: theme.hook,
+                tag: theme.tag,
+                utmLink: utm,
+                caption,
+                firstComment
+            };
+        }
+
         return {
             platform: 'facebook',
             format: 'multi_image_carousel',
             title: `Cognitive Architecture: ${theme.name}`,
+            tag: theme.tag,
             utmLink: utm,
             slides: this._buildStandardSlides(theme),
-            caption: `What happens when your AI companion stops flattering you and starts telling you the truth? 🪞
-
-Most AI assistants agree with whatever you say. They validate your doubts, indulge your procrastination, and reset their memory the moment you close the tab.
-
-TwinGenie is engineered differently:
-1. Baseline Personality: Built on 35 Big Five-inspired questions
-2. Four Perspectives: Normal, Reflective, Honest, and Future You
-3. Longitudinal pgvector Memory: Connects patterns across conversations so you never start from zero
-
-👉 Swipe through all 5 slides above to see how Honest Mode and Longitudinal Memory transform self-reflection.
-
-📲 Download free on Google Play: ${utm}
-
-#PersonalGrowth #Mindset #SelfReflection #AICompanion #DigitalTwin #TwinGenie`
+            caption,
+            firstComment
         };
     }
 
@@ -232,19 +296,21 @@ TwinGenie is engineered differently:
         return {
             platform: 'youtube',
             format: 'short',
-            title: `Stop Using AI Chatbots That Forget You 🧠 #Shorts`,
+            title: `${theme.hook} 🧠 #Shorts`,
+            tag: theme.tag,
             utmLink: utm,
             videoScript: {
-                hook: "Stop using AI chatbots that forget your life story every single time you open the app.",
-                problem: "They have zero memory of your goals, your struggles, or your personality.",
+                hook: theme.hook,
+                problem: "Conventional chatbots have zero memory of your goals, your struggles, or your personality.",
                 solution: "Meet TwinGenie. It builds a digital twin based on 35 personality questions, remembers your longitudinal journey, and lets you switch between Normal, Reflective, and Brutally Honest modes.",
                 cta: "Download TwinGenie on Google Play today. Link in description."
             },
-            description: `Tired of AI that forgets you? Meet TwinGenie — your AI Digital Twin with persistent memory and 4 distinct perspectives.
+            caption: `Tired of AI that forgets you? Meet TwinGenie — your AI Digital Twin with persistent memory and 4 distinct perspectives.
 
-📲 Download on Google Play: ${utm}
+📲 Download free on Google Play: ${utm}
 
-#Shorts #AI #PersonalGrowth #SelfImprovement #DigitalTwin #TwinGenie`
+#Shorts #AI #PersonalGrowth #SelfImprovement #DigitalTwin #TwinGenie`,
+            firstComment: `📲 Download TwinGenie on Google Play: ${utm}`
         };
     }
 }

@@ -81,8 +81,32 @@ class FacebookAdapter {
         logger.info(`[FACEBOOK] Publishing to Facebook Page ${pageId}...`);
 
         try {
+            let postId = null;
+
+            // Case 0: Video Reel Upload (1080x1920 MP4)
+            if (postData.videoPath && fs.existsSync(postData.videoPath)) {
+                logger.info(`[FACEBOOK] Uploading video reel binary: ${postData.videoPath}`);
+                const fileBuffer = fs.readFileSync(postData.videoPath);
+                const blob = new Blob([fileBuffer], { type: 'video/mp4' });
+                const formData = new FormData();
+                formData.append('source', blob, path.basename(postData.videoPath));
+                formData.append('description', postData.caption);
+                formData.append('access_token', accessToken);
+
+                const response = await fetch(`${GRAPH_API_BASE}/${pageId}/videos`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) {
+                    logger.error('[FACEBOOK] Video reel upload error:', data);
+                    return { success: false, error: data.error || data };
+                }
+                postId = data.id || data.post_id;
+                logger.info(`🎉 [FACEBOOK] Video Reel published successfully! ID: ${postId}`);
+            }
             // Case 1: Direct Local Image Binary Upload (High-Res 1080x1350 Rendered Slides)
-            if (postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
+            else if (postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
                 if (postData.mediaPaths.length === 1) {
                     logger.info(`[FACEBOOK] Uploading single local high-res photo binary: ${postData.mediaPaths[0]}`);
                     const fileBuffer = fs.readFileSync(postData.mediaPaths[0]);
@@ -101,9 +125,8 @@ class FacebookAdapter {
                         logger.error('[FACEBOOK] Photo upload error:', data);
                         return { success: false, error: data.error || data };
                     }
-                    const postId = data.id || data.post_id;
+                    postId = data.id || data.post_id;
                     logger.info(`🎉 [FACEBOOK] Photo published successfully! ID: ${postId}`);
-                    return { success: true, platform: this.platform, postId, url: `https://facebook.com/${postId}` };
                 } else {
                     // Multi-Image Carousel / Album Upload
                     logger.info(`[FACEBOOK] Uploading ${postData.mediaPaths.length} photos as multi-image carousel post...`);
@@ -139,14 +162,13 @@ class FacebookAdapter {
                         logger.error('[FACEBOOK] Multi-photo feed error:', data);
                         return { success: false, error: data.error || data };
                     }
-                    const postId = data.id || data.post_id;
+                    postId = data.id || data.post_id;
                     logger.info(`🎉 [FACEBOOK] Multi-image post published successfully! ID: ${postId}`);
-                    return { success: true, platform: this.platform, postId, url: `https://facebook.com/${postId}` };
                 }
             }
 
             // Case 2: Remote Image URL
-            if (postData.pngUrls && postData.pngUrls.length > 0) {
+            else if (postData.pngUrls && postData.pngUrls.length > 0) {
                 const response = await fetch(`${GRAPH_API_BASE}/${pageId}/photos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -158,31 +180,37 @@ class FacebookAdapter {
                 });
                 const data = await response.json();
                 if (!response.ok || data.error) return { success: false, error: data.error || data };
-                const postId = data.id || data.post_id;
-                return { success: true, platform: this.platform, postId, url: `https://facebook.com/${postId}` };
+                postId = data.id || data.post_id;
             }
 
             // Case 3: Text Post with Rich Link Card
-            let payload = {
-                message: postData.caption,
-                access_token: accessToken
-            };
-            if (postData.utmLink) payload.link = postData.utmLink;
+            else {
+                let payload = {
+                    message: postData.caption,
+                    access_token: accessToken
+                };
+                if (postData.utmLink) payload.link = postData.utmLink;
 
-            const response = await fetch(`${GRAPH_API_BASE}/${pageId}/feed`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
+                const response = await fetch(`${GRAPH_API_BASE}/${pageId}/feed`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
 
-            if (!response.ok || data.error) {
-                logger.error('[FACEBOOK] Publish API error:', data);
-                return { success: false, error: data.error || data };
+                if (!response.ok || data.error) {
+                    logger.error('[FACEBOOK] Publish API error:', data);
+                    return { success: false, error: data.error || data };
+                }
+
+                postId = data.id || data.post_id;
+                logger.info(`🎉 [FACEBOOK] Published successfully! Post ID: ${postId}`);
             }
 
-            const postId = data.id || data.post_id;
-            logger.info(`🎉 [FACEBOOK] Published successfully! Post ID: ${postId}`);
+            // Automatically post first comment with direct download link
+            if (postId) {
+                await this._postFirstComment(postId, postData, accessToken);
+            }
 
             return {
                 success: true,
@@ -193,6 +221,32 @@ class FacebookAdapter {
         } catch (err) {
             logger.error('[FACEBOOK] Exception during publish:', err);
             return { success: false, error: err.message };
+        }
+    }
+
+    /**
+     * Posts a first comment with the direct download link
+     */
+    async _postFirstComment(postId, postData, accessToken) {
+        if (!postId) return;
+        const link = postData.utmLink || 'https://twingenie.app/open';
+        const commentMsg = postData.firstComment || 
+            `📲 Download TwinGenie free on Google Play & take your Big Five assessment: ${link}`;
+        try {
+            const res = await fetch(`${GRAPH_API_BASE}/${postId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: commentMsg,
+                    access_token: accessToken
+                })
+            });
+            const data = await res.json();
+            if (data.id) {
+                logger.info(`💬 [FACEBOOK] First-comment link posted successfully on ${postId}`);
+            }
+        } catch (err) {
+            logger.warn('[FACEBOOK] Non-blocking first-comment error:', err.message);
         }
     }
 }

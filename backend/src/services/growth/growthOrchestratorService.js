@@ -110,9 +110,27 @@ class GrowthOrchestratorService {
             let mediaPaths = [];
             let pdfPath = null;
             let pngUrls = [];
+            let videoPath = null;
+            let videoUrl = null;
 
+            // Render Reel video for Reel / Short formats
+            if (postSpec.format === 'reel' || postSpec.format === 'short') {
+                try {
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Reel video for ${platform}...`);
+                    const rendered = await mediaRendererService.renderReel({
+                        campaignId: bundle.campaignId,
+                        postId,
+                        hook: postSpec.title || bundle.theme,
+                        tag: postSpec.tag || 'COGNITIVE ARCHITECTURE'
+                    });
+                    videoPath = rendered.videoPath;
+                    videoUrl = rendered.videoUrl;
+                } catch (renderErr) {
+                    logger.error(`[GROWTH ORCHESTRATOR] Reel rendering error for ${platform}:`, renderErr);
+                }
+            }
             // Render carousel media for LinkedIn, Instagram, and Facebook if slides provided
-            if (postSpec.slides && postSpec.slides.length > 0) {
+            else if (postSpec.slides && postSpec.slides.length > 0) {
                 try {
                     logger.info(`[GROWTH ORCHESTRATOR] Rendering carousel assets for ${platform}...`);
                     const rendered = await mediaRendererService.renderCarousel({
@@ -144,11 +162,13 @@ class GrowthOrchestratorService {
                 format: postSpec.format,
                 title: postSpec.title,
                 caption: postSpec.caption,
+                firstComment: postSpec.firstComment,
                 utmLink: postSpec.utmLink,
                 mediaPaths,
                 pngUrls,
                 pdfPath,
-                videoPath: postSpec.videoPath || path.join(__dirname, '../../../../twingenie_ugc_ad.mp4'),
+                videoPath,
+                videoUrl,
                 scheduledFor: scheduledDate.toISOString(),
                 status: 'scheduled',
                 retries: 0,
@@ -159,7 +179,7 @@ class GrowthOrchestratorService {
             };
 
             this.state.posts.push(postRecord);
-            logger.info(`📅 [GROWTH ORCHESTRATOR] Scheduled ${platform} post for ${scheduledDate.toISOString()}`);
+            logger.info(`📅 [GROWTH ORCHESTRATOR] Scheduled ${platform} (${postSpec.format}) post for ${scheduledDate.toISOString()}`);
         }
 
         this._saveState();
@@ -219,6 +239,7 @@ class GrowthOrchestratorService {
             const publishResult = await adapter.publish({
                 title: post.title,
                 caption: post.caption,
+                firstComment: post.firstComment,
                 utmLink: post.utmLink,
                 mediaPaths: post.mediaPaths || [],
                 pdfPath: post.pdfPath,
