@@ -43,7 +43,7 @@ You have the right to:
 - **Export**: Download your data in a portable format
 - **Opt-Out**: Unsubscribe from non-essential communications
 
-To exercise these rights, contact us at: hello@fsidigital.ca
+To exercise these rights, contact us at: founder@twingenie.app
 
 ## Data Retention
 
@@ -56,12 +56,12 @@ To exercise these rights, contact us at: hello@fsidigital.ca
 We use the following third-party services:
 - **Supabase**: Database and authentication
 - **Google Gemini, Groq, OpenAI**: AI conversation processing
-- **Razorpay/Paddle**: Payment processing (does not store credit card data)
-- **Vercel/Railway**: Application hosting
+- **Google Play**: In-app subscription processing
+- **Render**: Application hosting
 
 ## Children's Privacy
 
-TwinMind is not intended for users under 13 years of age. We do not knowingly collect data from children.
+TwinGenie is not intended for users under 13 years of age. We do not knowingly collect data from children.
 
 ## Changes to This Policy
 
@@ -70,8 +70,8 @@ We may update this Privacy Policy periodically. We will notify you of significan
 ## Contact Us
 
 For privacy questions or concerns:
-- Email: hello@fsidigital.ca
-- Website: [twinmind.app/privacy]
+- Email: founder@twingenie.app
+- Website: https://twingenie.app/privacy
 
 ---
 
