@@ -139,13 +139,313 @@ Would you be open to taking a look as a product/technology acquisition?
 Best,
 Ashwani
 Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_limitless',
+        company: 'Limitless AI',
+        recipientName: 'Dan Siroker',
+        email: 'dan@limitless.ai',
+        routeType: 'named_founder',
+        thesis: 'Pioneering personalized memory & AI companion systems',
+        subject: 'Dan — would Limitless review TwinGenie for technology/IP acquisition?',
+        bodyText: `Hi Dan,
+
+I've been following Limitless's development of personalized AI memory systems, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and guided self-reflection app that I am looking to sell as a complete software and IP asset.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch stage) with a working Next.js web platform and a built Flutter iOS project. It features unified pgvector longitudinal memory, 35-question personality onboarding, and four cognitive perspectives over a single context pipeline.
+
+Would you be open to reviewing it as a technology/product acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_aurahealth',
+        company: 'Aura Health',
+        recipientName: 'Steve Lee',
+        email: 'steve@aurahealth.io',
+        routeType: 'named_founder',
+        thesis: 'Operator & aggregator of mental wellness, self-care and mindfulness apps',
+        subject: 'Steve — would Aura review TwinGenie for product/IP acquisition?',
+        bodyText: `Hi Steve,
+
+I saw Aura’s platform bringing together mental wellness and self-reflection tools, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI digital twin and reflection app available for strategic acquisition.
+
+The Android app has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-revenue) alongside a working Next.js web app and a built Flutter iOS codebase. It includes persistent pgvector semantic memory, 35-question Big Five onboarding, and four distinct conversational perspectives over one context pipeline.
+
+Would your team be open to reviewing TwinGenie as a product and IP asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_wysa',
+        company: 'Wysa',
+        recipientName: 'Ramakant Vempati',
+        email: 'ramakant@wysa.io',
+        routeType: 'named_founder',
+        thesis: 'Conversational AI companion & mental wellbeing pioneer',
+        subject: 'Ramakant — would Wysa review TwinGenie for technology/IP acquisition?',
+        bodyText: `Hi Ramakant,
+
+I’ve followed Wysa’s pioneering work in conversational mental wellbeing, so I wanted to connect founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection product I’m looking to sell as a complete software/IP asset.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch) with a working Next.js web application and a built Flutter iOS codebase. It features longitudinal pgvector memory, 35-question personality profiling, and four cognitive perspectives over a single context pipeline.
+
+Would you be open to reviewing it as an early-stage product/technology acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_brainfm',
+        company: 'Brain.fm',
+        recipientName: 'Dan Clark',
+        email: 'dan@brain.fm',
+        routeType: 'named_founder',
+        thesis: 'Cognitive performance and science-backed wellness tools',
+        subject: 'Dan — would Brain.fm review TwinGenie for product/IP acquisition?',
+        bodyText: `Hi Dan,
+
+I follow Brain.fm’s work at the intersection of cognitive performance and science-backed tools, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI self-reflection companion available for strategic acquisition.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch stage) with a working Next.js web product and a built Flutter iOS codebase. It features persistent pgvector memory, 35-question Big Five onboarding, and four conversational perspectives over one context pipeline.
+
+Would you be open to reviewing TwinGenie as a software and IP acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_intellect',
+        company: 'Intellect',
+        recipientName: 'Theodoric Chew',
+        email: 'theodoric@intellect.co',
+        routeType: 'named_founder',
+        thesis: 'Digital mental health and behavioral reflection app platform',
+        subject: 'Theodoric — would Intellect review TwinGenie for product/IP acquisition?',
+        bodyText: `Hi Theodoric,
+
+I’ve followed Intellect’s expansion across digital mental health and behavioral reflection, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app looking for the right acquirer.
+
+Android is live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch) with a working Next.js web platform and a built Flutter iOS project. It features unified pgvector memory, 35-question Big Five personality baseline, and four prompt-based perspectives over one pipeline.
+
+Would you be open to evaluating it as an early product/technology asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_memai',
+        company: 'Mem AI',
+        recipientName: 'Kevin Moody',
+        email: 'kevin@mem.ai',
+        routeType: 'named_founder',
+        thesis: 'Personalized memory and self-organizing personal AI',
+        subject: 'Kevin — would Mem review TwinGenie for technology/IP acquisition?',
+        bodyText: `Hi Kevin,
+
+I’ve followed Mem’s focus on personalized memory and self-organizing AI, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and guided reflection platform available for strategic acquisition.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-revenue stage) alongside a working Next.js web application and a built Flutter iOS project. It features longitudinal pgvector semantic memory, 35-question onboarding, and four cognitive perspectives over a single context pipeline.
+
+Would you be open to reviewing TwinGenie as a technology/product acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_endel',
+        company: 'Endel',
+        recipientName: 'Oleg Stavitsky',
+        email: 'oleg@endel.io',
+        routeType: 'named_founder',
+        thesis: 'Personalized adaptive audio environments and wellness AI',
+        subject: 'Oleg — would Endel review TwinGenie for product/IP acquisition?',
+        bodyText: `Hi Oleg,
+
+I saw Endel’s focus on adaptive, personalized AI environments for mindfulness and focus, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and self-reflection product.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch) with a working Next.js web platform and a built Flutter iOS codebase. It features longitudinal pgvector memory, 35-question personality profiling, and four conversational perspectives over one context pipeline.
+
+Would you be open to reviewing it as a software and IP asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_tiny',
+        company: 'Tiny Capital',
+        recipientName: 'Acquisitions Team',
+        email: 'acquisitions@tiny.com',
+        routeType: 'dedicated_m_and_a',
+        thesis: 'Consumer internet and software asset consolidator',
+        subject: 'Tiny — early-stage product/IP acquisition opportunity: TwinGenie',
+        bodyText: `Hi Team,
+
+I saw Tiny acquires and operates consumer internet and software assets, so I’m reaching out to your acquisitions group. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection product available for strategic acquisition.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-revenue) with a functional Next.js web application and a built Flutter iOS codebase. It features shared pgvector memory, 35-question personality onboarding, and four prompt-based perspectives over one context pipeline.
+
+Would Tiny be open to reviewing it as an early product/technology asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_wemakeapp',
+        company: 'WeMakeApp',
+        recipientName: 'Acquisitions Team',
+        email: 'acquisitions@wemakeapp.com',
+        routeType: 'dedicated_m_and_a',
+        thesis: 'Dedicated mobile application portfolio acquirer',
+        subject: 'WeMakeApp — mobile product/IP acquisition opportunity: TwinGenie',
+        bodyText: `Hi Team,
+
+I saw WeMakeApp specializes in acquiring and operating consumer mobile applications, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and reflection app I’m looking to sell as a complete software and IP asset.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch) with a working Next.js web platform and built Flutter iOS codebase. It features shared pgvector memory, 35-question onboarding, and four prompt-based perspectives over one context pipeline.
+
+Would you be open to reviewing it as a technology/product acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_woebot',
+        company: 'Woebot Health',
+        recipientName: 'Alison Darcy',
+        email: 'alison@woebothealth.com',
+        routeType: 'named_founder',
+        thesis: 'Conversational mental health and digital self-reflection pioneer',
+        subject: 'Alison — would Woebot review TwinGenie for technology/IP acquisition?',
+        bodyText: `Hi Alison,
+
+I follow Woebot’s pioneering work in conversational mental health and digital CBT, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app available for strategic acquisition.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch stage) with a working Next.js web application and built Flutter iOS codebase. It features longitudinal pgvector memory, 35-question Big Five onboarding, and four distinct conversational perspectives over one pipeline.
+
+Would you be open to reviewing TwinGenie as a product/technology acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_habitify',
+        company: 'Habitify',
+        recipientName: 'Peter Nguyen',
+        email: 'peter@habitify.me',
+        routeType: 'named_founder',
+        thesis: 'Self-improvement and habit tracking app studio',
+        subject: 'Peter — would Habitify review TwinGenie for product/IP acquisition?',
+        bodyText: `Hi Peter,
+
+I follow Habitify’s work in personal growth and habit building, so I wanted to reach out founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and guided reflection platform looking for an acquirer.
+
+Android is live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-revenue) with a functional Next.js web application and built Flutter iOS codebase. It features longitudinal pgvector memory, 35-question Big Five onboarding, and four prompt-based perspectives over one pipeline.
+
+Would you be open to reviewing it as a product and IP asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_withfeeling',
+        company: 'WithFeeling AI / Paradot',
+        recipientName: 'Acquisitions Team',
+        email: 'acquisitions@withfeeling.ai',
+        routeType: 'dedicated_m_and_a',
+        thesis: 'Personalized AI companion studio',
+        subject: 'WithFeeling AI — AI companion software/IP acquisition: TwinGenie',
+        bodyText: `Hi Team,
+
+I saw WithFeeling AI’s work building personalized AI companion experiences, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI digital twin and reflection app.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch stage) with a working Next.js web platform and a built Flutter iOS project. It features unified pgvector memory, 35-question Big Five onboarding, and four conversational perspectives over one context pipeline.
+
+Would you be open to reviewing TwinGenie as a product/technology asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_appspree',
+        company: 'Appspree',
+        recipientName: 'M&A Team',
+        email: 'acquisitions@appspree.co',
+        routeType: 'dedicated_m_and_a',
+        thesis: 'Mobile application portfolio consolidator',
+        subject: 'Appspree — mobile app software & IP acquisition: TwinGenie',
+        bodyText: `Hi Team,
+
+I saw Appspree evaluates and acquires mobile applications in consumer and lifestyle categories, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection product.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch stage) with a functional Next.js web product and a built Flutter iOS project. It features shared pgvector memory, 35-question onboarding, and four prompt-based perspectives over one pipeline.
+
+Would you be open to reviewing it as a product/technology acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_nalasoft',
+        company: 'Nalasoft Mobile Brands',
+        recipientName: 'Acquisitions Team',
+        email: 'acquisitions@nalasoft.com',
+        routeType: 'dedicated_m_and_a',
+        thesis: 'Consumer mobile app portfolio acquirer',
+        subject: 'Nalasoft — mobile software & IP acquisition opportunity: TwinGenie',
+        bodyText: `Hi Team,
+
+I saw Nalasoft acquires and operates consumer mobile app portfolios, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app.
+
+Android has been live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-revenue) alongside a working Next.js web platform and built Flutter iOS codebase. It features longitudinal pgvector memory, 35-question onboarding, and four prompt-based perspectives over one context pipeline.
+
+Would your team be open to reviewing TwinGenie as an early-stage product/IP asset acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
+    },
+    {
+        id: 'tgt_blueberryapps',
+        company: 'Blueberry Apps',
+        recipientName: 'Acquisitions Team',
+        email: 'acquisitions@blueberryapps.com',
+        routeType: 'dedicated_m_and_a',
+        thesis: 'Mobile software product acquirer',
+        subject: 'Blueberry Apps — mobile product & IP acquisition: TwinGenie',
+        bodyText: `Hi Team,
+
+I saw Blueberry Apps specializes in acquiring and operating mobile software products, so I’m reaching out through your acquisition route. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and reflection platform.
+
+Android is live on Google Play since Aug 24 (~40 organic downloads, $0 revenue, pre-launch stage) with a working Next.js web product and built Flutter iOS codebase. It features shared pgvector memory, 35-question personality baseline, and four prompt-based perspectives over one pipeline.
+
+Would you be open to reviewing it as a product/technology acquisition?
+
+Best,
+Ashwani
+Founder, TwinGenie`
     }
 ];
 
 class AcquisitionCampaignService {
     constructor() {
-        this.minIntervalMinutes = 75; // Minimum 75 minutes between outbound sends
-        this.dailyLimit = parseInt(process.env.CAMPAIGN_DAILY_MAX, 10) || 12;
+        this.minIntervalMinutes = 55; // Paced to deliver 12 to 15 emails per day
+        this.dailyLimit = parseInt(process.env.CAMPAIGN_DAILY_MAX, 10) || 15;
         this.senderEmail = process.env.RESEND_FROM_EMAIL || 'Ashwani <founder@twingenie.app>';
         this.replyTo = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app';
         this.state = this._loadState();
@@ -155,7 +455,36 @@ class AcquisitionCampaignService {
         try {
             if (fs.existsSync(STATE_FILE_PATH)) {
                 const raw = fs.readFileSync(STATE_FILE_PATH, 'utf8');
-                return JSON.parse(raw);
+                const state = JSON.parse(raw);
+                
+                // Auto-replenish: Ensure any SEED_TARGETS not yet queued or sent are enqueued
+                const existingIds = new Set([
+                    ...state.queue.map(q => q.id),
+                    ...(state.history || []).map(h => h.id)
+                ]);
+
+                let addedCount = 0;
+                for (const t of SEED_TARGETS) {
+                    if (!existingIds.has(t.id)) {
+                        state.queue.push({
+                            ...t,
+                            status: 'pending',
+                            attempts: 0,
+                            lastAttemptAt: null,
+                            resendId: null,
+                            error: null
+                        });
+                        existingIds.add(t.id);
+                        addedCount += 1;
+                    }
+                }
+
+                if (addedCount > 0) {
+                    logger.info(`[CAMPAIGN] Auto-enqueued ${addedCount} new verified M&A candidates into active queue.`);
+                    this._saveState(state);
+                }
+
+                return state;
             }
         } catch (e) {
             logger.warn('Could not read existing campaign state, initializing new state:', e.message);
