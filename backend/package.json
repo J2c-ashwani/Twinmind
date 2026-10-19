@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "postinstall": "pip3 install --break-system-packages Pillow edge-tts || pip install Pillow edge-tts || python3 -m pip install Pillow edge-tts || true",
     "test": "node --test test/**/*.test.js",
-    "upload-apk": "node scripts/upload_apk.js"
+    "upload-apk": "node scripts/upload_apk.js",
+    "cron": "node scripts/manage_cron.js"
   },
   "keywords": [],
   "author": "",
