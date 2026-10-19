@@ -93,16 +93,17 @@ class GrowthOrchestratorService {
         };
         this.state.campaigns.push(campaignRecord);
 
-        // Schedule times for today or tomorrow (IST slots: 09:00, 13:00, 16:00, 19:00)
-        // Convert to upcoming timestamps
+        // Convert target IST slots to UTC (UTC = IST - 5:30):
+        // LinkedIn: 10:00 AM IST -> 04:30 UTC
+        // Instagram: 01:30 PM IST -> 08:00 UTC
+        // Facebook: 04:00 PM IST -> 10:30 UTC
+        // YouTube: 07:00 PM IST -> 13:30 UTC
         const now = new Date();
-        const istOffsetHours = 5.5; // IST is UTC+5:30
-
         const slotTimes = {
-            linkedin: { hour: 9, minute: 0 },
-            instagram: { hour: 13, minute: 0 },
-            facebook: { hour: 16, minute: 0 },
-            youtube: { hour: 19, minute: 0 }
+            linkedin: { hour: 4, minute: 30 },
+            instagram: { hour: 8, minute: 0 },
+            facebook: { hour: 10, minute: 30 },
+            youtube: { hour: 13, minute: 30 }
         };
 
         for (const [platform, postSpec] of Object.entries(bundle.posts)) {
@@ -147,12 +148,24 @@ class GrowthOrchestratorService {
             }
 
             // Target scheduled timestamp
-            const slot = slotTimes[platform] || { hour: 12, minute: 0 };
+            const slot = slotTimes[platform] || { hour: 10, minute: 30 };
             const scheduledDate = new Date();
-            scheduledDate.setHours(slot.hour, slot.minute, 0, 0);
-            if (scheduledDate < now) {
-                // If time has passed today, schedule for tomorrow
-                scheduledDate.setDate(scheduledDate.getDate() + 1);
+            scheduledDate.setUTCHours(slot.hour, slot.minute, 0, 0);
+
+            // Check if platform has already had a published post in the last 18 hours
+            const recentPublished = this.state.posts.some(
+                p => p.platform === platform && 
+                     p.status === 'published' && 
+                     (now.getTime() - new Date(p.publishedAt).getTime()) < 18 * 60 * 60 * 1000
+            );
+
+            // If no post has been published today for this platform, schedule for immediate dispatch
+            if (!recentPublished) {
+                scheduledDate.setTime(now.getTime() - 1000); // Due now!
+                logger.info(`⚡ [GROWTH ORCHESTRATOR] No post published today for ${platform}. Queuing for immediate dispatch.`);
+            } else if (scheduledDate < now) {
+                // If today's slot has passed and post was already published today, schedule for tomorrow
+                scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
             }
 
             const postRecord = {

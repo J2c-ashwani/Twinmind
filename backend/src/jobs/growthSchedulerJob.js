@@ -39,7 +39,7 @@ export function initGrowthJobs() {
         }
     });
 
-    // 3. Boot check: generate initial starter campaign if queue is brand new
+    // 3. Boot check: generate starter campaign & immediately dispatch any due/unposted ready platforms
     setTimeout(async () => {
         try {
             const status = await growthOrchestratorService.getSystemStatus();
@@ -47,8 +47,12 @@ export function initGrowthJobs() {
                 logger.info('🚀 [GROWTH JOB] Seeding initial 4-platform campaign bundle on server boot...');
                 await growthOrchestratorService.generateAndQueueDailyCampaign();
             }
+
+            // Immediately check and process due posts on boot!
+            logger.info('🚀 [GROWTH JOB] Checking for due posts on server boot...');
+            await growthOrchestratorService.processScheduledPosts();
         } catch (e) {
-            logger.warn('[GROWTH JOB] Startup seed warning:', e.message);
+            logger.warn('[GROWTH JOB] Startup check warning:', e.message);
         }
     }, 15000); // 15 seconds after startup
 
