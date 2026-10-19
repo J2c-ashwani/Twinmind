@@ -540,9 +540,14 @@ def render_reel(spec, output_mp4_path):
         ]
     subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Ultra-Sharp Video Composition with FFmpeg
-    # Uses pure high-resolution x264 with stillimage tuning to preserve maximum high-frequency edge contrast.
-    # No bilinear zoompan interpolation that softens glyphs.
+    # High-Bitrate Video Composition with FFmpeg
+    # ROOT CAUSE: CRF mode AND one-pass ABR mode on static/still content both produce low bitrate
+    # (~700kbps-2Mbps) because x264 sees no inter-frame motion and refuses to spend bits.
+    # Facebook sees the low bitrate and serves at 360p instead of 1080p.
+    # FIX: Use true Constant Bitrate (CBR) mode with nal-hrd=cbr. This forces x264 to insert
+    # filler NAL units to pad the stream to exactly the target bitrate, even on static content.
+    # Set minrate = maxrate = b:v for true CBR behavior.
+    target_bitrate = '8M'
     cmd = [
         'ffmpeg', '-y',
         '-loop', '1', '-t', str(t1), '-i', s1,
@@ -557,12 +562,16 @@ def render_reel(spec, output_mp4_path):
         '-map', '[v]',
         '-map', '4:a',
         '-c:v', 'libx264',
-        '-preset', 'slow',
-        '-crf', '12',
-        '-tune', 'stillimage',
-        '-b:v', '8000k',
-        '-maxrate', '10000k',
-        '-bufsize', '16000k',
+        '-preset', 'medium',
+        '-profile:v', 'high',
+        '-level', '4.2',
+        '-b:v', target_bitrate,
+        '-minrate', target_bitrate,
+        '-maxrate', target_bitrate,
+        '-bufsize', '8M',
+        '-x264-params', 'nal-hrd=cbr:force-cfr=1',
+        '-g', '60',
+        '-keyint_min', '30',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
         '-b:a', '192k',
