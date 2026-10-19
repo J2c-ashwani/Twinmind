@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-TwinGenie Automated Reel Renderer (Ultra-Bold 4K-Supersampled Edition)
-Renders high-contrast, razor-sharp 1080x1920 vertical video Reels.
+TwinGenie Automated Reel Renderer (Ultra-HD Ken Burns Motion Edition)
+Renders high-contrast, razor-sharp 1080x1920 vertical video Reels for Facebook & Instagram.
 Features:
-- Bundled heavy-weight static typography (Arial Black 800+ and Arial Bold 700) for zero compression blur.
-- 2x Retina Supersampling (rendered at 2160x3840 4K, downscaled via Lanczos with 4:4:4 color).
-- Stillimage-tuned x264 encoding (CRF 12, GOP 60, zero bilinear interpolation blurring).
-- Neural voiceover narration per scene + ambient stereo synth soundtrack.
-- Safe zone compliance: avoids top notch/sound icon and bottom 640px Facebook overlay.
+- Safe zone compliance: Top header at y=115 (immune to punch-hole notches and top-left/right icons),
+  content ends by y=1400 (safe from bottom caption/profile overlay), right margin at x=910 (safe from action buttons).
+- Dynamic tag pill padding: Auto-expands pill width based on text width with 30px lateral padding to prevent border collisions.
+- Pure white typography (#FFFFFF) on all body, quotes, and bullet text to prevent H.264 4:2:0 chroma bleed/blur.
+- Continuous Ken Burns motion drift (zoompan) on all slides so Meta CVQE allocates full 1080p HD bitrate.
+- Neural voiceover narration per scene in simple, accessible conversational English + ducked stereo synth soundtrack.
+- Total video duration calibrated to ~34-36 seconds for comfortable readability.
 """
 
 import os
@@ -34,8 +36,8 @@ AMBER_ACCENT = (251, 191, 36)    # #FBBF24
 ROSE_ACCENT = (244, 63, 94)      # #F43F5E
 
 TEXT_WHITE = (255, 255, 255)
-TEXT_LIGHT = (245, 247, 250)     # High-contrast slate-white (prevents fade)
-TEXT_MUTED = (215, 222, 235)     # High-visibility slate (prevents fade)
+TEXT_LIGHT = (245, 247, 250)     # High-contrast slate-white
+TEXT_MUTED = (215, 222, 235)     # High-visibility slate
 TEXT_DIM = (165, 175, 195)       # Clean visible slate
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -119,7 +121,7 @@ def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.25
         cur_y += int((bbox[3] - bbox[1]) * line_spacing)
     return cur_y
 
-def draw_star(draw, cx, cy, r_outer=14, r_inner=6, fill=AMBER_ACCENT):
+def draw_star(draw, cx, cy, r_outer=13, r_inner=6, fill=AMBER_ACCENT):
     points = []
     for i in range(10):
         angle = i * math.pi / 5 - math.pi / 2
@@ -137,30 +139,32 @@ def create_base_canvas(w=1080, h=1920):
     img = Image.blend(img, glow, 0.70)
     draw = ImageDraw.Draw(img)
 
-    # Top Brand Header - Perfectly centered unified pill, completely immune to notch & corner overlays
+    # Top Brand Header - Centered at y=115, completely clear of phone notch and FB top icons
     brand_txt = "TWINGENIE"
     sub_txt = "•  PERSONAL AI"
     b_font = f_black(26)
     s_font = f_bold(24)
-    b_w = draw.textbbox((0, 0), brand_txt, font=b_font)[2]
-    s_w = draw.textbbox((0, 0), sub_txt, font=s_font)[2]
+    b_bbox = draw.textbbox((0, 0), brand_txt, font=b_font)
+    s_bbox = draw.textbbox((0, 0), sub_txt, font=s_font)
+    b_w = b_bbox[2] - b_bbox[0]
+    s_w = s_bbox[2] - s_bbox[0]
     dot_d = 16
     gap1 = 12
     gap2 = 14
     pad_h = 24
     pill_w = pad_h + dot_d + gap1 + b_w + gap2 + s_w + pad_h
-    pill_h = 56
+    pill_h = 52
     pill_x = int((w - pill_w) / 2)
-    pill_y = 80
+    pill_y = 115
 
-    draw.rounded_rectangle([pill_x, pill_y, pill_x + pill_w, pill_y + pill_h], radius=28, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
+    draw.rounded_rectangle([pill_x, pill_y, pill_x + pill_w, pill_y + pill_h], radius=26, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
     dot_y = pill_y + int((pill_h - dot_d) / 2)
     draw.ellipse([pill_x + pad_h, dot_y, pill_x + pad_h + dot_d, dot_y + dot_d], fill=PURPLE_GLOW)
-    draw.text((pill_x + pad_h + dot_d + gap1, pill_y + 11), brand_txt, font=b_font, fill=TEXT_WHITE)
-    draw.text((pill_x + pad_h + dot_d + gap1 + b_w + gap2, pill_y + 13), sub_txt, font=s_font, fill=CYAN_ACCENT)
+    draw.text((pill_x + pad_h + dot_d + gap1, pill_y + 10), brand_txt, font=b_font, fill=TEXT_WHITE)
+    draw.text((pill_x + pad_h + dot_d + gap1 + b_w + gap2, pill_y + 12), sub_txt, font=s_font, fill=CYAN_ACCENT)
     return img, draw
 
-# SCENE 1: HOOK (0s - ~4.5s)
+# SCENE 1: HOOK (The Flattery Trap)
 def render_scene1(spec, out_path):
     w, h = 1080, 1920
     img, draw = create_base_canvas(w, h)
@@ -168,147 +172,164 @@ def render_scene1(spec, out_path):
     tag = sanitize_text(spec.get('tag', 'COGNITIVE ARCHITECTURE')).upper()
     tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
     tag_w = tag_bbox[2] - tag_bbox[0]
-    pill_y = 180
-    draw.rounded_rectangle([90, pill_y, 90 + tag_w + 50, pill_y + 52], radius=26, fill=(45, 24, 90), outline=PURPLE_PRIMARY, width=2)
-    draw.text((115, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
+    pill_y = 185
+    pad_x = 30
+    pill_w = tag_w + pad_x * 2
+    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(45, 24, 90), outline=PURPLE_PRIMARY, width=2)
+    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
 
     hook_title = sanitize_text(spec.get('hook', 'What happens when your AI stops flattering you?'))
-    cur_y = draw_wrapped_text(draw, hook_title, f_black(66), TEXT_WHITE, 90, 265, 900, 1.18)
+    cur_y = draw_wrapped_text(draw, hook_title, f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
     
-    card_y = cur_y + 45
-    card_h = 310
-    draw.rounded_rectangle([90, card_y, w - 90, card_y + card_h], radius=28, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=2)
-    draw.rounded_rectangle([90, card_y + 25, 98, card_y + card_h - 25], radius=4, fill=PURPLE_GLOW)
-    draw.text((130, card_y + 36), "THE FLATTERY TRAP", font=f_black(32), fill=PURPLE_GLOW)
-    draw_wrapped_text(draw, "Conventional chatbots agree with your doubts, validate procrastination, and reset their memory every single session.", f_bold(33), TEXT_LIGHT, 130, card_y + 98, 820, 1.36)
+    c1_y = cur_y + 35
+    c1_h = 270
+    draw.rounded_rectangle([90, c1_y, 910, c1_y + c1_h], radius=28, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=2)
+    draw.rounded_rectangle([90, c1_y + 25, 98, c1_y + c1_h - 25], radius=4, fill=PURPLE_GLOW)
+    draw.text((130, c1_y + 36), "THE FLATTERY TRAP", font=f_black(30), fill=PURPLE_GLOW)
+    draw_wrapped_text(draw, "Conventional chatbots agree with your doubts, validate procrastination, and reset every single session.", f_bold(32), TEXT_WHITE, 130, c1_y + 98, 740, 1.35)
 
     takeaways = [
         "Why flattery AI creates dangerous confirmation loops",
         "How 4 cognitive perspectives challenge your blind spots",
-        "Why persistent vector memory turns chat into real growth"
+        "Why persistent memory turns chat into real growth"
     ]
-    ty = card_y + card_h + 45
-    draw.text((90, ty), "INSIDE THIS BREAKDOWN:", font=f_black(28), fill=TEXT_MUTED)
-    ty += 56
+    ty = c1_y + c1_h + 35
+    draw.text((90, ty), "INSIDE THIS BREAKDOWN:", font=f_black(26), fill=TEXT_MUTED)
+    ty += 48
     for i, t in enumerate(takeaways, 1):
-        box_h = 135
-        draw.rounded_rectangle([90, ty, w - 90, ty + box_h], radius=22, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
-        draw.rounded_rectangle([115, ty + 24, 195, ty + box_h - 24], radius=16, fill=(45, 30, 95))
-        draw.text((135, ty + 46), f"0{i}", font=f_black(30), fill=CYAN_ACCENT)
-        draw_wrapped_text(draw, t, f_bold(32), TEXT_LIGHT, 220, ty + 32, 735, 1.30)
-        ty += box_h + 22
+        box_h = 125
+        draw.rounded_rectangle([90, ty, 910, ty + box_h], radius=22, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
+        draw.rounded_rectangle([115, ty + 24, 185, ty + box_h - 24], radius=16, fill=(45, 30, 95))
+        draw.text((130, ty + 44), f"0{i}", font=f_black(30), fill=CYAN_ACCENT)
+        draw_wrapped_text(draw, t, f_bold(30), TEXT_WHITE, 210, ty + 30, 670, 1.28)
+        ty += box_h + 20
 
-    # Bottom anchor teaser (comfortably fills down to y=1525, safe from FB bottom overlay at 1560)
     anchor_y = ty + 15
-    draw.rounded_rectangle([90, anchor_y, w - 90, anchor_y + 120], radius=24, fill=(35, 20, 65), outline=PURPLE_PRIMARY, width=2)
+    draw.rounded_rectangle([90, anchor_y, 910, anchor_y + 130], radius=24, fill=(35, 20, 65), outline=PURPLE_PRIMARY, width=2)
     draw.text((130, anchor_y + 26), "EXPERIMENT IN ACTION", font=f_black(22), fill=AMBER_ACCENT)
-    draw.text((130, anchor_y + 64), "Watch what happens when AI replaces flattery with truth >>", font=f_bold(28), fill=TEXT_WHITE)
+    draw_wrapped_text(draw, "Watch what happens when AI replaces flattery with truth >>", f_bold(26), TEXT_WHITE, 130, anchor_y + 68, 740, 1.25)
 
     img.save(out_path, quality=98)
 
-# SCENE 2: CONVENTIONAL BOT (4.5s - ~9.5s)
+# SCENE 2: CONVENTIONAL BOT (The Yes-Man Trap)
 def render_scene2(spec, out_path):
     w, h = 1080, 1920
     img, draw = create_base_canvas(w, h)
 
-    pill_y = 180
-    draw.rounded_rectangle([90, pill_y, 500, pill_y + 52], radius=26, fill=(60, 25, 40), outline=ROSE_ACCENT, width=2)
-    draw.text((115, pill_y + 11), "STANDARD CHATBOT • THE TRAP", font=f_black(22), fill=ROSE_ACCENT)
+    tag = "STANDARD CHATBOT • THE TRAP"
+    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
+    tag_w = tag_bbox[2] - tag_bbox[0]
+    pill_y = 185
+    pad_x = 30
+    pill_w = tag_w + pad_x * 2
+    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(60, 25, 40), outline=ROSE_ACCENT, width=2)
+    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=ROSE_ACCENT)
 
-    title_y = draw_wrapped_text(draw, "The Yes-Man AI Trap", f_black(66), TEXT_WHITE, 90, 265, 900, 1.18)
-    sub_y = draw_wrapped_text(draw, "When you make an excuse, generic AI agrees with you:", f_bold(32), TEXT_LIGHT, 90, title_y + 20, 900, 1.25)
+    title_y = draw_wrapped_text(draw, "The Yes-Man AI Trap", f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
+    sub_y = draw_wrapped_text(draw, "When you make an excuse, generic AI agrees with you:", f_bold(30), TEXT_WHITE, 90, title_y + 18, 820, 1.25)
 
-    c1_y = sub_y + 45
-    draw.rounded_rectangle([90, c1_y, w - 90, c1_y + 540], radius=28, fill=SURFACE_DARK, outline=(140, 50, 75), width=2)
+    c1_y = sub_y + 35
+    c1_h = 520
+    draw.rounded_rectangle([90, c1_y, 910, c1_y + c1_h], radius=28, fill=SURFACE_DARK, outline=(140, 50, 75), width=2)
     
     # User Excuse Bubble
-    draw.text((130, c1_y + 34), "You (Feeling Overwhelmed & Avoidant):", font=f_black(26), fill=TEXT_MUTED)
-    draw.rounded_rectangle([130, c1_y + 80, w - 130, c1_y + 230], radius=20, fill=(35, 20, 42), outline=(90, 35, 55), width=2)
+    draw.text((130, c1_y + 32), "You (Feeling Avoidant & Overwhelmed):", font=f_black(24), fill=TEXT_MUTED)
+    draw.rounded_rectangle([130, c1_y + 75, 870, c1_y + 225], radius=20, fill=(35, 20, 42), outline=(90, 35, 55), width=2)
     user_txt = spec.get('userExcuse', "I'm overwhelmed with 10 tasks. Maybe I should just take the week off to reset.")
-    draw_wrapped_text(draw, f"\"{user_txt}\"", f_bold(32), TEXT_LIGHT, 160, c1_y + 110, 740, 1.30)
+    draw_wrapped_text(draw, f"\"{user_txt}\"", f_bold(30), TEXT_WHITE, 160, c1_y + 105, 670, 1.30)
 
     # Generic Bot Reply Bubble
-    draw.text((130, c1_y + 265), "Generic AI Chatbot (Flattery Mode):", font=f_black(26), fill=ROSE_ACCENT)
-    draw.rounded_rectangle([130, c1_y + 312, w - 130, c1_y + 480], radius=20, fill=(35, 20, 42), outline=(90, 35, 55), width=2)
+    draw.text((130, c1_y + 255), "Generic AI Chatbot (Flattery Mode):", font=f_black(24), fill=ROSE_ACCENT)
+    draw.rounded_rectangle([130, c1_y + 298, 870, c1_y + 468], radius=20, fill=(35, 20, 42), outline=(90, 35, 55), width=2)
     bot_txt = spec.get('botReply', "Totally understandable! Rest is productive. Don't push yourself today—you deserve a break!")
-    draw_wrapped_text(draw, f"\"{bot_txt}\"", f_bold(32), TEXT_LIGHT, 160, c1_y + 342, 740, 1.30)
+    draw_wrapped_text(draw, f"\"{bot_txt}\"", f_bold(30), TEXT_WHITE, 160, c1_y + 330, 670, 1.30)
 
     # Consequence Card
-    c2_y = c1_y + 580
-    c2_h = 240
-    draw.rounded_rectangle([90, c2_y, w - 90, c2_y + c2_h], radius=24, fill=(45, 18, 32), outline=ROSE_ACCENT, width=2)
-    draw.text((130, c2_y + 36), "[THE CONSEQUENCE]", font=f_black(28), fill=ROSE_ACCENT)
-    draw_wrapped_text(draw, "Your cognitive blind spot was reinforced. Avoidance disguised as self-care. Zero progress made.", f_bold(32), TEXT_LIGHT, 130, c2_y + 90, 820, 1.35)
+    c2_y = c1_y + c1_h + 30
+    c2_h = 220
+    draw.rounded_rectangle([90, c2_y, 910, c2_y + c2_h], radius=24, fill=(45, 18, 32), outline=ROSE_ACCENT, width=2)
+    draw.text((130, c2_y + 34), "[THE CONSEQUENCE]", font=f_black(26), fill=ROSE_ACCENT)
+    draw_wrapped_text(draw, "Your cognitive blind spot was reinforced. Avoidance disguised as self-care. Zero progress made.", f_bold(30), TEXT_WHITE, 130, c2_y + 88, 740, 1.35)
 
     # Bottom anchor card
-    anchor_y = c2_y + c2_h + 40
-    draw.rounded_rectangle([90, anchor_y, w - 90, anchor_y + 120], radius=22, fill=(30, 20, 50), outline=BORDER_PURPLE, width=2)
+    anchor_y = c2_y + c2_h + 30
+    anchor_h = 130
+    draw.rounded_rectangle([90, anchor_y, 910, anchor_y + anchor_h], radius=22, fill=(30, 20, 50), outline=BORDER_PURPLE, width=2)
     draw.text((130, anchor_y + 26), "COMING NEXT >>", font=f_black(22), fill=CYAN_ACCENT)
-    draw.text((130, anchor_y + 64), "What happens when an AI actually remembers your patterns?", font=f_bold(28), fill=TEXT_WHITE)
+    draw_wrapped_text(draw, "What happens when an AI actually remembers your patterns?", f_bold(26), TEXT_WHITE, 130, anchor_y + 68, 740, 1.25)
 
     img.save(out_path, quality=98)
 
-# SCENE 3: TWINGENIE HONEST PERSPECTIVE (9.5s - ~14.5s)
+# SCENE 3: TWINGENIE HONEST PERSPECTIVE
 def render_scene3(spec, out_path):
     w, h = 1080, 1920
     img, draw = create_base_canvas(w, h)
 
-    tag_txt = "TWINGENIE HONEST MODE"
-    tag_bbox = draw.textbbox((0, 0), tag_txt, font=f_black(22))
-    pill_w = tag_bbox[2] - tag_bbox[0] + 50
-    pill_y = 180
-    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 52], radius=26, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=2)
-    draw.text((115, pill_y + 11), tag_txt, font=f_black(22), fill=CYAN_ACCENT)
+    tag = "HONEST MODE • NO FLATTERY"
+    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
+    tag_w = tag_bbox[2] - tag_bbox[0]
+    pill_y = 185
+    pad_x = 30
+    pill_w = tag_w + pad_x * 2
+    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=2)
+    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
 
-    title_y = draw_wrapped_text(draw, "The Honest Perspective", f_black(66), TEXT_WHITE, 90, 265, 900, 1.18)
-    sub_y = draw_wrapped_text(draw, "What happens when your companion holds longitudinal memory:", f_bold(32), TEXT_LIGHT, 90, title_y + 20, 900, 1.25)
+    title_y = draw_wrapped_text(draw, "The Honest Perspective", f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
+    sub_y = draw_wrapped_text(draw, "What happens when your companion holds persistent memory:", f_bold(30), TEXT_WHITE, 90, title_y + 18, 820, 1.25)
 
-    c1_y = sub_y + 45
-    draw.rounded_rectangle([90, c1_y, w - 90, c1_y + 570], radius=28, fill=SURFACE_LIGHT, outline=BORDER_PURPLE, width=2)
-    draw.text((130, c1_y + 36), "TwinGenie (Honest Twin):", font=f_black(30), fill=PURPLE_GLOW)
+    c1_y = sub_y + 35
+    c1_h = 530
+    draw.rounded_rectangle([90, c1_y, 910, c1_y + c1_h], radius=28, fill=SURFACE_LIGHT, outline=BORDER_PURPLE, width=2)
+    draw.text((130, c1_y + 34), "TwinGenie (Honest Twin):", font=f_black(28), fill=PURPLE_GLOW)
     
-    draw.rounded_rectangle([130, c1_y + 90, 660, c1_y + 145], radius=14, fill=(45, 30, 95))
-    draw.text((150, c1_y + 105), "• RECALLED FROM VECTOR MEMORY (14 DAYS AGO)", font=f_black(20), fill=CYAN_ACCENT)
+    draw.rounded_rectangle([130, c1_y + 82, 670, c1_y + 132], radius=14, fill=(45, 30, 95))
+    draw.text((150, c1_y + 96), "• RECALLED FROM MEMORY (14 DAYS AGO)", font=f_black(19), fill=CYAN_ACCENT)
 
-    draw.rounded_rectangle([130, c1_y + 170, w - 130, c1_y + 520], radius=22, fill=(18, 14, 40), outline=CARD_BORDER, width=2)
+    draw.rounded_rectangle([130, c1_y + 155, 870, c1_y + 480], radius=22, fill=(18, 14, 40), outline=CARD_BORDER, width=2)
     twin_txt = spec.get('twinReply', "Memory check: You said this exact same thing 2 weeks ago before the investor call. You aren't burnt out—you're scared of market feedback. Close the 9 tabs and execute.")
-    draw_wrapped_text(draw, f"\"{twin_txt}\"", f_bold(33), TEXT_LIGHT, 160, c1_y + 205, 740, 1.38)
+    draw_wrapped_text(draw, f"\"{twin_txt}\"", f_bold(31), TEXT_WHITE, 160, c1_y + 190, 670, 1.38)
 
     # Growth result card
-    c2_y = c1_y + 610
-    c2_h = 220
-    draw.rounded_rectangle([90, c2_y, w - 90, c2_y + c2_h], radius=24, fill=(18, 42, 34), outline=EMERALD_ACCENT, width=2)
-    draw.text((130, c2_y + 34), "[THE GROWTH RESULT]", font=f_black(28), fill=EMERALD_ACCENT)
-    draw_wrapped_text(draw, "Exposes the avoidance loop and drives decisive immediate action.", f_bold(32), TEXT_LIGHT, 130, c2_y + 86, 820, 1.32)
+    c2_y = c1_y + c1_h + 30
+    c2_h = 210
+    draw.rounded_rectangle([90, c2_y, 910, c2_y + c2_h], radius=24, fill=(18, 42, 34), outline=EMERALD_ACCENT, width=2)
+    draw.text((130, c2_y + 32), "[THE GROWTH RESULT]", font=f_black(26), fill=EMERALD_ACCENT)
+    draw_wrapped_text(draw, "Exposes the avoidance loop and drives decisive immediate action.", f_bold(30), TEXT_WHITE, 130, c2_y + 82, 740, 1.32)
 
     # Bottom anchor
-    anchor_y = c2_y + c2_h + 40
-    draw.rounded_rectangle([90, anchor_y, w - 90, anchor_y + 120], radius=22, fill=(25, 22, 60), outline=BORDER_PURPLE, width=2)
+    anchor_y = c2_y + c2_h + 30
+    anchor_h = 130
+    draw.rounded_rectangle([90, anchor_y, 910, anchor_y + anchor_h], radius=22, fill=(25, 22, 60), outline=BORDER_PURPLE, width=2)
     draw.text((130, anchor_y + 26), "CORE ARCHITECTURE", font=f_black(22), fill=CYAN_ACCENT)
-    draw.text((130, anchor_y + 64), "Longitudinal Memory  •  4 Perspectives  •  Zero Flattery", font=f_bold(28), fill=TEXT_WHITE)
+    draw_wrapped_text(draw, "Longitudinal Memory  •  4 Perspectives  •  Zero Flattery", f_bold(26), TEXT_WHITE, 130, anchor_y + 68, 740, 1.25)
 
     img.save(out_path, quality=98)
 
-# SCENE 4: CTA (14.5s - ~20.0s)
+# SCENE 4: CTA (Meet Your Digital Twin)
 def render_scene4(spec, out_path):
     w, h = 1080, 1920
     img, draw = create_base_canvas(w, h)
 
-    pill_y = 180
-    draw.rounded_rectangle([90, pill_y, 470, pill_y + 52], radius=26, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=2)
-    draw.text((115, pill_y + 11), "AVAILABLE ON GOOGLE PLAY", font=f_black(22), fill=CYAN_ACCENT)
+    tag = "AVAILABLE ON GOOGLE PLAY"
+    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
+    tag_w = tag_bbox[2] - tag_bbox[0]
+    pill_y = 185
+    pad_x = 30
+    pill_w = tag_w + pad_x * 2
+    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=2)
+    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
 
-    title_y = draw_wrapped_text(draw, "Meet Your Digital Twin Today", f_black(66), TEXT_WHITE, 90, 265, 900, 1.18)
-    sub_y = draw_wrapped_text(draw, "Stop using AI that forgets you. Start building real self-awareness.", f_bold(32), TEXT_LIGHT, 90, title_y + 20, 900, 1.25)
+    title_y = draw_wrapped_text(draw, "Meet Your Digital Twin Today", f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
+    sub_y = draw_wrapped_text(draw, "Stop using AI that forgets you. Start building real self-awareness.", f_bold(30), TEXT_WHITE, 90, title_y + 18, 820, 1.25)
 
-    box_y = sub_y + 50
-    box_h = 600
-    draw.rounded_rectangle([90, box_y, w - 90, box_y + box_h], radius=32, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=3)
+    box_y = sub_y + 35
+    box_h = 560
+    draw.rounded_rectangle([90, box_y, 910, box_y + box_h], radius=32, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=3)
     
-    # Header inside card: TWINGENIE • PERSONAL DIGITAL TWIN
-    draw.text((135, box_y + 42), "TWINGENIE", font=f_black(40), fill=TEXT_WHITE)
-    tg_bbox = draw.textbbox((135, box_y + 42), "TWINGENIE", font=f_black(40))
-    draw.text((tg_bbox[2] + 20, box_y + 54), "• PERSONAL DIGITAL TWIN", font=f_bold(24), fill=CYAN_ACCENT)
+    # Header inside card
+    draw.text((135, box_y + 38), "TWINGENIE", font=f_black(38), fill=TEXT_WHITE)
+    tg_bbox = draw.textbbox((135, box_y + 38), "TWINGENIE", font=f_black(38))
+    draw.text((tg_bbox[2] + 20, box_y + 48), "• PERSONAL DIGITAL TWIN", font=f_bold(24), fill=CYAN_ACCENT)
 
     points = [
         "35-Question Big Five personality baseline",
@@ -316,48 +337,59 @@ def render_scene4(spec, out_path):
         "Persistent semantic memory across conversations",
         "100% private, self-guided reflection"
     ]
-    py = box_y + 125
+    py = box_y + 115
     for pt in points:
-        draw.ellipse([135, py + 4, 165, py + 34], fill=(45, 30, 95))
-        draw.line([(135 + 8, py + 4 + 15), (135 + 14, py + 4 + 22), (135 + 23, py + 4 + 8)], fill=EMERALD_ACCENT, width=4)
-        draw.text((185, py + 4), pt, font=f_bold(30), fill=TEXT_LIGHT)
-        py += 82
+        draw.ellipse([135, py + 2, 165, py + 32], fill=(45, 30, 95))
+        draw.line([(135 + 8, py + 2 + 15), (135 + 14, py + 2 + 22), (135 + 23, py + 2 + 8)], fill=EMERALD_ACCENT, width=4)
+        draw.text((185, py + 2), pt, font=f_bold(28), fill=TEXT_WHITE)
+        py += 76
 
-    # Rating strip inside card (Draw 5 authentic gold polygon stars)
-    star_strip_y = box_y + 490
-    draw.rounded_rectangle([135, star_strip_y, w - 135, star_strip_y + 75], radius=18, fill=(28, 22, 58), outline=CARD_BORDER, width=2)
+    # Rating strip inside card - perfectly centered with 5 gold stars
+    star_strip_y = box_y + 455
+    strip_x1, strip_x2 = 135, 865
+    strip_w = strip_x2 - strip_x1
+    draw.rounded_rectangle([strip_x1, star_strip_y, strip_x2, star_strip_y + 70], radius=18, fill=(28, 22, 58), outline=CARD_BORDER, width=2)
+    
+    r_font = f_bold(24)
+    r_text = "5.0 Rating • Google Play Store • Free"
+    t_bbox = draw.textbbox((0, 0), r_text, font=r_font)
+    t_w = t_bbox[2] - t_bbox[0]
+    stars_w = 5 * 26 + 4 * 8
+    gap_stars_text = 18
+    total_rating_content_w = stars_w + gap_stars_text + t_w
+    start_x = strip_x1 + int((strip_w - total_rating_content_w) / 2)
+
     for s_idx in range(5):
-        draw_star(draw, 175 + s_idx * 34, star_strip_y + 37, r_outer=13, r_inner=6, fill=AMBER_ACCENT)
-    rating_text = "5.0 Rating  •  Google Play Store  •  Free Download"
-    draw.text((360, star_strip_y + 24), rating_text, font=f_bold(26), fill=AMBER_ACCENT)
+        draw_star(draw, start_x + 13 + s_idx * 34, star_strip_y + 35, r_outer=12, r_inner=5.5, fill=AMBER_ACCENT)
+    draw.text((start_x + stars_w + gap_stars_text, star_strip_y + 21), r_text, font=r_font, fill=AMBER_ACCENT)
 
-    # CTA Button (Massive, centered, bold)
-    btn_y = box_y + box_h + 45
-    btn_h = 140
-    draw.rounded_rectangle([100, btn_y, w - 100, btn_y + btn_h], radius=32, fill=PURPLE_PRIMARY)
+    # CTA Button
+    btn_y = box_y + box_h + 35
+    btn_h = 135
+    draw.rounded_rectangle([90, btn_y, 910, btn_y + btn_h], radius=32, fill=PURPLE_PRIMARY)
     btn_label = "Download on Google Play"
-    b_bbox = draw.textbbox((0, 0), btn_label, font=f_black(40))
+    b_bbox = draw.textbbox((0, 0), btn_label, font=f_black(38))
     b_w = b_bbox[2] - b_bbox[0]
     total_cta_w = 38 + 25 + b_w
-    tri_x = int((w - total_cta_w) / 2)
-    draw.polygon([(tri_x, btn_y + 50), (tri_x + 38, btn_y + 70), (tri_x, btn_y + 90)], fill=TEXT_WHITE)
-    draw.text((tri_x + 65, btn_y + 46), btn_label, font=f_black(40), fill=TEXT_WHITE)
+    tri_x = int((1080 - total_cta_w) / 2)
+    draw.polygon([(tri_x, btn_y + 48), (tri_x + 36, btn_y + 68), (tri_x, btn_y + 88)], fill=TEXT_WHITE)
+    draw.text((tri_x + 60, btn_y + 46), btn_label, font=f_black(38), fill=TEXT_WHITE)
 
-    # Trust Badges Bar (Comfortably fills to y=1530)
-    trust_y = btn_y + btn_h + 35
+    # Trust Badges Bar
+    trust_y = btn_y + btn_h + 30
     draw.text((130, trust_y), "• 100% PRIVATE & ENCRYPTED", font=f_bold(24), fill=TEXT_MUTED)
-    draw.text((640, trust_y), "• INSTANT LOCAL BASELINE", font=f_bold(24), fill=CYAN_ACCENT)
+    draw.text((580, trust_y), "• INSTANT LOCAL BASELINE", font=f_bold(24), fill=CYAN_ACCENT)
 
-    bottom_txt = "twingenie.app  •  Search 'TwinGenie' on Google Play"
-    bm_bbox = draw.textbbox((0, 0), bottom_txt, font=f_bold(26))
+    bottom_txt = "twingenie.app  •  Search \"TwinGenie\" on Google Play"
+    bm_bbox = draw.textbbox((0, 0), bottom_txt, font=f_bold(25))
     bm_w = bm_bbox[2] - bm_bbox[0]
-    bm_x = int((w - bm_w) / 2)
-    draw.text((bm_x, trust_y + 44), bottom_txt, font=f_bold(26), fill=TEXT_MUTED)
+    bm_x = int((1080 - bm_w) / 2)
+    draw.text((bm_x, trust_y + 44), bottom_txt, font=f_bold(25), fill=TEXT_WHITE)
 
     img.save(out_path, quality=98)
 
 # SYNTHESIZE AMBIENT BACKGROUND MUSIC
-def generate_ambient_audio(output_path, duration=24.0):
+def generate_ambient_audio(output_path, duration=36.0):
     sr = 44100
     n = int(sr * duration)
     prog = [
@@ -448,7 +480,7 @@ def get_audio_duration(file_path):
             return float(res.stdout.decode('utf-8').strip())
         except Exception:
             pass
-    return 4.0
+    return 7.5
 
 def render_reel(spec, output_mp4_path):
     temp_dir = os.path.dirname(output_mp4_path)
@@ -464,11 +496,16 @@ def render_reel(spec, output_mp4_path):
     render_scene3(spec, s3)
     render_scene4(spec, s4)
 
-    # Narration scripts per scene
-    v1_text = sanitize_text(spec.get('voiceHook', spec.get('hook', 'What happens when your AI stops flattering you and tells the truth?')))
-    v2_text = sanitize_text(spec.get('voiceProblem', 'Standard chatbots validate your excuses, keeping you trapped in comfort and avoidance.'))
-    v3_text = sanitize_text(spec.get('voiceSolution', 'TwinGenie remembers your patterns. Its Honest Mode exposes avoidance to drive decisive execution.'))
-    v4_text = sanitize_text(spec.get('voiceCta', 'Stop using AI that forgets you. Download TwinGenie free on Google Play today.'))
+    # Accessible, conversational voiceover narration scripts (~18-20 words per slide for natural pacing)
+    v1_default = "Did you know your AI chatbot always flatters you? It agrees with your excuses, but that trap stops your real growth."
+    v2_default = "When you feel like quitting, a normal bot says: Great idea, take a break! It feels good, but delays your goals."
+    v3_default = "TwinGenie is different. It remembers your conversations over time and speaks honestly, so you can break excuses and take action."
+    v4_default = "Stop using chatbots that forget who you are. Meet your personal digital twin. Download TwinGenie free on Google Play today."
+
+    v1_text = sanitize_text(spec.get('voiceHook', v1_default))
+    v2_text = sanitize_text(spec.get('voiceProblem', v2_default))
+    v3_text = sanitize_text(spec.get('voiceSolution', v3_default))
+    v4_text = sanitize_text(spec.get('voiceCta', v4_default))
 
     v1_file = os.path.join(temp_dir, 'voice_s1.mp3')
     v2_file = os.path.join(temp_dir, 'voice_s2.mp3')
@@ -497,33 +534,33 @@ def render_reel(spec, output_mp4_path):
             sys.stderr.write(f"Fallback voice synthesis failed ({e2}). Continuing with ambient music.\n")
             has_voices = False
 
-    # Calculate scene timings dynamically based on narration duration
+    # Calculate scene timings dynamically based on narration duration to guarantee ~34-36s total duration
     if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
         d1 = get_audio_duration(v1_file)
         d2 = get_audio_duration(v2_file)
         d3 = get_audio_duration(v3_file)
         d4 = get_audio_duration(v4_file)
     else:
-        d1, d2, d3, d4 = 3.6, 3.6, 3.6, 4.0
+        d1, d2, d3, d4 = 7.8, 8.0, 8.0, 8.5
 
-    t1 = max(3.8, d1 + 0.4)
-    t2 = max(3.8, d2 + 0.4)
-    t3 = max(3.8, d3 + 0.4)
-    t4 = max(4.2, d4 + 0.6)
-    xfade = 0.5
+    t1 = max(8.5, d1 + 0.8)
+    t2 = max(8.5, d2 + 0.8)
+    t3 = max(8.5, d3 + 0.8)
+    t4 = max(9.0, d4 + 1.0)
+    xfade = 0.6
 
     offset1 = t1 - xfade
     offset2 = offset1 + t2 - xfade
     offset3 = offset2 + t3 - xfade
     total_dur = offset3 + t4
 
-    # Compile Voiceover Stream
+    # Compile Voiceover Stream with precise scene offsets
     voice_track = os.path.join(temp_dir, 'voiceover_track.m4a')
     if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
         delay1 = int(250)
-        delay2 = int((offset1 + 0.1) * 1000)
-        delay3 = int((offset2 + 0.1) * 1000)
-        delay4 = int((offset3 + 0.1) * 1000)
+        delay2 = int((offset1 + 0.20) * 1000)
+        delay3 = int((offset2 + 0.20) * 1000)
+        delay4 = int((offset3 + 0.20) * 1000)
 
         v_cmd = [
             'ffmpeg', '-y',
@@ -550,10 +587,10 @@ def render_reel(spec, output_mp4_path):
     if os.path.exists(DEFAULT_BG_MUSIC):
         bg_source = DEFAULT_BG_MUSIC
     else:
-        generate_ambient_audio(bg_music_file, duration=total_dur + 2.0)
+        generate_ambient_audio(bg_music_file, duration=total_dur + 3.0)
         bg_source = bg_music_file
 
-    # Mix Final Audio: Voiceover (1.2) + Ambient Ducked Music (0.10) with Broadcast Loudness Normalization (-14 LUFS)
+    # Mix Final Audio: Voiceover (1.20) + Ambient Ducked Music (0.10) with Broadcast Loudness Normalization (-14 LUFS)
     final_audio = os.path.join(temp_dir, 'final_soundtrack.m4a')
     if voice_track and os.path.exists(voice_track):
         mix_cmd = [
@@ -561,7 +598,7 @@ def render_reel(spec, output_mp4_path):
             '-i', voice_track,
             '-i', bg_source,
             '-filter_complex',
-            f'[0:a]aformat=channel_layouts=stereo,volume=1.2[voice];'
+            f'[0:a]aformat=channel_layouts=stereo,volume=1.20[voice];'
             f'[1:a]aformat=channel_layouts=stereo,volume=0.10,aloop=loop=-1:size=2e+09,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
             '[voice][bg]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mixed];'
             '[mixed]loudnorm=I=-14:TP=-1.5:LRA=11[aout]',
@@ -582,14 +619,24 @@ def render_reel(spec, output_mp4_path):
         ]
     subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # High-Bitrate Video Composition with FFmpeg
-    # ROOT CAUSE: CRF mode AND one-pass ABR mode on static/still content both produce low bitrate
-    # (~700kbps-2Mbps) because x264 sees no inter-frame motion and refuses to spend bits.
-    # Facebook sees the low bitrate and serves at 360p instead of 1080p.
-    # FIX: Use true Constant Bitrate (CBR) mode with nal-hrd=cbr. This forces x264 to insert
-    # filler NAL units to pad the stream to exactly the target bitrate, even on static content.
-    # Set minrate = maxrate = b:v for true CBR behavior.
-    target_bitrate = '8M'
+    # Continuous Ken Burns Motion Video Composition
+    # Applying subtle zoompan drift across each scene guarantees continuous pixel motion vectors
+    # across every frame, which prevents Meta's CVQE compression algorithm from downscaling to 720p/244kbps.
+    n1 = int(t1 * 30)
+    n2 = int(t2 * 30)
+    n3 = int(t3 * 30)
+    n4 = int(t4 * 30)
+
+    filter_complex = (
+        f"[0:v]zoompan=z='min(zoom+0.00025,1.06)':d={n1}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z0];"
+        f"[1:v]zoompan=z='min(zoom+0.00025,1.06)':d={n2}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z1];"
+        f"[2:v]zoompan=z='min(zoom+0.00025,1.06)':d={n3}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z2];"
+        f"[3:v]zoompan=z='min(zoom+0.00025,1.06)':d={n4}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z3];"
+        f"[z0][z1]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];"
+        f"[v01][z2]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];"
+        f"[v02][z3]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]"
+    )
+
     cmd = [
         'ffmpeg', '-y',
         '-loop', '1', '-t', str(t1), '-i', s1,
@@ -597,29 +644,30 @@ def render_reel(spec, output_mp4_path):
         '-loop', '1', '-t', str(t3), '-i', s3,
         '-loop', '1', '-t', str(t4), '-i', s4,
         '-i', final_audio,
-        '-filter_complex',
-        f'[0:v][1:v]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];'
-        f'[v01][2:v]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];'
-        f'[v02][3:v]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]',
+        '-filter_complex', filter_complex,
         '-map', '[v]',
         '-map', '4:a',
         '-c:v', 'libx264',
-        '-preset', 'medium',
+        '-preset', 'fast',
         '-profile:v', 'high',
         '-level', '4.2',
-        '-b:v', target_bitrate,
-        '-minrate', target_bitrate,
-        '-maxrate', target_bitrate,
-        '-bufsize', '8M',
-        '-x264-params', 'nal-hrd=cbr:force-cfr=1',
+        '-color_primaries', 'bt709',
+        '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        '-color_range', 'tv',
         '-g', '60',
-        '-keyint_min', '30',
+        '-keyint_min', '60',
+        '-sc_threshold', '0',
+        '-b:v', '6M',
+        '-maxrate', '8M',
+        '-bufsize', '10M',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
         '-b:a', '192k',
         '-ar', '44100',
         '-ac', '2',
         '-r', '30',
+        '-t', str(total_dur),
         '-movflags', '+faststart',
         output_mp4_path
     ]
