@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "postinstall": "pip3 install --break-system-packages Pillow || pip install Pillow || python3 -m pip install Pillow || true",
+    "postinstall": "pip3 install --break-system-packages Pillow edge-tts || pip install Pillow edge-tts || python3 -m pip install Pillow edge-tts || true",
     "test": "node --test test/**/*.test.js",
     "upload-apk": "node scripts/upload_apk.js"
   },
