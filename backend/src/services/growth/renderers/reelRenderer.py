@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-TwinGenie Automated Reel / Short Video Renderer
-Renders high-converting 1080x1920 (9:16 vertical) motion video Reels for Facebook, Instagram & YouTube.
-Includes:
-- Neural voiceover narration per scene (Edge TTS with graceful local fallbacks)
-- Ambient stereo lo-fi/synth background music mixed underneath voice
-- Safe zone compliance: avoids top notch/sound icon and bottom 540px Facebook overlay
-- High-definition typography and high-bitrate H.264 / AAC encoding (no compression blur)
+TwinGenie Automated Reel / Short Video Renderer (Ultra-HD 1080p Edition)
+Renders razor-sharp 1080x1920 motion video Reels for Facebook, Instagram & YouTube.
+Features:
+- Bundled Inter font for crisp, modern digital UI typography across all platforms (macOS/Linux/Render).
+- 2x Retina Supersampling (rendered at 2160x3840 4K, downscaled via Lanczos with 4:4:4 color fidelity).
+- Dynamic micro-motion zoom/pan to eliminate x264 macroblock skips and prevent Facebook 360p downscaling.
+- Enforces studio broadcast bitrate (CRF 14, 8 Mbps bitrate, 2-sec keyframe GOP) for guaranteed 1080p mobile playback.
+- Neural voiceover narration per scene + ambient stereo synth soundtrack.
+- Safe zone compliance: avoids top notch/sound icon and bottom 640px Facebook overlay.
 """
 
 import os
@@ -19,25 +21,27 @@ import math
 import struct
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-BG_COLOR = (12, 9, 28)           # Deep Obsidian #0C091C
-SURFACE_DARK = (21, 16, 46)      # Surface #15102E
-SURFACE_LIGHT = (32, 25, 68)     # Card Highlight #201944
-CARD_BORDER = (56, 44, 106)      # Border #382C6A
-BORDER_PURPLE = (126, 58, 242)   # Purple Glow Border
+BG_COLOR = (10, 8, 24)           # Deep Obsidian #0A0818
+SURFACE_DARK = (20, 15, 44)      # Surface #140F2C
+SURFACE_LIGHT = (34, 26, 72)     # Card Highlight #221A48
+CARD_BORDER = (68, 54, 128)      # High-contrast Border #443680
+BORDER_PURPLE = (147, 51, 234)   # Vibrant Purple Glow Border #9333EA
 
 PURPLE_PRIMARY = (147, 51, 234)  # #9333EA
-PURPLE_GLOW = (168, 85, 247)     # #A855F7
+PURPLE_GLOW = (192, 132, 252)    # #C084FC
 CYAN_ACCENT = (56, 189, 248)     # #38BDF8
 EMERALD_ACCENT = (52, 211, 153)  # #34D399
 AMBER_ACCENT = (251, 191, 36)    # #FBBF24
 ROSE_ACCENT = (244, 63, 94)      # #F43F5E
 
 TEXT_WHITE = (255, 255, 255)
-TEXT_MUTED = (195, 200, 225)
-TEXT_DIM = (135, 140, 165)
+TEXT_LIGHT = (241, 245, 249)     # High-contrast off-white #F1F5F9
+TEXT_MUTED = (203, 213, 225)     # Slate 300 #CBD5E1
+TEXT_DIM = (148, 163, 184)       # Slate 400 #94A3B8
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_BG_MUSIC = os.path.join(SCRIPT_DIR, '../assets/audio/bg_ambient.m4a')
+BUNDLED_FONT = os.path.join(SCRIPT_DIR, '../assets/fonts/Inter-Variable.ttf')
 
 def sanitize_text(text):
     if not isinstance(text, str):
@@ -63,6 +67,14 @@ def sanitize_text(text):
     return ' '.join(cleaned.split())
 
 def get_font(size, bold=False):
+    # Scale font size by 2x for supersampled canvas
+    scaled_size = int(size * 2)
+    if os.path.exists(BUNDLED_FONT):
+        try:
+            return ImageFont.truetype(BUNDLED_FONT, scaled_size)
+        except Exception:
+            pass
+
     font_paths = [
         '/System/Library/Fonts/Supplemental/Arial Bold.ttf' if bold else '/System/Library/Fonts/Supplemental/Arial.ttf',
         '/System/Library/Fonts/Helvetica.ttc',
@@ -73,12 +85,12 @@ def get_font(size, bold=False):
     for p in font_paths:
         if os.path.exists(p):
             try:
-                return ImageFont.truetype(p, size)
+                return ImageFont.truetype(p, scaled_size)
             except Exception:
                 pass
     return ImageFont.load_default()
 
-def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.25):
+def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.28):
     text = sanitize_text(text)
     lines = []
     words = text.split()
@@ -101,140 +113,144 @@ def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.25
         cur_y += int((bbox[3] - bbox[1]) * line_spacing)
     return cur_y
 
-def create_base_canvas(w=1080, h=1920):
+def create_base_canvas(w=2160, h=3840):
     img = Image.new('RGB', (w, h), BG_COLOR)
     glow = Image.new('RGB', (w, h), (0, 0, 0))
     glow_draw = ImageDraw.Draw(glow)
-    glow_draw.ellipse([-200, -200, 1300, 850], fill=(85, 28, 140))
-    glow_draw.ellipse([300, 1200, 1400, 2100], fill=(25, 60, 130))
-    glow = glow.filter(ImageFilter.GaussianBlur(180))
+    glow_draw.ellipse([-400, -400, 2600, 1700], fill=(85, 28, 140))
+    glow_draw.ellipse([600, 2400, 2800, 4200], fill=(25, 60, 130))
+    glow = glow.filter(ImageFilter.GaussianBlur(360))
     img = Image.blend(img, glow, 0.70)
     draw = ImageDraw.Draw(img)
 
-    # Top Brand Header - Positioned at y=200 to stay well clear of Facebook status bar & sound icon
-    draw.rounded_rectangle([90, 200, 320, 256], radius=16, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=1)
-    draw.ellipse([110, 220, 126, 236], fill=PURPLE_GLOW)
-    draw.text((142, 213), "TWINGENIE", font=get_font(28, bold=True), fill=TEXT_WHITE)
-    draw.text((340, 216), "•  PERSONAL AI", font=get_font(26, bold=False), fill=TEXT_MUTED)
+    # Top Brand Header - Positioned at y=200 (400px at 2x) to stay clear of status bar & sound icon
+    draw.rounded_rectangle([180, 400, 660, 516], radius=32, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
+    draw.ellipse([220, 440, 252, 472], fill=PURPLE_GLOW)
+    draw.text((284, 426), "TWINGENIE", font=get_font(28, bold=True), fill=TEXT_WHITE)
+    draw.text((700, 432), "•  PERSONAL AI", font=get_font(26, bold=False), fill=TEXT_LIGHT)
     return img, draw
+
+def finalize_and_save(img, out_path):
+    # Downscale from 2160x3840 to 1080x1920 using high-precision Lanczos resampling
+    downscaled = img.resize((1080, 1920), Image.Resampling.LANCZOS)
+    # Save with maximum quality and no chroma subsampling (4:4:4)
+    downscaled.save(out_path, quality=100, subsampling=0)
 
 # SCENE 1: HOOK (0s - ~4.5s)
 def render_scene1(spec, out_path):
-    w, h = 1080, 1920
+    w, h = 2160, 3840
     img, draw = create_base_canvas(w, h)
     
     tag = sanitize_text(spec.get('tag', 'COGNITIVE ARCHITECTURE')).upper()
-    pill_y = 280
-    draw.rounded_rectangle([90, pill_y, 470, pill_y + 52], radius=26, fill=(45, 24, 90), outline=PURPLE_PRIMARY, width=2)
-    draw.text((115, pill_y + 11), tag, font=get_font(24, bold=True), fill=CYAN_ACCENT)
+    pill_y = 560
+    draw.rounded_rectangle([180, pill_y, 960, pill_y + 104], radius=52, fill=(45, 24, 90), outline=PURPLE_PRIMARY, width=4)
+    draw.text((230, pill_y + 22), tag, font=get_font(24, bold=True), fill=CYAN_ACCENT)
 
     hook_title = sanitize_text(spec.get('hook', 'What happens when your AI stops flattering you?'))
-    cur_y = draw_wrapped_text(draw, hook_title, get_font(64, bold=True), TEXT_WHITE, 90, 360, 900, 1.15)
+    cur_y = draw_wrapped_text(draw, hook_title, get_font(68, bold=True), TEXT_WHITE, 180, 720, 1800, 1.15)
     
-    card_y = cur_y + 40
-    card_h = 240
-    draw.rounded_rectangle([90, card_y, w - 90, card_y + card_h], radius=28, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=2)
-    draw.text((130, card_y + 35), "THE FLATTERY TRAP", font=get_font(28, bold=True), fill=PURPLE_GLOW)
-    draw_wrapped_text(draw, "Conventional chatbots agree with your doubts, validate procrastination, and reset every session.", get_font(34, bold=False), TEXT_MUTED, 130, card_y + 85, 820, 1.30)
+    card_y = cur_y + 80
+    card_h = 520
+    draw.rounded_rectangle([180, card_y, w - 180, card_y + card_h], radius=56, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=4)
+    draw.text((260, card_y + 70), "THE FLATTERY TRAP", font=get_font(32, bold=True), fill=PURPLE_GLOW)
+    draw_wrapped_text(draw, "Conventional chatbots agree with your doubts, validate procrastination, and reset every session.", get_font(38, bold=False), TEXT_LIGHT, 260, card_y + 170, 1640, 1.35)
 
     takeaways = [
         "Why flattery AI creates dangerous confirmation loops",
         "How 4 cognitive perspectives challenge your blind spots",
         "Why persistent vector memory turns chat into real growth"
     ]
-    ty = card_y + card_h + 40
-    draw.text((90, ty), "INSIDE THIS BREAKDOWN:", font=get_font(26, bold=True), fill=TEXT_DIM)
-    ty += 45
+    ty = card_y + card_h + 80
+    draw.text((180, ty), "INSIDE THIS BREAKDOWN:", font=get_font(28, bold=True), fill=TEXT_DIM)
+    ty += 90
     for i, t in enumerate(takeaways, 1):
-        box_h = 105
-        draw.rounded_rectangle([90, ty, w - 90, ty + box_h], radius=20, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=1)
-        draw.rounded_rectangle([110, ty + 20, 175, ty + box_h - 20], radius=14, fill=(45, 30, 95))
-        draw.text((126, ty + 35), f"0{i}", font=get_font(26, bold=True), fill=CYAN_ACCENT)
-        draw_wrapped_text(draw, t, get_font(29, bold=False), TEXT_WHITE, 195, ty + 28, 760, 1.25)
-        ty += box_h + 16
+        box_h = 210
+        draw.rounded_rectangle([180, ty, w - 180, ty + box_h], radius=40, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
+        draw.rounded_rectangle([220, ty + 40, 350, ty + box_h - 40], radius=28, fill=(45, 30, 95))
+        draw.text((252, ty + 70), f"0{i}", font=get_font(30, bold=True), fill=CYAN_ACCENT)
+        draw_wrapped_text(draw, t, get_font(34, bold=True), TEXT_WHITE, 390, ty + 58, 1520, 1.25)
+        ty += box_h + 32
 
-    # Bottom safe zone verified: ty ends around 1250px, leaving >650px clean for Facebook UI
-    img.save(out_path, quality=95)
+    # Ends at ~2500px in 2x (1250px at 1080p), leaving >670px clean buffer
+    finalize_and_save(img, out_path)
 
 # SCENE 2: CONVENTIONAL BOT (4.5s - ~9.5s)
 def render_scene2(spec, out_path):
-    w, h = 1080, 1920
+    w, h = 2160, 3840
     img, draw = create_base_canvas(w, h)
 
-    pill_y = 280
-    draw.rounded_rectangle([90, pill_y, 440, pill_y + 52], radius=26, fill=(60, 25, 40), outline=ROSE_ACCENT, width=2)
-    draw.text((115, pill_y + 11), "STANDARD CHATBOT", font=get_font(24, bold=True), fill=ROSE_ACCENT)
+    pill_y = 560
+    draw.rounded_rectangle([180, pill_y, 900, pill_y + 104], radius=52, fill=(60, 25, 40), outline=ROSE_ACCENT, width=4)
+    draw.text((230, pill_y + 22), "STANDARD CHATBOT", font=get_font(24, bold=True), fill=ROSE_ACCENT)
 
-    title_y = draw_wrapped_text(draw, "The Yes-Man AI Trap", get_font(64, bold=True), TEXT_WHITE, 90, 360, 900, 1.15)
-    sub_y = draw_wrapped_text(draw, "When you make an excuse, generic AI agrees with you:", get_font(34, bold=False), TEXT_MUTED, 90, title_y + 16, 900, 1.25)
+    title_y = draw_wrapped_text(draw, "The Yes-Man AI Trap", get_font(68, bold=True), TEXT_WHITE, 180, 720, 1800, 1.15)
+    sub_y = draw_wrapped_text(draw, "When you make an excuse, generic AI agrees with you:", get_font(36, bold=False), TEXT_LIGHT, 180, title_y + 32, 1800, 1.25)
 
-    c1_y = sub_y + 35
-    draw.rounded_rectangle([90, c1_y, w - 90, c1_y + 440], radius=28, fill=SURFACE_DARK, outline=(95, 40, 60), width=2)
-    draw.text((130, c1_y + 35), "You (Feeling Avoidant):", font=get_font(28, bold=True), fill=TEXT_MUTED)
-    draw.rounded_rectangle([130, c1_y + 80, w - 130, c1_y + 190], radius=18, fill=(35, 20, 42))
+    c1_y = sub_y + 70
+    draw.rounded_rectangle([180, c1_y, w - 180, c1_y + 920], radius=56, fill=SURFACE_DARK, outline=(120, 48, 75), width=4)
+    draw.text((260, c1_y + 70), "You (Feeling Avoidant):", font=get_font(32, bold=True), fill=TEXT_MUTED)
+    draw.rounded_rectangle([260, c1_y + 160, w - 260, c1_y + 400], radius=36, fill=(35, 20, 42))
     user_txt = spec.get('userExcuse', "I'm overwhelmed with 10 tasks. Maybe I should just take the week off to reset.")
-    draw_wrapped_text(draw, f"\"{user_txt}\"", get_font(30, bold=False), TEXT_WHITE, 155, c1_y + 102, 750, 1.25)
+    draw_wrapped_text(draw, f"\"{user_txt}\"", get_font(36, bold=False), TEXT_WHITE, 310, c1_y + 205, 1500, 1.30)
 
-    draw.text((130, c1_y + 220), "Generic AI Chatbot:", font=get_font(28, bold=True), fill=ROSE_ACCENT)
-    draw.rounded_rectangle([130, c1_y + 265, w - 130, c1_y + 375], radius=18, fill=(35, 20, 42))
+    draw.text((260, c1_y + 460), "Generic AI Chatbot:", font=get_font(32, bold=True), fill=ROSE_ACCENT)
+    draw.rounded_rectangle([260, c1_y + 550, w - 260, c1_y + 790], radius=36, fill=(35, 20, 42))
     bot_txt = spec.get('botReply', "Totally understandable! Rest is productive. Don't push yourself today.")
-    draw_wrapped_text(draw, f"\"{bot_txt}\"", get_font(30, bold=False), TEXT_WHITE, 155, c1_y + 288, 750, 1.25)
+    draw_wrapped_text(draw, f"\"{bot_txt}\"", get_font(36, bold=False), TEXT_WHITE, 310, c1_y + 595, 1500, 1.30)
 
-    c2_y = c1_y + 475
-    draw.rounded_rectangle([90, c2_y, w - 90, c2_y + 190], radius=24, fill=(40, 20, 32), outline=ROSE_ACCENT, width=2)
-    draw.text((130, c2_y + 30), "THE CONSEQUENCE:", font=get_font(26, bold=True), fill=ROSE_ACCENT)
-    draw_wrapped_text(draw, "Your cognitive blind spot was reinforced. Avoidance disguised as self-care.", get_font(31, bold=False), TEXT_MUTED, 130, c2_y + 75, 820, 1.30)
+    c2_y = c1_y + 990
+    draw.rounded_rectangle([180, c2_y, w - 180, c2_y + 400], radius=48, fill=(40, 20, 32), outline=ROSE_ACCENT, width=4)
+    draw.text((260, c2_y + 60), "THE CONSEQUENCE:", font=get_font(30, bold=True), fill=ROSE_ACCENT)
+    draw_wrapped_text(draw, "Your cognitive blind spot was reinforced. Avoidance disguised as self-care.", get_font(36, bold=True), TEXT_LIGHT, 260, c2_y + 150, 1640, 1.35)
 
-    # Ends at ~1250px
-    img.save(out_path, quality=95)
+    finalize_and_save(img, out_path)
 
 # SCENE 3: TWINGENIE HONEST PERSPECTIVE (9.5s - ~14.5s)
 def render_scene3(spec, out_path):
-    w, h = 1080, 1920
+    w, h = 2160, 3840
     img, draw = create_base_canvas(w, h)
 
-    pill_y = 280
-    draw.rounded_rectangle([90, pill_y, 470, pill_y + 52], radius=26, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=2)
-    draw.text((115, pill_y + 11), "TWINGENIE HONEST MODE", font=get_font(24, bold=True), fill=CYAN_ACCENT)
+    pill_y = 560
+    draw.rounded_rectangle([180, pill_y, 960, pill_y + 104], radius=52, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=4)
+    draw.text((230, pill_y + 22), "TWINGENIE HONEST MODE", font=get_font(24, bold=True), fill=CYAN_ACCENT)
 
-    title_y = draw_wrapped_text(draw, "The Honest Perspective", get_font(64, bold=True), TEXT_WHITE, 90, 360, 900, 1.15)
-    sub_y = draw_wrapped_text(draw, "What happens when your companion holds longitudinal memory:", get_font(34, bold=False), TEXT_MUTED, 90, title_y + 16, 900, 1.25)
+    title_y = draw_wrapped_text(draw, "The Honest Perspective", get_font(68, bold=True), TEXT_WHITE, 180, 720, 1800, 1.15)
+    sub_y = draw_wrapped_text(draw, "What happens when your companion holds longitudinal memory:", get_font(36, bold=False), TEXT_LIGHT, 180, title_y + 32, 1800, 1.25)
 
-    c1_y = sub_y + 35
-    draw.rounded_rectangle([90, c1_y, w - 90, c1_y + 500], radius=28, fill=SURFACE_LIGHT, outline=BORDER_PURPLE, width=2)
-    draw.text((130, c1_y + 35), "TwinGenie (Honest Twin):", font=get_font(30, bold=True), fill=PURPLE_GLOW)
+    c1_y = sub_y + 70
+    draw.rounded_rectangle([180, c1_y, w - 180, c1_y + 1060], radius=56, fill=SURFACE_LIGHT, outline=BORDER_PURPLE, width=4)
+    draw.text((260, c1_y + 70), "TwinGenie (Honest Twin):", font=get_font(34, bold=True), fill=PURPLE_GLOW)
     
-    draw.rounded_rectangle([130, c1_y + 85, 540, c1_y + 130], radius=12, fill=(45, 30, 95))
-    draw.text((150, c1_y + 97), "• RECALLED: MEMORY FROM 14 DAYS AGO", font=get_font(20, bold=True), fill=CYAN_ACCENT)
+    draw.rounded_rectangle([260, c1_y + 170, 1100, c1_y + 260], radius=24, fill=(45, 30, 95))
+    draw.text((300, c1_y + 195), "• RECALLED: MEMORY FROM 14 DAYS AGO", font=get_font(24, bold=True), fill=CYAN_ACCENT)
 
-    draw.rounded_rectangle([130, c1_y + 150, w - 130, c1_y + 440], radius=20, fill=(18, 14, 40), outline=CARD_BORDER, width=1)
+    draw.rounded_rectangle([260, c1_y + 300, w - 260, c1_y + 920], radius=40, fill=(18, 14, 40), outline=CARD_BORDER, width=2)
     twin_txt = spec.get('twinReply', "Memory check: You said this exact same thing 2 weeks ago before the investor call. You aren't burnt out—you're scared of market feedback. Close the 9 tabs and execute.")
-    draw_wrapped_text(draw, f"\"{twin_txt}\"", get_font(31, bold=False), TEXT_WHITE, 155, c1_y + 175, 750, 1.35)
+    draw_wrapped_text(draw, f"\"{twin_txt}\"", get_font(36, bold=True), TEXT_WHITE, 310, c1_y + 350, 1500, 1.35)
 
-    c2_y = c1_y + 535
-    draw.rounded_rectangle([90, c2_y, w - 90, c2_y + 160], radius=24, fill=(20, 38, 32), outline=EMERALD_ACCENT, width=2)
-    draw.text((130, c2_y + 28), "GROWTH RESULT:", font=get_font(26, bold=True), fill=EMERALD_ACCENT)
-    draw_wrapped_text(draw, "Exposes the avoidance loop and drives immediate decisive execution.", get_font(30, bold=False), TEXT_MUTED, 130, c2_y + 70, 820, 1.25)
+    c2_y = c1_y + 1130
+    draw.rounded_rectangle([180, c2_y, w - 180, c2_y + 340], radius=48, fill=(20, 38, 32), outline=EMERALD_ACCENT, width=4)
+    draw.text((260, c2_y + 60), "GROWTH RESULT:", font=get_font(30, bold=True), fill=EMERALD_ACCENT)
+    draw_wrapped_text(draw, "Exposes the avoidance loop and drives decisive immediate action.", get_font(36, bold=True), TEXT_LIGHT, 260, c2_y + 150, 1640, 1.30)
 
-    # Ends at ~1280px
-    img.save(out_path, quality=95)
+    finalize_and_save(img, out_path)
 
 # SCENE 4: CTA (14.5s - ~20.0s)
 def render_scene4(spec, out_path):
-    w, h = 1080, 1920
+    w, h = 2160, 3840
     img, draw = create_base_canvas(w, h)
 
-    pill_y = 280
-    draw.rounded_rectangle([90, pill_y, 440, pill_y + 52], radius=26, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=2)
-    draw.text((115, pill_y + 11), "LIVE ON GOOGLE PLAY", font=get_font(24, bold=True), fill=CYAN_ACCENT)
+    pill_y = 560
+    draw.rounded_rectangle([180, pill_y, 900, pill_y + 104], radius=52, fill=(35, 22, 85), outline=PURPLE_PRIMARY, width=4)
+    draw.text((230, pill_y + 22), "LIVE ON GOOGLE PLAY", font=get_font(24, bold=True), fill=CYAN_ACCENT)
 
-    title_y = draw_wrapped_text(draw, "Meet Your Digital Twin Today", get_font(64, bold=True), TEXT_WHITE, 90, 360, 900, 1.15)
-    sub_y = draw_wrapped_text(draw, "Stop using AI that forgets you. Start building real self-awareness.", get_font(32, bold=False), TEXT_MUTED, 90, title_y + 16, 900, 1.25)
+    title_y = draw_wrapped_text(draw, "Meet Your Digital Twin Today", get_font(68, bold=True), TEXT_WHITE, 180, 720, 1800, 1.15)
+    sub_y = draw_wrapped_text(draw, "Stop using AI that forgets you. Start building real self-awareness.", get_font(36, bold=False), TEXT_LIGHT, 180, title_y + 32, 1800, 1.25)
 
-    box_y = sub_y + 35
-    draw.rounded_rectangle([90, box_y, w - 90, box_y + 520], radius=32, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=2)
-    draw.text((135, box_y + 40), "TWINGENIE", font=get_font(42, bold=True), fill=TEXT_WHITE)
-    draw.text((400, box_y + 52), "• PERSONAL DIGITAL TWIN", font=get_font(24, bold=False), fill=CYAN_ACCENT)
+    box_y = sub_y + 70
+    draw.rounded_rectangle([180, box_y, w - 180, box_y + 1080], radius=64, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=4)
+    draw.text((270, box_y + 80), "TWINGENIE", font=get_font(46, bold=True), fill=TEXT_WHITE)
+    draw.text((800, box_y + 104), "• PERSONAL DIGITAL TWIN", font=get_font(28, bold=False), fill=CYAN_ACCENT)
 
     points = [
         "35-Question Big Five personality baseline",
@@ -242,28 +258,27 @@ def render_scene4(spec, out_path):
         "Persistent semantic memory across conversations",
         "100% private, self-guided reflection"
     ]
-    py = box_y + 120
+    py = box_y + 240
     for pt in points:
-        draw.ellipse([135, py + 4, 165, py + 34], fill=(45, 30, 95))
-        p1 = (135 + 8, py + 4 + 15)
-        p2 = (135 + 14, py + 4 + 22)
-        p3 = (135 + 23, py + 4 + 8)
-        draw.line([p1, p2, p3], fill=EMERALD_ACCENT, width=3)
-        draw.text((185, py + 6), pt, font=get_font(28, bold=False), fill=TEXT_MUTED)
-        py += 68
+        draw.ellipse([270, py + 8, 330, py + 68], fill=(45, 30, 95))
+        p1 = (270 + 16, py + 8 + 30)
+        p2 = (270 + 28, py + 8 + 44)
+        p3 = (270 + 46, py + 8 + 16)
+        draw.line([p1, p2, p3], fill=EMERALD_ACCENT, width=6)
+        draw.text((370, py + 12), pt, font=get_font(34, bold=True), fill=TEXT_LIGHT)
+        py += 140
 
-    draw.rounded_rectangle([135, box_y + 420, w - 135, box_y + 480], radius=14, fill=(28, 22, 58), outline=CARD_BORDER, width=1)
-    draw.text((160, box_y + 440), "Rating: 5.0  •  Google Play Store  •  100% Free Download", font=get_font(24, bold=True), fill=AMBER_ACCENT)
+    draw.rounded_rectangle([270, box_y + 880, w - 270, box_y + 1000], radius=28, fill=(28, 22, 58), outline=CARD_BORDER, width=2)
+    draw.text((320, box_y + 920), "Rating: 5.0  •  Google Play Store  •  100% Free Download", font=get_font(28, bold=True), fill=AMBER_ACCENT)
 
-    btn_y = box_y + 560
-    draw.rounded_rectangle([120, btn_y, w - 120, btn_y + 120], radius=26, fill=PURPLE_PRIMARY)
-    draw.polygon([(200, btn_y + 40), (232, btn_y + 60), (200, btn_y + 80)], fill=TEXT_WHITE)
-    draw.text((255, btn_y + 38), "Download on Google Play", font=get_font(38, bold=True), fill=TEXT_WHITE)
+    btn_y = box_y + 1160
+    draw.rounded_rectangle([240, btn_y, w - 240, btn_y + 240], radius=52, fill=PURPLE_PRIMARY)
+    draw.polygon([(400, btn_y + 80), (464, btn_y + 120), (400, btn_y + 160)], fill=TEXT_WHITE)
+    draw.text((510, btn_y + 76), "Download on Google Play", font=get_font(44, bold=True), fill=TEXT_WHITE)
 
-    draw.text((350, btn_y + 145), "twingenie.app  •  com.asmind.app", font=get_font(26, bold=False), fill=TEXT_DIM)
+    draw.text((700, btn_y + 290), "twingenie.app  •  com.asmind.app", font=get_font(30, bold=False), fill=TEXT_DIM)
 
-    # Finishes safely at 1280px
-    img.save(out_path, quality=95)
+    finalize_and_save(img, out_path)
 
 # SYNTHESIZE AMBIENT BACKGROUND MUSIC
 def generate_ambient_audio(output_path, duration=24.0):
@@ -415,7 +430,6 @@ def render_reel(spec, output_mp4_path):
     else:
         d1, d2, d3, d4 = 3.6, 3.6, 3.6, 4.0
 
-    # Ensure comfortable breathing room
     t1 = max(3.8, d1 + 0.4)
     t2 = max(3.8, d2 + 0.4)
     t3 = max(3.8, d3 + 0.4)
@@ -463,7 +477,7 @@ def render_reel(spec, output_mp4_path):
         generate_ambient_audio(bg_music_file, duration=total_dur + 2.0)
         bg_source = bg_music_file
 
-    # Mix Final Audio: Voiceover (1.0) + Ambient Ducked Music (0.16)
+    # Mix Final Audio: Voiceover (1.0) + Ambient Ducked Music (0.18)
     final_audio = os.path.join(temp_dir, 'final_soundtrack.m4a')
     if voice_track and os.path.exists(voice_track):
         mix_cmd = [
@@ -479,43 +493,57 @@ def render_reel(spec, output_mp4_path):
             final_audio
         ]
     else:
-        # Music only fallback
         mix_cmd = [
             'ffmpeg', '-y',
             '-i', bg_source,
             '-filter_complex',
             f'[0:a]volume=0.35,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
             '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '192k', '-ar', '44100',
+            '-c:a', 'aac', '-b:a', '192k', '-ar', '44100', '-ac', '2',
             final_audio
         ]
     subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    # Frame counts for subtle cinematic zoom (30 fps)
+    f1 = int(t1 * 30)
+    f2 = int(t2 * 30)
+    f3 = int(t3 * 30)
+    f4 = int(t4 * 30)
+
     # High-Bitrate Video Composition with FFmpeg
-    # libx264 with CRF 17, 6 Mbps bitrate, faststart for instant streaming
+    # Applies subtle micro-motion (zoompan) to force non-zero motion vectors and prevent macroblock skipping.
+    # Encodes with CRF 14, 8 Mbps bitrate, and 2-sec keyframes (GOP 60) for guaranteed 1080p Meta ingestion!
     cmd = [
         'ffmpeg', '-y',
-        '-loop', '1', '-t', str(t1), '-i', s1,
-        '-loop', '1', '-t', str(t2), '-i', s2,
-        '-loop', '1', '-t', str(t3), '-i', s3,
-        '-loop', '1', '-t', str(t4), '-i', s4,
+        '-i', s1,
+        '-i', s2,
+        '-i', s3,
+        '-i', s4,
         '-i', final_audio,
         '-filter_complex',
-        f'[0:v][1:v]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];'
-        f'[v01][2:v]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];'
-        f'[v02][3:v]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]',
+        f'[0:v]scale=1080x1920,zoompan=z=\'min(zoom+0.0003,1.025)\':d={f1}:x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':s=1080x1920:fps=30[s0];'
+        f'[1:v]scale=1080x1920,zoompan=z=\'min(zoom+0.0003,1.025)\':d={f2}:x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':s=1080x1920:fps=30[s1];'
+        f'[2:v]scale=1080x1920,zoompan=z=\'min(zoom+0.0003,1.025)\':d={f3}:x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':s=1080x1920:fps=30[s2];'
+        f'[3:v]scale=1080x1920,zoompan=z=\'min(zoom+0.0003,1.025)\':d={f4}:x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':s=1080x1920:fps=30[s3];'
+        f'[s0][s1]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];'
+        f'[v01][s2]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];'
+        f'[v02][s3]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]',
         '-map', '[v]',
         '-map', '4:a',
         '-c:v', 'libx264',
         '-preset', 'medium',
-        '-crf', '17',
-        '-b:v', '6000k',
-        '-maxrate', '8500k',
-        '-bufsize', '12000k',
+        '-crf', '14',
+        '-b:v', '8000k',
+        '-minrate', '5000k',
+        '-maxrate', '10000k',
+        '-bufsize', '16000k',
+        '-g', '60',
+        '-keyint_min', '30',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
         '-b:a', '192k',
         '-ar', '44100',
+        '-ac', '2',
         '-r', '30',
         '-movflags', '+faststart',
         output_mp4_path
