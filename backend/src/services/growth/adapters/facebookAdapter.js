@@ -83,27 +83,83 @@ class FacebookAdapter {
         try {
             let postId = null;
 
-            // Case 0: Video Reel Upload (1080x1920 MP4)
+            // Case 0: Video Reel Upload (1080x1920 MP4 via official Video Reels API)
             if (postData.videoPath && fs.existsSync(postData.videoPath)) {
-                logger.info(`[FACEBOOK] Uploading video reel binary: ${postData.videoPath}`);
+                logger.info(`[FACEBOOK] Uploading video reel binary via official Reels API: ${postData.videoPath}`);
+                const fileStats = fs.statSync(postData.videoPath);
                 const fileBuffer = fs.readFileSync(postData.videoPath);
-                const blob = new Blob([fileBuffer], { type: 'video/mp4' });
-                const formData = new FormData();
-                formData.append('source', blob, path.basename(postData.videoPath));
-                formData.append('description', postData.caption);
-                formData.append('access_token', accessToken);
+                
+                try {
+                    // Step 1: Initialize Reel upload session
+                    const initRes = await fetch(`${GRAPH_API_BASE}/${pageId}/video_reels`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            upload_phase: 'start',
+                            access_token: accessToken
+                        })
+                    });
+                    const initData = await initRes.json();
+                    
+                    if (initData.video_id) {
+                        const videoId = initData.video_id;
+                        logger.info(`[FACEBOOK] Reel upload session initialized. Video ID: ${videoId}`);
+                        
+                        // Step 2: Upload binary bytes
+                        const uploadRes = await fetch(`https://rupload.facebook.com/video-upload/v19.0/${videoId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `OAuth ${accessToken}`,
+                                'offset': '0',
+                                'file_size': String(fileStats.size),
+                                'Content-Type': 'application/octet-stream'
+                            },
+                            body: fileBuffer
+                        });
+                        const uploadData = await uploadRes.json();
+                        
+                        if (uploadData.success) {
+                            // Step 3: Finish and publish Reel
+                            const pubRes = await fetch(`${GRAPH_API_BASE}/${pageId}/video_reels`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: new URLSearchParams({
+                                    access_token: accessToken,
+                                    video_id: videoId,
+                                    upload_phase: 'finish',
+                                    video_state: 'PUBLISHED',
+                                    description: postData.caption || ''
+                                })
+                            });
+                            const pubData = await pubRes.json();
+                            postId = pubData.post_id || videoId;
+                            logger.info(`🎉 [FACEBOOK] Native Reel published successfully via Reels API! ID: ${postId}`);
+                        } else {
+                            throw new Error(`Binary upload failed: ${JSON.stringify(uploadData)}`);
+                        }
+                    } else {
+                        throw new Error(`Reel session init failed: ${JSON.stringify(initData)}`);
+                    }
+                } catch (reelApiErr) {
+                    logger.warn(`[FACEBOOK] Reels API flow encountered error (${reelApiErr.message}), trying fallback /videos endpoint...`);
+                    const blob = new Blob([fileBuffer], { type: 'video/mp4' });
+                    const formData = new FormData();
+                    formData.append('source', blob, path.basename(postData.videoPath));
+                    formData.append('description', postData.caption);
+                    formData.append('access_token', accessToken);
 
-                const response = await fetch(`${GRAPH_API_BASE}/${pageId}/videos`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                if (!response.ok || data.error) {
-                    logger.error('[FACEBOOK] Video reel upload error:', data);
-                    return { success: false, error: data.error || data };
+                    const response = await fetch(`${GRAPH_API_BASE}/${pageId}/videos`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (!response.ok || data.error) {
+                        logger.error('[FACEBOOK] Fallback video upload error:', data);
+                        return { success: false, error: data.error || data };
+                    }
+                    postId = data.id || data.post_id;
+                    logger.info(`🎉 [FACEBOOK] Video published via fallback endpoint! ID: ${postId}`);
                 }
-                postId = data.id || data.post_id;
-                logger.info(`🎉 [FACEBOOK] Video Reel published successfully! ID: ${postId}`);
             }
             // Case 1: Direct Local Image Binary Upload (High-Res 1080x1350 Rendered Slides)
             else if (postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {

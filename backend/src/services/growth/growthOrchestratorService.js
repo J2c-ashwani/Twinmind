@@ -285,6 +285,88 @@ class GrowthOrchestratorService {
         this._saveState();
         return { postId: post.id, status: post.status, url: post.platformPostUrl, error: post.error };
     }
+
+    /**
+     * Dedicated Daily Facebook Reel Publisher
+     * Triggered by cron-job.org or internal scheduler at a fixed daily time.
+     * Generates a fresh Reel, renders 8Mbps CBR video with Edge TTS voiceover,
+     * and publishes directly to Facebook Reels.
+     */
+    async publishDailyFacebookReel(force = false) {
+        logger.info('[GROWTH ORCHESTRATOR] Starting daily Facebook Reel publication flow...');
+        const now = new Date();
+
+        // Unless force=true, ensure we haven't already published a Facebook Reel in the last 18 hours
+        if (!force) {
+            const recentPublished = this.state.posts.some(
+                p => p.platform === 'facebook' && 
+                     p.status === 'published' && 
+                     (now.getTime() - new Date(p.publishedAt).getTime()) < 18 * 60 * 60 * 1000
+            );
+            if (recentPublished) {
+                logger.info('[GROWTH ORCHESTRATOR] Facebook Reel already published in the last 18 hours. Skipping.');
+                return { action: 'skipped', reason: 'already_published_today' };
+            }
+        }
+
+        // 1. Generate content specifically for Reel format
+        const bundle = await contentGeneratorService.generateCampaignBundle();
+        const theme = contentGeneratorService.themes.find(t => t.name === bundle.theme) || contentGeneratorService.themes[0];
+        const fbContent = contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'reel');
+
+        const postId = `post_facebook_reel_${Date.now()}`;
+
+        // 2. Render High-Quality 8Mbps CBR Reel with Neural Voiceover
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering High-Bitrate Reel for Facebook...`);
+        const rendered = await mediaRendererService.renderReel({
+            campaignId: bundle.campaignId,
+            postId,
+            hook: fbContent.title || theme.hook,
+            tag: fbContent.tag || theme.tag
+        });
+
+        // 3. Publish to Facebook Reels via native Reels API
+        logger.info(`[GROWTH ORCHESTRATOR] Publishing Reel binary to Facebook Reels...`);
+        const publishResult = await this.adapters.facebook.publish({
+            title: fbContent.title,
+            caption: fbContent.caption,
+            firstComment: fbContent.firstComment,
+            videoPath: rendered.videoPath,
+            videoUrl: rendered.videoUrl,
+            format: 'reel'
+        });
+
+        // 4. Save to state
+        const postRecord = {
+            id: postId,
+            campaignId: bundle.campaignId,
+            platform: 'facebook',
+            format: 'reel',
+            title: fbContent.title,
+            caption: fbContent.caption,
+            videoPath: rendered.videoPath,
+            videoUrl: rendered.videoUrl,
+            status: publishResult.success ? 'published' : 'failed',
+            scheduledFor: now.toISOString(),
+            publishedAt: publishResult.success ? now.toISOString() : null,
+            platformPostId: publishResult.postId,
+            platformPostUrl: publishResult.url,
+            error: publishResult.error || null,
+            retries: 0
+        };
+
+        this.state.posts.push(postRecord);
+        this._saveState();
+
+        return {
+            success: publishResult.success,
+            postId: postRecord.id,
+            platformPostId: publishResult.postId,
+            url: publishResult.url,
+            durationSeconds: rendered.durationSeconds,
+            error: publishResult.error
+        };
+    }
 }
 
 const growthOrchestratorService = new GrowthOrchestratorService();
