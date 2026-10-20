@@ -46,6 +46,21 @@ router.get('/status', requireAdminSecret, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/growth/diagnostic
+ * Verifies system binaries (ffmpeg, python3, edge-tts, PIL) for video engine
+ */
+router.get('/diagnostic', requireAdminSecret, async (req, res) => {
+    const { execSync } = await import('child_process');
+    const diag = { nodeVersion: process.version };
+    try { diag.python3 = execSync('python3 --version').toString().trim(); } catch (e) { diag.python3 = e.message; }
+    try { diag.ffmpeg = execSync('ffmpeg -version').toString().split('\n')[0].trim(); } catch (e) { diag.ffmpeg = e.message; }
+    try { diag.ffprobe = execSync('ffprobe -version').toString().split('\n')[0].trim(); } catch (e) { diag.ffprobe = e.message; }
+    try { diag.edgeTts = execSync('edge-tts --version').toString().trim(); } catch (e) { diag.edgeTts = e.message; }
+    try { diag.pillow = execSync('python3 -c "import PIL; print(PIL.__version__)"').toString().trim(); } catch (e) { diag.pillow = e.message; }
+    res.json({ success: true, diagnostic: diag });
+});
+
+/**
  * GET /api/admin/growth/queue
  * Returns full queue of scheduled, published, and draft posts
  */

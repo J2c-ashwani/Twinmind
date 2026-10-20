@@ -310,9 +310,12 @@ class GrowthOrchestratorService {
         }
 
         // 1. Generate content specifically for Reel format
-        const bundle = await contentGeneratorService.generateCampaignBundle();
-        const theme = contentGeneratorService.themes.find(t => t.name === bundle.theme) || contentGeneratorService.themes[0];
-        const fbContent = contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'reel');
+        const bundle = await contentGeneratorService.generateCampaignBundle(null, { facebookFormat: 'reel' });
+        const themesList = contentGeneratorService.themes || [];
+        const theme = themesList.find(t => t.name === bundle.theme) || themesList[0] || {};
+        const fbContent = bundle.posts?.facebook?.format === 'reel'
+            ? bundle.posts.facebook
+            : contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'reel');
 
         const postId = `post_facebook_reel_${Date.now()}`;
 
@@ -321,8 +324,8 @@ class GrowthOrchestratorService {
         const rendered = await mediaRendererService.renderReel({
             campaignId: bundle.campaignId,
             postId,
-            hook: fbContent.title || theme.hook,
-            tag: fbContent.tag || theme.tag
+            hook: fbContent.title || theme.hook || bundle.theme,
+            tag: fbContent.tag || theme.tag || 'COGNITIVE ARCHITECTURE'
         });
 
         // 3. Publish to Facebook Reels via native Reels API

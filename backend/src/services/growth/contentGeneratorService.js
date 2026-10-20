@@ -9,7 +9,7 @@ import aiService from '../aiService.js';
  * - Longitudinal pgvector memory & self-discovery
  */
 
-const CAMPAIGN_THEMES = [
+export const CAMPAIGN_THEMES = [
     {
         id: 'blind_spots',
         name: 'Cognitive Blind Spots',
@@ -68,6 +68,10 @@ const CAMPAIGN_THEMES = [
 ];
 
 class ContentGeneratorService {
+    constructor() {
+        this.themes = CAMPAIGN_THEMES;
+    }
+
     /**
      * Builds standard UTM link for attribution
      */
