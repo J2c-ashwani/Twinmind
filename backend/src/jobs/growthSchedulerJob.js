@@ -39,7 +39,17 @@ export function initGrowthJobs() {
         }
     });
 
-    // 3. Boot check: safely check scheduled queue without triggering heavy media generation
+    // 3. Daily 04:00 PM IST (10:30 UTC) Broadcast Trigger (Facebook Reel + LinkedIn Carousel)
+    cron.schedule('30 10 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 04:00 PM IST reached! Triggering automated daily broadcast (Facebook Reel + LinkedIn Carousel)...');
+            await growthOrchestratorService.publishDailyBroadcast(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 04:00 PM broadcast error:', e);
+        }
+    });
+
+    // 4. Boot check: safely check scheduled queue without triggering heavy media generation
     setTimeout(async () => {
         try {
             logger.info('🚀 [GROWTH JOB] Checking for due posts on server boot...');

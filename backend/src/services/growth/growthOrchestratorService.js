@@ -97,10 +97,14 @@ class GrowthOrchestratorService {
         // LinkedIn: 10:00 AM IST -> 04:30 UTC
         // Instagram: 01:30 PM IST -> 08:00 UTC
         // Facebook: 04:00 PM IST -> 10:30 UTC
+        // Slot times in UTC:
+        // LinkedIn: 04:00 PM IST -> 10:30 UTC
+        // Instagram: 01:30 PM IST -> 08:00 UTC
+        // Facebook: 04:00 PM IST -> 10:30 UTC
         // YouTube: 07:00 PM IST -> 13:30 UTC
         const now = new Date();
         const slotTimes = {
-            linkedin: { hour: 4, minute: 30 },
+            linkedin: { hour: 10, minute: 30 },
             instagram: { hour: 8, minute: 0 },
             facebook: { hour: 10, minute: 30 },
             youtube: { hour: 13, minute: 30 }
@@ -369,6 +373,119 @@ class GrowthOrchestratorService {
             durationSeconds: rendered.durationSeconds,
             error: publishResult.error
         };
+    }
+
+    /**
+     * Publishes today's high-converting PDF Carousel to Ashwani Kumar's LinkedIn Personal Profile.
+     * Generates fresh content, renders 1080x1350 multi-page PDF document carousel, and dispatches to LinkedIn.
+     * @param {boolean} force - If true, bypasses the 18-hour duplicate post throttle
+     */
+    async publishDailyLinkedInPersonal(force = false) {
+        logger.info('[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow...');
+        const now = new Date();
+
+        if (!force) {
+            const recentPublished = this.state.posts.some(
+                p => p.platform === 'linkedin' && 
+                     p.target === 'personal' &&
+                     p.status === 'published' && 
+                     (now.getTime() - new Date(p.publishedAt).getTime()) < 18 * 60 * 60 * 1000
+            );
+            if (recentPublished) {
+                logger.info('[GROWTH ORCHESTRATOR] LinkedIn personal post already published in the last 18 hours. Skipping.');
+                return { action: 'skipped', reason: 'already_published_today' };
+            }
+        }
+
+        // 1. Generate content for Ashwani Kumar's Personal Profile
+        const bundle = await contentGeneratorService.generateCampaignBundle();
+        const themesList = contentGeneratorService.themes || [];
+        const theme = themesList.find(t => t.name === bundle.theme) || themesList[0] || {};
+        const content = contentGeneratorService._generateLinkedInPersonalContent(theme, bundle.campaignId);
+
+        const postId = `post_linkedin_personal_${Date.now()}`;
+
+        // 2. Render 1080x1350 Multi-Page PDF Carousel
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF document for Ashwani Kumar's LinkedIn...`);
+        const rendered = await mediaRendererService.renderCarousel({
+            campaignId: bundle.campaignId,
+            postId,
+            slides: content.slides
+        });
+
+        // 3. Publish to LinkedIn via official API
+        logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
+        const publishResult = await this.adapters.linkedin.publish({
+            title: content.title,
+            caption: content.caption,
+            pdfPath: rendered.pdfPath,
+            pngPaths: rendered.pngPaths,
+            utmLink: content.utmLink,
+            target: 'personal'
+        });
+
+        // 4. Save to state
+        const postRecord = {
+            id: postId,
+            campaignId: bundle.campaignId,
+            platform: 'linkedin',
+            target: 'personal',
+            format: 'carousel_pdf',
+            title: content.title,
+            caption: content.caption,
+            pdfPath: rendered.pdfPath,
+            pngPaths: rendered.pngPaths,
+            status: publishResult.success ? 'published' : 'failed',
+            scheduledFor: now.toISOString(),
+            publishedAt: publishResult.success ? now.toISOString() : null,
+            platformPostId: publishResult.postId,
+            platformPostUrl: publishResult.url,
+            error: publishResult.error || null,
+            retries: 0
+        };
+
+        this.state.posts.push(postRecord);
+        this._saveState();
+
+        return {
+            success: publishResult.success,
+            postId: postRecord.id,
+            platformPostId: publishResult.postId,
+            url: publishResult.url,
+            totalSlides: rendered.totalSlides,
+            pdfPath: rendered.pdfPath,
+            error: publishResult.error
+        };
+    }
+
+    /**
+     * Unified Daily Broadcast: Dispatches both Facebook Reel & LinkedIn Personal Carousel at 4:00 PM IST.
+     * @param {boolean} force - Force publish even if already published today
+     */
+    async publishDailyBroadcast(force = false) {
+        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook Reel + LinkedIn Personal Carousel, force=${force})...`);
+        const results = {
+            timestamp: new Date().toISOString(),
+            facebook: null,
+            linkedin: null
+        };
+
+        try {
+            results.facebook = await this.publishDailyFacebookReel(force);
+        } catch (fbErr) {
+            logger.error('[GROWTH ORCHESTRATOR] Daily Facebook publish failed:', fbErr);
+            results.facebook = { success: false, error: fbErr.message };
+        }
+
+        try {
+            results.linkedin = await this.publishDailyLinkedInPersonal(force);
+        } catch (liErr) {
+            logger.error('[GROWTH ORCHESTRATOR] Daily LinkedIn publish failed:', liErr);
+            results.linkedin = { success: false, error: liErr.message };
+        }
+
+        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB success=${results.facebook?.success}, LI success=${results.linkedin?.success}`);
+        return results;
     }
 }
 

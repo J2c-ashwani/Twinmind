@@ -108,11 +108,11 @@ router.post('/publish/:id', requireAdminSecret, async (req, res) => {
 });
 
 /**
- * POST /api/admin/growth/publish/linkedin
+ * GET & POST /api/admin/growth/publish/linkedin
  * Dedicated LinkedIn pipeline trigger for Personal Profile or Company Page
- * Body: { target: 'personal' | 'company', themeId?: string }
+ * Query/Body: { target: 'personal' | 'company', themeId?: string }
  */
-router.post('/publish/linkedin', requireAdminSecret, async (req, res) => {
+router.all('/publish/linkedin', requireAdminSecret, async (req, res) => {
     try {
         const target = req.body?.target || req.query?.target || 'personal';
         const themeId = req.body?.themeId;
@@ -294,6 +294,40 @@ router.all('/cron/daily-reel', requireAdminSecret, async (req, res) => {
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily Reel automated publication failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/cron/daily-linkedin
+ * Automated webhook called by cron-job.org daily at 4:00 PM IST (10:30 UTC)
+ * Renders 1080x1350 multi-page PDF document carousel and publishes to Ashwani Kumar's LinkedIn.
+ */
+router.all('/cron/daily-linkedin', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        logger.info(`[GROWTH CRON] Triggering automated daily LinkedIn Personal Carousel publication (force=${force})...`);
+        const result = await growthOrchestratorService.publishDailyLinkedInPersonal(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Daily LinkedIn carousel publication failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/cron/daily-publish
+ * Unified Daily 4:00 PM IST Broadcast Trigger
+ * Publishes both Facebook Reel and Ashwani Kumar's LinkedIn Personal Carousel.
+ */
+router.all('/cron/daily-publish', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        logger.info(`[GROWTH CRON] Triggering Unified Daily Broadcast (Facebook + LinkedIn, force=${force})...`);
+        const result = await growthOrchestratorService.publishDailyBroadcast(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Unified Daily Broadcast failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

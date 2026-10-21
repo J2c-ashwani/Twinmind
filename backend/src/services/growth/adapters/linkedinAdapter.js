@@ -93,11 +93,33 @@ class LinkedInAdapter {
         logger.info(`[LINKEDIN] Initiating publish to ${target} destination: ${authorUrn}...`);
 
         try {
-            // Document upload or simple UGC share
+            // Document upload or Image upload or simple UGC share
             let mediaAssetUrn = null;
+            let shareCategory = 'NONE';
 
+            // 1. Try Document Upload (PDF Carousel)
             if (postData.pdfPath && fs.existsSync(postData.pdfPath)) {
-                mediaAssetUrn = await this._uploadDocument(accessToken, authorUrn, postData.pdfPath, postData.title);
+                try {
+                    logger.info(`[LINKEDIN] Registering and uploading PDF document carousel: ${postData.pdfPath}`);
+                    mediaAssetUrn = await this._uploadDocument(accessToken, authorUrn, postData.pdfPath, postData.title);
+                    shareCategory = 'DOCUMENT';
+                } catch (docErr) {
+                    logger.warn(`[LINKEDIN] PDF document upload encountered an issue (${docErr.message}), checking for PNG image fallback...`);
+                }
+            }
+
+            // 2. Fallback to Image Upload if document wasn't uploaded and PNG exists
+            if (!mediaAssetUrn && postData.pngPaths && postData.pngPaths.length > 0) {
+                const firstImg = postData.pngPaths[0];
+                if (fs.existsSync(firstImg)) {
+                    try {
+                        logger.info(`[LINKEDIN] Uploading primary carousel cover image: ${firstImg}`);
+                        mediaAssetUrn = await this._uploadImage(accessToken, authorUrn, firstImg);
+                        shareCategory = 'IMAGE';
+                    } catch (imgErr) {
+                        logger.warn(`[LINKEDIN] Image upload error (${imgErr.message}), falling back to text + link share.`);
+                    }
+                }
             }
 
             // Construct UGC post payload
@@ -109,13 +131,13 @@ class LinkedInAdapter {
                         shareCommentary: {
                             text: postData.caption
                         },
-                        shareMediaCategory: mediaAssetUrn ? 'DOCUMENT' : 'NONE',
+                        shareMediaCategory: shareCategory,
                         media: mediaAssetUrn ? [
                             {
                                 status: 'READY',
-                                description: { text: postData.title || 'TwinGenie Document' },
+                                description: { text: postData.title || 'TwinGenie Cognitive Engineering' },
                                 media: mediaAssetUrn,
-                                title: { text: postData.title || 'TwinGenie Carousel' }
+                                title: { text: postData.title || 'TwinGenie Carousel Breakdown' }
                             }
                         ] : undefined
                     }
@@ -156,6 +178,49 @@ class LinkedInAdapter {
             logger.error('[LINKEDIN] Exception during publish:', err);
             return { success: false, error: err.message };
         }
+    }
+
+    async _uploadImage(accessToken, authorUrn, filePath) {
+        const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                registerUploadRequest: {
+                    recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+                    owner: authorUrn,
+                    serviceRelationships: [
+                        { relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }
+                    ]
+                }
+            })
+        });
+
+        const regData = await registerRes.json();
+        const uploadUrl = regData.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;
+        const assetUrn = regData.value?.asset;
+
+        if (!uploadUrl || !assetUrn) {
+            throw new Error(`Failed to register LinkedIn image upload: ${JSON.stringify(regData)}`);
+        }
+
+        const fileStream = fs.createReadStream(filePath);
+        const stats = fs.statSync(filePath);
+
+        await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'image/png',
+                'Content-Length': stats.size.toString()
+            },
+            body: fileStream
+        });
+
+        logger.info(`[LINKEDIN] Image binary uploaded to asset: ${assetUrn}`);
+        return assetUrn;
     }
 
     async _uploadDocument(accessToken, orgUrn, filePath, title) {
