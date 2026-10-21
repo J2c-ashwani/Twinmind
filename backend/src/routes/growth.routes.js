@@ -147,6 +147,98 @@ router.post('/publish/linkedin', requireAdminSecret, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/growth/oauth/linkedin/callback
+ * Handles OAuth 2.0 authorization code redirect from LinkedIn.
+ * Automatically exchanges code for long-lived Access Token and retrieves Person/Org URNs.
+ */
+router.get('/oauth/linkedin/callback', async (req, res) => {
+    try {
+        const { code, error, error_description } = req.query;
+
+        if (error) {
+            return res.status(400).send(`<h3>LinkedIn OAuth Error</h3><p>${error}: ${error_description}</p>`);
+        }
+
+        if (!code) {
+            return res.status(400).send(`<h3>Missing Code</h3><p>No authorization code received from LinkedIn.</p>`);
+        }
+
+        const clientId = process.env.LINKEDIN_CLIENT_ID;
+        const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+        const redirectUri = `${req.protocol}://${req.get('host')}${req.path}`;
+
+        if (!clientId || !clientSecret) {
+            return res.status(500).send(`<h3>Server Missing Credentials</h3><p>Ensure LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET are set in environment variables.</p>`);
+        }
+
+        const params = new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+            client_id: clientId,
+            client_secret: clientSecret
+        });
+
+        const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
+        });
+
+        const tokenData = await tokenRes.json();
+
+        if (!tokenRes.ok) {
+            return res.status(500).json({ error: 'Token exchange failed', details: tokenData });
+        }
+
+        const accessToken = tokenData.access_token;
+        let personUrn = null;
+        let orgUrns = [];
+
+        // Fetch User Info
+        try {
+            const userRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (userRes.ok) {
+                const userData = await userRes.json();
+                personUrn = `urn:li:person:${userData.sub}`;
+            }
+        } catch (e) {
+            logger.warn('Failed to fetch userinfo:', e.message);
+        }
+
+        // Return HTML display for immediate setup
+        res.send(`
+            <html>
+                <body style="font-family: -apple-system, sans-serif; background: #0c091c; color: #fff; padding: 40px; max-width: 700px; margin: 0 auto; line-height: 1.6;">
+                    <h2 style="color: #38bdf8;">🎉 LinkedIn Authorization Successful!</h2>
+                    <p style="color: #cbd5e1;">Copy these environment variables directly into Render dashboard:</p>
+                    
+                    <div style="background: #15102e; border: 1px solid #7c3aed; padding: 20px; border-radius: 12px; margin: 20px 0; word-break: break-all;">
+                        <p style="color: #a855f7; margin: 0 0 8px 0; font-weight: bold;">LINKEDIN_ACCESS_TOKEN:</p>
+                        <code style="background: #24194c; padding: 8px 12px; border-radius: 6px; display: block; color: #fff;">${accessToken}</code>
+                        
+                        ${personUrn ? `
+                            <p style="color: #38bdf8; margin: 16px 0 8px 0; font-weight: bold;">LINKEDIN_PERSON_URN:</p>
+                            <code style="background: #24194c; padding: 8px 12px; border-radius: 6px; display: block; color: #fff;">${personUrn}</code>
+                        ` : ''}
+                        
+                        <p style="color: #34d399; margin: 16px 0 8px 0; font-weight: bold;">LINKEDIN_ORGANIZATION_URN:</p>
+                        <code style="background: #24194c; padding: 8px 12px; border-radius: 6px; display: block; color: #fff;">urn:li:organization:145288585</code>
+                    </div>
+
+                    <p style="color: #94a3b8; font-size: 14px;">Token expires in ${Math.round(tokenData.expires_in / 86400)} days.</p>
+                </body>
+            </html>
+        `);
+    } catch (err) {
+        logger.error('[LINKEDIN OAUTH] Callback error:', err);
+        res.status(500).send(`<h3>Internal Server Error</h3><p>${err.message}</p>`);
+    }
+});
+
+/**
  * POST /api/admin/growth/toggle-pause
  * Emergency pause or resume the distribution scheduler
  */
