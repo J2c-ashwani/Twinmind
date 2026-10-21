@@ -13,83 +13,96 @@ class LinkedInAdapter {
         this.platform = 'linkedin';
     }
 
-    getCredentials() {
+    getCredentials(target = 'company') {
+        const isPersonal = target === 'personal';
+        const accessToken = isPersonal 
+            ? (process.env.LINKEDIN_PERSONAL_ACCESS_TOKEN || process.env.LINKEDIN_ACCESS_TOKEN)
+            : (process.env.LINKEDIN_COMPANY_ACCESS_TOKEN || process.env.LINKEDIN_ACCESS_TOKEN);
+
+        const authorUrn = isPersonal
+            ? (process.env.LINKEDIN_PERSON_URN || process.env.ASHWANI_LINKEDIN_PERSON_URN)
+            : (process.env.LINKEDIN_ORGANIZATION_URN || process.env.TWINGENIE_LINKEDIN_ORG_URN);
+
         return {
-            accessToken: process.env.LINKEDIN_ACCESS_TOKEN,
-            orgUrn: process.env.LINKEDIN_ORGANIZATION_URN || process.env.LINKEDIN_PERSON_URN,
+            accessToken,
+            authorUrn,
+            target,
             clientId: process.env.LINKEDIN_CLIENT_ID,
             clientSecret: process.env.LINKEDIN_CLIENT_SECRET
         };
     }
 
-    isConfigured() {
-        const { accessToken, orgUrn } = this.getCredentials();
-        return Boolean(accessToken && orgUrn);
+    isConfigured(target = 'company') {
+        const { accessToken, authorUrn } = this.getCredentials(target);
+        return Boolean(accessToken && authorUrn);
     }
 
     async getHealthStatus() {
-        const configured = this.isConfigured();
-        if (!configured) {
-            return {
-                platform: this.platform,
-                status: 'missing_credentials',
-                ready: false,
-                requiredEnv: ['LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_ORGANIZATION_URN']
-            };
-        }
+        const personalConfigured = this.isConfigured('personal');
+        const companyConfigured = this.isConfigured('company');
 
-        try {
-            // Verify token validity by calling profile/org endpoint
-            const res = await fetch('https://api.linkedin.com/v2/me', {
-                headers: { 'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}` }
-            });
-            return {
-                platform: this.platform,
-                status: res.ok ? 'connected' : 'token_expired_or_invalid',
-                ready: res.ok,
-                httpCode: res.status
-            };
-        } catch (e) {
-            return {
-                platform: this.platform,
-                status: 'network_error',
-                ready: false,
-                error: e.message
-            };
-        }
+        return {
+            platform: this.platform,
+            ready: personalConfigured || companyConfigured,
+            destinations: {
+                personal: {
+                    target: 'Ashwani Kumar (Personal Profile)',
+                    ready: personalConfigured,
+                    urn: process.env.LINKEDIN_PERSON_URN ? 'configured' : 'missing',
+                    requiredEnv: ['LINKEDIN_PERSON_URN', 'LINKEDIN_ACCESS_TOKEN (with w_member_social)']
+                },
+                company: {
+                    target: 'TwinGenie (Company Page)',
+                    ready: companyConfigured,
+                    urn: process.env.LINKEDIN_ORGANIZATION_URN ? 'configured' : 'missing',
+                    requiredEnv: ['LINKEDIN_ORGANIZATION_URN', 'LINKEDIN_ACCESS_TOKEN (with w_organization_social)']
+                }
+            }
+        };
     }
 
     /**
-     * Publishes a post to LinkedIn
-     * @param {Object} postData - { title, caption, pdfPath, pngPaths, utmLink }
+     * Publishes a post to LinkedIn (Personal Profile or Company Page)
+     * @param {Object} postData - { title, caption, pdfPath, pngPaths, utmLink, target: 'personal' | 'company' }
      */
     async publish(postData) {
-        const { accessToken, orgUrn } = this.getCredentials();
+        const target = postData.target || 'company';
+        const { accessToken, authorUrn } = this.getCredentials(target);
 
-        if (!accessToken || !orgUrn) {
-            logger.warn(`[LINKEDIN] Credentials not set. Running in verified simulation mode.`);
+        if (!accessToken || !authorUrn) {
+            logger.warn(`[LINKEDIN] Credentials for ${target} not set. Running in verified simulation mode.`);
             return {
                 success: true,
                 simulated: true,
+                target,
                 platform: this.platform,
-                postId: `sim_li_${Date.now()}`,
+                postId: `sim_li_${target}_${Date.now()}`,
                 url: `https://www.linkedin.com/feed/update/urn:li:activity:simulated_${Date.now()}`
             };
         }
 
-        logger.info(`[LINKEDIN] Initiating official publish to ${orgUrn}...`);
+        // Safety verification: Prevent personal posts from leaking into company URNs and vice-versa
+        if (target === 'company' && authorUrn.startsWith('urn:li:person:')) {
+            logger.error(`[LINKEDIN SAFETY] Attempted to post company content with a personal URN (${authorUrn})! Aborting to prevent profile pollution.`);
+            return {
+                success: false,
+                error: 'Configuration mismatch: Target is company but author URN is a personal profile. Set LINKEDIN_ORGANIZATION_URN.'
+            };
+        }
+
+        logger.info(`[LINKEDIN] Initiating publish to ${target} destination: ${authorUrn}...`);
 
         try {
             // Document upload or simple UGC share
             let mediaAssetUrn = null;
 
             if (postData.pdfPath && fs.existsSync(postData.pdfPath)) {
-                mediaAssetUrn = await this._uploadDocument(accessToken, orgUrn, postData.pdfPath, postData.title);
+                mediaAssetUrn = await this._uploadDocument(accessToken, authorUrn, postData.pdfPath, postData.title);
             }
 
             // Construct UGC post payload
             const payload = {
-                author: orgUrn,
+                author: authorUrn,
                 lifecycleState: 'PUBLISHED',
                 specificContent: {
                     'com.linkedin.ugc.ShareContent': {

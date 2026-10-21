@@ -1,6 +1,8 @@
 import express from 'express';
 import growthOrchestratorService from '../services/growth/growthOrchestratorService.js';
 import mediaRendererService from '../services/growth/mediaRendererService.js';
+import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/contentGeneratorService.js';
+import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -101,6 +103,45 @@ router.post('/publish/:id', requireAdminSecret, async (req, res) => {
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH ROUTE] Force publish failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/admin/growth/publish/linkedin
+ * Dedicated LinkedIn pipeline trigger for Personal Profile or Company Page
+ * Body: { target: 'personal' | 'company', themeId?: string }
+ */
+router.post('/publish/linkedin', requireAdminSecret, async (req, res) => {
+    try {
+        const target = req.body?.target || req.query?.target || 'personal';
+        const themeId = req.body?.themeId;
+        const theme = CAMPAIGN_THEMES.find(t => t.id === themeId) || CAMPAIGN_THEMES[0];
+        const campaignId = `camp_${theme.id}_${Date.now()}`;
+        const content = target === 'personal'
+            ? contentGeneratorService._generateLinkedInPersonalContent(theme, campaignId)
+            : contentGeneratorService._generateLinkedInContent(theme, campaignId, 'company');
+
+        logger.info(`[GROWTH ROUTE] Rendering carousel for LinkedIn ${target}...`);
+        const rendered = await mediaRendererService.renderCarousel({
+            campaignId,
+            postId: `post_linkedin_${target}_${Date.now()}`,
+            slides: content.slides
+        });
+
+        logger.info(`[GROWTH ROUTE] Publishing to LinkedIn ${target}...`);
+        const publishResult = await linkedinAdapter.publish({
+            title: content.title,
+            caption: content.caption,
+            pdfPath: rendered.pdfPath,
+            pngPaths: rendered.pngPaths,
+            utmLink: content.utmLink,
+            target
+        });
+
+        res.json({ success: true, target, publishResult, rendered });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] LinkedIn publish failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

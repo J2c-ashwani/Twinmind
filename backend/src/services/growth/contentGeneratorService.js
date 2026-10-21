@@ -180,10 +180,14 @@ class ContentGeneratorService {
         ];
     }
 
-    _generateLinkedInContent(theme, campaignId) {
-        const utm = this.buildUtmLink('linkedin', 'carousel_pdf', campaignId);
+    _generateLinkedInContent(theme, campaignId, target = 'company') {
+        if (target === 'personal') {
+            return this._generateLinkedInPersonalContent(theme, campaignId);
+        }
+        const utm = this.buildUtmLink('linkedin_company', 'carousel_pdf', campaignId);
         return {
             platform: 'linkedin',
+            target: 'company',
             format: 'carousel_pdf',
             title: `${theme.name} — A Cognitive Analysis`,
             utmLink: utm,
@@ -204,6 +208,130 @@ Swipe through the carousel to see how longitudinal reflection changes executive 
 
 #AI #PersonalGrowth #DecisionMaking #Leadership #DigitalTwin #TwinGenie`
         };
+    }
+
+    _generateLinkedInPersonalContent(theme, campaignId) {
+        const utm = this.buildUtmLink('linkedin_ashwani', 'carousel_pdf', campaignId);
+        return {
+            platform: 'linkedin',
+            target: 'personal',
+            format: 'carousel_pdf',
+            title: `Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie`,
+            utmLink: utm,
+            slides: this._buildFounderSlides(theme),
+            caption: `Most conversational AI is engineered to be a flattering yes-man.
+
+It nods along with your excuses, strokes your ego, and forgets everything you told it the second you close the browser tab.
+
+When I started designing TwinGenie, I realized that if an AI companion can’t remember your past patterns and lacks the courage to challenge your cognitive blind spots, it’s not an intelligence tool—it’s just interactive entertainment.
+
+Human growth doesn’t come from unconditional agreement. It comes from dialectical tension.
+
+To solve this, we engineered an AI Digital Twin built around three core architectural pillars:
+
+1️⃣ The 35-Question Deterministic Baseline
+Rather than relying on vague open-ended prompts, we ground each user in a structured Big Five personality model. This creates a persistent behavioral vector that defines your baseline tone, risk tolerance, and cognitive inclinations.
+
+2️⃣ Persistent Longitudinal Vector Memory (pgvector)
+Traditional chatbots suffer from severe context decay. TwinGenie indexes conversations semantically. When you make an excuse on a Tuesday, the model connects it to an identical pattern you exhibited three weeks prior—calling out recurring loops before they derail your momentum.
+
+3️⃣ The 4-Perspective Cognitive Matrix
+One tone cannot handle every human situation. We decoupled the personality into 4 real-time lenses:
+• Normal Twin — Your authentic baseline voice and objective sparring partner.
+• Reflective Twin — Compassionate emotional validation when you need psychological grounding.
+• Honest Twin — Unfiltered, direct confrontation that shreds excuses and highlights blind spots.
+• Future Twin — The 5-years-wiser executive lens viewing today’s panic with retrospective clarity.
+
+Building this required moving beyond off-the-shelf wrappers and engineering dynamic multi-provider LLM orchestration with sub-second latency fallbacks and strict prompt drift governance.
+
+The app is live today on Google Play Store.
+
+Take the 35-question cognitive baseline, test Honest Mode against your own excuses, and let me know if it changes how you think about conversational AI.
+
+📲 Download TwinGenie free: ${utm}
+
+Swipe through the carousel breakdown below to see the complete cognitive architecture. 👇
+
+#ArtificialIntelligence #MachineLearning #SystemArchitecture #TechFounders #LLM #CognitiveScience #DigitalTwin #TwinGenie #ProductEngineering`
+        };
+    }
+
+    _buildFounderSlides(theme) {
+        return [
+            {
+                type: 'cover',
+                tag: 'FOUNDER & AI ARCHITECTURE',
+                title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built an AI That Remembers & Challenges You",
+                subtitle: "When I set out to build TwinGenie, I noticed a fundamental flaw in today's generative AI: LLMs have zero memory and a desperate algorithmic bias to please you.",
+                takeaways: [
+                    "Why stateless LLMs reinforce dangerous confirmation bias & complacency",
+                    "The 4-perspective cognitive engine: Normal, Reflective, Honest, Future",
+                    "Engineering persistent pgvector memory for true human self-growth"
+                ]
+            },
+            {
+                type: 'comparison',
+                tag: 'COGNITIVE AUDIT',
+                title: 'Standard AI vs. TwinGenie Honest Mode',
+                subtitle: 'Two completely different responses to the exact same executive excuse:',
+                left: {
+                    badge: '[ STANDARD LLM (ZERO MEMORY) ]',
+                    user: "I feel like delaying this product release. I'm burnt out.",
+                    ai: "Totally valid! Prioritize self-care, take a break, and sleep in. Launch whenever you feel ready!",
+                    outcome: "Validates procrastination & hides fear of failure"
+                },
+                right: {
+                    badge: '[ TWINGENIE (HONEST TWIN) ]',
+                    user: "I feel like delaying this product release. I'm burnt out.",
+                    ai: "Looking at your memory logs from Oct 4th and 18th, you said the exact same thing before the demo. You aren't burnt out—you're scared of market critique. Let's execute.",
+                    outcome: "Detects the recurring loop & forces breakthrough"
+                }
+            },
+            {
+                type: 'modes',
+                tag: 'MULTI-PERSPECTIVE AI',
+                title: 'Four Distinct Cognitive Lenses',
+                subtitle: 'Built on Big Five psychological baselines to challenge your thinking from every angle:',
+                modes: [
+                    { name: 'Normal Twin', color: '#9333EA', desc: 'Your authentic baseline tone & objective daily sounding board' },
+                    { name: 'Reflective Twin', color: '#38BDF8', desc: 'High-empathy emotional validation & deep psychological grounding' },
+                    { name: 'Honest Twin', color: '#F43F5E', desc: 'Zero flattery, zero bias. Brutally exposes blind spots & excuses' },
+                    { name: 'Future Twin', color: '#34D399', desc: 'The 5-years-wiser executive lens viewing today\'s panic in retrospect' }
+                ]
+            },
+            {
+                type: 'timeline',
+                tag: 'PGVECTOR SEMANTIC MEMORY',
+                title: 'The Memory Progression Pipeline',
+                subtitle: 'How your AI evolves from an empty chatbot into an indispensable alter-ego:',
+                steps: [
+                    { phase: 'DAY 1: BASELINE CALIBRATION', detail: '35 Big Five-inspired questions establish your deterministic psychological & communication map.' },
+                    { phase: 'WEEK 2: PATTERN RECOGNITION', detail: 'Vector embeddings identify recurring stress triggers, decision paralysis & cognitive loops.' },
+                    { phase: 'MONTH 3: TRUE DIGITAL TWIN', detail: 'Anticipates objections, tracks goal adherence & acts as a 24/7 executive co-pilot.' }
+                ]
+            },
+            {
+                type: 'dynamic',
+                tag: 'SYSTEM ARCHITECTURE',
+                title: 'Under the Hood: Engineering TwinGenie',
+                highlight: '3 CORE TECHNICAL BREAKTHROUGHS',
+                content: 'Building TwinGenie required solving 3 major engineering hurdles that off-the-shelf wrappers ignore:',
+                bullets: [
+                    'Dynamic Multi-Provider Orchestration: Seamless sub-second fallbacks across leading LLMs.',
+                    'Deterministic Scoring Pipeline: Compressing 35 psychological traits into prompt constraints.',
+                    'Longitudinal Vector Memory: pgvector indexing ensuring zero context decay over months.'
+                ]
+            },
+            {
+                type: 'cta',
+                tag: 'TWINGENIE • LIVE ON GOOGLE PLAY',
+                title: 'Take the 35-Question Baseline Today',
+                subtitle: 'Available now on Google Play Store with full persistent memory & 4 cognitive modes enabled.',
+                button: 'Download Free on Google Play',
+                badge: '5.0 ★ • Cognitive AI Companion • com.asmind.app',
+                link: 'twingenie.app/open  •  Engineered by Ashwani Kumar'
+            }
+        ];
     }
 
     _generateInstagramContent(theme, campaignId) {
