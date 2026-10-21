@@ -39,17 +39,37 @@ export function initGrowthJobs() {
         }
     });
 
-    // 3. Daily 04:00 PM IST (10:30 UTC) Broadcast Trigger (Facebook Reel + LinkedIn Carousel)
-    cron.schedule('30 10 * * *', async () => {
+    // 3. Daily 08:30 AM IST (03:00 UTC) LinkedIn Personal Carousel Trigger
+    cron.schedule('0 3 * * *', async () => {
         try {
-            logger.info('⏰ [GROWTH JOB] 04:00 PM IST reached! Triggering automated daily broadcast (Facebook Reel + LinkedIn Carousel)...');
-            await growthOrchestratorService.publishDailyBroadcast(false);
+            logger.info('⏰ [GROWTH JOB] 08:30 AM IST reached! Triggering automated daily LinkedIn Carousel...');
+            await growthOrchestratorService.publishDailyLinkedInPersonal(false);
         } catch (e) {
-            logger.error('[GROWTH JOB] 04:00 PM broadcast error:', e);
+            logger.error('[GROWTH JOB] 08:30 AM LinkedIn broadcast error:', e);
         }
     });
 
-    // 4. Boot check: safely check scheduled queue without triggering heavy media generation
+    // 4. Daily 04:00 PM IST (10:30 UTC) Facebook Reel Trigger
+    cron.schedule('30 10 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 04:00 PM IST reached! Triggering automated daily Facebook Reel...');
+            await growthOrchestratorService.publishDailyFacebookReel(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 04:00 PM Facebook Reel error:', e);
+        }
+    });
+
+    // 5. Daily 08:30 PM IST (15:00 UTC) Evening LinkedIn Thought Leadership Trigger
+    cron.schedule('0 15 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 08:30 PM IST reached! Evening check for LinkedIn carousel...');
+            await growthOrchestratorService.publishDailyLinkedInPersonal(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 08:30 PM LinkedIn error:', e);
+        }
+    });
+
+    // 6. Boot check: safely check scheduled queue without triggering heavy media generation
     setTimeout(async () => {
         try {
             logger.info('🚀 [GROWTH JOB] Checking for due posts on server boot...');

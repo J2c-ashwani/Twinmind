@@ -132,8 +132,8 @@ class FacebookAdapter {
                                 })
                             });
                             const pubData = await pubRes.json();
-                            postId = pubData.post_id || videoId;
-                            logger.info(`🎉 [FACEBOOK] Native Reel published successfully via Reels API! ID: ${postId}`);
+                            postId = videoId || pubData.post_id;
+                            logger.info(`🎉 [FACEBOOK] Native Reel published successfully via Reels API! Video ID: ${videoId}, Post ID: ${pubData.post_id}`);
                         } else {
                             throw new Error(`Binary upload failed: ${JSON.stringify(uploadData)}`);
                         }
