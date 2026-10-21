@@ -695,30 +695,26 @@ def render_reel(spec, output_mp4_path):
         ]
         audio_map_index = '5:a'
     else:
-        # Ken Burns Motion Drift Fallback (Single Layer)
-        n1 = int(t1 * 30)
-        n2 = int(t2 * 30)
-        n3 = int(t3 * 30)
-        n4 = int(t4 * 30)
+        # High-Efficiency Memory-Constrained Crossfade (Strict Ultra-Low RAM for 512MB VPS)
         filter_complex = (
-            f"[0:v]zoompan=z='min(zoom+0.00025,1.06)':d={n1}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z0];"
-            f"[1:v]zoompan=z='min(zoom+0.00025,1.06)':d={n2}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z1];"
-            f"[2:v]zoompan=z='min(zoom+0.00025,1.06)':d={n3}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z2];"
-            f"[3:v]zoompan=z='min(zoom+0.00025,1.06)':d={n4}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30[z3];"
-            f"[z0][z1]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];"
-            f"[v01][z2]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];"
-            f"[v02][z3]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]"
+            f"[0:v]format=yuv420p[v0];"
+            f"[1:v]format=yuv420p[v1];"
+            f"[2:v]format=yuv420p[v2];"
+            f"[3:v]format=yuv420p[v3];"
+            f"[v0][v1]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];"
+            f"[v01][v2]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];"
+            f"[v02][v3]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]"
         )
         v_inputs = [
-            '-loop', '1', '-t', str(t1), '-i', s1,
-            '-loop', '1', '-t', str(t2), '-i', s2,
-            '-loop', '1', '-t', str(t3), '-i', s3,
-            '-loop', '1', '-t', str(t4), '-i', s4,
+            '-loop', '1', '-t', str(t1), '-r', '30', '-i', s1,
+            '-loop', '1', '-t', str(t2), '-r', '30', '-i', s2,
+            '-loop', '1', '-t', str(t3), '-r', '30', '-i', s3,
+            '-loop', '1', '-t', str(t4), '-r', '30', '-i', s4,
             '-i', final_audio
         ]
         audio_map_index = '4:a'
 
-    # Tier-3 Production Mastering Command (-g 30, -crf 17, 14M bitrate, BT.709 color matrix)
+    # Production Mobile Master with Strict 60MB RAM Cap
     cmd = [
         'ffmpeg', '-y',
         *v_inputs,
@@ -726,25 +722,21 @@ def render_reel(spec, output_mp4_path):
         '-map', '[v]',
         '-map', audio_map_index,
         '-c:v', 'libx264',
-        '-preset', 'fast',
-        '-threads', '2',
-        '-rc-lookahead', '10',
-        '-profile:v', 'high',
-        '-level:v', '4.2',
-        '-crf', '17',
-        '-b:v', '14M',
-        '-maxrate', '18M',
-        '-bufsize', '8M',
+        '-preset', 'ultrafast',
+        '-threads', '1',
+        '-rc-lookahead', '5',
+        '-profile:v', 'main',
+        '-level:v', '4.0',
+        '-crf', '22',
+        '-b:v', '3M',
+        '-maxrate', '4M',
+        '-bufsize', '2M',
         '-g', '30',
         '-keyint_min', '30',
         '-sc_threshold', '0',
         '-pix_fmt', 'yuv420p',
-        '-colorspace', 'bt709',
-        '-color_primaries', 'bt709',
-        '-color_trc', 'bt709',
-        '-color_range', 'tv',
         '-c:a', 'aac',
-        '-b:a', '256k',
+        '-b:a', '128k',
         '-ar', '44100',
         '-ac', '2',
         '-r', '30',

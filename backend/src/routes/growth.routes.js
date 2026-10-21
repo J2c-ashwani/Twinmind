@@ -94,20 +94,6 @@ router.post('/generate', requireAdminSecret, async (req, res) => {
 });
 
 /**
- * POST /api/admin/growth/publish/:id
- * Force publish a specific post immediately
- */
-router.post('/publish/:id', requireAdminSecret, async (req, res) => {
-    try {
-        const result = await growthOrchestratorService.publishPostNow(req.params.id);
-        res.json({ success: true, result });
-    } catch (error) {
-        logger.error('[GROWTH ROUTE] Force publish failed:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-/**
  * GET & POST /api/admin/growth/publish/linkedin
  * Dedicated LinkedIn pipeline trigger for Personal Profile or Company Page
  * Query/Body: { target: 'personal' | 'company', themeId?: string }
@@ -129,6 +115,9 @@ router.all('/publish/linkedin', requireAdminSecret, async (req, res) => {
             slides: content.slides
         });
 
+        const accessToken = req.body?.accessToken || req.query?.accessToken;
+        const authorUrn = req.body?.authorUrn || req.query?.authorUrn;
+
         logger.info(`[GROWTH ROUTE] Publishing to LinkedIn ${target}...`);
         const publishResult = await linkedinAdapter.publish({
             title: content.title,
@@ -136,12 +125,28 @@ router.all('/publish/linkedin', requireAdminSecret, async (req, res) => {
             pdfPath: rendered.pdfPath,
             pngPaths: rendered.pngPaths,
             utmLink: content.utmLink,
+            accessToken,
+            authorUrn,
             target
         });
 
         res.json({ success: true, target, publishResult, rendered });
     } catch (error) {
         logger.error('[GROWTH ROUTE] LinkedIn publish failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/admin/growth/publish/:id
+ * Force publish a specific post immediately
+ */
+router.post('/publish/:id', requireAdminSecret, async (req, res) => {
+    try {
+        const result = await growthOrchestratorService.publishPostNow(req.params.id);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Force publish failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

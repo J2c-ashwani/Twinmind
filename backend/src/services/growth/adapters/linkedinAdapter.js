@@ -67,7 +67,9 @@ class LinkedInAdapter {
      */
     async publish(postData) {
         const target = postData.target || 'company';
-        const { accessToken, authorUrn } = this.getCredentials(target);
+        const creds = this.getCredentials(target);
+        const accessToken = postData.accessToken || creds.accessToken;
+        const authorUrn = postData.authorUrn || creds.authorUrn;
 
         if (!accessToken || !authorUrn) {
             logger.warn(`[LINKEDIN] Credentials for ${target} not set. Running in verified simulation mode.`);
