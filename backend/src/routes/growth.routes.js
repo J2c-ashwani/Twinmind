@@ -163,12 +163,17 @@ router.get('/oauth/linkedin/callback', async (req, res) => {
             return res.status(400).send(`<h3>Missing Code</h3><p>No authorization code received from LinkedIn.</p>`);
         }
 
-        const clientId = process.env.LINKEDIN_CLIENT_ID;
-        const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+        const isCompany = req.query.state === 'company';
+        const clientId = isCompany
+            ? (process.env.LINKEDIN_COMPANY_CLIENT_ID || process.env.LINKEDIN_CLIENT_ID)
+            : (process.env.LINKEDIN_PERSONAL_CLIENT_ID || process.env.LINKEDIN_CLIENT_ID);
+        const clientSecret = isCompany
+            ? (process.env.LINKEDIN_COMPANY_CLIENT_SECRET || process.env.LINKEDIN_CLIENT_SECRET)
+            : (process.env.LINKEDIN_PERSONAL_CLIENT_SECRET || process.env.LINKEDIN_CLIENT_SECRET);
         const redirectUri = `${req.protocol}://${req.get('host')}${req.path}`;
 
         if (!clientId || !clientSecret) {
-            return res.status(500).send(`<h3>Server Missing Credentials</h3><p>Ensure LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET are set in environment variables.</p>`);
+            return res.status(500).send(`<h3>Server Missing Credentials</h3><p>Ensure LINKEDIN_PERSONAL_CLIENT_ID and LINKEDIN_PERSONAL_CLIENT_SECRET are set in environment variables.</p>`);
         }
 
         const params = new URLSearchParams({
