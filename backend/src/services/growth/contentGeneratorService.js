@@ -73,11 +73,10 @@ class ContentGeneratorService {
     }
 
     /**
-     * Builds standard UTM link for attribution
+     * Builds direct Google Play Store link
      */
     buildUtmLink(platform, format, campaignId) {
-        const base = 'https://twingenie.app/open';
-        return `${base}?utm_source=${encodeURIComponent(platform)}&utm_medium=${encodeURIComponent(format)}&utm_campaign=${encodeURIComponent(campaignId)}`;
+        return 'https://play.google.com/store/apps/details?id=com.asmind.app';
     }
 
     /**
@@ -175,7 +174,7 @@ class ContentGeneratorService {
                     "100% private, self-guided reflection"
                 ],
                 button: 'Download TwinGenie on Google Play',
-                link: 'twingenie.app  •  Live on Google Play Store'
+                link: 'play.google.com/store/apps/details?id=com.asmind.app'
             }
         ];
     }
@@ -329,7 +328,7 @@ Swipe through the carousel breakdown below to see the complete cognitive archite
                 subtitle: 'Available now on Google Play Store with full persistent memory & 4 cognitive modes enabled.',
                 button: 'Download Free on Google Play',
                 badge: '5.0 ★ • Cognitive AI Companion • com.asmind.app',
-                link: 'twingenie.app/open  •  Engineered by Ashwani Kumar'
+                link: 'play.google.com/store/apps/details?id=com.asmind.app  •  Engineered by Ashwani Kumar'
             }
         ];
     }

@@ -285,9 +285,9 @@ class FacebookAdapter {
      */
     async _postFirstComment(postId, postData, accessToken) {
         if (!postId) return;
-        const link = postData.utmLink || 'https://twingenie.app/open';
+        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.asmind.app';
         const commentMsg = postData.firstComment || 
-            `📲 Download TwinGenie free on Google Play & take your Big Five assessment: ${link}`;
+            `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nTake your 35-question Big Five personality baseline today!`;
         try {
             const res = await fetch(`${GRAPH_API_BASE}/${postId}/comments`, {
                 method: 'POST',

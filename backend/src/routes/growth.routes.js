@@ -3,6 +3,7 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
 import mediaRendererService from '../services/growth/mediaRendererService.js';
 import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/contentGeneratorService.js';
 import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
+import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -133,6 +134,59 @@ router.all('/publish/linkedin', requireAdminSecret, async (req, res) => {
         res.json({ success: true, target, publishResult, rendered });
     } catch (error) {
         logger.error('[GROWTH ROUTE] LinkedIn publish failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/publish/facebook
+ * Dedicated Facebook pipeline trigger (Multi-Photo Carousel or Reel)
+ * Body/Query: { format?: 'carousel' | 'reel', themeId?: string }
+ */
+router.all('/publish/facebook', requireAdminSecret, async (req, res) => {
+    try {
+        const format = req.body?.format || req.query?.format || 'carousel';
+        const themeId = req.body?.themeId;
+        const theme = CAMPAIGN_THEMES.find(t => t.id === themeId) || CAMPAIGN_THEMES[0];
+        const campaignId = `camp_${theme.id}_${Date.now()}`;
+        const content = contentGeneratorService._generateFacebookContent(theme, campaignId, format);
+
+        let mediaPaths = [];
+        let videoPath = null;
+
+        if (format === 'carousel') {
+            logger.info(`[GROWTH ROUTE] Rendering multi-image carousel for Facebook...`);
+            const rendered = await mediaRendererService.renderCarousel({
+                campaignId,
+                postId: `post_facebook_carousel_${Date.now()}`,
+                slides: content.slides
+            });
+            mediaPaths = rendered.pngPaths;
+        } else {
+            logger.info(`[GROWTH ROUTE] Rendering Reel video for Facebook...`);
+            const rendered = await mediaRendererService.renderReel({
+                campaignId,
+                postId: `post_facebook_reel_${Date.now()}`,
+                hook: content.title || theme.hook,
+                tag: content.tag || theme.tag
+            });
+            videoPath = rendered.videoPath;
+        }
+
+        logger.info(`[GROWTH ROUTE] Publishing to Facebook Page...`);
+        const publishResult = await facebookAdapter.publish({
+            title: content.title,
+            caption: content.caption,
+            firstComment: content.firstComment,
+            mediaPaths,
+            videoPath,
+            utmLink: content.utmLink,
+            format
+        });
+
+        res.json({ success: true, format, publishResult });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Facebook publish failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

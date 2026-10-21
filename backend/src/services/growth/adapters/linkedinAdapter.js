@@ -170,6 +170,9 @@ class LinkedInAdapter {
             const postUrl = `https://www.linkedin.com/feed/update/${postId}`;
             logger.info(`🎉 [LINKEDIN] Published successfully! Post ID: ${postId}`);
 
+            // Automatically post first comment with Google Play Store link
+            await this._postFirstComment(postId, postData, accessToken, authorUrn);
+
             return {
                 success: true,
                 platform: this.platform,
@@ -268,6 +271,39 @@ class LinkedInAdapter {
 
         logger.info(`[LINKEDIN] Document binary uploaded to asset: ${assetUrn}`);
         return assetUrn;
+    }
+
+    /**
+     * Posts the first comment with the direct Google Play Store download link
+     */
+    async _postFirstComment(postId, postData, accessToken, authorUrn) {
+        if (!postId) return;
+        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+        const commentMsg = postData.firstComment || 
+            `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nTake the 35-question cognitive baseline & test Honest Twin Mode against your own excuses!`;
+        try {
+            logger.info(`💬 [LINKEDIN] Posting first comment with Play Store link on ${postId}...`);
+            const res = await fetch(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'X-Restli-Protocol-Version': '2.0.0'
+                },
+                body: JSON.stringify({
+                    actor: authorUrn,
+                    message: { text: commentMsg }
+                })
+            });
+            const data = await res.json();
+            if (data.id) {
+                logger.info(`💬 [LINKEDIN] First comment posted successfully on ${postId}: ${data.id}`);
+            } else {
+                logger.warn('[LINKEDIN] First comment API response:', data);
+            }
+        } catch (err) {
+            logger.warn('[LINKEDIN] Non-blocking first-comment error:', err.message);
+        }
     }
 }
 
