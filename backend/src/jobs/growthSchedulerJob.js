@@ -39,16 +39,9 @@ export function initGrowthJobs() {
         }
     });
 
-    // 3. Boot check: generate starter campaign & immediately dispatch any due/unposted ready platforms
+    // 3. Boot check: safely check scheduled queue without triggering heavy media generation
     setTimeout(async () => {
         try {
-            const status = await growthOrchestratorService.getSystemStatus();
-            if (status.queueSummary.scheduled === 0 && status.queueSummary.published === 0) {
-                logger.info('🚀 [GROWTH JOB] Seeding initial 4-platform campaign bundle on server boot...');
-                await growthOrchestratorService.generateAndQueueDailyCampaign();
-            }
-
-            // Immediately check and process due posts on boot!
             logger.info('🚀 [GROWTH JOB] Checking for due posts on server boot...');
             await growthOrchestratorService.processScheduledPosts();
         } catch (e) {
