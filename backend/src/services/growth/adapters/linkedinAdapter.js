@@ -110,17 +110,27 @@ class LinkedInAdapter {
                 }
             }
 
-            // 2. Fallback to Image Upload if document wasn't uploaded and PNG exists
-            if (!mediaAssetUrn && postData.pngPaths && postData.pngPaths.length > 0) {
-                const firstImg = postData.pngPaths[0];
-                if (fs.existsSync(firstImg)) {
-                    try {
-                        logger.info(`[LINKEDIN] Uploading primary carousel cover image: ${firstImg}`);
-                        mediaAssetUrn = await this._uploadImage(accessToken, authorUrn, firstImg);
-                        shareCategory = 'IMAGE';
-                    } catch (imgErr) {
-                        logger.warn(`[LINKEDIN] Image upload error (${imgErr.message}), falling back to text + link share.`);
+            // 2. Upload Multi-Image Carousel Slides if provided
+            let mediaItems = [];
+            if (postData.pngPaths && postData.pngPaths.length > 0) {
+                logger.info(`[LINKEDIN] Uploading ${postData.pngPaths.length} slides as multi-image carousel gallery...`);
+                for (let i = 0; i < postData.pngPaths.length; i++) {
+                    const imgPath = postData.pngPaths[i];
+                    if (fs.existsSync(imgPath)) {
+                        try {
+                            const assetUrn = await this._uploadImage(accessToken, authorUrn, imgPath);
+                            mediaItems.push({
+                                status: 'READY',
+                                media: assetUrn,
+                                title: { text: `Slide ${i + 1} of ${postData.pngPaths.length}` }
+                            });
+                        } catch (imgErr) {
+                            logger.warn(`[LINKEDIN] Slide ${i + 1} upload failed: ${imgErr.message}`);
+                        }
                     }
+                }
+                if (mediaItems.length > 0) {
+                    shareCategory = 'IMAGE';
                 }
             }
 
@@ -134,14 +144,7 @@ class LinkedInAdapter {
                             text: postData.caption
                         },
                         shareMediaCategory: shareCategory,
-                        media: mediaAssetUrn ? [
-                            {
-                                status: 'READY',
-                                description: { text: postData.title || 'TwinGenie Cognitive Engineering' },
-                                media: mediaAssetUrn,
-                                title: { text: postData.title || 'TwinGenie Carousel Breakdown' }
-                            }
-                        ] : undefined
+                        media: mediaItems.length > 0 ? mediaItems : undefined
                     }
                 },
                 visibility: {
