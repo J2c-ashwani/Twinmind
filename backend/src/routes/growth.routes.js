@@ -170,7 +170,9 @@ router.get('/oauth/linkedin/callback', async (req, res) => {
         const clientSecret = isCompany
             ? (process.env.LINKEDIN_COMPANY_CLIENT_SECRET || process.env.LINKEDIN_CLIENT_SECRET)
             : (process.env.LINKEDIN_PERSONAL_CLIENT_SECRET || process.env.LINKEDIN_CLIENT_SECRET);
-        const redirectUri = `${req.protocol}://${req.get('host')}${req.path}`;
+            
+        // Explicitly force exact HTTPS matching URL registered in LinkedIn Developer Portal
+        const redirectUri = 'https://twinmind-9l6x.onrender.com/api/admin/growth/oauth/linkedin/callback';
 
         if (!clientId || !clientSecret) {
             return res.status(500).send(`<h3>Server Missing Credentials</h3><p>Ensure LINKEDIN_PERSONAL_CLIENT_ID and LINKEDIN_PERSONAL_CLIENT_SECRET are set in environment variables.</p>`);
