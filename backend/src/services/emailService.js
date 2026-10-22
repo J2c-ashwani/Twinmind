@@ -24,7 +24,9 @@ export async function sendEmail({
     html,
     text,
     from = DEFAULT_FROM,
-    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app'
+    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app',
+    tags,
+    headers
 }) {
     const apiKey = process.env.RESEND_API_KEY;
 
@@ -52,6 +54,14 @@ export async function sendEmail({
 
         if (reply_to) {
             payload.reply_to = reply_to;
+        }
+
+        if (tags && Array.isArray(tags)) {
+            payload.tags = tags;
+        }
+
+        if (headers && typeof headers === 'object') {
+            payload.headers = headers;
         }
 
         const response = await fetch(RESEND_API_URL, {

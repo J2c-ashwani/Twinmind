@@ -389,7 +389,8 @@ router.get('/campaign/status', requireAdminSecret, (req, res) => {
  */
 router.post('/campaign/trigger-next', requireAdminSecret, async (req, res) => {
     try {
-        const result = await acquisitionCampaignService.executeTick();
+        const force = req.body?.force === true || req.query?.force === 'true';
+        const result = await acquisitionCampaignService.executeTick(force);
         res.json({ success: true, result, status: acquisitionCampaignService.getStatus() });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
