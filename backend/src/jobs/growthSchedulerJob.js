@@ -25,8 +25,8 @@ export function initGrowthJobs() {
         }
     });
 
-    // 2. Daily Campaign Auto-Replenishment (06:00 AM IST = 00:30 UTC)
-    cron.schedule('30 0 * * *', async () => {
+    // 2. Daily Campaign Auto-Replenishment (06:00 AM IST)
+    cron.schedule('0 6 * * *', async () => {
         try {
             logger.info('[GROWTH JOB] Running daily content replenishment check...');
             const status = await growthOrchestratorService.getSystemStatus();
@@ -37,37 +37,37 @@ export function initGrowthJobs() {
         } catch (e) {
             logger.error('[GROWTH JOB] Replenishment error:', e);
         }
-    });
+    }, { timezone: 'Asia/Kolkata' });
 
-    // 3. Daily 08:30 AM IST (03:00 UTC) LinkedIn Personal Carousel Trigger
-    cron.schedule('0 3 * * *', async () => {
+    // 3. Daily 08:30 AM IST LinkedIn Personal Carousel Trigger
+    cron.schedule('30 8 * * *', async () => {
         try {
             logger.info('⏰ [GROWTH JOB] 08:30 AM IST reached! Triggering automated daily LinkedIn Carousel...');
             await growthOrchestratorService.publishDailyLinkedInPersonal(false);
         } catch (e) {
             logger.error('[GROWTH JOB] 08:30 AM LinkedIn broadcast error:', e);
         }
-    });
+    }, { timezone: 'Asia/Kolkata' });
 
-    // 4. Daily 04:00 PM IST (10:30 UTC) Facebook Reel Trigger
-    cron.schedule('30 10 * * *', async () => {
+    // 4. Daily 04:00 PM IST (16:00) Facebook Reel Trigger
+    cron.schedule('0 16 * * *', async () => {
         try {
             logger.info('⏰ [GROWTH JOB] 04:00 PM IST reached! Triggering automated daily Facebook Reel...');
             await growthOrchestratorService.publishDailyFacebookReel(false);
         } catch (e) {
             logger.error('[GROWTH JOB] 04:00 PM Facebook Reel error:', e);
         }
-    });
+    }, { timezone: 'Asia/Kolkata' });
 
-    // 5. Daily 08:30 PM IST (15:00 UTC) Evening LinkedIn Thought Leadership Trigger
-    cron.schedule('0 15 * * *', async () => {
+    // 5. Daily 08:30 PM IST (20:30) Evening LinkedIn Thought Leadership Trigger
+    cron.schedule('30 20 * * *', async () => {
         try {
             logger.info('⏰ [GROWTH JOB] 08:30 PM IST reached! Evening check for LinkedIn carousel...');
             await growthOrchestratorService.publishDailyLinkedInPersonal(false);
         } catch (e) {
             logger.error('[GROWTH JOB] 08:30 PM LinkedIn error:', e);
         }
-    });
+    }, { timezone: 'Asia/Kolkata' });
 
     // 6. Boot check: safely check scheduled queue without triggering heavy media generation
     setTimeout(async () => {

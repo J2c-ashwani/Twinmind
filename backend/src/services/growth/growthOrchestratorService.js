@@ -156,12 +156,13 @@ class GrowthOrchestratorService {
             const scheduledDate = new Date();
             scheduledDate.setUTCHours(slot.hour, slot.minute, 0, 0);
 
-            // Check if platform has already had a published post in the last 18 hours
-            const recentPublished = this.state.posts.some(
-                p => p.platform === platform && 
-                     p.status === 'published' && 
-                     (now.getTime() - new Date(p.publishedAt).getTime()) < 18 * 60 * 60 * 1000
-            );
+            // Check if platform has already had a published post today (IST calendar day)
+            const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+            const recentPublished = this.state.posts.some(p => {
+                if (p.platform !== platform || p.status !== 'published' || !p.publishedAt) return false;
+                const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.publishedAt));
+                return postDateIST === todayIST;
+            });
 
             // If no post has been published today for this platform, schedule for immediate dispatch
             if (!recentPublished) {
@@ -176,6 +177,7 @@ class GrowthOrchestratorService {
                 id: postId,
                 campaignId: bundle.campaignId,
                 platform,
+                target: platform === 'linkedin' ? 'personal' : undefined,
                 format: postSpec.format,
                 title: postSpec.title,
                 caption: postSpec.caption,
@@ -256,6 +258,7 @@ class GrowthOrchestratorService {
             const publishResult = await adapter.publish({
                 title: post.title,
                 caption: post.caption,
+                target: post.target || (post.platform === 'linkedin' ? 'personal' : undefined),
                 firstComment: post.firstComment,
                 utmLink: post.utmLink,
                 mediaPaths: post.mediaPaths || [],
@@ -300,15 +303,16 @@ class GrowthOrchestratorService {
         logger.info('[GROWTH ORCHESTRATOR] Starting daily Facebook Reel publication flow...');
         const now = new Date();
 
-        // Unless force=true, ensure we haven't already published a Facebook Reel in the last 18 hours
+        // Unless force=true, ensure we haven't already published a Facebook Reel today (IST calendar day)
         if (!force) {
-            const recentPublished = this.state.posts.some(
-                p => p.platform === 'facebook' && 
-                     p.status === 'published' && 
-                     (now.getTime() - new Date(p.publishedAt).getTime()) < 18 * 60 * 60 * 1000
-            );
-            if (recentPublished) {
-                logger.info('[GROWTH ORCHESTRATOR] Facebook Reel already published in the last 18 hours. Skipping.');
+            const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+            const alreadyPublishedToday = this.state.posts.some(p => {
+                if (p.platform !== 'facebook' || p.status !== 'published' || !p.publishedAt) return false;
+                const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.publishedAt));
+                return postDateIST === todayIST;
+            });
+            if (alreadyPublishedToday) {
+                logger.info(`[GROWTH ORCHESTRATOR] Facebook Reel already published today (${todayIST}). Skipping.`);
                 return { action: 'skipped', reason: 'already_published_today' };
             }
         }
@@ -385,14 +389,14 @@ class GrowthOrchestratorService {
         const now = new Date();
 
         if (!force) {
-            const recentPublished = this.state.posts.some(
-                p => p.platform === 'linkedin' && 
-                     p.target === 'personal' &&
-                     p.status === 'published' && 
-                     (now.getTime() - new Date(p.publishedAt).getTime()) < 18 * 60 * 60 * 1000
-            );
-            if (recentPublished) {
-                logger.info('[GROWTH ORCHESTRATOR] LinkedIn personal post already published in the last 18 hours. Skipping.');
+            const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+            const alreadyPublishedToday = this.state.posts.some(p => {
+                if (p.platform !== 'linkedin' || p.target !== 'personal' || p.status !== 'published' || !p.publishedAt) return false;
+                const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.publishedAt));
+                return postDateIST === todayIST;
+            });
+            if (alreadyPublishedToday) {
+                logger.info(`[GROWTH ORCHESTRATOR] LinkedIn personal post already published today (${todayIST}). Skipping.`);
                 return { action: 'skipped', reason: 'already_published_today' };
             }
         }
