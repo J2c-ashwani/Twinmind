@@ -4,7 +4,6 @@ import { fileURLToPath } from 'url';
 import logger from '../config/logger.js';
 import { sendEmail } from './emailService.js';
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const STATE_FILE_PATH = path.join(__dirname, '../../logs/acquisition_campaign_state.json');
@@ -72,8 +71,10 @@ function isNorthStarBusinessHours() {
 
 /**
  * Verified M&A Decision-Maker & Strategic Target Register
- * High-conviction, professional executive copy emphasizing turnkey cross-platform assets,
- * production Google Play presence, 78.8% assessment completion rate, and complete IP transfer.
+ * High-converting, skimmable executive copy answering "Why Exit?" upfront:
+ * Engineering founder running agency (FSI Digital), lacking B2C consumer distribution,
+ * seeking an experienced mobile operator for clean 100% IP & asset acquisition.
+ * Low-friction CTA: "Can I send over our 1-page asset teardown and summary deck?"
  */
 const SEED_TARGETS = [
     {
@@ -86,13 +87,17 @@ const SEED_TARGETS = [
         subject: 'YTC Ventures — divestment opportunity: TwinGenie software & IP',
         bodyText: `Hi Team,
 
-I noticed YTC Ventures evaluates divestment and acquisition opportunities across consumer tech and software products, so I’m reaching out through your divestment channel. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and guided reflection platform available for strategic acquisition.
+I saw YTC Ventures evaluates consumer software acquisitions, so I wanted to reach out through your divestment channel. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with an unreleased Flutter iOS project, a Next.js web platform, and a pgvector semantic memory architecture. Our 35-question Big Five onboarding achieves a 78.8% completion rate, powering a 4-mode cognitive engine for daily self-reflection and decision support.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Node.js & Next.js backend with pgvector longitudinal memory
+• 35-question Big Five personality baseline with a 78.8% completion rate
 
-We are offering this as an early-stage asset acquisition including full code repositories, database schemas, AI pipelines, domains, and store assets.
+Why sell? I am an engineering founder running a digital agency (FSI Digital), and I don't have the consumer marketing bandwidth to scale B2C distribution. I'm looking for an experienced operator to take over 100% of the IP, codebases, and store listings under a clean asset sale.
 
-Would your team be open to receiving our summary deck and reviewing this divestment opportunity?
+If this aligns with your criteria, can I send over our 1-page asset teardown and summary deck?
 
 Best,
 Ashwani
@@ -109,13 +114,18 @@ founder@twingenie.app`
         subject: 'The Happy Harbor — TwinGenie software & IP acquisition opportunity',
         bodyText: `Hi Team,
 
-I saw The Happy Harbor acquires software and mobile app assets across stages, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and reflection platform.
+I saw The Happy Harbor acquires software and mobile app assets, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie has a production Android application live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app), a built Flutter iOS codebase, a Next.js web platform, and a shared pgvector memory pipeline. Our 35-question personality onboarding sees a 78.8% completion rate, feeding into 4 distinct AI reflection perspectives.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Full Next.js web application & Node.js backend
+• Longitudinal pgvector semantic memory engine
+• 35-question Big Five personality baseline (78.8% onboarding completion rate)
 
-We are structuring this as a clean, complete asset and IP sale.
+Why exit? I am an engineering founder running my digital agency (FSI Digital), and I lack the consumer distribution channels to scale B2C growth. I’m looking to transition 100% of the IP, codebases, and digital assets under a clean asset sale.
 
-Would you be open to reviewing TwinGenie as a product/technology asset acquisition?
+If this fits your acquisition criteria, can I send over our 1-page asset teardown and summary deck?
 
 Best,
 Ashwani
@@ -132,13 +142,17 @@ founder@twingenie.app`
         subject: 'Atul — would AppSmartz review TwinGenie for acquisition?',
         bodyText: `Hi Atul,
 
-I saw AppSmartz’s acquisition and scaling of unMix AI, so I wanted to connect founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app.
+I saw AppSmartz’s acquisition and scaling of unMix AI, so I wanted to reach out founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) alongside a built Flutter iOS codebase, a Next.js web app, and persistent pgvector semantic memory. Our 35-question Big Five onboarding achieves a 78.8% completion rate, driving a 4-mode cognitive engine for structured reflection and decision support.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Modern Next.js web application & persistent pgvector memory
+• 35-question Big Five personality model with a 78.8% completion rate
 
-Given AppSmartz’s track record operating and scaling consumer AI utilities, I thought TwinGenie could be a compelling strategic addition. We are selling 100% of the IP, codebases, and digital assets.
+Why exit? I’m an engineering founder running my digital agency (FSI Digital), and I don't have the consumer acquisition bandwidth to scale B2C growth. Given AppSmartz’s expertise operating and scaling mobile AI apps, I thought this could be a high-synergy addition to your portfolio. We are selling 100% of the IP, codebases, and store listings under a clean transfer.
 
-Would you be open to reviewing it as a software and IP acquisition?
+If this sounds interesting, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -155,13 +169,17 @@ founder@twingenie.app`
         subject: 'Steve — would App Masters review TwinGenie for acquisition?',
         bodyText: `Hi Steve,
 
-I follow your work across app growth, portfolio scaling, and acquisitions, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion app that I’m looking to transition to the right acquirer.
+I follow your work across app growth and acquisitions, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a functional Next.js web app and a built Flutter iOS codebase. It features longitudinal pgvector memory, a 35-question personality baseline with a 78.8% completion rate, and four prompt-based cognitive perspectives over a unified context pipeline.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store release
+• Next.js web application with pgvector longitudinal memory
+• 35-question Big Five personality baseline with a 78.8% completion rate
 
-I'm looking for a clean technology and IP asset sale (full transfer of codebases, Google Play app, domain, and architecture).
+Why exit? I am a technical founder running a digital agency (FSI Digital), and I don't have the B2C distribution engine to scale consumer growth. I’m looking to transition 100% of the software and IP assets to an experienced operator who knows how to scale app portfolios.
 
-Would you be open to taking a look or connecting me with interested buyers in your network?
+If this aligns with what you evaluate, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -178,13 +196,18 @@ founder@twingenie.app`
         subject: 'Dan — would Limitless review TwinGenie for technology/IP acquisition?',
         bodyText: `Hi Dan,
 
-I've been following Limitless's development of personalized AI memory systems, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and self-reflection app available for strategic acquisition.
+I've been following Limitless's pioneering work in personalized AI memory, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS project, Next.js web platform, and a unified pgvector longitudinal memory architecture. Our 35-question personality model achieves a 78.8% onboarding completion rate, enabling users to converse across four specialized cognitive modes (including a Future Self projection).
+I built TwinGenie around a longitudinal memory pipeline for personal growth:
+• Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS project ready for submission
+• Next.js web platform & pgvector semantic memory engine
+• 4 distinct cognitive modes (Direct Mirror, Compassionate Guide, Devil's Advocate, and Future Self)
+• 35-question Big Five baseline (78.8% onboarding completion rate)
 
-We are selling 100% of the software, IP, and memory pipeline assets.
+Why sell? I am an engineering founder running my digital agency (FSI Digital), and I don't have the consumer distribution bandwidth to scale B2C growth. We are seeking a technology & IP acquisition for 100% of the codebases, memory architecture, and store assets.
 
-Would your team be open to reviewing it as a technology and IP acquisition?
+If this is relevant to Limitless’s roadmap, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -201,13 +224,18 @@ founder@twingenie.app`
         subject: 'Steve — would Aura review TwinGenie for product/IP acquisition?',
         bodyText: `Hi Steve,
 
-I saw Aura’s platform bringing together mental wellness, mindfulness, and self-reflection tools, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI digital twin and reflection app available for strategic acquisition.
+I saw Aura’s platform bringing together mental wellness and self-reflection tools, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-The Android app is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) alongside a built Flutter iOS codebase and a Next.js web application. It includes persistent pgvector semantic memory, a 35-question Big Five onboarding assessment (78.8% completion rate), and four distinct conversational reflection modes over a single context pipeline.
+I built TwinGenie as a structured AI companion for self-reflection and mental clarity:
+• Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for store release
+• Next.js web application with persistent pgvector memory
+• 35-question Big Five personality baseline (78.8% completion rate)
+• 4 conversational reflection perspectives over a single context pipeline
 
-Given Aura's focus on premium mindfulness and emotional wellness, TwinGenie’s cognitive reflection engine would make a natural portfolio addition. We are offering a complete transfer of all codebases, IP, and store listings.
+Why exit? I’m a technical founder running my digital agency (FSI Digital), and I lack the consumer distribution channels to scale B2C growth. Given Aura's leadership in mindfulness and mental wellbeing, TwinGenie’s cognitive reflection engine would make a natural portfolio asset. We are selling 100% of the IP and codebases under a clean asset transfer.
 
-Would your team be open to reviewing TwinGenie for acquisition?
+If this aligns with Aura’s acquisition focus, can I send over our 1-page summary teardown?
 
 Best,
 Ashwani
@@ -224,13 +252,18 @@ founder@twingenie.app`
         subject: 'Ramakant — would Wysa review TwinGenie for technology/IP acquisition?',
         bodyText: `Hi Ramakant,
 
-I’ve followed Wysa’s pioneering work in conversational mental wellbeing, so I wanted to connect founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection product available for strategic acquisition.
+I’ve followed Wysa’s pioneering work in conversational mental wellbeing, so I wanted to reach out founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase, a Next.js web application, and longitudinal pgvector memory. Our 35-question personality profiling boasts a 78.8% completion rate, feeding into four cognitive perspectives designed to help users process stress, decisions, and personal growth.
+I built TwinGenie as an AI companion for self-reflection and personal growth:
+• Live Android app on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Next.js web application & Node.js backend
+• Longitudinal pgvector memory architecture
+• 35-question personality profiling with a 78.8% completion rate
 
-We are seeking a clean asset and technology transfer (complete IP, codebases, and assets).
+Why sell? I am an engineering founder running a digital agency (FSI Digital), and I don't have the consumer acquisition bandwidth to scale B2C mental health distribution. We are offering 100% of the technology, codebases, and IP assets under a clean asset sale.
 
-Would you be open to evaluating it as an early-stage product & technology acquisition?
+If this aligns with Wysa’s roadmap, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -247,13 +280,17 @@ founder@twingenie.app`
         subject: 'Dan — would Brain.fm review TwinGenie for product/IP acquisition?',
         bodyText: `Hi Dan,
 
-I follow Brain.fm’s work at the intersection of cognitive performance and science-backed mental tools, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI self-reflection companion available for strategic acquisition.
+I follow Brain.fm’s work at the intersection of cognitive performance and science-backed tools, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase and a Next.js web app. It combines persistent pgvector memory with a 35-question Big Five baseline (78.8% onboarding completion rate) and four cognitive modes (Direct Mirror, Compassionate Guide, Devil’s Advocate, and Future Self).
+I built TwinGenie as an AI self-reflection companion for mental clarity:
+• Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store release
+• Next.js web app & Node.js backend with persistent pgvector memory
+• 35-question Big Five personality baseline (78.8% onboarding completion rate)
 
-We are offering 100% of the IP, codebases, and digital assets under a clean asset sale.
+Why sell? I am a technical founder running my digital agency (FSI Digital), and I don't have the B2C distribution bandwidth to scale consumer acquisition. We are offering 100% of the IP, codebases, and store listings under a clean asset sale.
 
-Would you be open to reviewing TwinGenie as a product & IP acquisition?
+If this is of interest, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -270,13 +307,18 @@ founder@twingenie.app`
         subject: 'Theodoric — would Intellect review TwinGenie for product/IP acquisition?',
         bodyText: `Hi Theodoric,
 
-I’ve followed Intellect’s expansion across digital mental health and behavioral reflection, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app looking for the right acquirer.
+I’ve followed Intellect’s expansion across digital mental health and behavioral reflection, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS project, Next.js web app, and unified pgvector memory. Our 35-question Big Five personality baseline sees a 78.8% onboarding completion rate, powering multi-mode reflection for daily mental clarity.
+I built TwinGenie as a conversational companion for guided reflection:
+• Live Android app on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS project ready for submission
+• Next.js web application with unified pgvector memory
+• 35-question Big Five personality baseline (78.8% completion rate)
+• 4-mode cognitive engine for structured reflection
 
-We are selling the complete software, brand, and IP assets under a straightforward asset transfer.
+Why exit? I am an engineering founder running a digital agency (FSI Digital), and I don't have the B2C marketing channels to scale consumer growth. We are looking to sell 100% of the software, brand, and IP assets under a straightforward asset transfer.
 
-Would you be open to evaluating it as a product and technology asset acquisition?
+If this aligns with Intellect’s expansion, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -293,13 +335,17 @@ founder@twingenie.app`
         subject: 'Kevin — would Mem review TwinGenie for technology/IP acquisition?',
         bodyText: `Hi Kevin,
 
-I’ve followed Mem’s focus on personalized memory and self-organizing AI, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and guided reflection platform available for strategic acquisition.
+I’ve followed Mem’s focus on personalized memory and self-organizing AI, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) alongside a built Flutter iOS codebase and a Next.js web application. It features longitudinal pgvector semantic memory, a 35-question personality baseline (78.8% completion rate), and four cognitive perspectives over a single context pipeline.
+I built TwinGenie as an AI companion powered by longitudinal memory:
+• Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for store release
+• Next.js web application & persistent pgvector semantic memory
+• 35-question personality baseline (78.8% onboarding completion rate)
 
-We are structuring a clean asset and IP transfer covering all codebases, models, and infrastructure.
+Why sell? I am a technical founder running a digital agency (FSI Digital), and I lack the consumer distribution channels to scale B2C growth. We are offering 100% of the IP, codebases, and memory pipelines under a clean asset sale.
 
-Would you be open to reviewing TwinGenie as a technology/product acquisition?
+If this aligns with Mem’s technology interests, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -316,13 +362,17 @@ founder@twingenie.app`
         subject: 'Oleg — would Endel review TwinGenie for product/IP acquisition?',
         bodyText: `Hi Oleg,
 
-I saw Endel’s focus on adaptive, personalized AI environments for mindfulness and focus, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and self-reflection product.
+I saw Endel’s focus on adaptive, personalized AI environments for mindfulness and focus, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase and a Next.js web platform. It features longitudinal pgvector memory, a 35-question personality baseline with a 78.8% onboarding completion rate, and four conversational perspectives for personal growth and mental calibration.
+I built TwinGenie as a personal AI companion for daily self-reflection:
+• Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Next.js web platform & longitudinal pgvector memory
+• 35-question Big Five personality baseline (78.8% completion rate)
 
-We are selling 100% of the software and IP assets.
+Why exit? I am an engineering founder running my digital agency (FSI Digital), and I don't have the consumer marketing bandwidth to scale B2C distribution. We are selling 100% of the software and IP assets under a clean asset purchase.
 
-Would you be open to reviewing it as a software and IP asset acquisition?
+If this fits what Endel explores, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -339,13 +389,17 @@ founder@twingenie.app`
         subject: 'Tiny — early-stage product/IP acquisition opportunity: TwinGenie',
         bodyText: `Hi Team,
 
-I saw Tiny acquires and operates consumer internet and software assets, so I’m reaching out to your acquisitions group. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection product available for strategic acquisition.
+I saw Tiny acquires and operates consumer internet and software assets, so I’m reaching out to your acquisitions group. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase, a Next.js web application, and pgvector long-term memory. The product features 35-question personality onboarding (78.8% completion rate) and a 4-mode cognitive engine for structured thinking.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store release
+• Next.js web application with pgvector longitudinal memory
+• 35-question Big Five personality onboarding with a 78.8% completion rate
 
-We are structuring this as a complete asset and IP sale including all codebases, domains, branding, and Google Play listing.
+Why sell? I am an engineering founder running a digital agency (FSI Digital), and I don't have the consumer acquisition engine to scale B2C distribution. I’m looking to transition 100% of the IP, codebases, and store listings under a clean asset sale.
 
-Would Tiny be open to reviewing this as an early product/technology asset acquisition?
+If this fits your acquisition criteria, can I send over our 1-page asset teardown and deck?
 
 Best,
 Ashwani
@@ -362,13 +416,17 @@ founder@twingenie.app`
         subject: 'WeMakeApp — mobile product/IP acquisition opportunity: TwinGenie',
         bodyText: `Hi Team,
 
-I saw WeMakeApp specializes in acquiring and operating consumer mobile applications, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and reflection app available for strategic acquisition.
+I saw WeMakeApp specializes in acquiring and operating consumer mobile applications, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase, Next.js web application, and shared pgvector memory. Our 35-question personality model achieves a 78.8% onboarding completion rate, feeding into 4 conversational perspectives over a single context pipeline.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Next.js web application with shared pgvector memory
+• 35-question Big Five personality baseline (78.8% completion rate)
 
-We are selling 100% of the software and IP assets under a clean asset purchase.
+Why sell? I am a technical founder running a digital agency (FSI Digital), and I don't have the consumer marketing bandwidth to scale B2C growth. We are selling 100% of the software and IP assets under a clean asset purchase.
 
-Would you be open to reviewing it as a mobile product & technology acquisition?
+If this aligns with your portfolio criteria, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -385,13 +443,18 @@ founder@twingenie.app`
         subject: 'Alison — would Woebot review TwinGenie for technology/IP acquisition?',
         bodyText: `Hi Alison,
 
-I follow Woebot’s pioneering work in conversational mental health and digital CBT, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app available for strategic acquisition.
+I follow Woebot’s pioneering work in conversational mental health, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie has an active Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app), a built Flutter iOS codebase, and a Next.js web app. It combines longitudinal pgvector memory, a 35-question Big Five baseline (78.8% completion rate), and four distinct cognitive modes (Direct Mirror, Compassionate Guide, Devil’s Advocate, and Future Self).
+I built TwinGenie as an AI companion for self-reflection and cognitive clarity:
+• Active Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for submission
+• Next.js web app with persistent pgvector memory
+• 35-question Big Five baseline (78.8% completion rate)
+• 4 cognitive reflection modes over a single context pipeline
 
-We are seeking a strategic acquirer for 100% of the technology, IP, and codebases.
+Why exit? I am an engineering founder running a digital agency (FSI Digital), and I don't have the B2C distribution bandwidth to scale consumer growth. We are seeking an acquirer for 100% of the technology, codebases, and IP assets.
 
-Would you be open to reviewing TwinGenie as a product/technology acquisition?
+If this is of interest to Woebot, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -408,13 +471,17 @@ founder@twingenie.app`
         subject: 'Peter — would Habitify review TwinGenie for product/IP acquisition?',
         bodyText: `Hi Peter,
 
-I follow Habitify’s work in personal growth and habit building, so I wanted to reach out founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and guided reflection platform looking for an acquirer.
+I follow Habitify’s work in personal growth and habit building, so I wanted to reach out founder-to-founder. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase, Next.js web app, and longitudinal pgvector memory. Our 35-question Big Five onboarding achieves a 78.8% completion rate, powering four prompt-based cognitive perspectives.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Next.js web app with longitudinal pgvector memory
+• 35-question Big Five onboarding with a 78.8% completion rate
 
-Given Habitify's focus on user consistency and self-improvement, TwinGenie’s reflection architecture offers strong synergy. We are offering a full asset transfer of all codebases, IP, and store assets.
+Why exit? I am a technical founder running my digital agency (FSI Digital), and I don't have the consumer acquisition bandwidth to scale B2C growth. Given Habitify's focus on user consistency and self-improvement, TwinGenie offers strong portfolio synergy. We are offering 100% of the codebases, IP, and store listings under a clean asset sale.
 
-Would you be open to reviewing it as a product and IP asset acquisition?
+If this sounds interesting, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -431,13 +498,17 @@ founder@twingenie.app`
         subject: 'WithFeeling AI — AI companion software/IP acquisition: TwinGenie',
         bodyText: `Hi Team,
 
-I saw WithFeeling AI’s work building personalized AI companion experiences, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI digital twin and reflection app.
+I saw WithFeeling AI’s work building personalized AI companions, so I thought it was worth reaching out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS project, Next.js web platform, and unified pgvector memory. Our 35-question Big Five onboarding assessment achieves a 78.8% completion rate, feeding into four conversational perspectives over a single context pipeline.
+I built TwinGenie as an AI companion powered by longitudinal memory:
+• Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Next.js web platform & pgvector semantic memory engine
+• 35-question Big Five onboarding with a 78.8% completion rate
 
-We are selling 100% of the product, codebases, and IP assets under a clean asset transfer.
+Why sell? I am an engineering founder running a digital agency (FSI Digital), and I don't have the B2C distribution channels to scale consumer growth. We are selling 100% of the software, codebases, and IP assets under a clean asset transfer.
 
-Would you be open to reviewing TwinGenie as a product/technology asset acquisition?
+If this aligns with your acquisition roadmap, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -454,13 +525,17 @@ founder@twingenie.app`
         subject: 'Appspree — mobile app software & IP acquisition: TwinGenie',
         bodyText: `Hi Team,
 
-I saw Appspree evaluates and acquires mobile applications in consumer and lifestyle categories, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection product.
+I saw Appspree acquires mobile applications in consumer and lifestyle categories, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS project, Next.js web app, and shared pgvector memory. Our 35-question onboarding model achieves a 78.8% completion rate, driving four prompt-based perspectives over one pipeline.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store release
+• Next.js web application with shared pgvector memory
+• 35-question Big Five personality baseline (78.8% completion rate)
 
-We are looking for an asset acquisition of 100% of the codebases, IP, and digital assets.
+Why exit? I am a technical founder running a digital agency (FSI Digital), and I don't have the consumer marketing bandwidth to scale B2C distribution. We are seeking an asset acquisition of 100% of the codebases, IP, and digital assets.
 
-Would you be open to reviewing it as a product/technology acquisition?
+If this aligns with your criteria, can I send over our 1-page asset teardown and deck?
 
 Best,
 Ashwani
@@ -477,13 +552,17 @@ founder@twingenie.app`
         subject: 'Nalasoft — mobile software & IP acquisition opportunity: TwinGenie',
         bodyText: `Hi Team,
 
-I saw Nalasoft acquires and operates consumer mobile app portfolios, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI companion and self-reflection app.
+I saw Nalasoft acquires and operates consumer mobile app portfolios, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase, Next.js web platform, and longitudinal pgvector memory. Our 35-question onboarding achieves a 78.8% completion rate, powering four prompt-based perspectives over a single pipeline.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Android production app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store release
+• Next.js web platform & longitudinal pgvector memory
+• 35-question Big Five personality baseline with a 78.8% completion rate
 
-We are offering 100% of the software and IP assets under a clean transfer.
+Why exit? I am an engineering founder running a digital agency (FSI Digital), and I don't have the consumer acquisition engine to scale B2C growth. We are offering 100% of the software and IP assets under a clean asset sale.
 
-Would your team be open to reviewing TwinGenie as an early-stage product/IP asset acquisition?
+If this fits your acquisition criteria, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
@@ -500,13 +579,17 @@ founder@twingenie.app`
         subject: 'Blueberry Apps — mobile product & IP acquisition: TwinGenie',
         bodyText: `Hi Team,
 
-I saw Blueberry Apps specializes in acquiring and operating mobile software products, so I’m reaching out through your acquisition route. I’m Ashwani, founder of TwinGenie (https://twingenie.app), a personal AI companion and reflection platform.
+I saw Blueberry Apps specializes in acquiring and operating mobile software products, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
 
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) with a built Flutter iOS codebase, Next.js web product, and shared pgvector memory. Our 35-question personality baseline achieves a 78.8% completion rate, driving four prompt-based perspectives over one pipeline.
+I built TwinGenie as a turnkey AI self-reflection companion:
+• Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
+• Built Flutter iOS codebase ready for App Store submission
+• Next.js web product & shared pgvector memory
+• 35-question Big Five personality baseline with a 78.8% completion rate
 
-We are selling 100% of the software, brand, and IP assets.
+Why exit? I am a technical founder running my digital agency (FSI Digital), and I don't have the consumer marketing bandwidth to scale B2C distribution. We are selling 100% of the software, brand, and IP assets under a clean asset purchase.
 
-Would you be open to reviewing it as a product/technology acquisition?
+If this aligns with your portfolio focus, can I send over our 1-page asset teardown?
 
 Best,
 Ashwani
