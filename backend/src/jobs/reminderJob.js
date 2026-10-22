@@ -81,8 +81,9 @@ export function initJobs() {
 
     // ============================================
     // 🚀 M&A ACQUISITION CAMPAIGN AUTONOMOUS RUNNER
-    // Runs every 45 minutes, evaluating interval cooling,
-    // suppression lists, and daily caps (10-12/day).
+    // Runs every 45 minutes, evaluating interval cooling (55m),
+    // North Star business hours (Mon-Fri 9-5 EST), and daily caps (8/day).
+    // Note: Boot trigger removed to prevent spamming on Render restarts.
     // ============================================
     cron.schedule('*/45 * * * *', async () => {
         try {
@@ -92,16 +93,6 @@ export function initJobs() {
             logger.error('Acquisition campaign execution tick failed:', e);
         }
     });
-
-    // Run first campaign check 30 seconds after server boot
-    setTimeout(async () => {
-        try {
-            logger.info('🚀 Executing initial boot tick for M&A Acquisition Campaign...');
-            await acquisitionCampaignService.executeTick();
-        } catch (e) {
-            logger.error('Initial campaign boot tick failed:', e);
-        }
-    }, 30000);
 
     // Initialize Four-Platform Growth Distribution Jobs
     initGrowthJobs();

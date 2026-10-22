@@ -15,6 +15,7 @@ const STATE_FILE_PATH = path.join(__dirname, '../../logs/acquisition_campaign_st
  * Never send or retry these contacts.
  */
 const PERMANENT_SUPPRESSION_LIST = new Set([
+    'acquisitions@a2apps.co',
     'hello@kularion.com',
     'alliances@betterup.co',
     'founder@neuralpha.in',
@@ -75,29 +76,6 @@ function isNorthStarBusinessHours() {
  * production Google Play presence, 78.8% assessment completion rate, and complete IP transfer.
  */
 const SEED_TARGETS = [
-    {
-        id: 'tgt_a2apps',
-        company: 'a2 apps',
-        recipientName: 'Acquisitions Team',
-        email: 'acquisitions@a2apps.co',
-        routeType: 'dedicated_m_and_a',
-        thesis: 'Mobile application portfolio acquirer with dedicated submission channel',
-        subject: 'a2 apps — would you review TwinGenie for software & IP acquisition?',
-        bodyText: `Hi Team,
-
-I saw a2 apps specializes in acquiring and operating consumer mobile applications, so I wanted to reach out directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app), an AI digital twin and self-reflection platform available for strategic software and IP acquisition.
-
-TwinGenie is live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) alongside a built Flutter iOS codebase, a Next.js web application, and a Node/PostgreSQL backend with pgvector longitudinal memory. The product features a 35-question Big Five personality baseline (78.8% onboarding completion rate) and a proprietary 4-mode cognitive engine (Direct Mirror, Compassionate Guide, Devil’s Advocate, and Future Self).
-
-We are selling 100% of the assets—including all codebases, architecture, models, brand, domain, and store listings—under a clean asset transfer.
-
-Would your acquisitions team be open to reviewing TwinGenie as a product & IP acquisition?
-
-Best,
-Ashwani
-Founder, TwinGenie
-founder@twingenie.app`
-    },
     {
         id: 'tgt_ytcventures',
         company: 'YTC Ventures',
@@ -539,8 +517,10 @@ founder@twingenie.app`
 
 class AcquisitionCampaignService {
     constructor() {
-        this.minIntervalMinutes = 55; // Paced to deliver 8 to 12 emails per business day
-        this.dailyLimit = parseInt(process.env.CAMPAIGN_DAILY_MAX, 10) || 12;
+        this.minIntervalMinutes = 55; // Paced to deliver max 1 email per hour during business hours
+        const rawLimit = parseInt(process.env.CAMPAIGN_DAILY_MAX, 10);
+        // Hard-clamp to max 8 emails/day to strictly preserve Resend free quota (100 total across app)
+        this.dailyLimit = (rawLimit && rawLimit > 0 && rawLimit <= 10) ? rawLimit : 8;
         this.senderEmail = process.env.RESEND_FROM_EMAIL || 'Ashwani <founder@twingenie.app>';
         this.replyTo = 'founder@twingenie.app'; // Fixed to founder@twingenie.app (mirrors Canada Blog architecture)
         this.state = this._loadState();
@@ -551,6 +531,15 @@ class AcquisitionCampaignService {
             if (fs.existsSync(STATE_FILE_PATH)) {
                 const raw = fs.readFileSync(STATE_FILE_PATH, 'utf8');
                 const state = JSON.parse(raw);
+
+                // Auto-cleanup: Suppress any bounced or permanently suppressed contacts in existing queue
+                for (const item of (state.queue || [])) {
+                    const normEmail = (item.email || '').toLowerCase().trim();
+                    if (PERMANENT_SUPPRESSION_LIST.has(normEmail) || item.id === 'tgt_a2apps') {
+                        item.status = 'skipped';
+                        item.error = 'suppressed_or_bounced';
+                    }
+                }
 
                 // Auto-sync: Update pending queued targets with refreshed high-conviction templates and corrected emails
                 for (const item of (state.queue || [])) {
@@ -723,6 +712,10 @@ ${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.
 
         logger.info(`[CAMPAIGN] Dispatching outreach to ${candidate.company} (${candidate.email})...`);
 
+        const nowIso = new Date().toISOString();
+        // ALWAYS stamp lastSentTimestamp to strictly enforce 55-minute cooldown between any outreach attempts
+        this.state.lastSentTimestamp = nowIso;
+
         try {
             const result = await sendEmail({
                 to: candidate.email,
@@ -737,15 +730,27 @@ ${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.
                 ]
             });
 
+            // Resend API quota error detection
+            const errorMsg = typeof result.error === 'string' ? result.error : JSON.stringify(result.error || {});
+            const isQuotaError = errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('rate_limit') || errorMsg.toLowerCase().includes('limit');
+
+            if (isQuotaError) {
+                logger.error(`🚨 [CAMPAIGN] Resend daily quota reached! Halting outreach for today. Details: ${errorMsg}`);
+                this.state.sentToday = this.dailyLimit; // Lock further sends today
+                candidate.attempts += 1;
+                candidate.lastAttemptAt = nowIso;
+                candidate.error = 'resend_daily_quota_reached';
+                this._saveState();
+                return { action: 'quota_halt', reason: 'daily_quota_reached', error: errorMsg };
+            }
+
             if (result.success) {
-                const nowIso = new Date().toISOString();
                 candidate.status = 'sent';
                 candidate.sentAt = nowIso;
                 candidate.resendId = result.id;
                 candidate.lastAttemptAt = nowIso;
 
                 this.state.sentToday += 1;
-                this.state.lastSentTimestamp = nowIso;
                 this.state.history.push({
                     id: candidate.id,
                     company: candidate.company,
@@ -760,21 +765,27 @@ ${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.
                 return { action: 'sent', recipient: candidate.email, company: candidate.company, id: result.id };
             } else {
                 candidate.attempts += 1;
-                candidate.lastAttemptAt = new Date().toISOString();
-                candidate.error = result.error || 'delivery_failed';
+                candidate.lastAttemptAt = nowIso;
+                candidate.error = errorMsg || 'delivery_failed';
+
+                // CRITICAL FIX: Mark as failed so the queue moves forward and NEVER retries in a tight loop!
+                candidate.status = 'failed';
+                this.state.sentToday += 1; // Count against daily attempt budget
                 this._saveState();
 
-                logger.error(`❌ [CAMPAIGN] Delivery failure for ${candidate.email}:`, result.error);
-                return { action: 'failed', error: result.error };
+                logger.error(`❌ [CAMPAIGN] Delivery failure for ${candidate.email}:`, errorMsg);
+                return { action: 'failed', error: errorMsg, recipient: candidate.email };
             }
         } catch (err) {
             candidate.attempts += 1;
-            candidate.lastAttemptAt = new Date().toISOString();
+            candidate.lastAttemptAt = nowIso;
             candidate.error = err.message;
+            candidate.status = 'failed'; // Mark as failed so queue advances!
+            this.state.sentToday += 1;
             this._saveState();
 
             logger.error(`❌ [CAMPAIGN] Exception sending to ${candidate.email}:`, err);
-            return { action: 'error', error: err.message };
+            return { action: 'error', error: err.message, recipient: candidate.email };
         }
     }
 }
