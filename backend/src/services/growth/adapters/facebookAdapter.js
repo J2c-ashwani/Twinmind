@@ -23,6 +23,29 @@ class FacebookAdapter {
         };
     }
 
+    async getResolvedPageAccessToken() {
+        const rawToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
+        const pageId = process.env.FACEBOOK_PAGE_ID;
+        if (!rawToken || !pageId) return rawToken;
+
+        try {
+            const accountsRes = await fetch(`${GRAPH_API_BASE}/me/accounts?access_token=${rawToken}`);
+            const accountsData = await accountsRes.json();
+            if (accountsData && Array.isArray(accountsData.data)) {
+                const targetPage = accountsData.data.find(
+                    p => String(p.id) === String(pageId) || (p.name && p.name.toLowerCase().includes('twingenie'))
+                );
+                if (targetPage && targetPage.access_token) {
+                    logger.info(`[FACEBOOK] Successfully resolved Page Access Token for "${targetPage.name}" (${targetPage.id})!`);
+                    return targetPage.access_token;
+                }
+            }
+        } catch (e) {
+            logger.warn('[FACEBOOK] Page token auto-resolution check:', e.message);
+        }
+        return rawToken;
+    }
+
     isConfigured() {
         const { accessToken, pageId } = this.getCredentials();
         return Boolean(accessToken && pageId);
@@ -65,7 +88,9 @@ class FacebookAdapter {
      * @param {Object} postData - { caption, pngUrls, videoUrl, utmLink }
      */
     async publish(postData) {
-        const { accessToken, pageId } = this.getCredentials();
+        const rawCreds = this.getCredentials();
+        const pageId = rawCreds.pageId;
+        const accessToken = await this.getResolvedPageAccessToken();
 
         if (!accessToken || !pageId) {
             logger.warn(`[FACEBOOK] Credentials not set. Running in verified simulation mode.`);
@@ -142,27 +167,32 @@ class FacebookAdapter {
                     }
                 } catch (reelApiErr) {
                     logger.warn(`[FACEBOOK] Reels API flow encountered error (${reelApiErr.message}), trying fallback /videos endpoint...`);
-                    const blob = new Blob([fileBuffer], { type: 'video/mp4' });
-                    const formData = new FormData();
-                    formData.append('source', blob, path.basename(postData.videoPath));
-                    formData.append('description', postData.caption);
-                    formData.append('access_token', accessToken);
+                    try {
+                        const blob = new Blob([fileBuffer], { type: 'video/mp4' });
+                        const formData = new FormData();
+                        formData.append('source', blob, path.basename(postData.videoPath));
+                        formData.append('description', postData.caption);
+                        formData.append('access_token', accessToken);
 
-                    const response = await fetch(`${GRAPH_API_BASE}/${pageId}/videos`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
-                    if (!response.ok || data.error) {
-                        logger.error('[FACEBOOK] Fallback video upload error:', data);
-                        return { success: false, error: data.error || data };
+                        const response = await fetch(`${GRAPH_API_BASE}/${pageId}/videos`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+                        if (response.ok && (data.id || data.post_id)) {
+                            postId = data.id || data.post_id;
+                            logger.info(`🎉 [FACEBOOK] Video published via fallback endpoint! ID: ${postId}`);
+                        } else {
+                            logger.warn('[FACEBOOK] Video endpoints unavailable or lack video permissions. Falling back to carousel images...', data?.error || data);
+                        }
+                    } catch (videoErr) {
+                        logger.warn('[FACEBOOK] Fallback video endpoint error, falling back to carousel images:', videoErr.message);
                     }
-                    postId = data.id || data.post_id;
-                    logger.info(`🎉 [FACEBOOK] Video published via fallback endpoint! ID: ${postId}`);
                 }
             }
-            // Case 1: Direct Local Image Binary Upload (High-Res 1080x1350 Rendered Slides)
-            else if (postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
+
+            // Case 1: Direct Local Image Binary Upload (High-Res 1080x1350 Rendered Slides / Carousel)
+            if (!postId && postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
                 if (postData.mediaPaths.length === 1) {
                     logger.info(`[FACEBOOK] Uploading single local high-res photo binary: ${postData.mediaPaths[0]}`);
                     const fileBuffer = fs.readFileSync(postData.mediaPaths[0]);
@@ -224,7 +254,7 @@ class FacebookAdapter {
             }
 
             // Case 2: Remote Image URL
-            else if (postData.pngUrls && postData.pngUrls.length > 0) {
+            else if (!postId && postData.pngUrls && postData.pngUrls.length > 0) {
                 const response = await fetch(`${GRAPH_API_BASE}/${pageId}/photos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

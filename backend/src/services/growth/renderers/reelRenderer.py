@@ -670,8 +670,8 @@ def render_reel(spec, output_mp4_path):
         ]
     subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Check for High-Bitrate B-Roll Motion Background (APSI / FSI Digital Architecture)
-    has_broll = os.path.exists(DEFAULT_BROLL_PATH)
+    # Enforce ultra-low RAM crossfade mode to prevent Render container from exceeding 512MB limit
+    has_broll = False
 
     if has_broll:
         # Dual-Layer Compositing Engine:

@@ -405,6 +405,7 @@ Drop A or B in the comments! 👇`;
                 title: theme.hook,
                 tag: theme.tag,
                 utmLink: utm,
+                slides: this._buildStandardSlides(theme),
                 caption,
                 firstComment
             };
