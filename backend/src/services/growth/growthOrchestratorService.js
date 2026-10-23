@@ -111,6 +111,13 @@ class GrowthOrchestratorService {
         };
 
         for (const [platform, postSpec] of Object.entries(bundle.posts)) {
+            // Memory Safeguard: Only render media for active, configured platforms
+            const adapter = this.adapters[platform];
+            if (!adapter || !adapter.isConfigured()) {
+                logger.info(`[GROWTH ORCHESTRATOR] Skipping media rendering for ${platform} (credentials not configured).`);
+                continue;
+            }
+
             const postId = `post_${platform}_${Date.now()}`;
             let mediaPaths = [];
             let pdfPath = null;
@@ -118,24 +125,7 @@ class GrowthOrchestratorService {
             let videoPath = null;
             let videoUrl = null;
 
-            // Render Reel video for Reel / Short formats
-            if (postSpec.format === 'reel' || postSpec.format === 'short') {
-                try {
-                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Reel video for ${platform}...`);
-                    const rendered = await mediaRendererService.renderReel({
-                        campaignId: bundle.campaignId,
-                        postId,
-                        hook: postSpec.title || bundle.theme,
-                        tag: postSpec.tag || 'COGNITIVE ARCHITECTURE'
-                    });
-                    videoPath = rendered.videoPath;
-                    videoUrl = rendered.videoUrl;
-                } catch (renderErr) {
-                    logger.error(`[GROWTH ORCHESTRATOR] Reel rendering error for ${platform}:`, renderErr);
-                }
-            }
-            
-            // Render carousel media for LinkedIn, Instagram, and Facebook failover
+            // Render lightweight carousel media (Pillow <25MB RAM) for active platforms (LinkedIn & Facebook)
             if (postSpec.slides && postSpec.slides.length > 0) {
                 try {
                     logger.info(`[GROWTH ORCHESTRATOR] Rendering carousel assets for ${platform}...`);
@@ -318,53 +308,30 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 1. Generate content specifically for Reel format
-        const bundle = await contentGeneratorService.generateCampaignBundle(null, { facebookFormat: 'reel' });
+        // 1. Generate content for Facebook Carousel
+        const bundle = await contentGeneratorService.generateCampaignBundle(null, { facebookFormat: 'carousel' });
         const themesList = contentGeneratorService.themes || [];
         const theme = themesList.find(t => t.name === bundle.theme) || themesList[0] || {};
-        const fbContent = bundle.posts?.facebook?.format === 'reel'
-            ? bundle.posts.facebook
-            : contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'reel');
+        const fbContent = contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'carousel');
 
-        const postId = `post_facebook_reel_${Date.now()}`;
+        const postId = `post_facebook_${Date.now()}`;
 
-        // 2. Render Low-RAM Reel with Neural Voiceover
-        let rendered = null;
-        try {
-            logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook...`);
-            rendered = await mediaRendererService.renderReel({
-                campaignId: bundle.campaignId,
-                postId,
-                hook: fbContent.title || theme.hook || bundle.theme,
-                tag: fbContent.tag || theme.tag || 'COGNITIVE ARCHITECTURE'
-            });
-        } catch (reelErr) {
-            logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Will proceed with high-res carousel failover.`);
-        }
+        // 2. Render High-Res Multi-Image Carousel (Lightweight Pillow, <25MB RAM, NO FFmpeg)
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering high-res Carousel slides for Facebook...`);
+        const renderedCarousel = await mediaRendererService.renderCarousel({
+            campaignId: bundle.campaignId,
+            postId,
+            slides: fbContent.slides
+        });
 
-        // 2b. Render Carousel Slides as guaranteed failover fallback
-        let renderedCarousel = null;
-        try {
-            const carouselContent = contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'carousel');
-            renderedCarousel = await mediaRendererService.renderCarousel({
-                campaignId: bundle.campaignId,
-                postId: `fb_car_${Date.now()}`,
-                slides: carouselContent.slides
-            });
-        } catch (cErr) {
-            logger.warn(`[GROWTH ORCHESTRATOR] Optional Facebook carousel failover render warning: ${cErr.message}`);
-        }
-
-        // 3. Publish to Facebook (Reel with automatic Carousel failover)
-        logger.info(`[GROWTH ORCHESTRATOR] Publishing to Facebook...`);
+        // 3. Publish to Facebook Page as Multi-Image Carousel with First Comment
+        logger.info(`[GROWTH ORCHESTRATOR] Publishing Carousel directly to Facebook Page...`);
         const publishResult = await this.adapters.facebook.publish({
             title: fbContent.title,
             caption: fbContent.caption,
             firstComment: fbContent.firstComment,
-            videoPath: rendered?.videoPath,
-            videoUrl: rendered?.videoUrl,
-            mediaPaths: renderedCarousel?.pngPaths || [],
-            format: 'reel'
+            mediaPaths: renderedCarousel.pngPaths,
+            format: 'carousel'
         });
 
         // 4. Save to state
@@ -372,12 +339,12 @@ class GrowthOrchestratorService {
             id: postId,
             campaignId: bundle.campaignId,
             platform: 'facebook',
-            format: 'reel',
+            format: 'carousel',
             title: fbContent.title,
             caption: fbContent.caption,
-            videoPath: rendered?.videoPath || null,
-            videoUrl: rendered?.videoUrl || null,
-            mediaPaths: renderedCarousel?.pngPaths || [],
+            videoPath: null,
+            videoUrl: null,
+            mediaPaths: renderedCarousel.pngPaths,
             status: publishResult.success ? 'published' : 'failed',
             scheduledFor: now.toISOString(),
             publishedAt: publishResult.success ? now.toISOString() : null,

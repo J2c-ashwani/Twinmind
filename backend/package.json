@@ -6,7 +6,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node --max-old-space-size=256 --expose-gc src/server.js",
+    "start": "node --max-old-space-size=160 --expose-gc src/server.js",
     "postinstall": "pip3 install --break-system-packages Pillow edge-tts || pip install Pillow edge-tts || python3 -m pip install Pillow edge-tts || true",
     "test": "node --test test/**/*.test.js",
     "upload-apk": "node scripts/upload_apk.js",

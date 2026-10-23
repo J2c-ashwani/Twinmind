@@ -447,22 +447,22 @@ process.on('SIGINT', () => {
   });
 });
 
-// Active Memory Safeguard for 512MB Render Container
+// Active Memory Safeguard for 512MB Render Container (Strict 180MB Cap)
 setInterval(() => {
   const mem = process.memoryUsage();
   const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
   const rssMB = Math.round(mem.rss / 1024 / 1024);
 
-  if (global.gc && (rssMB > 280 || heapUsedMB > 180)) {
+  if (global.gc && (rssMB > 180 || heapUsedMB > 120)) {
     logger.warn(`⚠️ High memory detected (RSS: ${rssMB}MB, Heap: ${heapUsedMB}MB). Running V8 garbage collection...`);
     try {
       global.gc();
       const postMem = process.memoryUsage();
-      logger.info(`✅ Memory reclaimed (New RSS: ${Math.round(postMem.rss / 1024 / 1024)}MB)`);
+      logger.info(`✅ Memory reclaimed (New RSS: ${Math.round(postMem.rss / 1024 / 1024)}MB, New Heap: ${Math.round(postMem.heapUsed / 1024 / 1024)}MB)`);
     } catch (e) {
       logger.warn('Manual GC failed:', e.message);
     }
   }
-}, 30000); // Check every 30 seconds
+}, 15000); // Check every 15 seconds
 
 export default app;

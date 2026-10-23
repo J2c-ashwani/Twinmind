@@ -65,17 +65,26 @@ export function initJobs() {
     }
 
     // ============================================
-    // 🔥 KEEP-ALIVE: Prevent Render free tier from sleeping
-    // Pings own health endpoint every 14 minutes
-    // Render sleeps after 15 min of inactivity — this prevents it
+    // 🔥 KEEP-ALIVE: Prevent Render free tier from sleeping (Active 24/7)
+    // Pings Render router every 5 minutes (Render sleep threshold is 15 minutes)
+    // Hits both the direct Render URL and custom domain to keep router active
     // ============================================
-    const RENDER_URL = process.env.RENDER_EXTERNAL_URL || process.env.WEB_APP_URL || 'http://localhost:3001';
-    cron.schedule('*/14 * * * *', async () => {
+    const primaryRenderUrl = process.env.RENDER_EXTERNAL_URL || 'https://twingenie.app';
+    const fallbackRenderUrl = 'https://twinmind-9l6x.onrender.com';
+
+    cron.schedule('*/5 * * * *', async () => {
         try {
-            const response = await fetch(`${RENDER_URL}/health`);
-            logger.info(`🏓 Keep-alive ping: ${response.status}`);
+            const urls = [primaryRenderUrl, fallbackRenderUrl];
+            for (const u of urls) {
+                try {
+                    const res = await fetch(`${u}/health`, { signal: AbortSignal.timeout(10000) });
+                    logger.info(`🏓 [KEEP-ALIVE] Ping to ${u}/health: ${res.status}`);
+                } catch (err) {
+                    logger.warn(`[KEEP-ALIVE] Ping to ${u} failed: ${err.message}`);
+                }
+            }
         } catch (e) {
-            logger.warn('Keep-alive ping failed:', e?.message);
+            logger.warn('[KEEP-ALIVE] Keep-alive routine error:', e?.message);
         }
     });
 
