@@ -12,13 +12,34 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
 export function initGrowthJobs() {
     logger.info('Initializing Growth Distribution Jobs...');
 
-    // 1. Process Due Posts (Runs every 15 minutes)
+    // 1. Process Due Posts & Auto-Catchup Missed Daily Slots (Runs every 15 minutes)
     cron.schedule('*/15 * * * *', async () => {
         try {
             logger.info('[GROWTH JOB] Checking scheduled distribution queue...');
             const result = await growthOrchestratorService.processScheduledPosts();
             if (result.action === 'processed') {
                 logger.info(`[GROWTH JOB] Processed ${result.results.length} posts.`);
+            }
+
+            // Active Catchup Safeguard (in case Render free tier was sleeping at exact trigger times)
+            const now = new Date();
+            const nowIST = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            }).format(now);
+            const [istHour, istMin] = nowIST.split(':').map(Number);
+            const istTimeNum = istHour * 60 + (istMin || 0);
+
+            // After 08:30 AM IST (510 min): ensure LinkedIn Personal Carousel is published
+            if (istTimeNum >= 510) {
+                await growthOrchestratorService.publishDailyLinkedInPersonal(false);
+            }
+
+            // After 04:00 PM IST (960 min): ensure Facebook Page Reel/Carousel is published
+            if (istTimeNum >= 960) {
+                await growthOrchestratorService.publishDailyFacebookReel(false);
             }
         } catch (e) {
             logger.error('[GROWTH JOB] Queue processing error:', e);
@@ -69,11 +90,31 @@ export function initGrowthJobs() {
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // 6. Boot check: safely check scheduled queue without triggering heavy media generation
+    // 6. Boot check: safely check scheduled queue & catch up any missed daily posts on wake
     setTimeout(async () => {
         try {
-            logger.info('🚀 [GROWTH JOB] Checking for due posts on server boot...');
+            logger.info('🚀 [GROWTH JOB] Checking for due posts and missed daily triggers on server boot...');
             await growthOrchestratorService.processScheduledPosts();
+
+            const now = new Date();
+            const nowIST = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            }).format(now);
+            const [istHour, istMin] = nowIST.split(':').map(Number);
+            const istTimeNum = istHour * 60 + (istMin || 0);
+
+            // After 08:30 AM IST (510 min): ensure LinkedIn Personal Carousel is published
+            if (istTimeNum >= 510) {
+                await growthOrchestratorService.publishDailyLinkedInPersonal(false);
+            }
+
+            // After 04:00 PM IST (960 min): ensure Facebook Page Reel/Carousel is published
+            if (istTimeNum >= 960) {
+                await growthOrchestratorService.publishDailyFacebookReel(false);
+            }
         } catch (e) {
             logger.warn('[GROWTH JOB] Startup check warning:', e.message);
         }
