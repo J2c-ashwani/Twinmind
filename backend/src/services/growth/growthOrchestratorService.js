@@ -290,8 +290,45 @@ class GrowthOrchestratorService {
      * Generates a fresh Reel, renders 8Mbps CBR video with Edge TTS voiceover,
      * and publishes directly to Facebook Reels.
      */
+    /**
+     * Determines the next theme in sequence to guarantee zero consecutive duplicate posts
+     */
+    getNextRotationalTheme(platform, target = null) {
+        const themes = contentGeneratorService.themes || [];
+        if (!themes || themes.length === 0) return { id: 'honest_mode', name: 'Normal vs Honest Twin' };
+
+        const recentPosts = (this.state.posts || [])
+            .filter(p => p.platform === platform && (!target || p.target === target) && p.status === 'published' && p.publishedAt)
+            .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+        if (recentPosts.length === 0) {
+            return themes[0];
+        }
+
+        const lastPost = recentPosts[0];
+        const lastCampaignId = lastPost.campaignId || '';
+        const lastTitle = (lastPost.title || '').toLowerCase();
+
+        const lastIndex = themes.findIndex(t => 
+            lastCampaignId.includes(t.id) || 
+            lastTitle.includes(t.name.toLowerCase()) ||
+            lastTitle.includes((t.tag || '').toLowerCase())
+        );
+
+        if (lastIndex === -1) {
+            return themes[0];
+        }
+
+        const nextIndex = (lastIndex + 1) % themes.length;
+        logger.info(`🔄 [GROWTH ORCHESTRATOR] Rotated theme for ${platform} (${target || 'default'}): "${themes[lastIndex].name}" -> "${themes[nextIndex].name}"`);
+        return themes[nextIndex];
+    }
+
+    /**
+     * Dedicated Daily Facebook Carousel Publisher
+     */
     async publishDailyFacebookReel(force = false) {
-        logger.info('[GROWTH ORCHESTRATOR] Starting daily Facebook Reel publication flow...');
+        logger.info('[GROWTH ORCHESTRATOR] Starting daily Facebook Carousel publication flow...');
         const now = new Date();
 
         // Unless force=true, ensure we haven't already published a Facebook Reel today (IST calendar day)
@@ -308,18 +345,17 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 1. Generate content for Facebook Carousel
-        const bundle = await contentGeneratorService.generateCampaignBundle(null, { facebookFormat: 'carousel' });
-        const themesList = contentGeneratorService.themes || [];
-        const theme = themesList.find(t => t.name === bundle.theme) || themesList[0] || {};
-        const fbContent = contentGeneratorService._generateFacebookContent(theme, bundle.campaignId, 'carousel');
+        // 1. Get next rotated theme for Facebook
+        const theme = this.getNextRotationalTheme('facebook');
+        const campaignId = `camp_${theme.id}_${Date.now()}`;
+        const fbContent = contentGeneratorService._generateFacebookContent(theme, campaignId, 'carousel');
 
         const postId = `post_facebook_${Date.now()}`;
 
         // 2. Render High-Res Multi-Image Carousel (Lightweight Pillow, <25MB RAM, NO FFmpeg)
-        logger.info(`[GROWTH ORCHESTRATOR] Rendering high-res Carousel slides for Facebook...`);
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering high-res Carousel slides for Facebook: "${theme.name}"...`);
         const renderedCarousel = await mediaRendererService.renderCarousel({
-            campaignId: bundle.campaignId,
+            campaignId,
             postId,
             slides: fbContent.slides
         });
@@ -337,7 +373,7 @@ class GrowthOrchestratorService {
         // 4. Save to state
         const postRecord = {
             id: postId,
-            campaignId: bundle.campaignId,
+            campaignId,
             platform: 'facebook',
             format: 'carousel',
             title: fbContent.title,
@@ -362,7 +398,7 @@ class GrowthOrchestratorService {
             postId: postRecord.id,
             platformPostId: publishResult.postId,
             url: publishResult.url,
-            durationSeconds: rendered.durationSeconds,
+            totalSlides: renderedCarousel.totalSlides,
             error: publishResult.error
         };
     }
@@ -389,18 +425,17 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 1. Generate content for Ashwani Kumar's Personal Profile
-        const bundle = await contentGeneratorService.generateCampaignBundle();
-        const themesList = contentGeneratorService.themes || [];
-        const theme = themesList.find(t => t.name === bundle.theme) || themesList[0] || {};
-        const content = contentGeneratorService._generateLinkedInPersonalContent(theme, bundle.campaignId);
+        // 1. Get next rotated theme for Ashwani Kumar's Personal Profile (guaranteed non-repeating)
+        const theme = this.getNextRotationalTheme('linkedin', 'personal');
+        const campaignId = `camp_${theme.id}_${Date.now()}`;
+        const content = contentGeneratorService._generateLinkedInPersonalContent(theme, campaignId);
 
         const postId = `post_linkedin_personal_${Date.now()}`;
 
         // 2. Render 1080x1350 Multi-Page PDF Carousel
-        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF document for Ashwani Kumar's LinkedIn...`);
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${theme.name}"...`);
         const rendered = await mediaRendererService.renderCarousel({
-            campaignId: bundle.campaignId,
+            campaignId,
             postId,
             slides: content.slides
         });
