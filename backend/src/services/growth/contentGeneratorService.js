@@ -213,138 +213,87 @@ Swipe through the carousel to see how longitudinal reflection changes executive 
         const utm = this.buildUtmLink('linkedin_ashwani', 'carousel_pdf', campaignId);
         const themeId = theme.id || 'honest_mode';
 
-        // 5 Fully Customized Founder Thought-Leadership Packages
+        // 5 Fully Customized Founder Thought-Leadership Packages (Punchy, High-Converting, Clean on Mobile & Desktop)
         const founderPosts = {
             blind_spots: {
                 title: "Why Your Biggest Strength Is Also Your Greatest Cognitive Blind Spot",
                 caption: `Every founder has a superpower that quietly doubles as their biggest liability.
 
-If you're hyper-decisive, your blind spot is dismissing subtle risk signals.
-If you're deeply empathetic, your blind spot is tolerating underperformance.
-If you're hyper-analytical, your blind spot is analysis paralysis disguised as "thoroughness".
+• Hyper-decisive? You dismiss subtle risk signals.
+• Deeply empathetic? You tolerate underperformance.
+• Hyper-analytical? You disguise procrastination as "thoroughness".
 
-The dangerous part? Standard AI chatbots only amplify this. They mirror your confirmation bias, validate your rationalizations, and stroke your ego.
+Standard AI chatbots only amplify this—they nod along with your excuses and mirror your confirmation bias.
 
-When building TwinGenie, our goal was to engineer an AI that acts as an uncompromising cognitive mirror:
+When engineering TwinGenie, our goal was to build an uncompromising cognitive mirror: 4 distinct perspectives (Normal, Reflective, Honest, Future) and persistent pgvector memory that intercepts recurring blind spots across weeks.
 
-1️⃣ The 35-Question Psychological Calibration
-Before your first chat, TwinGenie benchmarks your baseline across the Big Five personality traits. It maps where your strengths cross into blind spots.
+Swipe through the 6-slide carousel below to see how our cognitive pipeline works. 👇
 
-2️⃣ Longitudinal Pattern Detection (pgvector)
-When you rationalize a shortcut on a Thursday, the system connects it to an identical pattern from 3 weeks ago—exposing recurring blind spots before they derail momentum.
+📲 Test your cognitive baseline free on Google Play (link in first comment).
 
-3️⃣ The 4-Perspective Matrix
-• Normal Twin — Your authentic baseline voice and thinking partner.
-• Reflective Twin — Emotional validation when you need psychological grounding.
-• Honest Twin — Zero flattery. Brutally dismantles cognitive blind spots.
-• Future Twin — The 5-years-wiser executive lens viewing today's panic with retrospective clarity.
-
-Don't settle for AI that just nods along. Test your blind spots with an AI that remembers who you are.
-
-📲 Download TwinGenie free on Google Play: ${utm}
-
-Swipe through the breakdown below to see how we detect founder blind spots. 👇
-
-#FounderJourney #Leadership #CognitiveBiases #AI #SystemArchitecture #TwinGenie #MentalModels`
+#TwinGenie #AI #Leadership #CognitiveBiases #TechFounders #DigitalTwin #PersonalGrowth`
             },
             honest_mode: {
                 title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie",
-                caption: `Most conversational AI is engineered to be a flattering yes-man.
+                caption: `Most conversational AI is engineered to be a flattering yes-man. It strokes your ego, validates your excuses, and forgets everything the moment you close the browser tab.
 
-It nods along with your excuses, strokes your ego, and forgets everything you told it the second you close the browser tab.
+Human personal growth doesn't come from unconditional agreement. It comes from dialectical friction.
 
-When I started designing TwinGenie, I realized that if an AI companion can’t remember your past patterns and lacks the courage to challenge your cognitive blind spots, it’s not an intelligence tool—it’s just interactive entertainment.
+That's why we engineered TwinGenie with 4 cognitive lenses:
+• Normal Twin — Your baseline thinking partner
+• Reflective Twin — Emotional validation & grounding
+• Honest Twin — Zero flattery; shreds rationalizations
+• Future Twin — 5-years-wiser retrospective clarity
 
-Human growth doesn’t come from unconditional agreement. It comes from dialectical tension.
+Backed by persistent pgvector memory, TwinGenie remembers who you are and holds you accountable.
 
-To solve this, we engineered an AI Digital Twin built around three core architectural pillars:
+Swipe through the 6-slide breakdown below to explore the architecture. 👇
 
-1️⃣ The 35-Question Deterministic Baseline
-Rather than relying on vague open-ended prompts, we ground each user in a structured Big Five personality model. This creates a persistent behavioral vector that defines your baseline tone, risk tolerance, and cognitive inclinations.
+📲 Download free on Google Play (link in first comment).
 
-2️⃣ Persistent Longitudinal Vector Memory (pgvector)
-Traditional chatbots suffer from severe context decay. TwinGenie indexes conversations semantically. When you make an excuse on a Tuesday, the model connects it to an identical pattern you exhibited three weeks prior—calling out recurring loops before they derail your momentum.
-
-3️⃣ The 4-Perspective Cognitive Matrix
-One tone cannot handle every human situation. We decoupled the personality into 4 real-time lenses:
-• Normal Twin — Your authentic baseline voice and objective sparring partner.
-• Reflective Twin — Compassionate emotional validation when you need psychological grounding.
-• Honest Twin — Unfiltered, direct confrontation that shreds excuses and highlights blind spots.
-• Future Twin — The 5-years-wiser executive lens viewing today’s panic with retrospective clarity.
-
-Building this required moving beyond off-the-shelf wrappers and engineering dynamic multi-provider LLM orchestration with sub-second latency fallbacks and strict prompt drift governance.
-
-The app is live today on Google Play Store.
-
-Take the 35-question cognitive baseline, test Honest Mode against your own excuses, and let me know if it changes how you think about conversational AI.
-
-📲 Download TwinGenie free: ${utm}
-
-Swipe through the carousel breakdown below to see the complete cognitive architecture. 👇
-
-#ArtificialIntelligence #MachineLearning #SystemArchitecture #TechFounders #LLM #CognitiveScience #DigitalTwin #TwinGenie #ProductEngineering`
+#TwinGenie #ArtificialIntelligence #TechFounders #LLM #CognitiveScience #DigitalTwin #ProductEngineering`
             },
             decision_paralysis: {
                 title: "The Hidden Cognitive Pattern Behind Why Founders Stall on Tough Calls",
                 caption: `"I just need a little more data before deciding."
 
-In 90% of executive decisions, "waiting for more data" is just sophisticated procrastination driven by fear of critique.
+In 90% of founder decisions, "waiting for more data" is just sophisticated procrastination disguised as diligence.
 
-Conventional AI makes this worse. When you ask a generic chatbot for advice, it generates endless lists of pros and cons—fueling your overthinking loop instead of forcing a decision.
+Standard chatbots make this worse by generating endless pros and cons—fueling your overthinking loop instead of forcing a decision.
 
-When engineering TwinGenie, we designed an architecture specifically to shatter analysis paralysis:
+In TwinGenie, we engineered an AI that shatters analysis paralysis:
+• Semantic Loop Interception — Detects when you circle the same decision for 2 weeks
+• 4 Decision Lenses — Clarifies facts, uncovers underlying fear, and evaluates 5-year impact
+• Deterministic Calibration — Balances your innate cognitive bias
 
-1️⃣ Semantic Loop Interception
-Using pgvector memory, TwinGenie tracks when you repeatedly circle the same decision. When you ask for the 4th time about delaying a release, it intervenes: "You've analyzed this for 14 days. The variance in outcome is under 5%. Make the call."
+Accelerate conviction over hesitation.
 
-2️⃣ 4 Distinct Decision Lenses
-• Normal Twin — Clarifies the immediate facts without emotional distortion.
-• Reflective Twin — Uncovers the underlying fear behind the indecision.
-• Honest Twin — Cuts through your rationalizations: "You aren't being thorough; you're stalling."
-• Future Twin — Evaluates whether this choice will matter in 5 years.
+Swipe through the 6-slide carousel below to see how we break decision loops. 👇
 
-3️⃣ Deterministic Bias Accounting
-By understanding your neuroticism and conscientiousness scores from the 35-question baseline, the AI counterbalances your innate decision tendencies.
+📲 Take your free 35-question cognitive baseline on Google Play (link in first comment).
 
-Real self-growth isn't about collecting information—it's about accelerating conviction.
-
-📲 Take your 35-question cognitive baseline free on Google Play: ${utm}
-
-Swipe through to see the Decision Progression Architecture. 👇
-
-#DecisionMaking #Productivity #ExecutiveCoaching #AI #CognitiveScience #TwinGenie #Startups`
+#TwinGenie #DecisionMaking #Productivity #ExecutiveCoaching #AI #Startups #MentalModels`
             },
             future_perspective: {
                 title: "What Your 5-Years-Wiser Self Would Say About Today's Crisis",
                 caption: `Think about the worst crisis you faced 5 years ago.
 
-The missed launch date. The lost client. The bug that broke production.
-
-Back then, it felt like the world was ending. Today? You can barely remember the details—or it became the catalyst for your biggest breakthrough.
+Back then, it felt like the company was ending. Today? You can barely remember the panic—or it became the catalyst for your biggest breakthrough.
 
 Human psychology suffers from severe temporal discounting: we over-index on today's panic and discount long-term trajectory.
 
 That's why we built the Future Twin in TwinGenie:
+• Temporal Shift Engine — Simulates the calm, retrospective clarity of your 5-years-wiser self
+• Persistent Vector Memory — Retains your historical wins and core values across months
+• Multi-Perspective Matrix — Shifts you from acute stress into long-term strategic focus
 
-1️⃣ The Temporal Shift Engine
-Instead of viewing your current stress through today's cortisol spike, Future Twin simulates the perspective of your 5-years-wiser self—re-anchoring high-stress moments into compounding lessons.
+Whenever today's fires feel overwhelming, switch to Future Mode.
 
-2️⃣ Persistent Vector Memory (pgvector)
-Because TwinGenie retains your longitudinal memory, your Future Twin knows your past wins, recurring stress loops, and core values. It doesn't give generic fortune-cookie advice; it speaks from your specific historical trajectory.
+Swipe through the 6-slide breakdown below to see how the temporal engine works. 👇
 
-3️⃣ The 4-Perspective Matrix
-• Normal Twin — Your day-to-day objective co-pilot.
-• Reflective Twin — Empathic decompression when burnout is real.
-• Honest Twin — The no-nonsense reality check when you make excuses.
-• Future Twin — Retrospective clarity that neutralizes short-term panic.
+📲 Experience all 4 modes free on Google Play (link in first comment).
 
-Whenever you feel overwhelmed by today's fires, switch to Future Mode.
-
-📲 Experience all 4 perspectives free on Google Play: ${utm}
-
-Swipe through to explore the Future Perspective Architecture. 👇
-
-#FutureSelf #MentalClarity #MindsetShift #TechFounders #AICompanion #TwinGenie #SelfGrowth`
+#TwinGenie #FutureSelf #MentalClarity #TechFounders #AICompanion #SelfGrowth #Leadership`
             },
             persistent_memory: {
                 title: "Why Reset-Button AI Chatbots Fail Human Personal Growth",
@@ -352,31 +301,20 @@ Swipe through to explore the Future Perspective Architecture. 👇
 
 Because every time you open the app, it's Day One all over again.
 
-You have to re-explain your background, re-state your goals, and re-contextualize your struggles. Chatbots operate on a stateless "reset button."
+Chatbots operate on a stateless "reset button." But a stateless AI cannot be a mentor, coach, or true digital twin. True self-growth requires compounding memory.
 
-A stateless AI cannot be a mentor, a coach, or a true digital twin. True personal growth requires compounding memory.
+Here is how we built TwinGenie's memory-first architecture:
+• 35-Question Psychological Baseline — Maps your Big Five personality traits
+• Semantic pgvector Memory — Encrypted vector embeddings that connect conversations across weeks
+• 4 Real-Time Cognitive Perspectives — Shifts from baseline thinking to brutal honesty
 
-Here is how we engineered TwinGenie's memory-first architecture:
-
-1️⃣ The 35-Question Psychological Baseline
-A deterministic calibration based on the Big Five personality model that creates your persistent digital fingerprint.
-
-2️⃣ Semantic Vector Memory (pgvector)
-Every meaningful interaction is embedded into an encrypted vector space. When you mention a conflict today, TwinGenie connects it to an emotional trigger you discussed three weeks ago.
-
-3️⃣ 4 Real-Time Cognitive Perspectives
-• Normal Twin — Authentic baseline voice and daily sounding board.
-• Reflective Twin — Deep empathy and active psychological grounding.
-• Honest Twin — Zero flattery. Directly challenges self-sabotaging loops.
-• Future Twin — 5-years-wiser executive clarity.
-
-Stop talking to AI that forgets you the moment you close the tab.
-
-📲 Build your persistent AI Digital Twin today on Google Play: ${utm}
+Stop talking to AI that forgets you the second you close the tab.
 
 Swipe through the memory progression pipeline below. 👇
 
-#AIArchitecture #VectorDatabase #pgvector #MachineLearning #PersonalGrowth #TwinGenie #ProductDesign`
+📲 Build your persistent digital twin on Google Play (link in first comment).
+
+#TwinGenie #VectorDatabase #pgvector #AIArchitecture #MachineLearning #PersonalGrowth #ProductDesign`
             }
         };
 
@@ -847,7 +785,9 @@ ${bq.optionA}
 OR
 ${bq.optionB}
 
-Drop A or B in the comments! 👇`;
+Drop A or B in the comments! 👇
+
+#TwinGenie #AI #PersonalGrowth #DigitalTwin #SelfReflection #MindsetShift`;
 
         const firstComment = `📲 Experience both perspectives free on Google Play: ${utm}\nTake your 35-question Big Five personality baseline today!`;
 
