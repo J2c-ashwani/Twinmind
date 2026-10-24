@@ -327,8 +327,8 @@ class GrowthOrchestratorService {
     /**
      * Dedicated Daily Facebook Carousel Publisher
      */
-    async publishDailyFacebookReel(force = false) {
-        logger.info('[GROWTH ORCHESTRATOR] Starting daily Facebook Carousel publication flow...');
+    async publishDailyFacebookReel(force = false, specificThemeId = null) {
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily Facebook Carousel publication flow (theme=${specificThemeId || 'auto'})...`);
         const now = new Date();
 
         // Unless force=true, ensure we haven't already published a Facebook Reel today (IST calendar day)
@@ -345,8 +345,10 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 1. Get next rotated theme for Facebook
-        const theme = this.getNextRotationalTheme('facebook');
+        // 1. Get next rotated or specific theme for Facebook
+        const theme = specificThemeId 
+            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || this.getNextRotationalTheme('facebook'))
+            : this.getNextRotationalTheme('facebook');
         const campaignId = `camp_${theme.id}_${Date.now()}`;
         const fbContent = contentGeneratorService._generateFacebookContent(theme, campaignId, 'carousel');
 
@@ -408,8 +410,8 @@ class GrowthOrchestratorService {
      * Generates fresh content, renders 1080x1350 multi-page PDF document carousel, and dispatches to LinkedIn.
      * @param {boolean} force - If true, bypasses the 18-hour duplicate post throttle
      */
-    async publishDailyLinkedInPersonal(force = false) {
-        logger.info('[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow...');
+    async publishDailyLinkedInPersonal(force = false, specificThemeId = null) {
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow (theme=${specificThemeId || 'auto'})...`);
         const now = new Date();
 
         if (!force) {
@@ -425,8 +427,10 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 1. Get next rotated theme for Ashwani Kumar's Personal Profile (guaranteed non-repeating)
-        const theme = this.getNextRotationalTheme('linkedin', 'personal');
+        // 1. Get rotated or specific theme for Ashwani Kumar's Personal Profile (guaranteed non-repeating)
+        const theme = specificThemeId
+            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || this.getNextRotationalTheme('linkedin', 'personal'))
+            : this.getNextRotationalTheme('linkedin', 'personal');
         const campaignId = `camp_${theme.id}_${Date.now()}`;
         const content = contentGeneratorService._generateLinkedInPersonalContent(theme, campaignId);
 

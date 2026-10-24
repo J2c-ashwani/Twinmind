@@ -365,8 +365,9 @@ router.all('/cron/daily-reel', requireAdminSecret, async (req, res) => {
 router.all('/cron/daily-linkedin', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
-        logger.info(`[GROWTH CRON] Triggering automated daily LinkedIn Personal Carousel publication (force=${force})...`);
-        const result = await growthOrchestratorService.publishDailyLinkedInPersonal(force);
+        const theme = req.query.theme || req.body?.theme || null;
+        logger.info(`[GROWTH CRON] Triggering automated daily LinkedIn Personal Carousel publication (force=${force}, theme=${theme || 'auto'})...`);
+        const result = await growthOrchestratorService.publishDailyLinkedInPersonal(force, theme);
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily LinkedIn carousel publication failed:', error);
