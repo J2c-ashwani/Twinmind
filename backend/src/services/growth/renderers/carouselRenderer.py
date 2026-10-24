@@ -351,15 +351,41 @@ def render_timeline_slide(draw, slide_data, cur_y):
         box_y = cur_y + idx * (step_h + gap)
         draw.rounded_rectangle([70, box_y, w - 70, box_y + step_h], radius=22, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
 
+        # Robust extraction for step badge, title, and description
+        step_raw = s.get('step') or s.get('badge')
+        title_raw = s.get('title') or s.get('name')
+        desc_raw = s.get('desc') or s.get('detail') or s.get('content') or s.get('description') or ''
+
+        # If phase was used instead of step/title (e.g. "DAY 1: BASELINE BENCHMARK")
+        if not step_raw and 'phase' in s:
+            phase_str = str(s['phase'])
+            if ':' in phase_str:
+                parts = phase_str.split(':', 1)
+                step_raw = parts[0].strip()
+                if not title_raw:
+                    title_raw = parts[1].strip()
+            else:
+                title_raw = phase_str
+
+        step_text = step_raw if step_raw else f"STAGE 0{idx+1}"
+        title_text = title_raw if title_raw else f"Stage 0{idx+1}"
+
+        # Measure step badge width dynamically
+        font_badge = get_font(18, bold=True)
+        badge_bbox = draw.textbbox((0, 0), step_text, font=font_badge)
+        badge_text_w = badge_bbox[2] - badge_bbox[0]
+        badge_w = max(badge_text_w + 32, 130)
+
         # Step badge
-        draw.rounded_rectangle([95, box_y + 22, 240, box_y + 64], radius=10, fill=(45, 30, 95))
-        draw.text((112, box_y + 30), s.get('step', f"STAGE {idx+1}"), font=get_font(18, bold=True), fill=CYAN_ACCENT)
+        draw.rounded_rectangle([95, box_y + 22, 95 + badge_w, box_y + 64], radius=10, fill=(45, 30, 95))
+        draw.text((95 + 16, box_y + 30), step_text, font=font_badge, fill=CYAN_ACCENT)
 
         # Title
-        draw.text((260, box_y + 27), s.get('title', ''), font=get_font(28, bold=True), fill=TEXT_WHITE)
+        title_x = 95 + badge_w + 20
+        draw.text((title_x, box_y + 27), title_text, font=get_font(28, bold=True), fill=TEXT_WHITE)
 
         # Desc
-        draw_wrapped_text(draw, s.get('desc', ''), get_font(26, bold=False), TEXT_MUTED, 95, box_y + 88, max_width=890, line_spacing=1.28)
+        draw_wrapped_text(draw, desc_raw, get_font(26, bold=False), TEXT_MUTED, 95, box_y + 88, max_width=890, line_spacing=1.28)
 
     # Privacy Banner
     banner_y = cur_y + len(steps) * (step_h + gap) + 15

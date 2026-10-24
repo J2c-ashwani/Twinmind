@@ -445,9 +445,9 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'The Cognitive Mirror Pipeline',
                     subtitle: 'How TwinGenie detects recurring subconscious patterns across weeks:',
                     steps: [
-                        { phase: 'DAY 1: BASELINE BENCHMARK', detail: '35 Big Five-inspired questions identify your risk tolerance and cognitive biases.' },
-                        { phase: 'WEEK 2: EMBEDDING MEMORY', detail: 'Semantic pgvector embeddings link current decisions to historical rationalizations.' },
-                        { phase: 'MONTH 3: PROACTIVE SHIELD', detail: 'Anticipates blind spots and challenges excuses before they impact execution.' }
+                        { step: "STAGE 01", title: "Baseline Calibration", desc: "35 Big Five-inspired questions establish your deterministic communication map and cognitive blind spots." },
+                        { step: "STAGE 02", title: "Semantic Pattern Matching", desc: "pgvector embeddings detect recurring self-sabotage loops that single-session chats miss completely." },
+                        { step: "STAGE 03", title: "Proactive Loop Interception", desc: "Anticipates cognitive blind spots and challenges founder excuses before they impact execution." }
                     ]
                 },
                 {
@@ -523,9 +523,9 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'From Analysis Paralysis to Fast Conviction',
                     subtitle: 'How TwinGenie accelerates high-confidence executive execution:',
                     steps: [
-                        { phase: 'PHASE 1: SIGNAL DETECTION', detail: 'Monitors recurring hesitation markers and circular decision prompts.' },
-                        { phase: 'PHASE 2: BIAS BALANCING', detail: 'Applies inverse weighting based on your baseline neuroticism & risk scores.' },
-                        { phase: 'PHASE 3: DECISIVE CONVICTION', detail: 'Synthesizes facts into an actionable 48-hour execution mandate.' }
+                        { step: "STAGE 01", title: "Hesitation Detection", desc: "Monitors recurring decision paralysis markers and circular prompt loops in real time." },
+                        { step: "STAGE 02", title: "Bias Inversion Weighting", desc: "Counterbalances baseline neuroticism and risk aversion from your 35-question psychological profile." },
+                        { step: "STAGE 03", title: "Decisive Conviction", desc: "Synthesizes raw facts into an actionable 48-hour execution mandate with zero ambiguity." }
                     ]
                 },
                 {
@@ -601,9 +601,9 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'The Longitudinal Wisdom Engine',
                     subtitle: 'How TwinGenie builds a continuous model of your future self:',
                     steps: [
-                        { phase: 'MILESTONE 01: TRAJECTORY MAPPING', detail: '35 Big Five questions define your ultimate aspirations and long-term values.' },
-                        { phase: 'MILESTONE 02: STRESS VECTORING', detail: 'Records past crises and tracks how you successfully navigated them.' },
-                        { phase: 'MILESTONE 03: EXECUTIVE EQUANIMITY', detail: 'Synthesizes past resilience to neutralize short-term panic in real time.' }
+                        { step: "STAGE 01", title: "Trajectory Mapping", desc: "35 Big Five-inspired questions define your ultimate aspirations and long-term values." },
+                        { step: "STAGE 02", title: "Stress Vectoring", desc: "Records past crises and tracks historical resilience to prove you survived past setbacks." },
+                        { step: "STAGE 03", title: "Retrospective Equanimity", desc: "Reframes immediate crises through the lens of a 5-years-wiser mentor to neutralize short-term panic." }
                     ]
                 },
                 {
@@ -679,9 +679,9 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'How TwinGenie Remembers What Matters',
                     subtitle: 'The 3-stage memory transformation from empty prompt to true digital twin:',
                     steps: [
-                        { phase: 'STAGE 1: PSYCHOLOGICAL CALIBRATION', detail: '35 Big Five-inspired questions establish your deterministic communication baseline.' },
-                        { phase: 'STAGE 2: VECTOR EMBEDDING', detail: 'pgvector extracts semantic concepts and indexes conversations across time.' },
-                        { phase: 'STAGE 3: COMPOUNDING INTELLECT', detail: 'Anticipates cognitive blind spots and provides tailored executive counsel.' }
+                        { step: "STAGE 01", title: "Psychological Baseline", desc: "35 Big Five questions establish your deterministic communication map and core behavioral vectors." },
+                        { step: "STAGE 02", title: "Vector Embedding (pgvector)", desc: "Extracts semantic concepts across time, preventing context decay over months of conversation." },
+                        { step: "STAGE 03", title: "Compounding Alter-Ego", desc: "Anticipates objections, tracks goal adherence, and evolves into an indispensable executive co-pilot." }
                     ]
                 },
                 {
@@ -757,9 +757,9 @@ Swipe through the memory progression pipeline below. 👇
                 title: 'The Memory Progression Pipeline',
                 subtitle: 'How your AI evolves from an empty chatbot into an indispensable alter-ego:',
                 steps: [
-                    { phase: 'DAY 1: BASELINE CALIBRATION', detail: '35 Big Five-inspired questions establish your deterministic psychological & communication map.' },
-                    { phase: 'WEEK 2: PATTERN RECOGNITION', detail: 'Vector embeddings identify recurring stress triggers, decision paralysis & cognitive loops.' },
-                    { phase: 'MONTH 3: TRUE DIGITAL TWIN', detail: 'Anticipates objections, tracks goal adherence & acts as a 24/7 executive co-pilot.' }
+                    { step: "STAGE 01", title: "Baseline Calibration", desc: "35 Big Five-inspired questions establish your deterministic psychological and communication map." },
+                    { step: "STAGE 02", title: "Pattern Recognition", desc: "Vector embeddings identify recurring stress triggers, decision paralysis, and cognitive loops." },
+                    { step: "STAGE 03", title: "True Digital Twin", desc: "Anticipates objections, tracks goal adherence, and acts as a 24/7 executive co-pilot." }
                 ]
             },
             {
