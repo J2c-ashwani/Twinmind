@@ -95,25 +95,75 @@ class LinkedInAdapter {
         logger.info(`[LINKEDIN] Initiating publish to ${target} destination: ${authorUrn}...`);
 
         try {
-            // Document upload or Image upload or simple UGC share
-            let mediaAssetUrn = null;
-            let shareCategory = 'NONE';
-
-            // 1. Try Document Upload (PDF Carousel)
+            // 1. Try Document Upload (Native PDF Carousel for interactive on-feed slider)
+            let documentUrn = null;
             if (postData.pdfPath && fs.existsSync(postData.pdfPath)) {
                 try {
-                    logger.info(`[LINKEDIN] Registering and uploading PDF document carousel: ${postData.pdfPath}`);
-                    mediaAssetUrn = await this._uploadDocument(accessToken, authorUrn, postData.pdfPath, postData.title);
-                    shareCategory = 'DOCUMENT';
+                    logger.info(`[LINKEDIN] Registering and uploading native PDF document carousel: ${postData.pdfPath}`);
+                    documentUrn = await this._uploadDocument(accessToken, authorUrn, postData.pdfPath, postData.title);
                 } catch (docErr) {
                     logger.warn(`[LINKEDIN] PDF document upload encountered an issue (${docErr.message}), checking for PNG image fallback...`);
                 }
             }
 
-            // 2. Upload Multi-Image Carousel Slides if provided
+            // Case A: Publish Native PDF Document Carousel via modern REST Posts API
+            if (documentUrn) {
+                logger.info(`[LINKEDIN] Publishing native document carousel post via REST API (${documentUrn})...`);
+                const postPayload = {
+                    author: authorUrn,
+                    commentary: postData.caption,
+                    visibility: 'PUBLIC',
+                    distribution: {
+                        feedDistribution: 'MAIN_FEED',
+                        targetEntities: [],
+                        thirdPartyDistributionChannels: []
+                    },
+                    content: {
+                        media: {
+                            id: documentUrn,
+                            title: postData.title || 'TwinGenie Architecture Carousel'
+                        }
+                    },
+                    lifecycleState: 'PUBLISHED'
+                };
+
+                const response = await fetch('https://api.linkedin.com/rest/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                        'Linkedin-Version': '202601',
+                        'X-Restli-Protocol-Version': '2.0.0'
+                    },
+                    body: JSON.stringify(postPayload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.text();
+                    logger.error('[LINKEDIN] Publish Document Post API error:', errData);
+                    return { success: false, error: errData };
+                }
+
+                const postId = response.headers.get('x-restli-id');
+                const postUrl = `https://www.linkedin.com/feed/update/${postId}`;
+                logger.info(`🎉 [LINKEDIN] Published native PDF document carousel successfully! Post ID: ${postId}`);
+
+                // Automatically post first comment with Google Play Store link
+                await this._postFirstComment(postId, postData, accessToken, authorUrn);
+
+                return {
+                    success: true,
+                    platform: this.platform,
+                    postId,
+                    url: postUrl
+                };
+            }
+
+            // Case B: Fallback to Multi-Image Gallery or Text Post via legacy UGC API
+            let shareCategory = 'NONE';
             let mediaItems = [];
             if (postData.pngPaths && postData.pngPaths.length > 0) {
-                logger.info(`[LINKEDIN] Uploading ${postData.pngPaths.length} slides as multi-image carousel gallery...`);
+                logger.info(`[LINKEDIN] Uploading ${postData.pngPaths.length} slides as multi-image gallery fallback...`);
                 for (let i = 0; i < postData.pngPaths.length; i++) {
                     const imgPath = postData.pngPaths[i];
                     if (fs.existsSync(imgPath)) {
@@ -214,66 +264,73 @@ class LinkedInAdapter {
             throw new Error(`Failed to register LinkedIn image upload: ${JSON.stringify(regData)}`);
         }
 
-        const fileStream = fs.createReadStream(filePath);
-        const stats = fs.statSync(filePath);
+        const buffer = fs.readFileSync(filePath);
 
         await fetch(uploadUrl, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'image/png',
-                'Content-Length': stats.size.toString()
+                'Content-Length': buffer.length.toString()
             },
-            body: fileStream
+            body: buffer
         });
 
         logger.info(`[LINKEDIN] Image binary uploaded to asset: ${assetUrn}`);
         return assetUrn;
     }
 
-    async _uploadDocument(accessToken, orgUrn, filePath, title) {
-        // Step 1: Register upload
-        const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+    /**
+     * Uploads a multi-page PDF document using LinkedIn's modern REST API.
+     * Generates a native interactive document carousel on the LinkedIn feed.
+     */
+    async _uploadDocument(accessToken, authorUrn, filePath, title) {
+        logger.info(`[LINKEDIN] Initializing native PDF document upload via REST API for ${authorUrn}...`);
+
+        // Step 1: Register upload with rest/documents
+        const initRes = await fetch('https://api.linkedin.com/rest/documents?action=initializeUpload', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Linkedin-Version': '202601',
+                'X-Restli-Protocol-Version': '2.0.0'
             },
             body: JSON.stringify({
-                registerUploadRequest: {
-                    recipes: ['urn:li:digitalmediaRecipe:feedshare-document'],
-                    owner: orgUrn,
-                    serviceRelationships: [
-                        { relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }
-                    ]
+                initializeUploadRequest: {
+                    owner: authorUrn
                 }
             })
         });
 
-        const regData = await registerRes.json();
-        const uploadUrl = regData.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;
-        const assetUrn = regData.value?.asset;
-
-        if (!uploadUrl || !assetUrn) {
-            throw new Error('Failed to register LinkedIn document upload');
+        const initData = await initRes.json();
+        if (!initRes.ok || !initData?.value?.uploadUrl || !initData?.value?.document) {
+            throw new Error(`Failed to initialize LinkedIn document upload (${initRes.status}): ${JSON.stringify(initData)}`);
         }
 
-        // Step 2: Upload file binary
-        const fileStream = fs.createReadStream(filePath);
-        const stats = fs.statSync(filePath);
+        const { uploadUrl, document: documentUrn } = initData.value;
+        logger.info(`[LINKEDIN] Document registration successful: ${documentUrn}. Uploading binary payload...`);
 
-        await fetch(uploadUrl, {
+        // Step 2: Upload PDF binary to presigned uploadUrl
+        const buffer = fs.readFileSync(filePath);
+
+        const uploadRes = await fetch(uploadUrl, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/pdf',
-                'Content-Length': stats.size.toString()
+                'Content-Length': buffer.length.toString()
             },
-            body: fileStream
+            body: buffer
         });
 
-        logger.info(`[LINKEDIN] Document binary uploaded to asset: ${assetUrn}`);
-        return assetUrn;
+        if (!uploadRes.ok) {
+            const errText = await uploadRes.text();
+            throw new Error(`Failed to upload document binary to LinkedIn (${uploadRes.status}): ${errText}`);
+        }
+
+        logger.info(`[LINKEDIN] PDF document binary uploaded successfully to URN: ${documentUrn}`);
+        return documentUrn;
     }
 
     /**
@@ -284,28 +341,36 @@ class LinkedInAdapter {
         const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.asmind.app';
         const commentMsg = postData.firstComment || 
             `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nTake the 35-question cognitive baseline & test Honest Twin Mode against your own excuses!`;
-        try {
-            logger.info(`💬 [LINKEDIN] Posting first comment with Play Store link on ${postId}...`);
-            const res = await fetch(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                    'X-Restli-Protocol-Version': '2.0.0'
-                },
-                body: JSON.stringify({
-                    actor: authorUrn,
-                    message: { text: commentMsg }
-                })
-            });
-            const data = await res.json();
-            if (data.id) {
-                logger.info(`💬 [LINKEDIN] First comment posted successfully on ${postId}: ${data.id}`);
-            } else {
-                logger.warn('[LINKEDIN] First comment API response:', data);
+        
+        // Allow LinkedIn feed cluster to propagate the newly published post URN across domain endpoints
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                logger.info(`💬 [LINKEDIN] Posting first comment with Play Store link on ${postId} (attempt ${attempt}/3)...`);
+                const res = await fetch(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                        'X-Restli-Protocol-Version': '2.0.0'
+                    },
+                    body: JSON.stringify({
+                        actor: authorUrn,
+                        message: { text: commentMsg }
+                    })
+                });
+                const data = await res.json();
+                if (data.id) {
+                    logger.info(`💬 [LINKEDIN] First comment posted successfully on ${postId}: ${data.id}`);
+                    return;
+                } else {
+                    logger.warn(`[LINKEDIN] First comment API response (attempt ${attempt}):`, data);
+                }
+            } catch (err) {
+                logger.warn(`[LINKEDIN] Non-blocking first-comment error (attempt ${attempt}):`, err.message);
             }
-        } catch (err) {
-            logger.warn('[LINKEDIN] Non-blocking first-comment error:', err.message);
+            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 3000));
         }
     }
 }
