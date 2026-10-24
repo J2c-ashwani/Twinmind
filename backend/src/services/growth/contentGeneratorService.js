@@ -225,11 +225,11 @@ Swipe through the carousel to see how longitudinal reflection changes executive 
 
 Standard AI chatbots only amplify this—they nod along with your excuses and mirror your confirmation bias.
 
-When engineering TwinGenie, our goal was to build an uncompromising cognitive mirror: 4 distinct perspectives (Normal, Reflective, Honest, Future) and persistent pgvector memory that intercepts recurring blind spots across weeks.
+When engineering TwinGenie, our goal was to build an uncompromising cognitive mirror: 4 distinct perspectives — Normal, Reflective, Honest, Future — and persistent pgvector memory that intercepts recurring blind spots across weeks.
 
 Swipe through the 6-slide carousel below to see how our cognitive pipeline works. 👇
 
-📲 Test your cognitive baseline free on Google Play (link in first comment).
+📲 Test your cognitive baseline free on Google Play. Direct link in first comment.
 
 #TwinGenie #AI #Leadership #CognitiveBiases #TechFounders #DigitalTwin #PersonalGrowth`
             },

@@ -62,6 +62,27 @@ class LinkedInAdapter {
     }
 
     /**
+     * Sanitizes commentary string for LinkedIn's "Little Text" format.
+     * Escapes reserved characters (( ) [ ] { } < > | ~ \) that otherwise cause
+     * LinkedIn's Little Text parser to silently truncate the post from the unescaped character onward.
+     */
+    _sanitizeLittleText(text) {
+        if (!text) return text;
+        return text
+            .replace(/\\/g, '\\\\')
+            .replace(/\(/g, '\\(')
+            .replace(/\)/g, '\\)')
+            .replace(/\[/g, '\\[')
+            .replace(/\]/g, '\\]')
+            .replace(/\{/g, '\\{')
+            .replace(/\}/g, '\\}')
+            .replace(/</g, '\\<')
+            .replace(/>/g, '\\>')
+            .replace(/\|/g, '\\|')
+            .replace(/~/g, '\\~');
+    }
+
+    /**
      * Publishes a post to LinkedIn (Personal Profile or Company Page)
      * @param {Object} postData - { title, caption, pdfPath, pngPaths, utmLink, target: 'personal' | 'company' }
      */
@@ -111,7 +132,7 @@ class LinkedInAdapter {
                 logger.info(`[LINKEDIN] Publishing native document carousel post via REST API (${documentUrn})...`);
                 const postPayload = {
                     author: authorUrn,
-                    commentary: postData.caption,
+                    commentary: this._sanitizeLittleText(postData.caption),
                     visibility: 'PUBLIC',
                     distribution: {
                         feedDistribution: 'MAIN_FEED',
@@ -191,7 +212,7 @@ class LinkedInAdapter {
                 specificContent: {
                     'com.linkedin.ugc.ShareContent': {
                         shareCommentary: {
-                            text: postData.caption
+                            text: this._sanitizeLittleText(postData.caption)
                         },
                         shareMediaCategory: shareCategory,
                         media: mediaItems.length > 0 ? mediaItems : undefined
