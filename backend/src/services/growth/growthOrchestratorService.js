@@ -454,7 +454,7 @@ class GrowthOrchestratorService {
         // 4. Save to state
         const postRecord = {
             id: postId,
-            campaignId: bundle.campaignId,
+            campaignId,
             platform: 'linkedin',
             target: 'personal',
             format: 'carousel_pdf',
