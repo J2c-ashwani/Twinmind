@@ -293,96 +293,97 @@ class GrowthOrchestratorService {
     /**
      * Determines the next theme in sequence to guarantee zero consecutive duplicate posts
      */
+    /**
+     * Retrieves the non-repeating rotational theme.
+     * Uses deterministic calendar scheduling as the primary guarantee so server reboots never reset the rotation.
+     */
     getNextRotationalTheme(platform, target = null) {
-        const themes = contentGeneratorService.themes || [];
-        if (!themes || themes.length === 0) return { id: 'honest_mode', name: 'Normal vs Honest Twin' };
-
-        const recentPosts = (this.state.posts || [])
-            .filter(p => p.platform === platform && (!target || p.target === target) && p.status === 'published' && p.publishedAt)
-            .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-
-        if (recentPosts.length === 0) {
-            return themes[0];
-        }
-
-        const lastPost = recentPosts[0];
-        const lastCampaignId = lastPost.campaignId || '';
-        const lastTitle = (lastPost.title || '').toLowerCase();
-
-        const lastIndex = themes.findIndex(t => 
-            lastCampaignId.includes(t.id) || 
-            lastTitle.includes(t.name.toLowerCase()) ||
-            lastTitle.includes((t.tag || '').toLowerCase())
-        );
-
-        if (lastIndex === -1) {
-            return themes[0];
-        }
-
-        const nextIndex = (lastIndex + 1) % themes.length;
-        logger.info(`🔄 [GROWTH ORCHESTRATOR] Rotated theme for ${platform} (${target || 'default'}): "${themes[lastIndex].name}" -> "${themes[nextIndex].name}"`);
-        return themes[nextIndex];
+        const schedule = contentGeneratorService.getDailySchedule();
+        logger.info(`🔄 [GROWTH ORCHESTRATOR] Calendar schedule for ${platform} (${target || 'default'}): Day #${schedule.dayNumber} -> Theme "${schedule.theme.name}" (${schedule.theme.id})`);
+        return schedule.theme;
     }
 
     /**
-     * Dedicated Daily Facebook Carousel Publisher
+     * Dedicated Daily Facebook Publisher.
+     * Alternates formats daily: Carousel vs Reel.
+     * Prevents duplicate posts across server restarts by verifying directly against Meta Graph API.
      */
-    async publishDailyFacebookReel(force = false, specificThemeId = null) {
-        logger.info(`[GROWTH ORCHESTRATOR] Starting daily Facebook Carousel publication flow (theme=${specificThemeId || 'auto'})...`);
+    async publishDailyFacebookReel(force = false, specificThemeId = null, specificFormat = null) {
         const now = new Date();
+        const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily Facebook publication flow for ${todayIST}...`);
 
-        // Unless force=true, ensure we haven't already published a Facebook Reel today (IST calendar day)
+        // 1. Unless force=true, verify directly with Meta Graph API if already published today
         if (!force) {
-            const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
-            const alreadyPublishedToday = this.state.posts.some(p => {
-                if (p.platform !== 'facebook' || p.status !== 'published' || !p.publishedAt) return false;
-                const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.publishedAt));
-                return postDateIST === todayIST;
-            });
-            if (alreadyPublishedToday) {
-                logger.info(`[GROWTH ORCHESTRATOR] Facebook Reel already published today (${todayIST}). Skipping.`);
+            const alreadyPostedOnFB = await this.adapters.facebook.hasPublishedTodayIST();
+            if (alreadyPostedOnFB) {
+                logger.info(`[GROWTH ORCHESTRATOR] Facebook Page already has a post today (${todayIST}). Skipping duplicate.`);
                 return { action: 'skipped', reason: 'already_published_today' };
             }
         }
 
-        // 1. Get next rotated or specific theme for Facebook
+        // 2. Get deterministic non-repeating theme and alternating format
+        const schedule = contentGeneratorService.getDailySchedule(now);
         const theme = specificThemeId 
-            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || this.getNextRotationalTheme('facebook'))
-            : this.getNextRotationalTheme('facebook');
-        const campaignId = `camp_${theme.id}_${Date.now()}`;
-        const fbContent = contentGeneratorService._generateFacebookContent(theme, campaignId, 'carousel');
+            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || schedule.theme)
+            : schedule.theme;
 
+        const format = specificFormat || schedule.facebookFormat; // Alternates: Carousel vs Reel!
+        const campaignId = `camp_${theme.id}_${Date.now()}`;
+        const fbContent = contentGeneratorService._generateFacebookContent(theme, campaignId, format);
         const postId = `post_facebook_${Date.now()}`;
 
-        // 2. Render High-Res Multi-Image Carousel (Lightweight Pillow, <25MB RAM, NO FFmpeg)
-        logger.info(`[GROWTH ORCHESTRATOR] Rendering high-res Carousel slides for Facebook: "${theme.name}"...`);
-        const renderedCarousel = await mediaRendererService.renderCarousel({
-            campaignId,
-            postId,
-            slides: fbContent.slides
-        });
+        logger.info(`[GROWTH ORCHESTRATOR] Facebook Scheduled: Theme="${theme.name}", Format="${format}"`);
 
-        // 3. Publish to Facebook Page as Multi-Image Carousel with First Comment
-        logger.info(`[GROWTH ORCHESTRATOR] Publishing Carousel directly to Facebook Page...`);
+        let renderedReel = null;
+        let renderedCarousel = null;
+
+        // 3. Render Media: Reel (with strict RAM limits) or Carousel
+        if (format === 'reel') {
+            try {
+                logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${theme.name}"...`);
+                renderedReel = await mediaRendererService.renderReel({
+                    campaignId,
+                    postId,
+                    hook: fbContent.title || theme.hook,
+                    tag: fbContent.tag || theme.tag
+                });
+            } catch (reelErr) {
+                logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
+            }
+        }
+
+        // Always render carousel slides as primary (for carousel format) or guaranteed failover (if reel render fails)
+        if (!renderedReel) {
+            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Facebook: "${theme.name}"...`);
+            renderedCarousel = await mediaRendererService.renderCarousel({
+                campaignId,
+                postId,
+                slides: fbContent.slides
+            });
+        }
+
+        // 4. Publish to Facebook Page as Reel or Carousel with First Comment
+        logger.info(`[GROWTH ORCHESTRATOR] Publishing ${renderedReel ? 'Reel' : 'Carousel'} directly to Facebook Page...`);
         const publishResult = await this.adapters.facebook.publish({
             title: fbContent.title,
             caption: fbContent.caption,
             firstComment: fbContent.firstComment,
-            mediaPaths: renderedCarousel.pngPaths,
-            format: 'carousel'
+            videoPath: renderedReel?.videoPath || null,
+            mediaPaths: renderedCarousel?.pngPaths || [],
+            format: renderedReel ? 'reel' : 'carousel'
         });
 
-        // 4. Save to state
+        // 5. Save to state
         const postRecord = {
             id: postId,
             campaignId,
             platform: 'facebook',
-            format: 'carousel',
+            format: renderedReel ? 'reel' : 'carousel',
             title: fbContent.title,
             caption: fbContent.caption,
-            videoPath: null,
-            videoUrl: null,
-            mediaPaths: renderedCarousel.pngPaths,
+            videoPath: renderedReel?.videoPath || null,
+            mediaPaths: renderedCarousel?.pngPaths || [],
             status: publishResult.success ? 'published' : 'failed',
             scheduledFor: now.toISOString(),
             publishedAt: publishResult.success ? now.toISOString() : null,
@@ -400,7 +401,8 @@ class GrowthOrchestratorService {
             postId: postRecord.id,
             platformPostId: publishResult.postId,
             url: publishResult.url,
-            totalSlides: renderedCarousel.totalSlides,
+            format: postRecord.format,
+            theme: theme.name,
             error: publishResult.error
         };
     }
@@ -408,35 +410,58 @@ class GrowthOrchestratorService {
     /**
      * Publishes today's high-converting PDF Carousel to Ashwani Kumar's LinkedIn Personal Profile.
      * Generates fresh content, renders 1080x1350 multi-page PDF document carousel, and dispatches to LinkedIn.
-     * @param {boolean} force - If true, bypasses the 18-hour duplicate post throttle
+     * @param {boolean} force - If true, bypasses the duplicate post throttle
      */
     async publishDailyLinkedInPersonal(force = false, specificThemeId = null) {
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow (theme=${specificThemeId || 'auto'})...`);
         const now = new Date();
+        const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
+        // 1. Verify against Supabase persistence + memory state to prevent duplicate posts across server restarts
         if (!force) {
-            const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
-            const alreadyPublishedToday = this.state.posts.some(p => {
+            try {
+                const { data: recent } = await supabaseAdmin
+                    .from('usage_tracking')
+                    .select('created_at')
+                    .eq('action_type', 'growth_linkedin_personal')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (recent && recent.length > 0) {
+                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
+                    if (lastIST === todayIST) {
+                        logger.info(`[GROWTH ORCHESTRATOR] LinkedIn personal post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
+                        return { action: 'skipped', reason: 'already_published_today' };
+                    }
+                }
+            } catch (dbCheckErr) {
+                logger.warn('[GROWTH ORCHESTRATOR] Supabase date check warning:', dbCheckErr.message);
+            }
+
+            const alreadyPublishedInMemory = this.state.posts.some(p => {
                 if (p.platform !== 'linkedin' || p.target !== 'personal' || p.status !== 'published' || !p.publishedAt) return false;
                 const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.publishedAt));
                 return postDateIST === todayIST;
             });
-            if (alreadyPublishedToday) {
-                logger.info(`[GROWTH ORCHESTRATOR] LinkedIn personal post already published today (${todayIST}). Skipping.`);
+            if (alreadyPublishedInMemory) {
+                logger.info(`[GROWTH ORCHESTRATOR] LinkedIn personal post already published today in local state (${todayIST}). Skipping duplicate.`);
                 return { action: 'skipped', reason: 'already_published_today' };
             }
         }
 
-        // 1. Get rotated or specific theme for Ashwani Kumar's Personal Profile (guaranteed non-repeating)
+        // 2. Get deterministic non-repeating theme for today
+        const schedule = contentGeneratorService.getDailySchedule(now);
         const theme = specificThemeId
-            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || this.getNextRotationalTheme('linkedin', 'personal'))
-            : this.getNextRotationalTheme('linkedin', 'personal');
+            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || schedule.theme)
+            : schedule.theme;
+
         const campaignId = `camp_${theme.id}_${Date.now()}`;
         const content = contentGeneratorService._generateLinkedInPersonalContent(theme, campaignId);
-
         const postId = `post_linkedin_personal_${Date.now()}`;
 
-        // 2. Render 1080x1350 Multi-Page PDF Carousel
+        logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Theme: "${theme.name}" (${theme.id})`);
+
+        // 3. Render 1080x1350 Multi-Page PDF Carousel
         logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${theme.name}"...`);
         const rendered = await mediaRendererService.renderCarousel({
             campaignId,
@@ -444,7 +469,7 @@ class GrowthOrchestratorService {
             slides: content.slides
         });
 
-        // 3. Publish to LinkedIn via official API
+        // 4. Publish to LinkedIn via official API
         logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
         const publishResult = await this.adapters.linkedin.publish({
             title: content.title,
@@ -455,7 +480,27 @@ class GrowthOrchestratorService {
             target: 'personal'
         });
 
-        // 4. Save to state
+        // 5. Track published timestamp in Supabase (persists across Render container restarts)
+        if (publishResult.success) {
+            try {
+                const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                if (users && users.length > 0) {
+                    const nowIso = now.toISOString();
+                    await supabaseAdmin.from('usage_tracking').insert({
+                        user_id: users[0].id,
+                        action_type: 'growth_linkedin_personal',
+                        count: 1,
+                        period_start: nowIso,
+                        period_end: nowIso,
+                        created_at: nowIso
+                    });
+                }
+            } catch (dbLogErr) {
+                logger.warn('[GROWTH ORCHESTRATOR] Supabase log warning:', dbLogErr.message);
+            }
+        }
+
+        // 6. Save to local state
         const postRecord = {
             id: postId,
             campaignId,
@@ -483,6 +528,7 @@ class GrowthOrchestratorService {
             postId: postRecord.id,
             platformPostId: publishResult.postId,
             url: publishResult.url,
+            theme: theme.name,
             totalSlides: rendered.totalSlides,
             pdfPath: rendered.pdfPath,
             error: publishResult.error

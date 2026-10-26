@@ -73,6 +73,33 @@ class ContentGeneratorService {
     }
 
     /**
+     * Deterministic Calendar Schedule Engine (Asia/Kolkata timezone).
+     * Guarantees non-repeating consecutive themes and strictly alternating Facebook formats.
+     */
+    getDailySchedule(date = new Date()) {
+        const istDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(date);
+        const epoch = new Date('2026-10-20T00:00:00+05:30');
+        const target = new Date(`${istDateStr}T00:00:00+05:30`);
+        const dayNumber = Math.max(0, Math.round((target - epoch) / (1000 * 60 * 60 * 24)));
+
+        const themes = this.themes;
+        const themeIndex = dayNumber % themes.length;
+        const currentTheme = themes[themeIndex];
+
+        // Format strictly alternates every single day on Facebook:
+        // Day 0: Carousel, Day 1: Reel, Day 2: Carousel, Day 3: Reel...
+        const facebookFormat = (dayNumber % 2 === 0) ? 'carousel' : 'reel';
+
+        return {
+            istDateStr,
+            dayNumber,
+            themeIndex,
+            theme: currentTheme,
+            facebookFormat
+        };
+    }
+
+    /**
      * Builds direct Google Play Store link
      */
     buildUtmLink(platform, format, campaignId) {
@@ -761,8 +788,8 @@ Drop A or B in the comments! 👇
     }
 
     _generateFacebookContent(theme, campaignId, requestedFormat = null) {
-        // Automatically alternate between 'carousel' and 'reel' if not specified
-        const format = requestedFormat || (Math.random() > 0.5 ? 'reel' : 'carousel');
+        const schedule = this.getDailySchedule();
+        const format = requestedFormat || schedule.facebookFormat;
         const utmMedium = format === 'reel' ? 'reel_video' : 'multi_image_carousel';
         const utm = this.buildUtmLink('facebook', utmMedium, campaignId);
 
@@ -772,11 +799,19 @@ Drop A or B in the comments! 👇
             optionB: "🅱️ A brutally honest breakdown that cuts through your excuses (Honest Twin)"
         };
 
-        const caption = `What happens when your AI companion stops flattering you and starts telling you the truth? 🪞
+        const themeId = theme.id || 'blind_spots';
+        const facebookPackages = {
+            blind_spots: {
+                title: "Why Your Biggest Strength Is Also Your Greatest Cognitive Blind Spot",
+                caption: `Every founder has a superpower that quietly doubles as their biggest liability. 🪞
 
-Most AI assistants agree with whatever you say. They validate your doubts, indulge your procrastination, and reset their memory the moment you close the tab.
+• Hyper-decisive? You dismiss subtle risk signals.
+• Deeply empathetic? You tolerate underperformance.
+• Hyper-analytical? You disguise procrastination as "thoroughness".
 
-TwinGenie is engineered differently with 4 cognitive perspectives: Normal, Reflective, Honest, and Future You.
+Standard AI chatbots amplify this—they mirror your confirmation bias, stroke your ego, and agree with everything you say.
+
+When building TwinGenie, our goal was to build an uncompromising cognitive mirror: 4 distinct perspectives (Normal, Reflective, Honest, Future) and persistent pgvector memory that intercepts recurring blind spots across weeks.
 
 Quick question for you:
 ${bq.prompt}
@@ -787,19 +822,119 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #AI #PersonalGrowth #DigitalTwin #SelfReflection #MindsetShift`;
+#TwinGenie #AI #Leadership #CognitiveBiases #PersonalGrowth #DigitalTwin #SelfReflection`
+            },
+            honest_mode: {
+                title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie",
+                caption: `Most conversational AI is engineered to be a flattering yes-man. It strokes your ego, validates your excuses, and forgets everything the moment you close the browser tab. 🧠
 
+Human personal growth doesn't come from unconditional agreement. It comes from dialectical friction.
+
+That's why we engineered TwinGenie with 4 distinct cognitive lenses:
+• Normal Twin — Your baseline thinking partner
+• Reflective Twin — Emotional validation & grounding
+• Honest Twin — Zero flattery; shreds rationalizations
+• Future Twin — 5-years-wiser retrospective clarity
+
+Backed by persistent pgvector memory, TwinGenie remembers who you are and holds you accountable.
+
+Quick question for you:
+${bq.prompt}
+
+${bq.optionA}
+OR
+${bq.optionB}
+
+Drop A or B in the comments! 👇
+
+#TwinGenie #ArtificialIntelligence #TechFounders #LLM #CognitiveScience #DigitalTwin #MindsetShift`
+            },
+            decision_paralysis: {
+                title: "The Hidden Cognitive Pattern Behind Why Founders Stall on Tough Calls",
+                caption: `"I just need a little more data before deciding." ⏳
+
+In 90% of founder decisions, "waiting for more data" is just sophisticated procrastination disguised as diligence.
+
+Standard chatbots make this worse by generating endless pros and cons—fueling your overthinking loop instead of forcing a decision.
+
+In TwinGenie, we engineered an AI that shatters analysis paralysis:
+• Semantic Loop Interception — Detects when you circle the same decision for 2 weeks
+• 4 Decision Lenses — Clarifies facts, uncovers underlying fear, and evaluates 5-year impact
+• Deterministic Calibration — Balances your innate cognitive bias
+
+Quick question for you:
+${bq.prompt}
+
+${bq.optionA}
+OR
+${bq.optionB}
+
+Drop A or B in the comments! 👇
+
+#TwinGenie #DecisionMaking #Productivity #ExecutiveCoaching #AI #Startups #MentalModels`
+            },
+            future_perspective: {
+                title: "What Your 5-Years-Wiser Self Would Say About Today's Crisis",
+                caption: `Think about the worst crisis you faced 5 years ago. 🔮
+
+Back then, it felt like the company was ending. Today? You can barely remember the panic—or it became the catalyst for your biggest breakthrough.
+
+Human psychology suffers from severe temporal discounting: we over-index on today's panic and discount long-term trajectory.
+
+That's why we built the Future Twin in TwinGenie:
+• Temporal Shift Engine — Simulates the calm, retrospective clarity of your 5-years-wiser self
+• Persistent Vector Memory — Retains your historical wins and core values across months
+• Multi-Perspective Matrix — Shifts you from acute stress into long-term strategic focus
+
+Quick question for you:
+${bq.prompt}
+
+${bq.optionA}
+OR
+${bq.optionB}
+
+Drop A or B in the comments! 👇
+
+#TwinGenie #FutureSelf #MentalClarity #TechFounders #AICompanion #SelfGrowth #Leadership`
+            },
+            persistent_memory: {
+                title: "Why Reset-Button AI Chatbots Fail Human Personal Growth",
+                caption: `Why do 95% of people abandon AI companions after two weeks? 💾
+
+Because every time you open the app, it's Day One all over again.
+
+Chatbots operate on a stateless "reset button." But a stateless AI cannot be a mentor, coach, or true digital twin. True self-growth requires compounding memory.
+
+Here is how we built TwinGenie's memory-first architecture:
+• 35-Question Psychological Baseline — Maps your Big Five personality traits
+• Semantic pgvector Memory — Encrypted vector embeddings that connect conversations across weeks
+• 4 Real-Time Cognitive Perspectives — Shifts from baseline thinking to brutal honesty
+
+Quick question for you:
+${bq.prompt}
+
+${bq.optionA}
+OR
+${bq.optionB}
+
+Drop A or B in the comments! 👇
+
+#TwinGenie #VectorDatabase #pgvector #AIArchitecture #MachineLearning #PersonalGrowth #ProductDesign`
+            }
+        };
+
+        const postSpec = facebookPackages[themeId] || facebookPackages.blind_spots;
         const firstComment = `📲 Experience both perspectives free on Google Play: ${utm}\nTake your 35-question Big Five personality baseline today!`;
 
         if (format === 'reel') {
             return {
                 platform: 'facebook',
                 format: 'reel',
-                title: theme.hook,
+                title: postSpec.title,
                 tag: theme.tag,
                 utmLink: utm,
                 slides: this._buildStandardSlides(theme),
-                caption,
+                caption: postSpec.caption,
                 firstComment
             };
         }
@@ -811,7 +946,7 @@ Drop A or B in the comments! 👇
             tag: theme.tag,
             utmLink: utm,
             slides: this._buildStandardSlides(theme),
-            caption,
+            caption: postSpec.caption,
             firstComment
         };
     }

@@ -84,6 +84,33 @@ class FacebookAdapter {
     }
 
     /**
+     * Checks directly via Meta Graph API whether a post has already been published to the Facebook Page today (IST calendar day).
+     * Prevents duplicate posts across server restarts.
+     */
+    async hasPublishedTodayIST() {
+        const rawCreds = this.getCredentials();
+        const pageId = rawCreds.pageId;
+        const accessToken = await this.getResolvedPageAccessToken();
+        if (!accessToken || !pageId) return false;
+
+        try {
+            const res = await fetch(`${GRAPH_API_BASE}/${pageId}/posts?fields=created_time&limit=5&access_token=${accessToken}`);
+            const data = await res.json();
+            if (data && Array.isArray(data.data) && data.data.length > 0) {
+                const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+                const postedToday = data.data.some(p => {
+                    const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.created_time));
+                    return postDateIST === todayIST;
+                });
+                return postedToday;
+            }
+        } catch (e) {
+            logger.warn('[FACEBOOK] Error checking today posts on Facebook:', e.message);
+        }
+        return false;
+    }
+
+    /**
      * Publishes a post to Facebook Page
      * @param {Object} postData - { caption, pngUrls, videoUrl, utmLink }
      */

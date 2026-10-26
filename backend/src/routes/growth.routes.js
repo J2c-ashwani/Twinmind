@@ -348,8 +348,10 @@ router.post('/render-test', requireAdminSecret, async (req, res) => {
 router.all('/cron/daily-reel', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
-        logger.info(`[GROWTH CRON] Triggering automated daily Facebook Reel publication (force=${force})...`);
-        const result = await growthOrchestratorService.publishDailyFacebookReel(force);
+        const theme = req.query.theme || req.body?.theme || null;
+        const format = req.query.format || req.body?.format || null;
+        logger.info(`[GROWTH CRON] Triggering automated daily Facebook publication (force=${force}, theme=${theme || 'auto'}, format=${format || 'auto'})...`);
+        const result = await growthOrchestratorService.publishDailyFacebookReel(force, theme, format);
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily Reel automated publication failed:', error);
