@@ -1,5 +1,8 @@
 import logger from '../../config/logger.js';
 import aiService from '../aiService.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
+import supabaseAdmin from '../../config/supabase.js';
 
 /**
  * TwinGenie Content Generator Engine
@@ -67,14 +70,262 @@ export const CAMPAIGN_THEMES = [
     }
 ];
 
+export const CURATED_FALLBACK_THEMES = [
+    {
+        id: 'sunk_cost_fallacy',
+        topic: 'The Sunk Cost Fallacy: Why Smart Founders Double Down on Dead Bets',
+        category: 'DECISION ARCHITECTURE',
+        hook: 'The hardest sentence for an ambitious founder to utter is: "We were wrong, and we need to stop."',
+        title: 'The Sunk Cost Fallacy in Startup Strategy',
+        linkedinCaption: `The hardest sentence for an ambitious founder to utter is: "We were wrong, and we need to stop."
+
+When you've poured 9 months, $100k, and your personal pride into a feature or market hypothesis, your brain refuses to cut losses.
+
+Instead, you double down:
+• "We just need one more feature release."
+• "The market just doesn't understand the vision yet."
+• "If we stop now, the last 6 months were wasted."
+
+In cognitive psychology, this is the Sunk Cost Trap—and standard AI chatbots make it worse. When you ask them for reassurance, they enthusiastically generate 10 reasons why your failing strategy could still work. They validate your ego instead of challenging your conviction.
+
+At TwinGenie, we engineered an AI Digital Twin that functions as an uncompromising cognitive mirror:
+1. Normal Twin — everyday strategic sounding board
+2. Reflective Twin — compassionate decompression when burnout strikes
+3. Honest Twin — unfiltered challenger that cites your initial KPIs from memory
+4. Future Twin — the 5-years-wiser perspective asking: "Will this dead bet matter in 2031?"
+
+👉 Meet your digital twin on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
+
+#TwinGenie #FounderMindset #DecisionMaking #Startups #CognitiveBias`,
+        facebookCaption: `The hardest sentence for an ambitious founder to utter is: "We were wrong, and we need to stop." 🛑
+
+When you've poured 6 months into a feature that isn't moving metrics, standard AI bots act like flattering cheerleaders—encouraging you to waste another 3 months.
+
+TwinGenie is engineered differently: with persistent vector memory, its Honest Mode challenges your rationalizations using your own words from day one.
+
+Quick question for you:
+When you realize a project isn't working, what is your instinct?
+
+🅰️ Pivot immediately and cut emotional attachment
+OR
+🅱️ Give it one more sprint to prove itself?
+
+Drop A or B below! 👇
+
+#TwinGenie #Startups #Leadership #MentalModels`,
+        binaryQuestion: {
+            prompt: "When you realize a project isn't working, what is your instinct?",
+            optionA: "🅰️ Pivot immediately and cut emotional attachment",
+            optionB: "🅱️ Give it one more sprint to prove itself?"
+        },
+        voiceScript: {
+            voiceHook: "Why do ambitious founders double down on dying projects instead of pivoting?",
+            voiceProblem: "When you invest six months into an idea, standard chatbots flatter your excuses and encourage endless delays.",
+            voiceSolution: "TwinGenie uses persistent memory to confront your rationalizations and force radical strategic clarity.",
+            voiceCta: "Meet your personal digital twin today. Download TwinGenie free on Google Play."
+        },
+        slides: [
+            {
+                type: 'cover',
+                tag: 'DECISION ARCHITECTURE',
+                title: 'The Sunk Cost Trap',
+                subtitle: 'Why smart founders double down on dying bets',
+                takeaways: [
+                    'How ego disguises failure as persistence',
+                    'Why yes-man AI companions fuel toxic confirmation bias',
+                    'How longitudinal memory forces objective conviction'
+                ]
+            },
+            {
+                type: 'dynamic',
+                tag: 'THE COGNITIVE TRAP',
+                title: 'The Commitment Loop',
+                subtitle: 'Why cutting losses feels like admitting defeat',
+                bullets: [
+                    'Identity entanglement: Confusing the project with your self-worth',
+                    'Justification creep: Inventing new metrics to disguise flat traction',
+                    'Echo chamber trap: Asking agreeable chatbots for strategic validation'
+                ]
+            },
+            {
+                type: 'comparison',
+                tag: 'THE FLATTERY TRAP',
+                title: 'Yes-Man AI vs Honest Twin',
+                subtitle: 'Two contrasting responses to the exact same pivot anxiety',
+                left: {
+                    badge: '[ STANDARD AI (THE YES-MAN) ]',
+                    user: "No one is buying, but we spent 6 months building this. Should we keep pushing?",
+                    ai: "Absolutely! Overnight success takes grit. Keep grinding and marketing!",
+                    outcome: "Burns 6 more months of runway on a dead thesis"
+                },
+                right: {
+                    badge: '[ TWINGENIE (HONEST TWIN) ]',
+                    user: "No one is buying, but we spent 6 months building this. Should we keep pushing?",
+                    ai: "Looking at your memory notes from July, your kill-switch condition was zero sales after 60 days. You hit that 40 days ago. Kill it and preserve cash.",
+                    outcome: "Cuts losses instantly and refocuses energy"
+                }
+            },
+            {
+                type: 'timeline',
+                tag: 'COGNITIVE ARCHITECTURE',
+                title: 'The Pivot Clarity Pipeline',
+                subtitle: 'How TwinGenie deconstructs executive hesitation',
+                steps: [
+                    { step: 'STAGE 01', title: 'Premise Calibration', desc: 'Pre-registers your objective success criteria and risk boundaries.' },
+                    { step: 'STAGE 02', title: 'Memory Interception', desc: 'pgvector memory flags when you rationalise away missed deadlines.' },
+                    { step: 'STAGE 03', title: 'Future Perspective', desc: 'The 5-years-wiser Future Twin brings calm clarity to pivot anxiety.' }
+                ]
+            },
+            {
+                type: 'cta',
+                tag: 'AVAILABLE NOW',
+                title: 'Meet Your Digital Twin Today',
+                subtitle: 'Stop talking to AI that forgets you. Start building real self-awareness.',
+                points: [
+                    '35-Question Big Five personality baseline',
+                    '4 perspectives: Normal, Reflective, Honest, Future',
+                    'Persistent pgvector memory across all conversations',
+                    '100% private, self-guided executive reflection'
+                ],
+                button: 'Download TwinGenie on Google Play',
+                link: 'play.google.com/store/apps/details?id=com.asmind.app'
+            }
+        ]
+    },
+    {
+        id: 'false_urgency',
+        topic: 'False Urgency vs Strategic Leverage: The High-Stress Founder Loop',
+        category: 'HIGH PERFORMANCE',
+        hook: 'Running around putting out self-created fires feels like hard work. It is actually sophisticated avoidance.',
+        title: 'False Urgency vs Strategic Leverage',
+        linkedinCaption: `Running around putting out fires feels like high-leverage execution. 
+
+Most of the time, it's just sophisticated avoidance.
+
+When founders are terrified of making an existential strategic choice—like firing a toxic VP, fixing unit economics, or making cold enterprise sales calls—they manufacture fake operational crises:
+• Redesigning the landing page for the 4th time
+• Re-organizing Notion project boards
+• Responding instantly to low-priority Slack messages
+
+This creates a dopamine loop of "busyness" without an inch of actual company progress.
+
+Standard chatbots only amplify this: they cheerfully help you draft 20 emails and optimize trivial workflows, never asking: "Why are you doing this instead of closing the deal?"
+
+At TwinGenie, we engineered an AI Digital Twin with persistent pgvector memory:
+• Normal Twin: your baseline strategic voice
+• Reflective Twin: uncovers the underlying anxiety driving the fake urgency
+• Honest Twin: challenges your avoidance using your past stated priorities
+• Future Twin: brings the 5-years-wiser lens to focus only on what matters
+
+👉 Download TwinGenie on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
+
+#TwinGenie #Productivity #FounderPsychology #Leadership #DeepWork`,
+        facebookCaption: `Putting out fires feels like hard work. Most of the time, it's just avoiding the work that actually matters. 🚨
+
+When founders hesitate on a tough call, they reorganize Slack channels and tweak landing pages—mistaking motion for progress.
+
+TwinGenie's Honest Mode flags this immediately by comparing today's tasks against your long-term goals.
+
+Quick question for you:
+When your day feels overwhelming, is it usually:
+
+🅰️ Too many genuinely urgent fires
+OR
+🅱️ Struggling to prioritize the single highest-leverage task?
+
+Drop A or B below! 👇
+
+#TwinGenie #Productivity #Leadership #Focus`,
+        binaryQuestion: {
+            prompt: "When your day feels overwhelming, is it usually:",
+            optionA: "🅰️ Too many genuinely urgent fires",
+            optionB: "🅱️ Struggling to prioritize the single highest-leverage task?"
+        },
+        voiceScript: {
+            voiceHook: "Why do founders mistake frantic busyness for actual strategic progress?",
+            voiceProblem: "When you dread a hard call, standard chatbots help you optimize trivial tasks and avoid the real bottleneck.",
+            voiceSolution: "TwinGenie uses longitudinal memory to detect avoidance loops and refocus you on primary leverage.",
+            voiceCta: "Stop talking to AI that enables procrastination. Download TwinGenie free on Google Play today."
+        },
+        slides: [
+            {
+                type: 'cover',
+                tag: 'HIGH PERFORMANCE',
+                title: 'The False Urgency Trap',
+                subtitle: 'Why frantic busyness is often disguised fear',
+                takeaways: [
+                    'How fake emergencies protect your ego from judgment',
+                    'Why agreeable chatbots amplify low-value task loops',
+                    'How longitudinal reflection restores executive leverage'
+                ]
+            },
+            {
+                type: 'dynamic',
+                tag: 'THE AVOIDANCE LOOP',
+                title: 'Motion vs Progress',
+                subtitle: 'The 3 signs you are running from the real work',
+                bullets: [
+                    'Tinkering with internal tools while delaying sales calls',
+                    'Treating every notification as an existential fire',
+                    'Ending 12-hour days completely drained but zero needle moved'
+                ]
+            },
+            {
+                type: 'comparison',
+                tag: 'THE FLATTERY TRAP',
+                title: 'Yes-Man AI vs Honest Twin',
+                subtitle: 'Contrasting responses to task avoidance',
+                left: {
+                    badge: '[ STANDARD AI (THE YES-MAN) ]',
+                    user: "Help me rewrite this email template for the 5th time.",
+                    ai: "Sure! Here are 3 brilliant, highly polished versions!",
+                    outcome: "Enables 2 more hours of avoiding customer outreach"
+                },
+                right: {
+                    badge: '[ TWINGENIE (HONEST TWIN) ]',
+                    user: "Help me rewrite this email template for the 5th time.",
+                    ai: "The template is fine. You rewrote it yesterday. You're scared of getting rejected on the demo call. Send the version from 9:00 AM.",
+                    outcome: "Cuts through hesitation and forces real outreach"
+                }
+            },
+            {
+                type: 'timeline',
+                tag: 'STRATEGIC ARCHITECTURE',
+                title: 'Restoring True Leverage',
+                subtitle: 'The 3-stage clarity reset',
+                steps: [
+                    { step: 'STAGE 01', title: 'Priority Auditing', desc: 'Pins your single highest-leverage weekly mandate.' },
+                    { step: 'STAGE 02', title: 'Avoidance Interception', desc: 'Flags trivial micro-tasks that distract from revenue goals.' },
+                    { step: 'STAGE 03', title: 'Equanimous Execution', desc: 'Future Twin reframes short-term rejection as long-term resilience.' }
+                ]
+            },
+            {
+                type: 'cta',
+                tag: 'AVAILABLE NOW',
+                title: 'Meet Your Digital Twin Today',
+                subtitle: 'Stop talking to AI that forgets you. Start building real self-awareness.',
+                points: [
+                    '35-Question Big Five personality baseline',
+                    '4 perspectives: Normal, Reflective, Honest, Future',
+                    'Persistent pgvector memory across all conversations',
+                    '100% private, self-guided executive reflection'
+                ],
+                button: 'Download TwinGenie on Google Play',
+                link: 'play.google.com/store/apps/details?id=com.asmind.app'
+            }
+        ]
+    }
+];
+
 class ContentGeneratorService {
     constructor() {
         this.themes = CAMPAIGN_THEMES;
+        this._dailyCache = {};
     }
 
     /**
      * Deterministic Calendar Schedule Engine (Asia/Kolkata timezone).
-     * Guarantees non-repeating consecutive themes and strictly alternating Facebook formats.
+     * Calculates day index and guarantees strictly alternating Facebook formats.
      */
     getDailySchedule(date = new Date()) {
         const istDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(date);
@@ -96,6 +347,265 @@ class ContentGeneratorService {
             themeIndex,
             theme: currentTheme,
             facebookFormat
+        };
+    }
+
+    /**
+     * Autonomous Dynamic Content Generator
+     * Uses LLM (Gemini / Groq) to generate completely fresh, non-repeating,
+     * high-value executive thought-leadership content daily.
+     * Checks Supabase to ensure no topic from the last 60 days is ever repeated.
+     */
+    async getOrGenerateDailyContent(date = new Date()) {
+        const schedule = this.getDailySchedule(date);
+        const istDateStr = schedule.istDateStr;
+
+        if (this._dailyCache[istDateStr]) {
+            logger.info(`[CONTENT GENERATOR] Returning cached dynamic daily content for ${istDateStr}: "${this._dailyCache[istDateStr].topic}"`);
+            return this._dailyCache[istDateStr];
+        }
+
+        logger.info(`🧠 [CONTENT GENERATOR] Generating 100% fresh, bespoke daily content for ${istDateStr}...`);
+        const generated = await this.generateDynamicDailyContent(date);
+        this._dailyCache[istDateStr] = generated;
+        return generated;
+    }
+
+    async generateDynamicDailyContent(date = new Date()) {
+        const schedule = this.getDailySchedule(date);
+        const istDateStr = schedule.istDateStr;
+        const dayNumber = schedule.dayNumber;
+        const facebookFormat = schedule.facebookFormat;
+
+        // 1. Fetch past topics from Supabase to guarantee zero repetition
+        const previousTopics = [];
+        try {
+            const { data: pastPosts } = await supabaseAdmin
+                .from('usage_tracking')
+                .select('action_type')
+                .like('action_type', 'growth_topic:%')
+                .order('created_at', { ascending: false })
+                .limit(60);
+
+            if (pastPosts && pastPosts.length > 0) {
+                for (const row of pastPosts) {
+                    const topicName = row.action_type.replace('growth_topic:', '').trim();
+                    if (topicName && !previousTopics.includes(topicName)) {
+                        previousTopics.push(topicName);
+                    }
+                }
+            }
+        } catch (dbErr) {
+            logger.warn('[CONTENT GENERATOR] Supabase past topics fetch warning:', dbErr.message);
+        }
+
+        const avoidTopicsStr = previousTopics.length > 0
+            ? `PREVIOUSLY USED TOPICS (DO NOT REPEAT OR CLOSELY PARAPHRASE ANY OF THESE):\n- ${previousTopics.slice(0, 30).join('\n- ')}`
+            : 'No previous topics recorded yet.';
+
+        const prompt = `You are the Chief Ghostwriter and Executive Cognitive Strategist for Ashwani Kumar, Founder of TwinGenie.
+TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app).
+Its core capabilities:
+- 4 Cognitive Perspectives: Normal (baseline sounding board), Reflective (empathy, decompression, stress relief), Honest (unfiltered challenger to blind spots, rationalizations & procrastination), Future You (5-years-wiser executive perspective that neutralizes short-term panic).
+- 35-Question Big Five baseline assessment that benchmarks psychological traits and cognitive blind spots.
+- Persistent pgvector semantic memory across conversations to detect recurring self-sabotage loops across weeks.
+
+${avoidTopicsStr}
+
+TASK:
+Generate a completely fresh, original, thought-provoking founder psychology or executive decision-making topic for today.
+Target audience: Startup founders, engineers, executives, and high-agency leaders.
+
+Output strictly valid JSON with this exact schema:
+{
+  "themeId": "slug_of_topic",
+  "topic": "Compelling Title of the Topic (max 65 chars)",
+  "category": "Category Tag (e.g. COGNITIVE ARCHITECTURE, DECISION DYNAMICS, MENTAL RESILIENCE)",
+  "hook": "Provocative 1-sentence hook",
+  "linkedin": {
+    "title": "Carousel Document Title (max 45 chars)",
+    "caption": "Full viral-format LinkedIn post (250-350 words). Include scroll-stopping hook, body with bullet points analyzing the psychological blind spot, explain how TwinGenie's 4 perspectives and persistent memory solve it, include download CTA with https://play.google.com/store/apps/details?id=com.asmind.app, and include #TwinGenie and relevant hashtags.",
+    "slides": [
+      {
+        "type": "cover",
+        "tag": "Category Tag",
+        "title": "Punchy Cover Title",
+        "subtitle": "Curiosity-inducing subtitle",
+        "takeaways": [
+          "Takeaway bullet 1",
+          "Takeaway bullet 2",
+          "Takeaway bullet 3"
+        ]
+      },
+      {
+        "type": "dynamic",
+        "tag": "THE BLIND SPOT",
+        "title": "Specific Founder Scenario Title",
+        "subtitle": "Why standard thinking fails here",
+        "bullets": [
+          "Key symptom or rationalization",
+          "The hidden subconscious fear or cognitive bias",
+          "Why traditional advice or generic chatbots make it worse"
+        ]
+      },
+      {
+        "type": "comparison",
+        "tag": "THE FLATTERY TRAP",
+        "title": "Yes-Man AI vs Honest Twin",
+        "subtitle": "Two contrasting responses to the exact same founder situation",
+        "left": {
+          "badge": "[ STANDARD AI (THE YES-MAN) ]",
+          "user": "Founder excuse or hesitation",
+          "ai": "Flattering, superficial response validating procrastination",
+          "outcome": "Reinforces blind spot & stalls execution"
+        },
+        "right": {
+          "badge": "[ TWINGENIE (HONEST TWIN) ]",
+          "user": "Founder excuse or hesitation",
+          "ai": "Challenging response citing past stated goals from memory",
+          "outcome": "Exposes the pattern & forces clarity"
+        }
+      },
+      {
+        "type": "timeline",
+        "tag": "COGNITIVE ARCHITECTURE",
+        "title": "The Breakthrough Pipeline",
+        "subtitle": "How longitudinal reflection rewires instincts",
+        "steps": [
+          { "step": "STAGE 01", "title": "Signal Benchmark", "desc": "35-question calibration identifies baseline vulnerability." },
+          { "step": "STAGE 02", "title": "Pattern Interception", "desc": "Semantic memory catches circular rationalizations across weeks." },
+          { "step": "STAGE 03", "title": "Equanimous Action", "desc": "Reframing through the 5-years-wiser Future Twin forces conviction." }
+        ]
+      },
+      {
+        "type": "cta",
+        "tag": "AVAILABLE NOW",
+        "title": "Meet Your Digital Twin Today",
+        "subtitle": "Stop talking to AI that forgets you. Start building real self-awareness.",
+        "points": [
+          "35-Question Big Five personality baseline",
+          "4 perspectives: Normal, Reflective, Honest, Future",
+          "Persistent pgvector memory across all conversations",
+          "100% private, self-guided executive reflection"
+        ],
+        "button": "Download TwinGenie on Google Play",
+        "link": "play.google.com/store/apps/details?id=com.asmind.app"
+      }
+    ]
+  },
+  "facebook": {
+    "title": "Short Hook for Facebook",
+    "caption": "Facebook post caption ending with an engaging binary question (🅰️ Option A vs 🅱️ Option B) and #TwinGenie",
+    "firstComment": "📲 Experience your digital twin free on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app\\nTake your 35-question personality baseline today!",
+    "binaryQuestion": {
+      "prompt": "Binary question text",
+      "optionA": "🅰️ Choice A",
+      "optionB": "🅱️ Choice B"
+    },
+    "voiceScript": {
+      "voiceHook": "Provocative narration hook (~15-18 words)",
+      "voiceProblem": "Narration of the core problem and why standard bots fail (~18-20 words)",
+      "voiceSolution": "Narration of how TwinGenie's honest mode and memory solve it (~18-20 words)",
+      "voiceCta": "Meet your personal digital twin today. Download TwinGenie free on Google Play. (~15 words)"
+    }
+  }
+}`;
+
+        let parsed = null;
+
+        // Try Gemini 3.5 Flash Lite first
+        if (process.env.GEMINI_API_KEY) {
+            try {
+                logger.info('[CONTENT GENERATOR] Prompting Gemini 3.5 Flash Lite for fresh daily topic...');
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({
+                    model: 'gemini-3.5-flash-lite',
+                    generationConfig: { responseMimeType: 'application/json' }
+                });
+                const result = await model.generateContent(prompt);
+                const rawText = result.response.text();
+                parsed = JSON.parse(rawText);
+                logger.info(`[CONTENT GENERATOR] Gemini successfully generated: "${parsed.topic}"`);
+            } catch (geminiErr) {
+                logger.warn('[CONTENT GENERATOR] Gemini generation warning:', geminiErr.message);
+            }
+        }
+
+        // Try Groq as fallback
+        if (!parsed && process.env.GROQ_API_KEY) {
+            try {
+                logger.info('[CONTENT GENERATOR] Prompting Groq (openai/gpt-oss-120b) for fresh daily topic...');
+                const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+                const completion = await groq.chat.completions.create({
+                    messages: [{ role: 'user', content: prompt }],
+                    model: 'openai/gpt-oss-120b',
+                    response_format: { type: 'json_object' }
+                });
+                const rawText = completion.choices[0]?.message?.content;
+                parsed = JSON.parse(rawText);
+                logger.info(`[CONTENT GENERATOR] Groq successfully generated: "${parsed.topic}"`);
+            } catch (groqErr) {
+                logger.warn('[CONTENT GENERATOR] Groq generation warning:', groqErr.message);
+            }
+        }
+
+        // Curated 35-topic curriculum fallback if both LLMs are unreachable
+        if (!parsed || !parsed.topic || !parsed.linkedin?.slides) {
+            logger.warn('[CONTENT GENERATOR] LLM generation unavailable. Using 35-topic rotational curriculum.');
+            parsed = this._getCuratedFallbackTheme(dayNumber);
+        }
+
+        // Ensure Facebook slides are populated from LinkedIn slides if not explicit
+        if (!parsed.facebook.slides) {
+            parsed.facebook.slides = parsed.linkedin.slides;
+        }
+
+        parsed.format = facebookFormat;
+        parsed.dayNumber = dayNumber;
+        parsed.istDateStr = istDateStr;
+
+        // Record topic into Supabase tracking so tomorrow's prompt excludes it
+        try {
+            const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+            if (users && users.length > 0) {
+                const nowIso = new Date().toISOString();
+                await supabaseAdmin.from('usage_tracking').insert({
+                    user_id: users[0].id,
+                    action_type: `growth_topic:${parsed.topic}`,
+                    count: 1,
+                    period_start: nowIso,
+                    period_end: nowIso,
+                    created_at: nowIso
+                });
+            }
+        } catch (dbLogErr) {
+            logger.warn('[CONTENT GENERATOR] Supabase topic log warning:', dbLogErr.message);
+        }
+
+        return parsed;
+    }
+
+    _getCuratedFallbackTheme(dayNumber) {
+        const index = dayNumber % CURATED_FALLBACK_THEMES.length;
+        const cur = CURATED_FALLBACK_THEMES[index];
+        return {
+            themeId: cur.id,
+            topic: cur.topic,
+            category: cur.category,
+            hook: cur.hook,
+            linkedin: {
+                title: cur.title,
+                caption: cur.linkedinCaption,
+                slides: cur.slides
+            },
+            facebook: {
+                title: cur.title,
+                caption: cur.facebookCaption,
+                firstComment: '📲 Experience your digital twin free on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app\nTake your 35-question personality baseline today!',
+                binaryQuestion: cur.binaryQuestion,
+                voiceScript: cur.voiceScript,
+                slides: cur.slides
+            }
         };
     }
 
@@ -211,28 +721,15 @@ class ContentGeneratorService {
             return this._generateLinkedInPersonalContent(theme, campaignId);
         }
         const utm = this.buildUtmLink('linkedin_company', 'carousel_pdf', campaignId);
+        const personalSpec = this._generateLinkedInPersonalContent(theme, campaignId);
         return {
             platform: 'linkedin',
             target: 'company',
             format: 'carousel_pdf',
-            title: `${theme.name} — A Cognitive Analysis`,
+            title: personalSpec.title || `${theme.name} — A Cognitive Analysis`,
             utmLink: utm,
-            slides: this._buildStandardSlides(theme),
-            caption: `Why do conventional AI chatbots feel hollow after three conversations?
-
-Because they reset. They have zero memory of your goals, zero context on your insecurities, and a built-in bias toward pleasing you rather than helping you grow.
-
-At TwinGenie, we engineered an AI Digital Twin with persistent pgvector memory and four distinct cognitive lenses:
-1. Normal — your baseline voice
-2. Reflective — compassionate emotional grounding
-3. Honest — unfiltered, direct challenge to cognitive blind spots
-4. Future — the 5-years-wiser perspective on today’s panic
-
-Swipe through the carousel to see how longitudinal reflection changes executive judgment.
-
-👉 Explore the live product on Google Play: ${utm}
-
-#AI #PersonalGrowth #DecisionMaking #Leadership #DigitalTwin #TwinGenie`
+            slides: personalSpec.slides || this._buildStandardSlides(theme),
+            caption: personalSpec.caption
         };
     }
 

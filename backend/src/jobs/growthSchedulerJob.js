@@ -12,16 +12,9 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
 export function initGrowthJobs() {
     logger.info('Initializing Growth Distribution Jobs...');
 
-    // 1. Process Due Posts & Auto-Catchup Missed Daily Slots (Runs every 15 minutes)
+    // 1. Periodic Catchup Safeguard (Runs every 15 minutes to guarantee no missed broadcasts if server slept)
     cron.schedule('*/15 * * * *', async () => {
         try {
-            logger.info('[GROWTH JOB] Checking scheduled distribution queue...');
-            const result = await growthOrchestratorService.processScheduledPosts();
-            if (result.action === 'processed') {
-                logger.info(`[GROWTH JOB] Processed ${result.results.length} posts.`);
-            }
-
-            // Active Catchup Safeguard (in case Render free tier was sleeping at exact trigger times)
             const now = new Date();
             const nowIST = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Kolkata',
@@ -42,25 +35,11 @@ export function initGrowthJobs() {
                 await growthOrchestratorService.publishDailyFacebookReel(false);
             }
         } catch (e) {
-            logger.error('[GROWTH JOB] Queue processing error:', e);
+            logger.error('[GROWTH JOB] Catchup processing error:', e);
         }
     });
 
-    // 2. Daily Campaign Auto-Replenishment (06:00 AM IST)
-    cron.schedule('0 6 * * *', async () => {
-        try {
-            logger.info('[GROWTH JOB] Running daily content replenishment check...');
-            const status = await growthOrchestratorService.getSystemStatus();
-            if (status.queueSummary.scheduled === 0 && !status.isPaused) {
-                logger.info('[GROWTH JOB] Queue empty. Auto-generating fresh 4-platform campaign bundle...');
-                await growthOrchestratorService.generateAndQueueDailyCampaign();
-            }
-        } catch (e) {
-            logger.error('[GROWTH JOB] Replenishment error:', e);
-        }
-    }, { timezone: 'Asia/Kolkata' });
-
-    // 3. Daily 08:30 AM IST LinkedIn Personal Carousel Trigger
+    // 2. Daily 08:30 AM IST LinkedIn Personal Carousel Trigger
     cron.schedule('30 8 * * *', async () => {
         try {
             logger.info('⏰ [GROWTH JOB] 08:30 AM IST reached! Triggering automated daily LinkedIn Carousel...');
@@ -70,32 +49,31 @@ export function initGrowthJobs() {
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // 4. Daily 04:00 PM IST (16:00) Facebook Reel Trigger
+    // 3. Daily 04:00 PM IST (16:00) Facebook Reel / Carousel Trigger
     cron.schedule('0 16 * * *', async () => {
         try {
-            logger.info('⏰ [GROWTH JOB] 04:00 PM IST reached! Triggering automated daily Facebook Reel...');
+            logger.info('⏰ [GROWTH JOB] 04:00 PM IST reached! Triggering automated daily Facebook broadcast...');
             await growthOrchestratorService.publishDailyFacebookReel(false);
         } catch (e) {
-            logger.error('[GROWTH JOB] 04:00 PM Facebook Reel error:', e);
+            logger.error('[GROWTH JOB] 04:00 PM Facebook broadcast error:', e);
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // 5. Daily 08:30 PM IST (20:30) Evening LinkedIn Thought Leadership Trigger
+    // 4. Daily 08:30 PM IST (20:30) Evening Verification Trigger
     cron.schedule('30 20 * * *', async () => {
         try {
-            logger.info('⏰ [GROWTH JOB] 08:30 PM IST reached! Evening check for LinkedIn carousel...');
+            logger.info('⏰ [GROWTH JOB] 08:30 PM IST reached! Evening verification for LinkedIn & Facebook...');
             await growthOrchestratorService.publishDailyLinkedInPersonal(false);
+            await growthOrchestratorService.publishDailyFacebookReel(false);
         } catch (e) {
-            logger.error('[GROWTH JOB] 08:30 PM LinkedIn error:', e);
+            logger.error('[GROWTH JOB] 08:30 PM evening broadcast verification error:', e);
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // 6. Boot check: safely check scheduled queue & catch up any missed daily posts on wake
+    // 5. Boot check: safely catch up any missed daily posts on wake/restart
     setTimeout(async () => {
         try {
-            logger.info('🚀 [GROWTH JOB] Checking for due posts and missed daily triggers on server boot...');
-            await growthOrchestratorService.processScheduledPosts();
-
+            logger.info('🚀 [GROWTH JOB] Checking for missed daily triggers on server boot...');
             const now = new Date();
             const nowIST = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Kolkata',
@@ -120,7 +98,7 @@ export function initGrowthJobs() {
         }
     }, 15000); // 15 seconds after startup
 
-    logger.info('✅ Growth distribution scheduler active (15-min queue processor & daily replenishment)');
+    logger.info('✅ Growth distribution scheduler active (Dedicated Daily Broadcasts & Catchup)');
 }
 
 export default { initGrowthJobs };

@@ -395,17 +395,29 @@ router.all('/cron/daily-publish', requireAdminSecret, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/growth/fresh-preview
+ * Previews today's 100% fresh AI-generated daily thought leadership content
+ */
+router.get('/fresh-preview', requireAdminSecret, async (req, res) => {
+    try {
+        const content = await contentGeneratorService.getOrGenerateDailyContent(new Date());
+        res.json({ success: true, content });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Fresh preview failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * GET & POST /api/admin/growth/cron/process-queue
- * Automated webhook called by cron-job.org periodically (e.g. every 30 mins)
- * Dispatches any scheduled posts that have reached their target time.
+ * Webhook called by cron-job.org periodically
+ * Deprecated queue safely defanged; confirms dedicated broadcasts are active.
  */
 router.all('/cron/process-queue', requireAdminSecret, async (req, res) => {
     try {
-        logger.info('[GROWTH CRON] Processing scheduled distribution queue via external cron trigger...');
-        const result = await growthOrchestratorService.processScheduledPosts();
-        res.json({ success: true, result });
+        logger.info('[GROWTH CRON] Queue ping received (legacy queue safely defanged).');
+        res.json({ success: true, message: 'Queue is deprecated. Dedicated daily broadcasts handle all publishing.' });
     } catch (error) {
-        logger.error('[GROWTH CRON] Queue processing trigger failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

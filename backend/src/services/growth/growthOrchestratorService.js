@@ -78,153 +78,27 @@ class GrowthOrchestratorService {
     }
 
     /**
-     * Generates a complete daily campaign bundle across all 4 platforms,
-     * renders media assets (Carousels & PDFs), and schedules posts.
+     * Legacy queue generator - deprecated in favor of dedicated daily broadcasts
      */
     async generateAndQueueDailyCampaign(themeId = null) {
-        logger.info('[GROWTH ORCHESTRATOR] Generating new 4-platform campaign bundle...');
-        const bundle = await contentGeneratorService.generateCampaignBundle(themeId);
-
-        const campaignRecord = {
-            id: bundle.campaignId,
-            theme: bundle.theme,
-            createdAt: new Date().toISOString(),
-            status: 'active'
-        };
-        this.state.campaigns.push(campaignRecord);
-
-        // Convert target IST slots to UTC (UTC = IST - 5:30):
-        // LinkedIn: 10:00 AM IST -> 04:30 UTC
-        // Instagram: 01:30 PM IST -> 08:00 UTC
-        // Facebook: 04:00 PM IST -> 10:30 UTC
-        // Slot times in UTC:
-        // LinkedIn: 04:00 PM IST -> 10:30 UTC
-        // Instagram: 01:30 PM IST -> 08:00 UTC
-        // Facebook: 04:00 PM IST -> 10:30 UTC
-        // YouTube: 07:00 PM IST -> 13:30 UTC
-        const now = new Date();
-        const slotTimes = {
-            linkedin: { hour: 10, minute: 30 },
-            instagram: { hour: 8, minute: 0 },
-            facebook: { hour: 10, minute: 30 },
-            youtube: { hour: 13, minute: 30 }
-        };
-
-        for (const [platform, postSpec] of Object.entries(bundle.posts)) {
-            // Memory Safeguard: Only render media for active, configured platforms
-            const adapter = this.adapters[platform];
-            if (!adapter || !adapter.isConfigured()) {
-                logger.info(`[GROWTH ORCHESTRATOR] Skipping media rendering for ${platform} (credentials not configured).`);
-                continue;
-            }
-
-            const postId = `post_${platform}_${Date.now()}`;
-            let mediaPaths = [];
-            let pdfPath = null;
-            let pngUrls = [];
-            let videoPath = null;
-            let videoUrl = null;
-
-            // Render lightweight carousel media (Pillow <25MB RAM) for active platforms (LinkedIn & Facebook)
-            if (postSpec.slides && postSpec.slides.length > 0) {
-                try {
-                    logger.info(`[GROWTH ORCHESTRATOR] Rendering carousel assets for ${platform}...`);
-                    const rendered = await mediaRendererService.renderCarousel({
-                        campaignId: bundle.campaignId,
-                        postId,
-                        slides: postSpec.slides
-                    });
-                    mediaPaths = rendered.pngPaths;
-                    pdfPath = rendered.pdfPath;
-                    pngUrls = rendered.pngUrls;
-                } catch (renderErr) {
-                    logger.error(`[GROWTH ORCHESTRATOR] Asset rendering error for ${platform}:`, renderErr);
-                }
-            }
-
-            // Target scheduled timestamp
-            const slot = slotTimes[platform] || { hour: 10, minute: 30 };
-            const scheduledDate = new Date();
-            scheduledDate.setUTCHours(slot.hour, slot.minute, 0, 0);
-
-            // Check if platform has already had a published post today (IST calendar day)
-            const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
-            const recentPublished = this.state.posts.some(p => {
-                if (p.platform !== platform || p.status !== 'published' || !p.publishedAt) return false;
-                const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.publishedAt));
-                return postDateIST === todayIST;
-            });
-
-            // If no post has been published today for this platform, schedule for immediate dispatch
-            if (!recentPublished) {
-                scheduledDate.setTime(now.getTime() - 1000); // Due now!
-                logger.info(`⚡ [GROWTH ORCHESTRATOR] No post published today for ${platform}. Queuing for immediate dispatch.`);
-            } else if (scheduledDate < now) {
-                // If today's slot has passed and post was already published today, schedule for tomorrow
-                scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
-            }
-
-            const postRecord = {
-                id: postId,
-                campaignId: bundle.campaignId,
-                platform,
-                target: platform === 'linkedin' ? 'personal' : undefined,
-                format: postSpec.format,
-                title: postSpec.title,
-                caption: postSpec.caption,
-                firstComment: postSpec.firstComment,
-                utmLink: postSpec.utmLink,
-                mediaPaths,
-                pngUrls,
-                pdfPath,
-                videoPath,
-                videoUrl,
-                scheduledFor: scheduledDate.toISOString(),
-                status: 'scheduled',
-                retries: 0,
-                platformPostId: null,
-                platformPostUrl: null,
-                publishedAt: null,
-                error: null
-            };
-
-            this.state.posts.push(postRecord);
-            logger.info(`📅 [GROWTH ORCHESTRATOR] Scheduled ${platform} (${postSpec.format}) post for ${scheduledDate.toISOString()}`);
-        }
-
-        this._saveState();
+        logger.info('[GROWTH ORCHESTRATOR] generateAndQueueDailyCampaign called (queue is deprecated, broadcasts are direct).');
         return {
-            campaignId: bundle.campaignId,
-            theme: bundle.theme,
-            postsScheduled: Object.keys(bundle.posts).length
+            action: 'deprecated',
+            message: 'Queue auto-generation is deprecated in favor of direct dedicated broadcasts.'
         };
     }
 
     /**
-     * Executes scheduled posts that are due
+     * Legacy queue processor - deprecated in favor of direct dedicated broadcasts
      */
     async processScheduledPosts() {
-        if (this.state.isPaused || process.env.GROWTH_AUTORUN === 'false') {
-            logger.info('[GROWTH ORCHESTRATOR] Execution paused via flag');
-            return { action: 'paused' };
+        // Clear any old scheduled posts from memory state to prevent stale publishing
+        const remaining = this.state.posts.filter(p => p.status !== 'scheduled');
+        if (remaining.length !== this.state.posts.length) {
+            this.state.posts = remaining;
+            this._saveState();
         }
-
-        const now = new Date();
-        const duePosts = this.state.posts.filter(p => p.status === 'scheduled' && new Date(p.scheduledFor) <= now);
-
-        if (duePosts.length === 0) {
-            return { action: 'idle', dueCount: 0 };
-        }
-
-        logger.info(`[GROWTH ORCHESTRATOR] Processing ${duePosts.length} due posts...`);
-        const results = [];
-
-        for (const post of duePosts) {
-            const res = await this.publishPostNow(post.id);
-            results.push(res);
-        }
-
-        return { action: 'processed', results };
+        return { action: 'idle', dueCount: 0, message: 'Queue is deprecated. Dedicated daily broadcasts handle all publishing.' };
     }
 
     /**
@@ -307,6 +181,7 @@ class GrowthOrchestratorService {
      * Dedicated Daily Facebook Publisher.
      * Alternates formats daily: Carousel vs Reel.
      * Prevents duplicate posts across server restarts by verifying directly against Meta Graph API.
+     * Generates 100% fresh, AI-powered non-repeating daily content.
      */
     async publishDailyFacebookReel(force = false, specificThemeId = null, specificFormat = null) {
         const now = new Date();
@@ -322,18 +197,13 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 2. Get deterministic non-repeating theme and alternating format
-        const schedule = contentGeneratorService.getDailySchedule(now);
-        const theme = specificThemeId 
-            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || schedule.theme)
-            : schedule.theme;
-
-        const format = specificFormat || schedule.facebookFormat; // Alternates: Carousel vs Reel!
-        const campaignId = `camp_${theme.id}_${Date.now()}`;
-        const fbContent = contentGeneratorService._generateFacebookContent(theme, campaignId, format);
+        // 2. Fetch or dynamically generate today's 100% fresh content
+        const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+        const format = specificFormat || dailyPackage.format; // Strictly alternating: carousel vs reel!
+        const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
         const postId = `post_facebook_${Date.now()}`;
 
-        logger.info(`[GROWTH ORCHESTRATOR] Facebook Scheduled: Theme="${theme.name}", Format="${format}"`);
+        logger.info(`[GROWTH ORCHESTRATOR] Facebook Scheduled: Topic="${dailyPackage.topic}", Format="${format}"`);
 
         let renderedReel = null;
         let renderedCarousel = null;
@@ -341,34 +211,38 @@ class GrowthOrchestratorService {
         // 3. Render Media: Reel (with strict RAM limits) or Carousel
         if (format === 'reel') {
             try {
-                logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${theme.name}"...`);
+                logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}"...`);
                 renderedReel = await mediaRendererService.renderReel({
                     campaignId,
                     postId,
-                    hook: fbContent.title || theme.hook,
-                    tag: fbContent.tag || theme.tag
+                    hook: dailyPackage.facebook.title || dailyPackage.hook,
+                    tag: dailyPackage.category || 'FOUNDER PSYCHOLOGY',
+                    voiceHook: dailyPackage.facebook.voiceScript?.voiceHook,
+                    voiceProblem: dailyPackage.facebook.voiceScript?.voiceProblem,
+                    voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
+                    voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
                 });
             } catch (reelErr) {
                 logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
             }
         }
 
-        // Always render carousel slides as primary (for carousel format) or guaranteed failover (if reel render fails)
+        // Render carousel slides as primary (for carousel format) or guaranteed failover (if reel render fails)
         if (!renderedReel) {
-            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Facebook: "${theme.name}"...`);
+            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Facebook: "${dailyPackage.topic}"...`);
             renderedCarousel = await mediaRendererService.renderCarousel({
                 campaignId,
                 postId,
-                slides: fbContent.slides
+                slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
             });
         }
 
         // 4. Publish to Facebook Page as Reel or Carousel with First Comment
         logger.info(`[GROWTH ORCHESTRATOR] Publishing ${renderedReel ? 'Reel' : 'Carousel'} directly to Facebook Page...`);
         const publishResult = await this.adapters.facebook.publish({
-            title: fbContent.title,
-            caption: fbContent.caption,
-            firstComment: fbContent.firstComment,
+            title: dailyPackage.facebook.title,
+            caption: dailyPackage.facebook.caption,
+            firstComment: dailyPackage.facebook.firstComment,
             videoPath: renderedReel?.videoPath || null,
             mediaPaths: renderedCarousel?.pngPaths || [],
             format: renderedReel ? 'reel' : 'carousel'
@@ -380,8 +254,8 @@ class GrowthOrchestratorService {
             campaignId,
             platform: 'facebook',
             format: renderedReel ? 'reel' : 'carousel',
-            title: fbContent.title,
-            caption: fbContent.caption,
+            title: dailyPackage.facebook.title,
+            caption: dailyPackage.facebook.caption,
             videoPath: renderedReel?.videoPath || null,
             mediaPaths: renderedCarousel?.pngPaths || [],
             status: publishResult.success ? 'published' : 'failed',
@@ -402,18 +276,18 @@ class GrowthOrchestratorService {
             platformPostId: publishResult.postId,
             url: publishResult.url,
             format: postRecord.format,
-            theme: theme.name,
+            topic: dailyPackage.topic,
             error: publishResult.error
         };
     }
 
     /**
      * Publishes today's high-converting PDF Carousel to Ashwani Kumar's LinkedIn Personal Profile.
-     * Generates fresh content, renders 1080x1350 multi-page PDF document carousel, and dispatches to LinkedIn.
+     * Generates fresh AI content, renders 1080x1350 multi-page PDF document carousel, and dispatches to LinkedIn.
      * @param {boolean} force - If true, bypasses the duplicate post throttle
      */
     async publishDailyLinkedInPersonal(force = false, specificThemeId = null) {
-        logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow (theme=${specificThemeId || 'auto'})...`);
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow...`);
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
@@ -449,34 +323,29 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 2. Get deterministic non-repeating theme for today
-        const schedule = contentGeneratorService.getDailySchedule(now);
-        const theme = specificThemeId
-            ? (contentGeneratorService.themes.find(t => t.id === specificThemeId) || schedule.theme)
-            : schedule.theme;
-
-        const campaignId = `camp_${theme.id}_${Date.now()}`;
-        const content = contentGeneratorService._generateLinkedInPersonalContent(theme, campaignId);
+        // 2. Fetch or dynamically generate today's 100% fresh content
+        const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+        const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
         const postId = `post_linkedin_personal_${Date.now()}`;
 
-        logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Theme: "${theme.name}" (${theme.id})`);
+        logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
 
         // 3. Render 1080x1350 Multi-Page PDF Carousel
-        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${theme.name}"...`);
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${dailyPackage.topic}"...`);
         const rendered = await mediaRendererService.renderCarousel({
             campaignId,
             postId,
-            slides: content.slides
+            slides: dailyPackage.linkedin.slides
         });
 
         // 4. Publish to LinkedIn via official API
         logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
         const publishResult = await this.adapters.linkedin.publish({
-            title: content.title,
-            caption: content.caption,
+            title: dailyPackage.linkedin.title,
+            caption: dailyPackage.linkedin.caption,
             pdfPath: rendered.pdfPath,
             pngPaths: rendered.pngPaths,
-            utmLink: content.utmLink,
+            utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app',
             target: 'personal'
         });
 
@@ -504,6 +373,36 @@ class GrowthOrchestratorService {
         const postRecord = {
             id: postId,
             campaignId,
+            platform: 'linkedin',
+            target: 'personal',
+            format: 'carousel_pdf',
+            title: dailyPackage.linkedin.title,
+            caption: dailyPackage.linkedin.caption,
+            pdfPath: rendered.pdfPath,
+            mediaPaths: rendered.pngPaths,
+            status: publishResult.success ? 'published' : 'failed',
+            scheduledFor: now.toISOString(),
+            publishedAt: publishResult.success ? now.toISOString() : null,
+            platformPostId: publishResult.postId,
+            platformPostUrl: publishResult.url,
+            error: publishResult.error || null,
+            retries: 0
+        };
+
+        this.state.posts.push(postRecord);
+        this._saveState();
+
+        return {
+            success: publishResult.success,
+            postId: postRecord.id,
+            platformPostId: publishResult.postId,
+            url: publishResult.url,
+            topic: dailyPackage.topic,
+            totalSlides: rendered.totalSlides,
+            pdfPath: rendered.pdfPath,
+            error: publishResult.error
+        };
+    }
             platform: 'linkedin',
             target: 'personal',
             format: 'carousel_pdf',
