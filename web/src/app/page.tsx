@@ -36,26 +36,24 @@ export default function Home() {
                     </div>
                 </motion.div>
 
-                {/* Headline — Emotion first, not feature first */}
+                {/* Headline — Approved CEO positioning */}
                 <motion.h1
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
-                    className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
+                    className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight"
                 >
-                    The AI that actually{' '}
-                    <span className="gradient-text">knows you</span>
+                    The AI that doesn't just tell you{' '}
+                    <span className="gradient-text block mt-1">what you want to hear.</span>
                 </motion.h1>
 
                 <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="text-lg md:text-xl text-gray-300 mb-10 max-w-xl mx-auto leading-relaxed"
+                    className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed"
                 >
-                    Your AI companion for honest reflection, emotional support,
-                    and personal growth. Not a chatbot — a digital twin built from
-                    your personality.
+                    <span className="text-white font-medium">Less validation. More self-understanding.</span> TwinGenie helps you explore different perspectives, examine your assumptions, and reflect on the goals you set for yourself.
                 </motion.p>
 
                 {/* Single CTA */}
@@ -67,16 +65,16 @@ export default function Home() {
                 >
                     <button
                         onClick={() => router.push('/onboarding')}
-                        className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-lg shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-3"
+                        className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-lg shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-3 text-white"
                     >
                         <Sparkles className="w-5 h-5" />
-                        Try It Free
+                        Start Free Reflection
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
 
                     <button
                         onClick={() => router.push('/login')}
-                        className="glass-button text-base flex items-center gap-2 opacity-80 hover:opacity-100"
+                        className="glass-button text-base flex items-center gap-2 opacity-80 hover:opacity-100 px-6 py-4 rounded-2xl border border-white/10 hover:bg-white/5 transition-all text-gray-200"
                     >
                         Already have an account? Sign In
                     </button>
@@ -91,26 +89,26 @@ export default function Home() {
                 >
                     <div className="flex items-center gap-2">
                         <Shield className="w-4 h-4 text-green-400" />
-                        <span>Your data stays private</span>
+                        <span>Private, encrypted memory</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <MessageCircle className="w-4 h-4 text-purple-400" />
-                        <span>4 AI personality modes</span>
+                        <span>4 cognitive perspectives</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-pink-400" />
-                        <span>Free to start</span>
+                        <span>Zero sycophancy or flattery</span>
                     </div>
                 </motion.div>
 
-                {/* One-liner social proof placeholder */}
+                {/* One-liner positioning */}
                 <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 1.2 }}
                     className="mt-12 text-gray-500 text-sm"
                 >
-                    Built for people who think deeply about who they are.
+                    Built for founders, creators, and thinkers who value clarity over comfort.
                 </motion.p>
             </motion.div>
         </div>
