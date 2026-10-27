@@ -403,36 +403,6 @@ class GrowthOrchestratorService {
             error: publishResult.error
         };
     }
-            platform: 'linkedin',
-            target: 'personal',
-            format: 'carousel_pdf',
-            title: content.title,
-            caption: content.caption,
-            pdfPath: rendered.pdfPath,
-            pngPaths: rendered.pngPaths,
-            status: publishResult.success ? 'published' : 'failed',
-            scheduledFor: now.toISOString(),
-            publishedAt: publishResult.success ? now.toISOString() : null,
-            platformPostId: publishResult.postId,
-            platformPostUrl: publishResult.url,
-            error: publishResult.error || null,
-            retries: 0
-        };
-
-        this.state.posts.push(postRecord);
-        this._saveState();
-
-        return {
-            success: publishResult.success,
-            postId: postRecord.id,
-            platformPostId: publishResult.postId,
-            url: publishResult.url,
-            theme: theme.name,
-            totalSlides: rendered.totalSlides,
-            pdfPath: rendered.pdfPath,
-            error: publishResult.error
-        };
-    }
 
     /**
      * Unified Daily Broadcast: Dispatches both Facebook Reel & LinkedIn Personal Carousel at 4:00 PM IST.
