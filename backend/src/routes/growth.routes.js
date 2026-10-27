@@ -4,6 +4,7 @@ import mediaRendererService from '../services/growth/mediaRendererService.js';
 import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/contentGeneratorService.js';
 import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
 import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
+import prOutreachService from '../services/prOutreachService.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -418,6 +419,50 @@ router.all('/cron/process-queue', requireAdminSecret, async (req, res) => {
         logger.info('[GROWTH CRON] Queue ping received (legacy queue safely defanged).');
         res.json({ success: true, message: 'Queue is deprecated. Dedicated daily broadcasts handle all publishing.' });
     } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/growth/pr/status
+ * Check status, pending journalist queue, and dispatch history for US PR outreach
+ */
+router.get('/pr/status', requireAdminSecret, (req, res) => {
+    try {
+        const status = prOutreachService.getStatus();
+        res.json({ success: true, status });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] PR status check failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/admin/growth/pr/tick
+ * Triggers the next PR journalist pitch (respects 45m cooldown unless force=true)
+ */
+router.all('/pr/tick', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        const result = await prOutreachService.executeTick(force);
+        res.json({ success: true, result, status: prOutreachService.getStatus() });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] PR execution tick failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/cron/pr-outreach
+ * Webhook for automated PR outreach ticks via external cron or internal scheduler
+ */
+router.all('/cron/pr-outreach', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        const result = await prOutreachService.executeTick(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] PR outreach webhook failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
