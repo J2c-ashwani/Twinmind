@@ -394,6 +394,9 @@ class InvestorOutreachService {
         const htmlContent = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #1e293b; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
 ${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br/>')}</p>`).join('')}
+<p style="margin: 24px 0 0 0; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+TwinGenie (https://twingenie.app) • Pre-seed founder correspondence • If you prefer not to receive updates, reply with 'unsubscribe' to be permanently excluded.
+</p>
 </div>
 `.trim();
 

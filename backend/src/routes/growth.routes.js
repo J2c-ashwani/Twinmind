@@ -7,6 +7,7 @@ import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
 import prOutreachService from '../services/prOutreachService.js';
 import investorOutreachService from '../services/investorOutreachService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
+import growthDashboardService from '../services/growth/growthDashboardService.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -524,6 +525,20 @@ router.all('/cron/acquisition-outreach', requireAdminSecret, async (req, res) =>
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Acquisition outreach webhook failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/growth/dashboard
+ * Aggregates weekly KPIs across Organic Growth, Activation, Retention, PR, Fundraising, and M&A
+ */
+router.get('/dashboard', requireAdminSecret, async (req, res) => {
+    try {
+        const metrics = await growthDashboardService.getWeeklyMetrics();
+        res.json({ success: true, dashboard: metrics });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Dashboard retrieval failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

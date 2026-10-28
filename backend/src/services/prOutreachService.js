@@ -387,10 +387,13 @@ class PROutreachService {
 
         const candidate = this.state.queue[candidateIndex];
 
-        // Format clean, professional HTML container
+        // Format clean, professional HTML container with anti-spam compliance opt-out footer
         const htmlContent = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #334155; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
 ${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br/>')}</p>`).join('')}
+<p style="margin: 24px 0 0 0; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+TwinGenie (https://twingenie.app) • Self-funded software • If you prefer not to receive direct correspondence, reply with 'unsubscribe' to be permanently excluded.
+</p>
 </div>
 `.trim();
 
