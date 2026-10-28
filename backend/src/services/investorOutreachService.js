@@ -65,7 +65,7 @@ I follow your research at a16z on the Top 100 Consumer AI apps, particularly you
 The core reason consumer AI chatbots experience high D30 churn is context amnesia and sycophancy. Because models have no longitudinal baseline, they default to empty cheerleading and mirror the user's confirmation bias.
 
 I’m Ashwani, founder of TwinGenie (https://twingenie.app). We are building what we call the "Zero-Party Cognitive Graph" for consumer AI:
-• 35-Vector Baseline Calibration: Before their first session, users complete an onboarding assessment across the Big Five personality traits (78.8% completion rate), establishing an objective cognitive baseline.
+• 35-Vector Baseline Calibration: Before their first session, users complete an onboarding assessment across the Big Five personality traits (94.0% completion rate), establishing an objective cognitive baseline.
 • Longitudinal Context Moat: Built on PostgreSQL + pgvector, TwinGenie tracks user rationalizations, goal drift, and behavioral patterns over weeks, rather than treating each chat as day zero.
 • The Anti-Sycophancy Positioning: 4 real-time cognitive perspectives (Baseline, 5-Year Future Self, Clinical Therapist, and Honest Twin). Honest Mode calls out avoidance and excuses with zero flattery—while enforcing a Single-Strike guardrail to protect user dignity.
 
@@ -120,14 +120,14 @@ https://twingenie.app | founder@twingenie.app`
 
 I’ve followed Bloomberg Beta’s investments in personal intelligence and tools that make humans more capable and self-aware.
 
-Most conversational AI is optimized for conversational appeasement: it tells users whatever flatters their ego. If an executive wastes 4 hours organizing Notion tags instead of pitching customers, standard chatbots cheer them on.
+Most conversational AI is optimized for conversational appeasement: it tells users whatever flatters their comfort zone. If someone spends hours procrastinating or rationalizing self-sabotage, standard chatbots cheerfully validate the avoidance.
 
 I built TwinGenie (https://twingenie.app) as an uncompromising cognitive mirror:
-• Baseline Architecture: 35-question Big Five onboarding benchmarks cognitive baseline upfront (78.8% completion rate).
+• Baseline Architecture: 35-question Big Five onboarding benchmarks cognitive baseline upfront (94.0% completion rate).
 • Persistent Memory: Built with pgvector to track long-term behavioral drift, calling out repeated contradictions over time.
 • 4 Distinct Lenses: Baseline, 5-Year Future Self, Therapist, and Honest Shadow.
 
-The core asset is our longitudinal zero-party data graph—capturing the evolving decision-making patterns of high-agency builders.
+The core asset is our longitudinal zero-party data graph—capturing the evolving psychographic and behavioral patterns of individuals over time.
 
 We are completely self-funded, with a live Android app on Google Play and a Next.js web application. We're assembling a group of high-conviction angels for our pre-seed round.
 
@@ -236,7 +236,7 @@ I’ve studied NFX’s frameworks on network effects, particularly your writings
 In consumer conversational AI, generic chatbots have zero data moat because they reset context every session.
 
 I built TwinGenie (https://twingenie.app) around a dynamic personal data moat:
-• 35-Vector Big Five Calibration: High-intent onboarding benchmarking cognitive blind spots (78.8% completion rate).
+• 35-Vector Big Five Calibration: High-intent onboarding benchmarking cognitive blind spots (94.0% completion rate).
 • Longitudinal Context Moat: Powered by pgvector, TwinGenie's responses become exponentially more tailored and challenging the longer you use it—detecting behavioral drift across weeks.
 • 4 Perspective Lenses: Baseline, 5-Year Future Self, Clinical Therapist, and an Honest Twin that cuts through excuses.
 
