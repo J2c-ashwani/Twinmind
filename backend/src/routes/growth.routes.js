@@ -6,6 +6,7 @@ import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
 import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
 import prOutreachService from '../services/prOutreachService.js';
 import investorOutreachService from '../services/investorOutreachService.js';
+import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -508,6 +509,21 @@ router.all('/cron/investor-outreach', requireAdminSecret, async (req, res) => {
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Investor outreach webhook failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/cron/acquisition-outreach
+ * Webhook for automated M&A acquisition / divestment outreach ticks via external cron
+ */
+router.all('/cron/acquisition-outreach', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        const result = await acquisitionCampaignService.executeTick(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Acquisition outreach webhook failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
