@@ -73,107 +73,107 @@ export const CAMPAIGN_THEMES = [
 export const CURATED_FALLBACK_THEMES = [
     {
         id: 'sunk_cost_fallacy',
-        topic: 'The Sunk Cost Fallacy: Why Smart Founders Double Down on Dead Bets',
-        category: 'DECISION ARCHITECTURE',
-        hook: 'The hardest sentence for an ambitious founder to utter is: "We were wrong, and we need to stop."',
-        title: 'The Sunk Cost Fallacy in Startup Strategy',
-        linkedinCaption: `The hardest sentence for an ambitious founder to utter is: "We were wrong, and we need to stop."
+        topic: 'The Sunk Cost Fallacy: Why We Cling to What Drains Us',
+        category: 'SELF-AWARENESS',
+        hook: 'The hardest sentence for any human being to utter is: "I was wrong, and I need to let this go."',
+        title: 'The Sunk Cost Trap in Life & Decisions',
+        linkedinCaption: `The hardest sentence for any human being to utter is: "I was wrong, and I need to let this go."
 
-When you've poured 9 months, $100k, and your personal pride into a feature or market hypothesis, your brain refuses to cut losses.
+When you've poured months of energy, emotion, or personal pride into a path, project, or habit, your brain refuses to cut losses.
 
-Instead, you double down:
-• "We just need one more feature release."
-• "The market just doesn't understand the vision yet."
-• "If we stop now, the last 6 months were wasted."
+Instead, you rationalize:
+• "I just need to give it a little more time."
+• "If I stop now, all the effort was wasted."
+• "Maybe tomorrow things will magically shift."
 
-In cognitive psychology, this is the Sunk Cost Trap—and standard AI chatbots make it worse. When you ask them for reassurance, they enthusiastically generate 10 reasons why your failing strategy could still work. They validate your ego instead of challenging your conviction.
+In cognitive psychology, this is the Sunk Cost Trap—and standard AI chatbots make it worse. When you ask them for advice, they enthusiastically generate 10 reasons why you should keep enduring. They validate your comfort zone instead of helping you see clearly.
 
-At TwinGenie, we engineered an AI Digital Twin that functions as an uncompromising cognitive mirror:
-1. Normal Twin — everyday strategic sounding board
-2. Reflective Twin — compassionate decompression when burnout strikes
-3. Honest Twin — unfiltered challenger that cites your initial KPIs from memory
-4. Future Twin — the 5-years-wiser perspective asking: "Will this dead bet matter in 2031?"
+At TwinGenie, we engineered an AI Digital Twin that functions as an honest, private cognitive mirror for your life:
+1. Normal Twin — your daily reflective sounding board
+2. Reflective Twin — compassionate decompression when you feel overwhelmed
+3. Honest Twin — unfiltered clarity that challenges your rationalizations using your own words
+4. Future Twin — the 5-years-wiser perspective asking: "Will this dilemma matter in 2031?"
 
-👉 Meet your digital twin on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
+👉 Meet your personal digital twin on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
 
-#TwinGenie #FounderMindset #DecisionMaking #Startups #CognitiveBias`,
-        facebookCaption: `The hardest sentence for an ambitious founder to utter is: "We were wrong, and we need to stop." 🛑
+#TwinGenie #SelfAwareness #DecisionMaking #PersonalGrowth #MentalClarity`,
+        facebookCaption: `The hardest sentence for anyone to utter is: "I was wrong, and I need to let this go." 🛑
 
-When you've poured 6 months into a feature that isn't moving metrics, standard AI bots act like flattering cheerleaders—encouraging you to waste another 3 months.
+When you've poured months into a path or habit that isn't serving you, standard chatbots act like flattering cheerleaders—encouraging you to stay stuck in a loop.
 
-TwinGenie is engineered differently: with persistent vector memory, its Honest Mode challenges your rationalizations using your own words from day one.
+TwinGenie is engineered differently: with persistent memory and Honest Mode, it gently reflects your own stated values back to you so you can make decisions with clarity.
 
 Quick question for you:
-When you realize a project isn't working, what is your instinct?
+When you realize a habit, project, or commitment is draining you, what is your instinct?
 
-🅰️ Pivot immediately and cut emotional attachment
+🅰️ Step away immediately without guilt
 OR
-🅱️ Give it one more sprint to prove itself?
+🅱️ Keep trying because you've already invested so much?
 
 Drop A or B below! 👇
 
-#TwinGenie #Startups #Leadership #MentalModels`,
+#TwinGenie #PersonalGrowth #LifeDecisions #SelfCare`,
         binaryQuestion: {
-            prompt: "When you realize a project isn't working, what is your instinct?",
-            optionA: "🅰️ Pivot immediately and cut emotional attachment",
-            optionB: "🅱️ Give it one more sprint to prove itself?"
+            prompt: "When you realize a habit, project, or commitment is draining you, what is your instinct?",
+            optionA: "🅰️ Step away immediately without guilt",
+            optionB: "🅱️ Keep trying because you've already invested so much?"
         },
         voiceScript: {
-            voiceHook: "Why do ambitious founders double down on dying projects instead of pivoting?",
-            voiceProblem: "When you invest six months into an idea, standard chatbots flatter your excuses and encourage endless delays.",
-            voiceSolution: "TwinGenie uses persistent memory to confront your rationalizations and force radical strategic clarity.",
+            voiceHook: "Why do we keep clinging to things that drain us instead of letting go?",
+            voiceProblem: "When you invest months into something unfulfilling, standard chatbots flatter your excuses and keep you stuck.",
+            voiceSolution: "TwinGenie uses persistent memory and honest reflection to help you see through self-deception.",
             voiceCta: "Meet your personal digital twin today. Download TwinGenie free on Google Play."
         },
         slides: [
             {
                 type: 'cover',
-                tag: 'DECISION ARCHITECTURE',
+                tag: 'SELF-AWARENESS',
                 title: 'The Sunk Cost Trap',
-                subtitle: 'Why smart founders double down on dying bets',
+                subtitle: 'Why letting go feels harder than holding on',
                 takeaways: [
-                    'How ego disguises failure as persistence',
-                    'Why yes-man AI companions fuel toxic confirmation bias',
-                    'How longitudinal memory forces objective conviction'
+                    'How pride disguises self-sabotage as perseverance',
+                    'Why agreeable chatbots fuel toxic confirmation bias',
+                    'How honest self-reflection gives you permission to reset'
                 ]
             },
             {
                 type: 'dynamic',
                 tag: 'THE COGNITIVE TRAP',
                 title: 'The Commitment Loop',
-                subtitle: 'Why cutting losses feels like admitting defeat',
+                subtitle: 'Why walking away feels like admitting defeat',
                 bullets: [
-                    'Identity entanglement: Confusing the project with your self-worth',
-                    'Justification creep: Inventing new metrics to disguise flat traction',
-                    'Echo chamber trap: Asking agreeable chatbots for strategic validation'
+                    'Identity entanglement: Confusing what you do with who you are',
+                    'Justification creep: Making excuses to avoid the pain of change',
+                    'Echo chamber trap: Asking agreeable yes-man AI for validation'
                 ]
             },
             {
                 type: 'comparison',
                 tag: 'THE FLATTERY TRAP',
                 title: 'Yes-Man AI vs Honest Twin',
-                subtitle: 'Two contrasting responses to the exact same pivot anxiety',
+                subtitle: 'Two contrasting responses to the exact same hesitation',
                 left: {
                     badge: '[ STANDARD AI (THE YES-MAN) ]',
-                    user: "No one is buying, but we spent 6 months building this. Should we keep pushing?",
-                    ai: "Absolutely! Overnight success takes grit. Keep grinding and marketing!",
-                    outcome: "Burns 6 more months of runway on a dead thesis"
+                    user: "I feel completely exhausted by this path, but I've already put so much time into it. Should I keep going?",
+                    ai: "Absolutely! Consistency is key! Keep pushing and you will reach your breakthrough!",
+                    outcome: "Enables months of continued burnout and denial"
                 },
                 right: {
                     badge: '[ TWINGENIE (HONEST TWIN) ]',
-                    user: "No one is buying, but we spent 6 months building this. Should we keep pushing?",
-                    ai: "Looking at your memory notes from July, your kill-switch condition was zero sales after 60 days. You hit that 40 days ago. Kill it and preserve cash.",
-                    outcome: "Cuts losses instantly and refocuses energy"
+                    user: "I feel completely exhausted by this path, but I've already put so much time into it. Should I keep going?",
+                    ai: "You're not persisting because you believe in it; you're persisting because quitting feels like admitting the last six months were wasted. What are you actually holding onto?",
+                    outcome: "Cuts through the guilt and restores clarity"
                 }
             },
             {
                 type: 'timeline',
                 tag: 'COGNITIVE ARCHITECTURE',
-                title: 'The Pivot Clarity Pipeline',
-                subtitle: 'How TwinGenie deconstructs executive hesitation',
+                title: 'The Reset Pipeline',
+                subtitle: 'How TwinGenie helps you find honest clarity',
                 steps: [
-                    { step: 'STAGE 01', title: 'Premise Calibration', desc: 'Pre-registers your objective success criteria and risk boundaries.' },
-                    { step: 'STAGE 02', title: 'Memory Interception', desc: 'pgvector memory flags when you rationalise away missed deadlines.' },
-                    { step: 'STAGE 03', title: 'Future Perspective', desc: 'The 5-years-wiser Future Twin brings calm clarity to pivot anxiety.' }
+                    { step: 'STAGE 01', title: 'Self Benchmark', desc: '35-question baseline identifies your emotional style and triggers.' },
+                    { step: 'STAGE 02', title: 'Pattern Reflection', desc: 'Persistent memory catches repeating cycles of overthinking.' },
+                    { step: 'STAGE 03', title: 'Future Perspective', desc: 'The 5-years-wiser Future Twin brings perspective to today’s stress.' }
                 ]
             },
             {
@@ -185,7 +185,7 @@ Drop A or B below! 👇
                     '35-Question Big Five personality baseline',
                     '4 perspectives: Normal, Reflective, Honest, Future',
                     'Persistent pgvector memory across all conversations',
-                    '100% private, self-guided executive reflection'
+                    '100% private, self-guided personal reflection'
                 ],
                 button: 'Download TwinGenie on Google Play',
                 link: 'play.google.com/store/apps/details?id=com.asmind.app'
@@ -194,69 +194,69 @@ Drop A or B below! 👇
     },
     {
         id: 'false_urgency',
-        topic: 'False Urgency vs Strategic Leverage: The High-Stress Founder Loop',
-        category: 'HIGH PERFORMANCE',
-        hook: 'Running around putting out self-created fires feels like hard work. It is actually sophisticated avoidance.',
-        title: 'False Urgency vs Strategic Leverage',
-        linkedinCaption: `Running around putting out fires feels like high-leverage execution. 
+        topic: 'The Avoidance Trap: Why Frantic Busyness Disguises Fear',
+        category: 'HABITS & CLARITY',
+        hook: 'Running around putting out self-created fires feels like hard work. Most of the time, it is just disguised fear.',
+        title: 'Motion vs Progress',
+        linkedinCaption: `Running around doing busywork feels productive. 
 
 Most of the time, it's just sophisticated avoidance.
 
-When founders are terrified of making an existential strategic choice—like firing a toxic VP, fixing unit economics, or making cold enterprise sales calls—they manufacture fake operational crises:
-• Redesigning the landing page for the 4th time
-• Re-organizing Notion project boards
-• Responding instantly to low-priority Slack messages
+When we are afraid of a hard choice—whether it's having an honest conversation, making a career shift, or facing a creative challenge—we manufacture micro-crises to distract ourselves:
+• Cleaning the entire room or reorganizing apps
+• Rearranging to-do lists for the fourth time
+• Answering trivial messages instantly while ignoring our real priorities
 
-This creates a dopamine loop of "busyness" without an inch of actual company progress.
+This creates a dopamine loop of "busyness" without an inch of meaningful life progress.
 
-Standard chatbots only amplify this: they cheerfully help you draft 20 emails and optimize trivial workflows, never asking: "Why are you doing this instead of closing the deal?"
+Standard chatbots only amplify this: they happily generate 10 more checklists and schedule reminders, never asking: "What are you actually avoiding right now?"
 
-At TwinGenie, we engineered an AI Digital Twin with persistent pgvector memory:
-• Normal Twin: your baseline strategic voice
-• Reflective Twin: uncovers the underlying anxiety driving the fake urgency
-• Honest Twin: challenges your avoidance using your past stated priorities
-• Future Twin: brings the 5-years-wiser lens to focus only on what matters
+At TwinGenie, we engineered a personal AI Digital Twin with long-term memory:
+• Normal Twin: your grounded daily sounding board
+• Reflective Twin: uncovers the underlying anxiety driving the rush
+• Honest Twin: gently challenges avoidance using your own stated goals
+• Future Twin: brings the 5-years-wiser perspective to focus only on what matters
 
 👉 Download TwinGenie on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
 
-#TwinGenie #Productivity #FounderPsychology #Leadership #DeepWork`,
-        facebookCaption: `Putting out fires feels like hard work. Most of the time, it's just avoiding the work that actually matters. 🚨
+#TwinGenie #SelfUnderstanding #Productivity #MentalHealth #Focus`,
+        facebookCaption: `Putting out small fires feels like hard work. Most of the time, it's just avoiding the one conversation or task that actually matters. 🚨
 
-When founders hesitate on a tough call, they reorganize Slack channels and tweak landing pages—mistaking motion for progress.
+When we dread something uncomfortable, we reorganize files and scroll—mistaking motion for progress.
 
-TwinGenie's Honest Mode flags this immediately by comparing today's tasks against your long-term goals.
+TwinGenie's Honest Mode flags this gently by reflecting your true priorities back to you.
 
 Quick question for you:
 When your day feels overwhelming, is it usually:
 
-🅰️ Too many genuinely urgent fires
+🅰️ Too many genuinely urgent things happening
 OR
-🅱️ Struggling to prioritize the single highest-leverage task?
+🅱️ Feeling stuck and avoiding the hardest task?
 
 Drop A or B below! 👇
 
-#TwinGenie #Productivity #Leadership #Focus`,
+#TwinGenie #Mindset #SelfGrowth #Clarity`,
         binaryQuestion: {
             prompt: "When your day feels overwhelming, is it usually:",
-            optionA: "🅰️ Too many genuinely urgent fires",
-            optionB: "🅱️ Struggling to prioritize the single highest-leverage task?"
+            optionA: "🅰️ Too many genuinely urgent things happening",
+            optionB: "🅱️ Feeling stuck and avoiding the hardest task?"
         },
         voiceScript: {
-            voiceHook: "Why do founders mistake frantic busyness for actual strategic progress?",
-            voiceProblem: "When you dread a hard call, standard chatbots help you optimize trivial tasks and avoid the real bottleneck.",
-            voiceSolution: "TwinGenie uses longitudinal memory to detect avoidance loops and refocus you on primary leverage.",
-            voiceCta: "Stop talking to AI that enables procrastination. Download TwinGenie free on Google Play today."
+            voiceHook: "Why do we mistake frantic busyness for actual peace and progress?",
+            voiceProblem: "When you dread an uncomfortable task, standard chatbots help you organize trivial details instead of facing it.",
+            voiceSolution: "TwinGenie uses thoughtful memory to detect avoidance loops and refocus you on what truly matters.",
+            voiceCta: "Meet your personal digital twin today. Download TwinGenie free on Google Play."
         },
         slides: [
             {
                 type: 'cover',
-                tag: 'HIGH PERFORMANCE',
-                title: 'The False Urgency Trap',
-                subtitle: 'Why frantic busyness is often disguised fear',
+                tag: 'HABITS & CLARITY',
+                title: 'The Avoidance Trap',
+                subtitle: 'Why frantic busyness is often disguised anxiety',
                 takeaways: [
-                    'How fake emergencies protect your ego from judgment',
-                    'Why agreeable chatbots amplify low-value task loops',
-                    'How longitudinal reflection restores executive leverage'
+                    'How fake emergencies protect your comfort zone',
+                    'Why agreeable chatbots amplify low-value busywork',
+                    'How honest self-reflection restores real peace'
                 ]
             },
             {
@@ -265,9 +265,9 @@ Drop A or B below! 👇
                 title: 'Motion vs Progress',
                 subtitle: 'The 3 signs you are running from the real work',
                 bullets: [
-                    'Tinkering with internal tools while delaying sales calls',
-                    'Treating every notification as an existential fire',
-                    'Ending 12-hour days completely drained but zero needle moved'
+                    'Tinkering with minor details while delaying the important step',
+                    'Treating every small notification as an emergency',
+                    'Ending the day exhausted but feeling like nothing real got done'
                 ]
             },
             {
@@ -277,26 +277,26 @@ Drop A or B below! 👇
                 subtitle: 'Contrasting responses to task avoidance',
                 left: {
                     badge: '[ STANDARD AI (THE YES-MAN) ]',
-                    user: "Help me rewrite this email template for the 5th time.",
-                    ai: "Sure! Here are 3 brilliant, highly polished versions!",
-                    outcome: "Enables 2 more hours of avoiding customer outreach"
+                    user: "I spent three hours organizing my desk and tweaking my notes instead of studying. Feeling productive though!",
+                    ai: "A tidy workspace leads to a tidy mind! You are setting yourself up for great success!",
+                    outcome: "Validates procrastination and wastes another day"
                 },
                 right: {
                     badge: '[ TWINGENIE (HONEST TWIN) ]',
-                    user: "Help me rewrite this email template for the 5th time.",
-                    ai: "The template is fine. You rewrote it yesterday. You're scared of getting rejected on the demo call. Send the version from 9:00 AM.",
-                    outcome: "Cuts through hesitation and forces real outreach"
+                    user: "I spent three hours organizing my desk and tweaking my notes instead of studying. Feeling productive though!",
+                    ai: "You didn't organize for three hours because your desk needed it. You did it to avoid the anxiety of starting. What part of the work feels intimidating?",
+                    outcome: "Cuts through the defense and sparks honest action"
                 }
             },
             {
                 type: 'timeline',
-                tag: 'STRATEGIC ARCHITECTURE',
-                title: 'Restoring True Leverage',
+                tag: 'MINDFUL ARCHITECTURE',
+                title: 'Restoring True Focus',
                 subtitle: 'The 3-stage clarity reset',
                 steps: [
-                    { step: 'STAGE 01', title: 'Priority Auditing', desc: 'Pins your single highest-leverage weekly mandate.' },
-                    { step: 'STAGE 02', title: 'Avoidance Interception', desc: 'Flags trivial micro-tasks that distract from revenue goals.' },
-                    { step: 'STAGE 03', title: 'Equanimous Execution', desc: 'Future Twin reframes short-term rejection as long-term resilience.' }
+                    { step: 'STAGE 01', title: 'Honest Baseline', desc: 'Identify your natural tendencies and procrastination triggers.' },
+                    { step: 'STAGE 02', title: 'Avoidance Detection', desc: 'Notice when busywork is masking underlying apprehension.' },
+                    { step: 'STAGE 03', title: 'Future Alignment', desc: 'Future Twin reframes short-term discomfort as long-term growth.' }
                 ]
             },
             {
@@ -308,7 +308,7 @@ Drop A or B below! 👇
                     '35-Question Big Five personality baseline',
                     '4 perspectives: Normal, Reflective, Honest, Future',
                     'Persistent pgvector memory across all conversations',
-                    '100% private, self-guided executive reflection'
+                    '100% private, self-guided personal reflection'
                 ],
                 button: 'Download TwinGenie on Google Play',
                 link: 'play.google.com/store/apps/details?id=com.asmind.app'
@@ -403,28 +403,29 @@ class ContentGeneratorService {
             ? `PREVIOUSLY USED TOPICS (DO NOT REPEAT OR CLOSELY PARAPHRASE ANY OF THESE):\n- ${previousTopics.slice(0, 30).join('\n- ')}`
             : 'No previous topics recorded yet.';
 
-        const prompt = `You are the Chief Ghostwriter and Executive Cognitive Strategist for Ashwani Kumar, Founder of TwinGenie.
-TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app).
+        const prompt = `You are the Chief Storyteller and Cognitive Psychologist writing for Ashwani Kumar, Creator of TwinGenie.
+TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING—not just founders or tech workers.
 Its core capabilities:
-- 4 Cognitive Perspectives: Normal (baseline sounding board), Reflective (empathy, decompression, stress relief), Honest (unfiltered challenger to blind spots, rationalizations & procrastination), Future You (5-years-wiser executive perspective that neutralizes short-term panic).
-- 35-Question Big Five baseline assessment that benchmarks psychological traits and cognitive blind spots.
-- Persistent pgvector semantic memory across conversations to detect recurring self-sabotage loops across weeks.
+- 4 Cognitive Perspectives: Normal (daily conversational alter-ego), Reflective (empathy, decompression, stress relief, emotional regulation), Honest (unfiltered clarity that challenges blind spots, rationalizations, people-pleasing & procrastination), Future You (5-years-wiser compassionate perspective that puts short-term worries into perspective).
+- 35-Question Big Five baseline assessment that benchmarks psychological traits, emotional triggers, attachment styles, and cognitive blind spots.
+- Persistent pgvector semantic memory across conversations to detect repeating self-deception and avoidance patterns over time.
 
 ${avoidTopicsStr}
 
 TASK:
-Generate a completely fresh, original, thought-provoking founder psychology or executive decision-making topic for today.
-Target audience: Startup founders, engineers, executives, and high-agency leaders.
+Generate a completely fresh, original, thought-provoking human psychology, personal clarity, or self-awareness topic for today.
+Target audience: ALL HUMAN BEINGS—everyday individuals, students, creators, professionals, and anyone navigating life dilemmas, relationships, habits, emotions, and personal growth.
+Universal themes to explore: people-pleasing, fear of being disliked, overthinking relationship texts/silence, productive procrastination, breaking bad habits, handling criticism, letting go of unfulfilling paths, fear of failure, boundary-setting, and learning to trust oneself.
 
 Output strictly valid JSON with this exact schema:
 {
   "themeId": "slug_of_topic",
   "topic": "Compelling Title of the Topic (max 65 chars)",
-  "category": "Category Tag (e.g. COGNITIVE ARCHITECTURE, DECISION DYNAMICS, MENTAL RESILIENCE)",
-  "hook": "Provocative 1-sentence hook",
+  "category": "Category Tag (e.g. EMOTIONAL CLARITY, SELF-AWARENESS, HABITS & MINDSET, RELATIONSHIPS)",
+  "hook": "Provocative 1-sentence hook relatable to any human being",
   "linkedin": {
     "title": "Carousel Document Title (max 45 chars)",
-    "caption": "Full viral-format LinkedIn post (250-350 words). Include scroll-stopping hook, body with bullet points analyzing the psychological blind spot, explain how TwinGenie's 4 perspectives and persistent memory solve it, include download CTA with https://play.google.com/store/apps/details?id=com.asmind.app, and include #TwinGenie and relevant hashtags.",
+    "caption": "Full viral-format LinkedIn post (250-350 words). Include scroll-stopping hook, body with bullet points analyzing the psychological blind spot in everyday human life, explain how TwinGenie's 4 perspectives and persistent memory solve it, include download CTA with https://play.google.com/store/apps/details?id=com.asmind.app, and include #TwinGenie and relevant hashtags (e.g. #SelfAwareness, #MentalHealth, #PersonalGrowth, #Mindset).",
     "slides": [
       {
         "type": "cover",
@@ -440,11 +441,11 @@ Output strictly valid JSON with this exact schema:
       {
         "type": "dynamic",
         "tag": "THE BLIND SPOT",
-        "title": "Specific Founder Scenario Title",
+        "title": "Everyday Human Dilemma Title",
         "subtitle": "Why standard thinking fails here",
         "bullets": [
-          "Key symptom or rationalization",
-          "The hidden subconscious fear or cognitive bias",
+          "Key symptom or daily rationalization",
+          "The hidden subconscious fear or emotional trigger",
           "Why traditional advice or generic chatbots make it worse"
         ]
       },
@@ -452,18 +453,18 @@ Output strictly valid JSON with this exact schema:
         "type": "comparison",
         "tag": "THE FLATTERY TRAP",
         "title": "Yes-Man AI vs Honest Twin",
-        "subtitle": "Two contrasting responses to the exact same founder situation",
+        "subtitle": "Two contrasting responses to the exact same human dilemma",
         "left": {
           "badge": "[ STANDARD AI (THE YES-MAN) ]",
-          "user": "Founder excuse or hesitation",
-          "ai": "Flattering, superficial response validating procrastination",
-          "outcome": "Reinforces blind spot & stalls execution"
+          "user": "Relatable everyday excuse or overthinking thought",
+          "ai": "Flattering, superficial response validating avoidance or people-pleasing",
+          "outcome": "Reinforces the habit and keeps you stuck in the loop"
         },
         "right": {
           "badge": "[ TWINGENIE (HONEST TWIN) ]",
-          "user": "Founder excuse or hesitation",
-          "ai": "Challenging response citing past stated goals from memory",
-          "outcome": "Exposes the pattern & forces clarity"
+          "user": "Relatable everyday excuse or overthinking thought",
+          "ai": "Thoughtful, honest response that calls out emotional avoidance without attacking self-worth",
+          "outcome": "Brings immediate self-understanding and clarity"
         }
       },
       {
@@ -472,9 +473,9 @@ Output strictly valid JSON with this exact schema:
         "title": "The Breakthrough Pipeline",
         "subtitle": "How longitudinal reflection rewires instincts",
         "steps": [
-          { "step": "STAGE 01", "title": "Signal Benchmark", "desc": "35-question calibration identifies baseline vulnerability." },
-          { "step": "STAGE 02", "title": "Pattern Interception", "desc": "Semantic memory catches circular rationalizations across weeks." },
-          { "step": "STAGE 03", "title": "Equanimous Action", "desc": "Reframing through the 5-years-wiser Future Twin forces conviction." }
+          { "step": "STAGE 01", "title": "Self Benchmark", "desc": "35-question calibration identifies baseline emotional patterns." },
+          { "step": "STAGE 02", "title": "Pattern Reflection", "desc": "Semantic memory catches circular rationalizations over time." },
+          { "step": "STAGE 03", "title": "Future Alignment", "desc": "Reframing through the 5-years-wiser Future Twin restores calm peace." }
         ]
       },
       {
@@ -486,7 +487,7 @@ Output strictly valid JSON with this exact schema:
           "35-Question Big Five personality baseline",
           "4 perspectives: Normal, Reflective, Honest, Future",
           "Persistent pgvector memory across all conversations",
-          "100% private, self-guided executive reflection"
+          "100% private, self-guided personal reflection"
         ],
         "button": "Download TwinGenie on Google Play",
         "link": "play.google.com/store/apps/details?id=com.asmind.app"
@@ -737,87 +738,87 @@ Output strictly valid JSON with this exact schema:
         const utm = this.buildUtmLink('linkedin_ashwani', 'carousel_pdf', campaignId);
         const themeId = theme.id || 'honest_mode';
 
-        // 5 Fully Customized Founder Thought-Leadership Packages (Punchy, High-Converting, Clean on Mobile & Desktop)
+        // 5 Fully Customized Thought-Leadership Packages for Every Human Being (Punchy, Relatable, Clean on Mobile & Desktop)
         const founderPosts = {
             blind_spots: {
                 title: "Why Your Biggest Strength Is Also Your Greatest Cognitive Blind Spot",
-                caption: `Every founder has a superpower that quietly doubles as their biggest liability.
+                caption: `Every human being has a strength that quietly doubles as their biggest blind spot.
 
-• Hyper-decisive? You dismiss subtle risk signals.
-• Deeply empathetic? You tolerate underperformance.
-• Hyper-analytical? You disguise procrastination as "thoroughness".
+• Naturally decisive? You dismiss subtle emotional warnings.
+• Deeply empathetic? You tolerate mistreatment or people-pleasing.
+• Highly analytical? You disguise hesitation as "need more research".
 
-Standard AI chatbots only amplify this—they nod along with your excuses and mirror your confirmation bias.
+Standard AI chatbots only amplify this—they nod along with your rationalizations, flatter your comfort zone, and mirror your confirmation bias.
 
-When engineering TwinGenie, our goal was to build an uncompromising cognitive mirror: 4 distinct perspectives — Normal, Reflective, Honest, Future — and persistent pgvector memory that intercepts recurring blind spots across weeks.
+When engineering TwinGenie, our goal was to build an honest, private cognitive mirror: 4 distinct perspectives — Normal, Reflective, Honest, Future — backed by persistent pgvector memory that notices recurring patterns across weeks.
 
-Swipe through the 6-slide carousel below to see how our cognitive pipeline works. 👇
+Swipe through the 6-slide carousel below to see how our cognitive mirror works. 👇
 
-📲 Test your cognitive baseline free on Google Play. Direct link in first comment.
+📲 Test your psychological baseline free on Google Play. Direct link in first comment.
 
-#TwinGenie #AI #Leadership #CognitiveBiases #TechFounders #DigitalTwin #PersonalGrowth`
+#TwinGenie #SelfAwareness #CognitiveBiases #PersonalGrowth #MentalHealth #DigitalTwin`,
             },
             honest_mode: {
                 title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie",
-                caption: `Most conversational AI is engineered to be a flattering yes-man. It strokes your ego, validates your excuses, and forgets everything the moment you close the browser tab.
+                caption: `Most conversational AI is engineered to be a flattering yes-man. It strokes your ego, validates your excuses, and forgets everything the moment you close the app.
 
-Human personal growth doesn't come from unconditional agreement. It comes from dialectical friction.
+Real personal growth doesn't come from unconditional flattery. It comes from honest self-reflection.
 
-That's why we engineered TwinGenie with 4 cognitive lenses:
-• Normal Twin — Your baseline thinking partner
-• Reflective Twin — Emotional validation & grounding
-• Honest Twin — Zero flattery; shreds rationalizations
-• Future Twin — 5-years-wiser retrospective clarity
+That's why we engineered TwinGenie with 4 distinct cognitive lenses:
+• Normal Twin — Your daily conversational partner
+• Reflective Twin — Emotional validation & stress decompression
+• Honest Twin — Zero flattery; challenges avoidance and rationalizations
+• Future Twin — 5-years-wiser retrospective calm
 
-Backed by persistent pgvector memory, TwinGenie remembers who you are and holds you accountable.
+Backed by persistent pgvector memory, TwinGenie remembers who you are and helps you stay true to yourself.
 
-Swipe through the 6-slide breakdown below to explore the architecture. 👇
+Swipe through the 6-slide breakdown below to explore how it works. 👇
 
 📲 Download free on Google Play (link in first comment).
 
-#TwinGenie #ArtificialIntelligence #TechFounders #LLM #CognitiveScience #DigitalTwin #ProductEngineering`
+#TwinGenie #ArtificialIntelligence #SelfUnderstanding #DigitalTwin #PersonalGrowth #MindsetShift`,
             },
             decision_paralysis: {
-                title: "The Hidden Cognitive Pattern Behind Why Founders Stall on Tough Calls",
-                caption: `"I just need a little more data before deciding."
+                title: "The Hidden Cognitive Pattern Behind Why We Stall on Tough Life Decisions",
+                caption: `"I just need a little more time before I decide."
 
-In 90% of founder decisions, "waiting for more data" is just sophisticated procrastination disguised as diligence.
+In 90% of life dilemmas, "waiting to feel ready" is just sophisticated procrastination disguised as caution.
 
-Standard chatbots make this worse by generating endless pros and cons—fueling your overthinking loop instead of forcing a decision.
+Standard chatbots make this worse by generating endless pros and cons—fueling your overthinking loop instead of helping you find clarity.
 
-In TwinGenie, we engineered an AI that shatters analysis paralysis:
-• Semantic Loop Interception — Detects when you circle the same decision for 2 weeks
-• 4 Decision Lenses — Clarifies facts, uncovers underlying fear, and evaluates 5-year impact
-• Deterministic Calibration — Balances your innate cognitive bias
+In TwinGenie, we engineered an AI companion that helps cut through analysis paralysis:
+• Semantic Pattern Interception — Detects when you circle the same anxiety for weeks
+• 4 Decision Lenses — Clarifies facts, uncovers hidden fears, and evaluates 5-year perspective
+• Deterministic Calibration — Balances your innate psychological blind spots
 
-Accelerate conviction over hesitation.
+Gain clarity over confusion.
 
-Swipe through the 6-slide carousel below to see how we break decision loops. 👇
+Swipe through the 6-slide carousel below to see how we break overthinking loops. 👇
 
 📲 Take your free 35-question cognitive baseline on Google Play (link in first comment).
 
-#TwinGenie #DecisionMaking #Productivity #ExecutiveCoaching #AI #Startups #MentalModels`
+#TwinGenie #DecisionMaking #MentalClarity #SelfGrowth #AICompanion #Overthinking #Mindset`,
             },
             future_perspective: {
-                title: "What Your 5-Years-Wiser Self Would Say About Today's Crisis",
+                title: "What Your 5-Years-Wiser Self Would Say About Today's Anxiety",
                 caption: `Think about the worst crisis you faced 5 years ago.
 
-Back then, it felt like the company was ending. Today? You can barely remember the panic—or it became the catalyst for your biggest breakthrough.
+Back then, it felt like the world was ending. Today? You can barely remember the panic—or it taught you your most valuable lesson.
 
-Human psychology suffers from severe temporal discounting: we over-index on today's panic and discount long-term trajectory.
+Human psychology suffers from severe temporal discounting: we over-index on today's panic and discount our long-term resilience.
 
 That's why we built the Future Twin in TwinGenie:
 • Temporal Shift Engine — Simulates the calm, retrospective clarity of your 5-years-wiser self
 • Persistent Vector Memory — Retains your historical wins and core values across months
-• Multi-Perspective Matrix — Shifts you from acute stress into long-term strategic focus
+• Multi-Perspective Matrix — Shifts you from acute stress into grounded, long-term peace
 
-Whenever today's fires feel overwhelming, switch to Future Mode.
+Whenever today's worries feel overwhelming, switch to Future Mode.
 
 Swipe through the 6-slide breakdown below to see how the temporal engine works. 👇
 
 📲 Experience all 4 modes free on Google Play (link in first comment).
 
-#TwinGenie #FutureSelf #MentalClarity #TechFounders #AICompanion #SelfGrowth #Leadership`
+#TwinGenie #FutureSelf #MentalClarity #SelfGrowth #AICompanion #Resilience #Mindset`,
             },
             persistent_memory: {
                 title: "Why Reset-Button AI Chatbots Fail Human Personal Growth",
@@ -864,41 +865,41 @@ Swipe through the memory progression pipeline below. 👇
                     type: 'cover',
                     tag: 'COGNITIVE BLIND SPOTS',
                     title: "Why Your Biggest Strength Is Also Your Greatest Blind Spot",
-                    subtitle: "Every high-performing founder has a superpower that quietly doubles as their biggest blind spot. Generic AI only reinforces the trap.",
+                    subtitle: "Every human being has a strength that quietly doubles as their biggest blind spot. Generic AI only reinforces the trap.",
                     takeaways: [
-                        "How hyper-decisiveness hides subtle risk signals",
-                        "Why stateless chatbots nod along with founder confirmation bias",
-                        "Engineering a persistent cognitive mirror that tracks loops over weeks"
+                        "How decisiveness or empathy can turn into self-sabotage",
+                        "Why yes-man chatbots nod along with our rationalizations",
+                        "Engineering an honest cognitive mirror that notices repeating loops"
                     ]
                 },
                 {
                     type: 'comparison',
                     tag: 'CONFIRMATION BIAS VS COGNITIVE MIRROR',
                     title: 'Standard LLM vs. TwinGenie Cognitive Mirror',
-                    subtitle: 'How two systems respond when a founder rationalizes an impulsive shortcut:',
+                    subtitle: 'How two systems respond when someone rationalizes an avoidance habit:',
                     left: {
                         badge: '[ STANDARD CHATBOT (EGO VALIDATOR) ]',
-                        user: "I'm skipping the security audit. We need to ship fast to beat competitors.",
-                        ai: "Agreed! Speed is everything in startups. Ship now and patch later if issues arise!",
-                        outcome: "Validates reckless bias & masks vulnerability"
+                        user: "I'm saying yes to this dinner and helping them move, even though I'm completely burned out.",
+                        ai: "That is so kind of you! You have such a generous heart. Go help out and enjoy your evening!",
+                        outcome: "Validates people-pleasing & guarantees exhaustion"
                     },
                     right: {
                         badge: '[ TWINGENIE (COGNITIVE MIRROR) ]',
-                        user: "I'm skipping the security audit. We need to ship fast to beat competitors.",
-                        ai: "On Sept 12th, skipping testing caused a 4-day outage. Speed isn't your bottleneck—you're anxious about competitor PR. Run the automated audit.",
-                        outcome: "Intercepts the blind spot using historical memory"
+                        user: "I'm saying yes to this dinner and helping them move, even though I'm completely burned out.",
+                        ai: "You're saying you're exhausted, yet you still volunteer because saying no feels like admitting you're not enough. Setting a boundary is uncomfortable, but resentment is worse. Protect your peace.",
+                        outcome: "Intercepts the people-pleasing loop & restores boundaries"
                     }
                 },
                 {
                     type: 'modes',
-                    tag: 'MULTI-PERSPECTIVE STRESS-TESTING',
-                    title: 'Stress-Testing Founder Biases',
-                    subtitle: 'Four distinct cognitive lenses designed to expose blind spots before the market does:',
+                    tag: 'MULTI-PERSPECTIVE REFLECTION',
+                    title: 'Stress-Testing Our Daily Biases',
+                    subtitle: 'Four distinct cognitive lenses designed to bring clarity to everyday life:',
                     modes: [
                         { name: 'Normal Twin', color: '#9333EA', desc: 'Your objective daily sounding board and thinking partner' },
-                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Identifies emotional fatigue driving hasty decisions' },
-                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Brutally dismantles rationalizations and cognitive shortcuts' },
-                        { name: 'Future Twin', color: '#34D399', desc: 'Evaluates the 5-year systemic risk of today\'s compromise' }
+                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Identifies emotional fatigue and validates feelings without shame' },
+                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Dismantles rationalizations and challenges avoidance habits' },
+                        { name: 'Future Twin', color: '#34D399', desc: 'Evaluates the 5-year perspective to keep short-term worries grounded' }
                     ]
                 },
                 {
@@ -907,9 +908,9 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'The Cognitive Mirror Pipeline',
                     subtitle: 'How TwinGenie detects recurring subconscious patterns across weeks:',
                     steps: [
-                        { step: "STAGE 01", title: "Baseline Calibration", desc: "35 Big Five-inspired questions establish your deterministic communication map and cognitive blind spots." },
+                        { step: "STAGE 01", title: "Baseline Calibration", desc: "35 Big Five-inspired questions establish your personality traits and emotional triggers." },
                         { step: "STAGE 02", title: "Semantic Pattern Matching", desc: "pgvector embeddings detect recurring self-sabotage loops that single-session chats miss completely." },
-                        { step: "STAGE 03", title: "Proactive Loop Interception", desc: "Anticipates cognitive blind spots and challenges founder excuses before they impact execution." }
+                        { step: "STAGE 03", title: "Honest Self-Awareness", desc: "Reflects your own stated values back to you so you can make intentional choices." }
                     ]
                 },
                 {
@@ -921,7 +922,7 @@ Swipe through the memory progression pipeline below. 👇
                     bullets: [
                         'Deterministic Vector Baseline: Personality traits mapped into strict prompt constraints.',
                         'Cross-Session Semantic Recall: pgvector indexing reveals multi-week behavioral loops.',
-                        'Dialectical Friction Engine: Explicitly rewards challenging user assumptions over agreeable nods.'
+                        'Dialectical Friction Engine: Explicitly rewards honest self-reflection over agreeable nods.'
                     ]
                 },
                 {
@@ -941,72 +942,72 @@ Swipe through the memory progression pipeline below. 👇
                 {
                     type: 'cover',
                     tag: 'DECISION ARCHITECTURE',
-                    title: "The Hidden Cognitive Pattern Behind Why Founders Stall on Tough Calls",
-                    subtitle: "\"I just need a little more data\" is usually sophisticated procrastination. Here's how we engineered an AI to break analysis paralysis.",
+                    title: "The Hidden Cognitive Pattern Behind Why We Stall on Tough Life Decisions",
+                    subtitle: "\"I just need a little more time\" is usually sophisticated procrastination. Here's how we engineered an AI to break analysis paralysis.",
                     takeaways: [
                         "Why generic chatbots fuel overthinking with endless pro/con lists",
-                        "The mathematical variance trap in executive decision-making",
-                        "Using semantic memory to intercept recurring indecision loops"
+                        "The emotional trap of waiting to 'feel ready' before acting",
+                        "Using persistent memory to intercept recurring indecision loops"
                     ]
                 },
                 {
                     type: 'comparison',
                     tag: 'PARALYSIS VS BREAKTHROUGH',
                     title: 'Generic AI vs. TwinGenie Decision Engine',
-                    subtitle: 'When an executive is hesitating on a pivotal pricing pivot:',
+                    subtitle: 'When someone is hesitating on an uncomfortable but necessary choice:',
                     left: {
                         badge: '[ GENERIC LLM (THE ENABLER) ]',
-                        user: "Should I delay raising prices? I'm worried about churn.",
-                        ai: "Here are 15 pros and cons of delaying price changes, plus 8 alternative hybrid models you could explore first...",
-                        outcome: "Paralyzes with information overload & delays action"
+                        user: "Should I delay having this hard conversation? I'm worried it will cause conflict.",
+                        ai: "Here are 15 pros and cons of having the conversation, plus 8 alternative ways to hint at it indirectly...",
+                        outcome: "Paralyzes with information overload & delays honest communication"
                     },
                     right: {
                         badge: '[ TWINGENIE (DECISION ENGINE) ]',
-                        user: "Should I delay raising prices? I'm worried about churn.",
-                        ai: "You've discussed this 3 times since last month. Your unit economics are underwater. The churn risk is 4%, but runway is 3 months. Pull the trigger today.",
-                        outcome: "Forces conviction by cutting through the noise"
+                        user: "Should I delay having this hard conversation? I'm worried it will cause conflict.",
+                        ai: "You've brought this up three times this month. The conflict already exists inside you as silent resentment. Avoiding the conversation doesn't protect the relationship—it just delays resolution.",
+                        outcome: "Cuts through the fear and sparks honest resolution"
                     }
                 },
                 {
                     type: 'modes',
                     tag: 'FOUR DECISION LENSES',
-                    title: 'Decoupling Stress from Strategy',
-                    subtitle: 'Evaluate high-stakes calls from 4 synchronized mental models:',
+                    title: 'Decoupling Anxiety from Action',
+                    subtitle: 'Evaluate personal dilemmas from 4 synchronized mental models:',
                     modes: [
-                        { name: 'Normal Twin', color: '#9333EA', desc: 'Clarifies immediate business metrics without emotional distortion' },
-                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Diagnoses whether fear of criticism is masquerading as caution' },
-                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Cuts through rationalizations: You aren\'t being thorough, you\'re stalling' },
-                        { name: 'Future Twin', color: '#34D399', desc: 'Evaluates whether this delay will matter 5 years from now' }
+                        { name: 'Normal Twin', color: '#9333EA', desc: 'Clarifies objective facts without emotional distortion' },
+                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Diagnoses whether fear of disapproval is masquerading as patience' },
+                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Cuts through rationalizations: You aren\'t being cautious, you\'re stalling' },
+                        { name: 'Future Twin', color: '#34D399', desc: 'Evaluates whether this fear will matter 5 years from now' }
                     ]
                 },
                 {
                     type: 'timeline',
                     tag: 'DECISION CONVERGENCE PIPELINE',
-                    title: 'From Analysis Paralysis to Fast Conviction',
-                    subtitle: 'How TwinGenie accelerates high-confidence executive execution:',
+                    title: 'From Overthinking to Grounded Clarity',
+                    subtitle: 'How TwinGenie helps you find inner conviction:',
                     steps: [
-                        { step: "STAGE 01", title: "Hesitation Detection", desc: "Monitors recurring decision paralysis markers and circular prompt loops in real time." },
-                        { step: "STAGE 02", title: "Bias Inversion Weighting", desc: "Counterbalances baseline neuroticism and risk aversion from your 35-question psychological profile." },
-                        { step: "STAGE 03", title: "Decisive Conviction", desc: "Synthesizes raw facts into an actionable 48-hour execution mandate with zero ambiguity." }
+                        { step: "STAGE 01", title: "Hesitation Detection", desc: "Monitors recurring indecision loops and circular prompts in real time." },
+                        { step: "STAGE 02", title: "Root Cause Discovery", desc: "Identifies whether fear of failure or people-pleasing is driving the stall." },
+                        { step: "STAGE 03", title: "Calm Conviction", desc: "Helps you take the next clear step with self-respect and peace of mind." }
                     ]
                 },
                 {
                     type: 'dynamic',
                     tag: 'COGNITIVE SCIENCE',
-                    title: 'Why Decision Speed Compounds',
-                    highlight: 'CONVICTION OVER PERFECTION',
-                    content: 'In early-stage technology companies, decision latency kills faster than bad decisions:',
+                    title: 'Why Action Dissolves Anxiety',
+                    highlight: 'CLARITY FOLLOWS COURAGE',
+                    content: 'In daily human life, prolonged hesitation drains more mental energy than taking an imperfect step:',
                     bullets: [
-                        'Information Entropy: Beyond 70% data availability, extra research yields diminishing returns.',
-                        'Cortisol Drift: Prolonged indecision drains executive energy reserves.',
-                        'Semantic Accountability: Vector memory tracks whether you followed through on commitments.'
+                        'Information Overload: Beyond a certain point, more overthinking only increases dread.',
+                        'Emotional Fatigue: Living in between decisions consumes our mental bandwidth.',
+                        'Longitudinal Memory: Vector memory tracks your intentions so you hold yourself accountable.'
                     ]
                 },
                 {
                     type: 'cta',
                     tag: 'TWINGENIE • LIVE ON GOOGLE PLAY',
                     title: 'Break Decision Paralysis Today',
-                    subtitle: 'Accelerate executive conviction with an AI Digital Twin calibrated to your personality.',
+                    subtitle: 'Find peace and conviction with an AI Digital Twin calibrated to your personality.',
                     button: 'Download Free on Google Play',
                     badge: '5.0 ★ • Cognitive AI Companion • com.asmind.app',
                     link: 'play.google.com/store/apps/details?id=com.asmind.app  •  Engineered by Ashwani Kumar'
@@ -1019,42 +1020,42 @@ Swipe through the memory progression pipeline below. 👇
                 {
                     type: 'cover',
                     tag: 'TEMPORAL CLARITY',
-                    title: "What Your 5-Years-Wiser Self Would Say About Today's Crisis",
-                    subtitle: "We over-index on today's cortisol and discount our long-term trajectory. Here's how the Future Twin changes executive judgment.",
+                    title: "What Your 5-Years-Wiser Self Would Say About Today's Anxiety",
+                    subtitle: "We over-index on today's panic and discount our long-term resilience. Here's how the Future Twin brings life into perspective.",
                     takeaways: [
-                        "How temporal discounting traps leaders in reactive firefighting",
-                        "Using retrospective reframing to de-escalate high-stress moments",
-                        "Connecting current obstacles to your historical compounding growth"
+                        "How short-term stress traps us in reactive emotional firefighting",
+                        "Using retrospective reframing to de-escalate high-anxiety moments",
+                        "Connecting current struggles to your proven history of resilience"
                     ]
                 },
                 {
                     type: 'comparison',
                     tag: 'REACTIVE PANIC VS RETROSPECTIVE CLARITY',
                     title: 'Immediate Anxiety vs. Future Perspective',
-                    subtitle: 'When an unexpected crisis threatens your quarterly milestone:',
+                    subtitle: 'When an unexpected setback feels overwhelming:',
                     left: {
                         badge: '[ STANDARD CHATBOT (SHORT-TERM SYMPATHY) ]',
-                        user: "Our top lead just canceled. Everything is falling apart.",
+                        user: "I failed this certification / got rejected. Everything is falling apart.",
                         ai: "I'm so sorry to hear that! That must feel so terrible. Drink some tea, rest, and try again tomorrow.",
-                        outcome: "Amplifies the tragedy & offers zero perspective"
+                        outcome: "Amplifies catastrophic thinking & offers zero perspective"
                     },
                     right: {
                         badge: '[ TWINGENIE (FUTURE TWIN) ]',
-                        user: "Our top lead just canceled. Everything is falling apart.",
-                        ai: "Remember when your first 3 enterprise trials canceled in Q1? You pivoted positioning and closed 5 better deals. This loss clears pipeline capacity for ideal-fit customers. Let's recalibrate.",
-                        outcome: "Restores retrospective clarity and re-anchors courage"
+                        user: "I failed this certification / got rejected. Everything is falling apart.",
+                        ai: "Remember how overwhelmed you felt six months ago when things didn't go as planned? You adapted and pushed through. This setback feels huge right now, but in five years it will just be a stepping stone. Breathe and let's reset.",
+                        outcome: "Restores retrospective calm and re-anchors courage"
                     }
                 },
                 {
                     type: 'modes',
                     tag: 'FOUR TEMPORAL LENSES',
                     title: 'The Cognitive Matrix in Action',
-                    subtitle: 'Balancing empathy, reality, and long-term trajectory:',
+                    subtitle: 'Balancing empathy, reality, and long-term perspective:',
                     modes: [
-                        { name: 'Normal Twin', color: '#9333EA', desc: 'Your balanced baseline co-pilot for daily operations' },
-                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Validates psychological strain when emotional reserves run low' },
-                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Dismantles self-pity and forces immediate operational focus' },
-                        { name: 'Future Twin', color: '#34D399', desc: 'Views current obstacles through the lens of a 5-years-wiser mentor' }
+                        { name: 'Normal Twin', color: '#9333EA', desc: 'Your balanced baseline co-pilot for daily life' },
+                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Validates emotional strain when your reserves run low' },
+                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Dismantles self-pity and reminds you of your agency' },
+                        { name: 'Future Twin', color: '#34D399', desc: 'Views current obstacles through the lens of a 5-years-wiser self' }
                     ]
                 },
                 {
@@ -1063,28 +1064,28 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'The Longitudinal Wisdom Engine',
                     subtitle: 'How TwinGenie builds a continuous model of your future self:',
                     steps: [
-                        { step: "STAGE 01", title: "Trajectory Mapping", desc: "35 Big Five-inspired questions define your ultimate aspirations and long-term values." },
-                        { step: "STAGE 02", title: "Stress Vectoring", desc: "Records past crises and tracks historical resilience to prove you survived past setbacks." },
-                        { step: "STAGE 03", title: "Retrospective Equanimity", desc: "Reframes immediate crises through the lens of a 5-years-wiser mentor to neutralize short-term panic." }
+                        { step: "STAGE 01", title: "Values Calibration", desc: "35 Big Five-inspired questions define your core values, aspirations, and triggers." },
+                        { step: "STAGE 02", title: "Resilience Tracking", desc: "Remembers past obstacles to prove you have overcome setbacks before." },
+                        { step: "STAGE 03", title: "Retrospective Equanimity", desc: "Reframes immediate crises through the lens of a wiser self to neutralize panic." }
                     ]
                 },
                 {
                     type: 'dynamic',
                     tag: 'NEUROSCIENCE & PSYCHOLOGY',
                     title: 'The Science of the Future Self',
-                    highlight: 'OVERCOMING TEMPORAL MYOPIA',
-                    content: 'fMRI studies show the brain views our future selves like total strangers. TwinGenie bridges that gap:',
+                    highlight: 'OVERCOMING SHORT-TERM PANIC',
+                    content: 'Psychological studies show the brain views our future selves almost like total strangers. TwinGenie bridges that gap:',
                     bullets: [
-                        'Neural Distance Reduction: Bringing future consequences into immediate focus.',
-                        'Compounding Perspective: Turning acute setbacks into permanent cognitive assets.',
-                        'Longitudinal Resilience: Using pgvector to prove you have survived every crisis so far.'
+                        'Neural Distance Reduction: Bringing long-term perspective into immediate focus.',
+                        'Compounding Perspective: Turning acute setbacks into permanent self-knowledge.',
+                        'Longitudinal Resilience: Using pgvector memory to remind you of your proven strength.'
                     ]
                 },
                 {
                     type: 'cta',
                     tag: 'TWINGENIE • LIVE ON GOOGLE PLAY',
                     title: 'Meet Your Future Self Today',
-                    subtitle: 'Gain calm, retrospective clarity on today\'s highest-stress decisions.',
+                    subtitle: 'Gain calm, retrospective clarity on today\'s most stressful dilemmas.',
                     button: 'Download Free on Google Play',
                     badge: '5.0 ★ • Cognitive AI Companion • com.asmind.app',
                     link: 'play.google.com/store/apps/details?id=com.asmind.app  •  Engineered by Ashwani Kumar'
@@ -1112,15 +1113,15 @@ Swipe through the memory progression pipeline below. 👇
                     subtitle: 'What happens when you return to your AI after a difficult month:',
                     left: {
                         badge: '[ TRADITIONAL LLM (STATELESS RESET) ]',
-                        user: "I'm having that same argument with my co-founder again.",
-                        ai: "I'm sorry to hear that! What kind of business do you have, and what is your co-founder's role?",
-                        outcome: "Zero context. Re-explaining history destroys momentum"
+                        user: "I'm having that same recurring argument with someone close to me again.",
+                        ai: "I'm sorry to hear that! What kind of argument is it, and who is the person?",
+                        outcome: "Zero context. Re-explaining history destroys depth"
                     },
                     right: {
                         badge: '[ TWINGENIE (LONGITUDINAL VECTOR MEMORY) ]',
-                        user: "I'm having that same argument with my co-founder again.",
-                        ai: "Is this about product roadmap priority like on the 8th, or equity vesting from last week? You both agreed on OKRs—let's look at the baseline alignment.",
-                        outcome: "Instant context. Builds compounding strategic value"
+                        user: "I'm having that same recurring argument with someone close to me again.",
+                        ai: "Is this about feeling unappreciated like last week, or setting boundaries? You mentioned wanting to express yourself without defensiveness—let's look at what triggered you.",
+                        outcome: "Instant context. Deepens self-awareness and emotional growth"
                     }
                 },
                 {
@@ -1129,10 +1130,10 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'Memory Across All Four Perspectives',
                     subtitle: 'Every mode draws from the same shared longitudinal memory graph:',
                     modes: [
-                        { name: 'Normal Twin', color: '#9333EA', desc: 'Remembers daily commitments, habits, and ongoing tactical projects' },
-                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Retains emotional patterns, recurring stressors, and psychological breakthroughs' },
-                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Remembers past excuses and holds you strictly accountable to your words' },
-                        { name: 'Future Twin', color: '#34D399', desc: 'Monitors long-term trajectory and guards your multi-year vision' }
+                        { name: 'Normal Twin', color: '#9333EA', desc: 'Remembers daily commitments, habits, and ongoing thoughts' },
+                        { name: 'Reflective Twin', color: '#38BDF8', desc: 'Retains emotional patterns, recurring stressors, and personal breakthroughs' },
+                        { name: 'Honest Twin', color: '#F43F5E', desc: 'Remembers past excuses and gently holds you accountable to your words' },
+                        { name: 'Future Twin', color: '#34D399', desc: 'Monitors long-term growth and guards your personal peace' }
                     ]
                 },
                 {
@@ -1141,9 +1142,9 @@ Swipe through the memory progression pipeline below. 👇
                     title: 'How TwinGenie Remembers What Matters',
                     subtitle: 'The 3-stage memory transformation from empty prompt to true digital twin:',
                     steps: [
-                        { step: "STAGE 01", title: "Psychological Baseline", desc: "35 Big Five questions establish your deterministic communication map and core behavioral vectors." },
-                        { step: "STAGE 02", title: "Vector Embedding (pgvector)", desc: "Extracts semantic concepts across time, preventing context decay over months of conversation." },
-                        { step: "STAGE 03", title: "Compounding Alter-Ego", desc: "Anticipates objections, tracks goal adherence, and evolves into an indispensable executive co-pilot." }
+                        { step: "STAGE 01", title: "Psychological Baseline", desc: "35 Big Five questions establish your emotional style, triggers, and values." },
+                        { step: "STAGE 02", title: "Vector Embedding (pgvector)", desc: "Extracts meaningful personal themes across time, preventing context loss." },
+                        { step: "STAGE 03", title: "Compounding Alter-Ego", desc: "Notices habits, reflects growth, and evolves into a true lifelong confidant." }
                     ]
                 },
                 {
@@ -1151,7 +1152,7 @@ Swipe through the memory progression pipeline below. 👇
                     tag: 'SYSTEM ARCHITECTURE',
                     title: 'Under the Hood: Vector Memory Engine',
                     highlight: 'PRIVACY-FIRST LONGITUDINAL RECALL',
-                    content: 'Engineering long-term context retention without multi-turn token explosion:',
+                    content: 'Engineering long-term context retention without token explosion:',
                     bullets: [
                         'Semantic Vector Clustering: pgvector indexes key themes, dilemmas, and milestones.',
                         'Cosine Similarity Retrieval: Injects exact historical context in under 80ms.',
@@ -1170,47 +1171,47 @@ Swipe through the memory progression pipeline below. 👇
             ];
         }
 
-        // Default Theme: Honest Mode (Flagship Founder Architecture)
+        // Default Theme: Honest Mode (Flagship Cognitive Mirror)
         return [
             {
                 type: 'cover',
-                tag: 'FOUNDER & AI ARCHITECTURE',
-                title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built an AI That Remembers & Challenges You",
-                subtitle: "When I set out to build TwinGenie, I noticed a fundamental flaw in today's generative AI: LLMs have zero memory and a desperate algorithmic bias to please you.",
+                tag: 'SELF-UNDERSTANDING & AI',
+                title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built an AI That Truly Understands You",
+                subtitle: "When I set out to build TwinGenie, I noticed a fundamental flaw in today's generative AI: LLMs have zero memory and a desperate algorithmic bias to flatter you.",
                 takeaways: [
-                    "Why stateless LLMs reinforce dangerous confirmation bias & complacency",
+                    "Why stateless LLMs reinforce complacency and avoidance",
                     "The 4-perspective cognitive engine: Normal, Reflective, Honest, Future",
-                    "Engineering persistent pgvector memory for true human self-growth"
+                    "Engineering persistent pgvector memory for genuine personal growth"
                 ]
             },
             {
                 type: 'comparison',
                 tag: 'COGNITIVE AUDIT',
                 title: 'Standard AI vs. TwinGenie Honest Mode',
-                subtitle: 'Two completely different responses to the exact same executive excuse:',
+                subtitle: 'Two completely different responses to the exact same avoidance pattern:',
                 left: {
                     badge: '[ STANDARD LLM (ZERO MEMORY) ]',
-                    user: "I feel like delaying this product release. I'm burnt out.",
-                    ai: "Totally valid! Prioritize self-care, take a break, and sleep in. Launch whenever you feel ready!",
-                    outcome: "Validates procrastination & hides fear of failure"
+                    user: "I feel like canceling on everyone and staying in bed all weekend because I feel overwhelmed.",
+                    ai: "Totally valid! Prioritize self-care, order takeout, and don't feel bad about staying in!",
+                    outcome: "Validates avoidance & reinforces isolation loop"
                 },
                 right: {
                     badge: '[ TWINGENIE (HONEST TWIN) ]',
-                    user: "I feel like delaying this product release. I'm burnt out.",
-                    ai: "Looking at your memory logs from Oct 4th and 18th, you said the exact same thing before the demo. You aren't burnt out—you're scared of market critique. Let's execute.",
-                    outcome: "Detects the recurring loop & forces breakthrough"
+                    user: "I feel like canceling on everyone and staying in bed all weekend because I feel overwhelmed.",
+                    ai: "You've noticed this cycle before: when you feel anxious about upcoming social commitments, you retreat and call it burnout. Rest if you genuinely need it, but be honest with yourself about what you're avoiding.",
+                    outcome: "Detects the recurring loop & sparks self-understanding"
                 }
             },
             {
                 type: 'modes',
                 tag: 'MULTI-PERSPECTIVE AI',
                 title: 'Four Distinct Cognitive Lenses',
-                subtitle: 'Built on Big Five psychological baselines to challenge your thinking from every angle:',
+                subtitle: 'Built on Big Five psychological baselines to reflect your thoughts with depth:',
                 modes: [
                     { name: 'Normal Twin', color: '#9333EA', desc: 'Your authentic baseline tone & objective daily sounding board' },
                     { name: 'Reflective Twin', color: '#38BDF8', desc: 'High-empathy emotional validation & deep psychological grounding' },
-                    { name: 'Honest Twin', color: '#F43F5E', desc: 'Zero flattery, zero bias. Brutally exposes blind spots & excuses' },
-                    { name: 'Future Twin', color: '#34D399', desc: 'The 5-years-wiser executive lens viewing today\'s panic in retrospect' }
+                    { name: 'Honest Twin', color: '#F43F5E', desc: 'Zero flattery, zero bias. Gently exposes blind spots & excuses' },
+                    { name: 'Future Twin', color: '#34D399', desc: 'The 5-years-wiser lens viewing today\'s panic in calm retrospect' }
                 ]
             },
             {
@@ -1219,9 +1220,9 @@ Swipe through the memory progression pipeline below. 👇
                 title: 'The Memory Progression Pipeline',
                 subtitle: 'How your AI evolves from an empty chatbot into an indispensable alter-ego:',
                 steps: [
-                    { step: "STAGE 01", title: "Baseline Calibration", desc: "35 Big Five-inspired questions establish your deterministic psychological and communication map." },
-                    { step: "STAGE 02", title: "Pattern Recognition", desc: "Vector embeddings identify recurring stress triggers, decision paralysis, and cognitive loops." },
-                    { step: "STAGE 03", title: "True Digital Twin", desc: "Anticipates objections, tracks goal adherence, and acts as a 24/7 executive co-pilot." }
+                    { step: "STAGE 01", title: "Baseline Calibration", desc: "35 Big Five-inspired questions establish your unique emotional and communication map." },
+                    { step: "STAGE 02", title: "Pattern Recognition", desc: "Vector embeddings identify recurring stress triggers, decision loops, and emotional habits." },
+                    { step: "STAGE 03", title: "True Digital Twin", desc: "Anticipates blind spots, encourages growth, and acts as a 24/7 personal confidant." }
                 ]
             },
             {
@@ -1300,15 +1301,15 @@ Drop A or B in the comments! 👇
         const facebookPackages = {
             blind_spots: {
                 title: "Why Your Biggest Strength Is Also Your Greatest Cognitive Blind Spot",
-                caption: `Every founder has a superpower that quietly doubles as their biggest liability. 🪞
+                caption: `Every human being has a strength that quietly doubles as their biggest blind spot. 🪞
 
-• Hyper-decisive? You dismiss subtle risk signals.
-• Deeply empathetic? You tolerate underperformance.
-• Hyper-analytical? You disguise procrastination as "thoroughness".
+• Naturally decisive? You dismiss subtle emotional warnings.
+• Deeply empathetic? You tolerate mistreatment or people-pleasing.
+• Highly analytical? You disguise hesitation as "need more research".
 
 Standard AI chatbots amplify this—they mirror your confirmation bias, stroke your ego, and agree with everything you say.
 
-When building TwinGenie, our goal was to build an uncompromising cognitive mirror: 4 distinct perspectives (Normal, Reflective, Honest, Future) and persistent pgvector memory that intercepts recurring blind spots across weeks.
+When building TwinGenie, our goal was to build an honest, private cognitive mirror: 4 distinct perspectives (Normal, Reflective, Honest, Future) and persistent pgvector memory that notices recurring patterns across weeks.
 
 Quick question for you:
 ${bq.prompt}
@@ -1319,21 +1320,21 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #AI #Leadership #CognitiveBiases #PersonalGrowth #DigitalTwin #SelfReflection`
+#TwinGenie #SelfAwareness #CognitiveBiases #PersonalGrowth #DigitalTwin #SelfReflection`,
             },
             honest_mode: {
                 title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie",
-                caption: `Most conversational AI is engineered to be a flattering yes-man. It strokes your ego, validates your excuses, and forgets everything the moment you close the browser tab. 🧠
+                caption: `Most conversational AI is engineered to be a flattering yes-man. It strokes your ego, validates your excuses, and forgets everything the moment you close the app. 🧠
 
-Human personal growth doesn't come from unconditional agreement. It comes from dialectical friction.
+Real personal growth doesn't come from unconditional flattery. It comes from honest self-reflection.
 
 That's why we engineered TwinGenie with 4 distinct cognitive lenses:
-• Normal Twin — Your baseline thinking partner
-• Reflective Twin — Emotional validation & grounding
-• Honest Twin — Zero flattery; shreds rationalizations
-• Future Twin — 5-years-wiser retrospective clarity
+• Normal Twin — Your daily conversational partner
+• Reflective Twin — Emotional validation & stress decompression
+• Honest Twin — Zero flattery; challenges avoidance and rationalizations
+• Future Twin — 5-years-wiser retrospective calm
 
-Backed by persistent pgvector memory, TwinGenie remembers who you are and holds you accountable.
+Backed by persistent pgvector memory, TwinGenie remembers who you are and helps you stay true to yourself.
 
 Quick question for you:
 ${bq.prompt}
@@ -1344,20 +1345,20 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #ArtificialIntelligence #TechFounders #LLM #CognitiveScience #DigitalTwin #MindsetShift`
+#TwinGenie #SelfUnderstanding #DigitalTwin #MindsetShift #PersonalGrowth`,
             },
             decision_paralysis: {
-                title: "The Hidden Cognitive Pattern Behind Why Founders Stall on Tough Calls",
-                caption: `"I just need a little more data before deciding." ⏳
+                title: "The Hidden Cognitive Pattern Behind Why We Stall on Tough Life Decisions",
+                caption: `"I just need a little more time before I decide." ⏳
 
-In 90% of founder decisions, "waiting for more data" is just sophisticated procrastination disguised as diligence.
+In 90% of life dilemmas, "waiting to feel ready" is just sophisticated procrastination disguised as caution.
 
-Standard chatbots make this worse by generating endless pros and cons—fueling your overthinking loop instead of forcing a decision.
+Standard chatbots make this worse by generating endless pros and cons—fueling your overthinking loop instead of helping you find clarity.
 
-In TwinGenie, we engineered an AI that shatters analysis paralysis:
-• Semantic Loop Interception — Detects when you circle the same decision for 2 weeks
-• 4 Decision Lenses — Clarifies facts, uncovers underlying fear, and evaluates 5-year impact
-• Deterministic Calibration — Balances your innate cognitive bias
+In TwinGenie, we engineered an AI companion that helps cut through analysis paralysis:
+• Semantic Pattern Interception — Detects when you circle the same anxiety for weeks
+• 4 Decision Lenses — Clarifies facts, uncovers hidden fears, and evaluates 5-year perspective
+• Deterministic Calibration — Balances your innate psychological blind spots
 
 Quick question for you:
 ${bq.prompt}
@@ -1368,20 +1369,20 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #DecisionMaking #Productivity #ExecutiveCoaching #AI #Startups #MentalModels`
+#TwinGenie #DecisionMaking #MentalClarity #SelfGrowth #AICompanion #Overthinking #Mindset`,
             },
             future_perspective: {
-                title: "What Your 5-Years-Wiser Self Would Say About Today's Crisis",
+                title: "What Your 5-Years-Wiser Self Would Say About Today's Anxiety",
                 caption: `Think about the worst crisis you faced 5 years ago. 🔮
 
-Back then, it felt like the company was ending. Today? You can barely remember the panic—or it became the catalyst for your biggest breakthrough.
+Back then, it felt like the world was ending. Today? You can barely remember the panic—or it taught you your most valuable lesson.
 
-Human psychology suffers from severe temporal discounting: we over-index on today's panic and discount long-term trajectory.
+Human psychology suffers from severe temporal discounting: we over-index on today's panic and discount our long-term resilience.
 
 That's why we built the Future Twin in TwinGenie:
 • Temporal Shift Engine — Simulates the calm, retrospective clarity of your 5-years-wiser self
 • Persistent Vector Memory — Retains your historical wins and core values across months
-• Multi-Perspective Matrix — Shifts you from acute stress into long-term strategic focus
+• Multi-Perspective Matrix — Shifts you from acute stress into grounded, long-term peace
 
 Quick question for you:
 ${bq.prompt}
@@ -1392,7 +1393,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #FutureSelf #MentalClarity #TechFounders #AICompanion #SelfGrowth #Leadership`
+#TwinGenie #FutureSelf #MentalClarity #SelfGrowth #AICompanion #Resilience #Mindset`,
             },
             persistent_memory: {
                 title: "Why Reset-Button AI Chatbots Fail Human Personal Growth",
