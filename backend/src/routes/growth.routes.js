@@ -5,6 +5,7 @@ import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/con
 import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
 import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
 import prOutreachService from '../services/prOutreachService.js';
+import investorOutreachService from '../services/investorOutreachService.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -463,6 +464,50 @@ router.all('/cron/pr-outreach', requireAdminSecret, async (req, res) => {
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] PR outreach webhook failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/growth/investor/status
+ * Check status, pending investor queue, and dispatch history for Seed/Angel investor outreach
+ */
+router.get('/investor/status', requireAdminSecret, (req, res) => {
+    try {
+        const status = investorOutreachService.getStatus();
+        res.json({ success: true, status });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Investor status check failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/admin/growth/investor/tick
+ * Triggers the next investor pitch (respects 75m cooldown unless force=true)
+ */
+router.all('/investor/tick', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        const result = await investorOutreachService.executeTick(force);
+        res.json({ success: true, result, status: investorOutreachService.getStatus() });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Investor execution tick failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/cron/investor-outreach
+ * Webhook for automated investor outreach ticks via external cron or internal scheduler
+ */
+router.all('/cron/investor-outreach', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        const result = await investorOutreachService.executeTick(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Investor outreach webhook failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

@@ -5,6 +5,7 @@ import { checkMilestones } from '../services/relationshipEvolutionService.js';
 import { executeDripCampaignCheck } from '../services/dripCampaignService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
 import prOutreachService from '../services/prOutreachService.js';
+import investorOutreachService from '../services/investorOutreachService.js';
 import { initGrowthJobs } from './growthSchedulerJob.js';
 import logger from '../config/logger.js';
 
@@ -118,10 +119,24 @@ export function initJobs() {
         }
     });
 
+    // ============================================
+    // 💼 PRE-SEED & SEED CONSUMER AI INVESTOR OUTREACH RUNNER
+    // Runs every 75 minutes during US business hours (Mon-Fri 9-5 EST),
+    // delivering high-conviction zero-party cognitive graph pitches.
+    // ============================================
+    cron.schedule('*/75 * * * *', async () => {
+        try {
+            logger.info('Running scheduled job: US Investor Outreach Tick');
+            await investorOutreachService.executeTick();
+        } catch (e) {
+            logger.error('Investor outreach execution tick failed:', e);
+        }
+    });
+
     // Initialize Four-Platform Growth Distribution Jobs
     initGrowthJobs();
 
-    logger.info('✅ All scheduled jobs initialized (including keep-alive, M&A campaign, PR outreach, & Four-Platform Growth)');
+    logger.info('✅ All scheduled jobs initialized (including keep-alive, M&A campaign, PR outreach, Investor outreach, & Four-Platform Growth)');
 }
 
 export default { initJobs };
