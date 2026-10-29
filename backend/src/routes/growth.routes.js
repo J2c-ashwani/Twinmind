@@ -4,6 +4,7 @@ import mediaRendererService from '../services/growth/mediaRendererService.js';
 import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/contentGeneratorService.js';
 import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
 import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
+import instagramAdapter from '../services/growth/adapters/instagramAdapter.js';
 import prOutreachService from '../services/prOutreachService.js';
 import investorOutreachService from '../services/investorOutreachService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
@@ -193,6 +194,65 @@ router.all('/publish/facebook', requireAdminSecret, async (req, res) => {
         logger.error('[GROWTH ROUTE] Facebook publish failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+/**
+ * GET & POST /api/admin/growth/publish/instagram
+ * Dedicated Instagram pipeline trigger (Multi-Photo Carousel or Reel)
+ * Body/Query: { format?: 'carousel' | 'reel', themeId?: string }
+ */
+router.all('/publish/instagram', requireAdminSecret, async (req, res) => {
+    try {
+        const format = req.body?.format || req.query?.format || 'carousel';
+        const themeId = req.body?.themeId;
+        const theme = CAMPAIGN_THEMES.find(t => t.id === themeId) || CAMPAIGN_THEMES[0];
+        const campaignId = `camp_ig_${theme.id}_${Date.now()}`;
+        const content = contentGeneratorService._generateInstagramContent(theme, campaignId);
+
+        let pngUrls = [];
+        let videoUrl = null;
+
+        if (format === 'carousel') {
+            logger.info(`[GROWTH ROUTE] Rendering multi-image carousel for Instagram...`);
+            const rendered = await mediaRendererService.renderCarousel({
+                campaignId,
+                postId: `post_ig_carousel_${Date.now()}`,
+                slides: content.slides
+            });
+            pngUrls = rendered.pngUrls;
+        } else {
+            logger.info(`[GROWTH ROUTE] Rendering Reel video for Instagram...`);
+            const rendered = await mediaRendererService.renderReel({
+                campaignId,
+                postId: `post_ig_reel_${Date.now()}`,
+                hook: content.title || theme.hook,
+                tag: content.tag || theme.tag
+            });
+            videoUrl = rendered.videoUrl;
+        }
+
+        logger.info(`[GROWTH ROUTE] Publishing to Instagram @twingenie.app...`);
+        const publishResult = await instagramAdapter.publish({
+            caption: content.caption,
+            pngUrls,
+            videoUrl,
+            format
+        });
+
+        res.json({ success: true, platform: 'instagram', format, publishResult });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Instagram publish failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/growth/instagram/status
+ * Check Instagram connection health
+ */
+router.get('/instagram/status', requireAdminSecret, async (req, res) => {
+    const health = await instagramAdapter.getHealthStatus();
+    res.json({ success: true, health });
 });
 
 /**

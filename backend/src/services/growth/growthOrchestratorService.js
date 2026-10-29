@@ -405,15 +405,113 @@ class GrowthOrchestratorService {
     }
 
     /**
-     * Unified Daily Broadcast: Dispatches both Facebook Reel & LinkedIn Personal Carousel at 4:00 PM IST.
+     * Publishes today's high-converting Carousel to Instagram account @twingenie.app.
+     * @param {boolean} force - If true, bypasses the duplicate post throttle
+     */
+    async publishDailyInstagram(force = false) {
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily Instagram publishing flow...`);
+        const now = new Date();
+        const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+
+        if (!force) {
+            try {
+                const { data: recent } = await supabaseAdmin
+                    .from('usage_tracking')
+                    .select('created_at')
+                    .eq('action_type', 'growth_instagram')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (recent && recent.length > 0) {
+                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
+                    if (lastIST === todayIST) {
+                        logger.info(`[GROWTH ORCHESTRATOR] Instagram post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
+                        return { action: 'skipped', reason: 'already_published_today' };
+                    }
+                }
+            } catch (dbCheckErr) {
+                logger.warn('[GROWTH ORCHESTRATOR] Supabase Instagram date check warning:', dbCheckErr.message);
+            }
+        }
+
+        const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+        const campaignId = `camp_ig_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+        const postId = `post_instagram_${Date.now()}`;
+
+        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
+        const rendered = await mediaRendererService.renderCarousel({
+            campaignId,
+            postId,
+            slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
+        });
+
+        const igCaption = `${dailyPackage.hook || dailyPackage.topic} 🪞\n\n${dailyPackage.facebook?.caption || dailyPackage.linkedin?.caption || ''}\n\n📲 Experience your AI Digital Twin free on Google Play. Link in bio!\n\n#TwinGenie #SelfUnderstanding #PersonalGrowth #MentalHealth #Mindset`;
+
+        logger.info(`[GROWTH ORCHESTRATOR] Dispatching carousel to Instagram account twingenie.app...`);
+        const publishResult = await this.adapters.instagram.publish({
+            caption: igCaption,
+            pngUrls: rendered.pngUrls,
+            format: 'carousel'
+        });
+
+        if (publishResult.success) {
+            try {
+                const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                if (users && users.length > 0) {
+                    const nowIso = now.toISOString();
+                    await supabaseAdmin.from('usage_tracking').insert({
+                        user_id: users[0].id,
+                        action_type: 'growth_instagram',
+                        count: 1,
+                        period_start: nowIso,
+                        period_end: nowIso,
+                        created_at: nowIso
+                    });
+                }
+            } catch (dbLogErr) {
+                logger.warn('[GROWTH ORCHESTRATOR] Supabase Instagram log warning:', dbLogErr.message);
+            }
+        }
+
+        const postRecord = {
+            id: postId,
+            campaignId,
+            platform: 'instagram',
+            format: 'carousel',
+            title: dailyPackage.topic,
+            caption: igCaption,
+            status: publishResult.success ? 'published' : 'failed',
+            scheduledFor: now.toISOString(),
+            publishedAt: publishResult.success ? now.toISOString() : null,
+            platformPostId: publishResult.postId,
+            platformPostUrl: publishResult.url,
+            error: publishResult.error || null
+        };
+
+        this.state.posts.push(postRecord);
+        this._saveState();
+
+        return {
+            success: publishResult.success,
+            postId: postRecord.id,
+            platformPostId: publishResult.postId,
+            url: publishResult.url,
+            topic: dailyPackage.topic,
+            error: publishResult.error
+        };
+    }
+
+    /**
+     * Unified Daily Broadcast: Dispatches Facebook Reel, LinkedIn Carousel & Instagram Carousel.
      * @param {boolean} force - Force publish even if already published today
      */
     async publishDailyBroadcast(force = false) {
-        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook Reel + LinkedIn Personal Carousel, force=${force})...`);
+        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook + LinkedIn + Instagram, force=${force})...`);
         const results = {
             timestamp: new Date().toISOString(),
             facebook: null,
-            linkedin: null
+            linkedin: null,
+            instagram: null
         };
 
         try {
@@ -430,7 +528,14 @@ class GrowthOrchestratorService {
             results.linkedin = { success: false, error: liErr.message };
         }
 
-        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB success=${results.facebook?.success}, LI success=${results.linkedin?.success}`);
+        try {
+            results.instagram = await this.publishDailyInstagram(force);
+        } catch (igErr) {
+            logger.error('[GROWTH ORCHESTRATOR] Daily Instagram publish failed:', igErr);
+            results.instagram = { success: false, error: igErr.message };
+        }
+
+        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB success=${results.facebook?.success}, LI success=${results.linkedin?.success}, IG success=${results.instagram?.success}`);
         return results;
     }
 }
