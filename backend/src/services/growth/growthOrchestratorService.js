@@ -23,6 +23,18 @@ class GrowthOrchestratorService {
             youtube: youtubeAdapter
         };
         this.state = this._loadState();
+        // In-flight mutex locks to prevent race-condition duplicate posts
+        this._publishingLocks = {
+            facebook: false,
+            linkedin: false,
+            instagram: false
+        };
+        // Short-term execution timestamps for debounce protection
+        this._lastPublishedTimestamps = {
+            facebook: 0,
+            linkedin: 0,
+            instagram: 0
+        };
     }
 
     _loadState() {
@@ -188,8 +200,39 @@ class GrowthOrchestratorService {
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily Facebook publication flow for ${todayIST}...`);
 
-        // 1. Unless force=true, verify directly with Meta Graph API if already published today
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions from dual cron triggers or fast retries
+        if (this._publishingLocks.facebook) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Facebook publication already in progress! Rejecting duplicate concurrent trigger.`);
+            return { action: 'skipped', reason: 'publish_in_progress' };
+        }
+
+        // 2. Debounce Cooldown: If published within the last 15 minutes, skip immediately
+        if (!force && this._lastPublishedTimestamps.facebook && (Date.now() - this._lastPublishedTimestamps.facebook < 15 * 60 * 1000)) {
+            logger.info(`[GROWTH ORCHESTRATOR] Facebook post published within the last 15 minutes. Skipping duplicate.`);
+            return { action: 'skipped', reason: 'recently_published' };
+        }
+
+        // 3. Unless force=true, verify persistence in Supabase tracking + Meta Graph API
         if (!force) {
+            try {
+                const { data: recent } = await supabaseAdmin
+                    .from('usage_tracking')
+                    .select('created_at')
+                    .eq('action_type', 'growth_facebook')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (recent && recent.length > 0) {
+                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
+                    if (lastIST === todayIST) {
+                        logger.info(`[GROWTH ORCHESTRATOR] Facebook post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
+                        return { action: 'skipped', reason: 'already_published_today' };
+                    }
+                }
+            } catch (dbCheckErr) {
+                logger.warn('[GROWTH ORCHESTRATOR] Supabase Facebook date check warning:', dbCheckErr.message);
+            }
+
             const alreadyPostedOnFB = await this.adapters.facebook.hasPublishedTodayIST();
             if (alreadyPostedOnFB) {
                 logger.info(`[GROWTH ORCHESTRATOR] Facebook Page already has a post today (${todayIST}). Skipping duplicate.`);
@@ -197,88 +240,117 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 2. Fetch or dynamically generate today's 100% fresh content
-        const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
-        const format = specificFormat || dailyPackage.format; // Strictly alternating: carousel vs reel!
-        const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
-        const postId = `post_facebook_${Date.now()}`;
+        // Acquire lock
+        this._publishingLocks.facebook = true;
 
-        logger.info(`[GROWTH ORCHESTRATOR] Facebook Scheduled: Topic="${dailyPackage.topic}", Format="${format}"`);
+        try {
+            // 4. Fetch or dynamically generate today's 100% fresh content
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            const format = specificFormat || dailyPackage.format; // Strictly alternating: carousel vs reel!
+            const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+            const postId = `post_facebook_${Date.now()}`;
 
-        let renderedReel = null;
-        let renderedCarousel = null;
+            logger.info(`[GROWTH ORCHESTRATOR] Facebook Scheduled: Topic="${dailyPackage.topic}", Format="${format}"`);
 
-        // 3. Render Media: Reel (with strict RAM limits) or Carousel
-        if (format === 'reel') {
-            try {
-                logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}"...`);
-                renderedReel = await mediaRendererService.renderReel({
+            let renderedReel = null;
+            let renderedCarousel = null;
+
+            // 5. Render Media: Reel (with strict RAM limits) or Carousel
+            if (format === 'reel') {
+                try {
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}"...`);
+                    renderedReel = await mediaRendererService.renderReel({
+                        campaignId,
+                        postId,
+                        hook: dailyPackage.facebook.title || dailyPackage.hook,
+                        tag: dailyPackage.category || 'FOUNDER PSYCHOLOGY',
+                        voiceHook: dailyPackage.facebook.voiceScript?.voiceHook,
+                        voiceProblem: dailyPackage.facebook.voiceScript?.voiceProblem,
+                        voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
+                        voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
+                    });
+                } catch (reelErr) {
+                    logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
+                }
+            }
+
+            // Render carousel slides as primary (for carousel format) or guaranteed failover (if reel render fails)
+            if (!renderedReel) {
+                logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Facebook: "${dailyPackage.topic}"...`);
+                renderedCarousel = await mediaRendererService.renderCarousel({
                     campaignId,
                     postId,
-                    hook: dailyPackage.facebook.title || dailyPackage.hook,
-                    tag: dailyPackage.category || 'FOUNDER PSYCHOLOGY',
-                    voiceHook: dailyPackage.facebook.voiceScript?.voiceHook,
-                    voiceProblem: dailyPackage.facebook.voiceScript?.voiceProblem,
-                    voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
-                    voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
+                    slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
                 });
-            } catch (reelErr) {
-                logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
             }
-        }
 
-        // Render carousel slides as primary (for carousel format) or guaranteed failover (if reel render fails)
-        if (!renderedReel) {
-            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Facebook: "${dailyPackage.topic}"...`);
-            renderedCarousel = await mediaRendererService.renderCarousel({
-                campaignId,
-                postId,
-                slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
+            // 6. Publish to Facebook Page as Reel or Carousel with First Comment
+            logger.info(`[GROWTH ORCHESTRATOR] Publishing ${renderedReel ? 'Reel' : 'Carousel'} directly to Facebook Page...`);
+            const publishResult = await this.adapters.facebook.publish({
+                title: dailyPackage.facebook.title,
+                caption: dailyPackage.facebook.caption,
+                firstComment: dailyPackage.facebook.firstComment,
+                videoPath: renderedReel?.videoPath || null,
+                mediaPaths: renderedCarousel?.pngPaths || [],
+                format: renderedReel ? 'reel' : 'carousel'
             });
+
+            // 7. Track published timestamp in Supabase & update debounce timer
+            if (publishResult.success) {
+                this._lastPublishedTimestamps.facebook = Date.now();
+                try {
+                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                    if (users && users.length > 0) {
+                        const nowIso = now.toISOString();
+                        await supabaseAdmin.from('usage_tracking').insert({
+                            user_id: users[0].id,
+                            action_type: 'growth_facebook',
+                            count: 1,
+                            period_start: nowIso,
+                            period_end: nowIso,
+                            created_at: nowIso
+                        });
+                    }
+                } catch (dbLogErr) {
+                    logger.warn('[GROWTH ORCHESTRATOR] Supabase Facebook log warning:', dbLogErr.message);
+                }
+            }
+
+            // 8. Save to state
+            const postRecord = {
+                id: postId,
+                campaignId,
+                platform: 'facebook',
+                format: renderedReel ? 'reel' : 'carousel',
+                title: dailyPackage.facebook.title,
+                caption: dailyPackage.facebook.caption,
+                videoPath: renderedReel?.videoPath || null,
+                mediaPaths: renderedCarousel?.pngPaths || [],
+                status: publishResult.success ? 'published' : 'failed',
+                scheduledFor: now.toISOString(),
+                publishedAt: publishResult.success ? now.toISOString() : null,
+                platformPostId: publishResult.postId,
+                platformPostUrl: publishResult.url,
+                error: publishResult.error || null,
+                retries: 0
+            };
+
+            this.state.posts.push(postRecord);
+            this._saveState();
+
+            return {
+                success: publishResult.success,
+                postId: postRecord.id,
+                platformPostId: publishResult.postId,
+                url: publishResult.url,
+                format: postRecord.format,
+                topic: dailyPackage.topic,
+                error: publishResult.error
+            };
+        } finally {
+            // Release lock unconditionally
+            this._publishingLocks.facebook = false;
         }
-
-        // 4. Publish to Facebook Page as Reel or Carousel with First Comment
-        logger.info(`[GROWTH ORCHESTRATOR] Publishing ${renderedReel ? 'Reel' : 'Carousel'} directly to Facebook Page...`);
-        const publishResult = await this.adapters.facebook.publish({
-            title: dailyPackage.facebook.title,
-            caption: dailyPackage.facebook.caption,
-            firstComment: dailyPackage.facebook.firstComment,
-            videoPath: renderedReel?.videoPath || null,
-            mediaPaths: renderedCarousel?.pngPaths || [],
-            format: renderedReel ? 'reel' : 'carousel'
-        });
-
-        // 5. Save to state
-        const postRecord = {
-            id: postId,
-            campaignId,
-            platform: 'facebook',
-            format: renderedReel ? 'reel' : 'carousel',
-            title: dailyPackage.facebook.title,
-            caption: dailyPackage.facebook.caption,
-            videoPath: renderedReel?.videoPath || null,
-            mediaPaths: renderedCarousel?.pngPaths || [],
-            status: publishResult.success ? 'published' : 'failed',
-            scheduledFor: now.toISOString(),
-            publishedAt: publishResult.success ? now.toISOString() : null,
-            platformPostId: publishResult.postId,
-            platformPostUrl: publishResult.url,
-            error: publishResult.error || null,
-            retries: 0
-        };
-
-        this.state.posts.push(postRecord);
-        this._saveState();
-
-        return {
-            success: publishResult.success,
-            postId: postRecord.id,
-            platformPostId: publishResult.postId,
-            url: publishResult.url,
-            format: postRecord.format,
-            topic: dailyPackage.topic,
-            error: publishResult.error
-        };
     }
 
     /**
@@ -291,7 +363,19 @@ class GrowthOrchestratorService {
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
-        // 1. Verify against Supabase persistence + memory state to prevent duplicate posts across server restarts
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions from dual cron triggers or fast retries
+        if (this._publishingLocks.linkedin) {
+            logger.warn(`[GROWTH ORCHESTRATOR] LinkedIn publication already in progress! Rejecting duplicate concurrent trigger.`);
+            return { action: 'skipped', reason: 'publish_in_progress' };
+        }
+
+        // 2. Debounce Cooldown: If published within the last 15 minutes, skip immediately
+        if (!force && this._lastPublishedTimestamps.linkedin && (Date.now() - this._lastPublishedTimestamps.linkedin < 15 * 60 * 1000)) {
+            logger.info(`[GROWTH ORCHESTRATOR] LinkedIn post published within the last 15 minutes. Skipping duplicate.`);
+            return { action: 'skipped', reason: 'recently_published' };
+        }
+
+        // 3. Verify against Supabase persistence + memory state to prevent duplicate posts across server restarts
         if (!force) {
             try {
                 const { data: recent } = await supabaseAdmin
@@ -323,85 +407,93 @@ class GrowthOrchestratorService {
             }
         }
 
-        // 2. Fetch or dynamically generate today's 100% fresh content
-        const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
-        const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
-        const postId = `post_linkedin_personal_${Date.now()}`;
+        // Acquire lock
+        this._publishingLocks.linkedin = true;
 
-        logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
+        try {
+            // 4. Fetch or dynamically generate today's 100% fresh content
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+            const postId = `post_linkedin_personal_${Date.now()}`;
 
-        // 3. Render 1080x1350 Multi-Page PDF Carousel
-        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${dailyPackage.topic}"...`);
-        const rendered = await mediaRendererService.renderCarousel({
-            campaignId,
-            postId,
-            slides: dailyPackage.linkedin.slides
-        });
+            logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
 
-        // 4. Publish to LinkedIn via official API
-        logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
-        const publishResult = await this.adapters.linkedin.publish({
-            title: dailyPackage.linkedin.title,
-            caption: dailyPackage.linkedin.caption,
-            pdfPath: rendered.pdfPath,
-            pngPaths: rendered.pngPaths,
-            utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app',
-            target: 'personal'
-        });
+            // 5. Render 1080x1350 Multi-Page PDF Carousel
+            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${dailyPackage.topic}"...`);
+            const rendered = await mediaRendererService.renderCarousel({
+                campaignId,
+                postId,
+                slides: dailyPackage.linkedin.slides
+            });
 
-        // 5. Track published timestamp in Supabase (persists across Render container restarts)
-        if (publishResult.success) {
-            try {
-                const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
-                if (users && users.length > 0) {
-                    const nowIso = now.toISOString();
-                    await supabaseAdmin.from('usage_tracking').insert({
-                        user_id: users[0].id,
-                        action_type: 'growth_linkedin_personal',
-                        count: 1,
-                        period_start: nowIso,
-                        period_end: nowIso,
-                        created_at: nowIso
-                    });
+            // 6. Publish to LinkedIn via official API
+            logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
+            const publishResult = await this.adapters.linkedin.publish({
+                title: dailyPackage.linkedin.title,
+                caption: dailyPackage.linkedin.caption,
+                pdfPath: rendered.pdfPath,
+                pngPaths: rendered.pngPaths,
+                utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app',
+                target: 'personal'
+            });
+
+            // 7. Track published timestamp in Supabase (persists across Render container restarts)
+            if (publishResult.success) {
+                this._lastPublishedTimestamps.linkedin = Date.now();
+                try {
+                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                    if (users && users.length > 0) {
+                        const nowIso = now.toISOString();
+                        await supabaseAdmin.from('usage_tracking').insert({
+                            user_id: users[0].id,
+                            action_type: 'growth_linkedin_personal',
+                            count: 1,
+                            period_start: nowIso,
+                            period_end: nowIso,
+                            created_at: nowIso
+                        });
+                    }
+                } catch (dbLogErr) {
+                    logger.warn('[GROWTH ORCHESTRATOR] Supabase log warning:', dbLogErr.message);
                 }
-            } catch (dbLogErr) {
-                logger.warn('[GROWTH ORCHESTRATOR] Supabase log warning:', dbLogErr.message);
             }
+
+            // 8. Save to local state
+            const postRecord = {
+                id: postId,
+                campaignId,
+                platform: 'linkedin',
+                target: 'personal',
+                format: 'carousel_pdf',
+                title: dailyPackage.linkedin.title,
+                caption: dailyPackage.linkedin.caption,
+                pdfPath: rendered.pdfPath,
+                mediaPaths: rendered.pngPaths,
+                status: publishResult.success ? 'published' : 'failed',
+                scheduledFor: now.toISOString(),
+                publishedAt: publishResult.success ? now.toISOString() : null,
+                platformPostId: publishResult.postId,
+                platformPostUrl: publishResult.url,
+                error: publishResult.error || null,
+                retries: 0
+            };
+
+            this.state.posts.push(postRecord);
+            this._saveState();
+
+            return {
+                success: publishResult.success,
+                postId: postRecord.id,
+                platformPostId: publishResult.postId,
+                url: publishResult.url,
+                topic: dailyPackage.topic,
+                totalSlides: rendered.totalSlides,
+                pdfPath: rendered.pdfPath,
+                error: publishResult.error
+            };
+        } finally {
+            this._publishingLocks.linkedin = false;
         }
-
-        // 6. Save to local state
-        const postRecord = {
-            id: postId,
-            campaignId,
-            platform: 'linkedin',
-            target: 'personal',
-            format: 'carousel_pdf',
-            title: dailyPackage.linkedin.title,
-            caption: dailyPackage.linkedin.caption,
-            pdfPath: rendered.pdfPath,
-            mediaPaths: rendered.pngPaths,
-            status: publishResult.success ? 'published' : 'failed',
-            scheduledFor: now.toISOString(),
-            publishedAt: publishResult.success ? now.toISOString() : null,
-            platformPostId: publishResult.postId,
-            platformPostUrl: publishResult.url,
-            error: publishResult.error || null,
-            retries: 0
-        };
-
-        this.state.posts.push(postRecord);
-        this._saveState();
-
-        return {
-            success: publishResult.success,
-            postId: postRecord.id,
-            platformPostId: publishResult.postId,
-            url: publishResult.url,
-            topic: dailyPackage.topic,
-            totalSlides: rendered.totalSlides,
-            pdfPath: rendered.pdfPath,
-            error: publishResult.error
-        };
     }
 
     /**
@@ -413,6 +505,19 @@ class GrowthOrchestratorService {
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions from dual cron triggers or fast retries
+        if (this._publishingLocks.instagram) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Instagram publication already in progress! Rejecting duplicate concurrent trigger.`);
+            return { action: 'skipped', reason: 'publish_in_progress' };
+        }
+
+        // 2. Debounce Cooldown: If published within the last 15 minutes, skip immediately
+        if (!force && this._lastPublishedTimestamps.instagram && (Date.now() - this._lastPublishedTimestamps.instagram < 15 * 60 * 1000)) {
+            logger.info(`[GROWTH ORCHESTRATOR] Instagram post published within the last 15 minutes. Skipping duplicate.`);
+            return { action: 'skipped', reason: 'recently_published' };
+        }
+
+        // 3. Unless force=true, verify persistence in Supabase tracking
         if (!force) {
             try {
                 const { data: recent } = await supabaseAdmin
@@ -434,71 +539,83 @@ class GrowthOrchestratorService {
             }
         }
 
-        const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
-        const campaignId = `camp_ig_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
-        const postId = `post_instagram_${Date.now()}`;
+        // Acquire lock
+        this._publishingLocks.instagram = true;
 
-        logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
-        const rendered = await mediaRendererService.renderCarousel({
-            campaignId,
-            postId,
-            slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
-        });
+        try {
+            // 4. Fetch or dynamically generate today's 100% fresh content
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            const campaignId = `camp_ig_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+            const postId = `post_instagram_${Date.now()}`;
 
-        const igCaption = `${dailyPackage.hook || dailyPackage.topic} 🪞\n\n${dailyPackage.facebook?.caption || dailyPackage.linkedin?.caption || ''}\n\n📲 Experience your AI Digital Twin free on Google Play. Link in bio!\n\n#TwinGenie #SelfUnderstanding #PersonalGrowth #MentalHealth #Mindset`;
+            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
+            const rendered = await mediaRendererService.renderCarousel({
+                campaignId,
+                postId,
+                slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
+            });
 
-        logger.info(`[GROWTH ORCHESTRATOR] Dispatching carousel to Instagram account twingenie.app...`);
-        const publishResult = await this.adapters.instagram.publish({
-            caption: igCaption,
-            pngUrls: rendered.pngUrls,
-            format: 'carousel'
-        });
+            const igCaption = `${dailyPackage.hook || dailyPackage.topic} 🪞\n\n${dailyPackage.facebook?.caption || dailyPackage.linkedin?.caption || ''}\n\n📲 Experience your AI Digital Twin free on Google Play. Link in bio!\n\n#TwinGenie #SelfUnderstanding #PersonalGrowth #MentalHealth #Mindset`;
 
-        if (publishResult.success) {
-            try {
-                const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
-                if (users && users.length > 0) {
-                    const nowIso = now.toISOString();
-                    await supabaseAdmin.from('usage_tracking').insert({
-                        user_id: users[0].id,
-                        action_type: 'growth_instagram',
-                        count: 1,
-                        period_start: nowIso,
-                        period_end: nowIso,
-                        created_at: nowIso
-                    });
+            // 5. Dispatch carousel to Instagram via official API
+            logger.info(`[GROWTH ORCHESTRATOR] Dispatching carousel to Instagram account twingenie.app...`);
+            const publishResult = await this.adapters.instagram.publish({
+                caption: igCaption,
+                pngUrls: rendered.pngUrls,
+                format: 'carousel'
+            });
+
+            // 6. Track published timestamp in Supabase (persists across Render container restarts)
+            if (publishResult.success) {
+                this._lastPublishedTimestamps.instagram = Date.now();
+                try {
+                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                    if (users && users.length > 0) {
+                        const nowIso = now.toISOString();
+                        await supabaseAdmin.from('usage_tracking').insert({
+                            user_id: users[0].id,
+                            action_type: 'growth_instagram',
+                            count: 1,
+                            period_start: nowIso,
+                            period_end: nowIso,
+                            created_at: nowIso
+                        });
+                    }
+                } catch (dbLogErr) {
+                    logger.warn('[GROWTH ORCHESTRATOR] Supabase Instagram log warning:', dbLogErr.message);
                 }
-            } catch (dbLogErr) {
-                logger.warn('[GROWTH ORCHESTRATOR] Supabase Instagram log warning:', dbLogErr.message);
             }
+
+            // 7. Save to local state
+            const postRecord = {
+                id: postId,
+                campaignId,
+                platform: 'instagram',
+                format: 'carousel',
+                title: dailyPackage.topic,
+                caption: igCaption,
+                status: publishResult.success ? 'published' : 'failed',
+                scheduledFor: now.toISOString(),
+                publishedAt: publishResult.success ? now.toISOString() : null,
+                platformPostId: publishResult.postId,
+                platformPostUrl: publishResult.url,
+                error: publishResult.error || null
+            };
+
+            this.state.posts.push(postRecord);
+            this._saveState();
+
+            return {
+                success: publishResult.success,
+                postId: postRecord.id,
+                platformPostId: publishResult.postId,
+                url: publishResult.url,
+                topic: dailyPackage.topic,
+                error: publishResult.error
+            };
+        } finally {
+            this._publishingLocks.instagram = false;
         }
-
-        const postRecord = {
-            id: postId,
-            campaignId,
-            platform: 'instagram',
-            format: 'carousel',
-            title: dailyPackage.topic,
-            caption: igCaption,
-            status: publishResult.success ? 'published' : 'failed',
-            scheduledFor: now.toISOString(),
-            publishedAt: publishResult.success ? now.toISOString() : null,
-            platformPostId: publishResult.postId,
-            platformPostUrl: publishResult.url,
-            error: publishResult.error || null
-        };
-
-        this.state.posts.push(postRecord);
-        this._saveState();
-
-        return {
-            success: publishResult.success,
-            postId: postRecord.id,
-            platformPostId: publishResult.postId,
-            url: publishResult.url,
-            topic: dailyPackage.topic,
-            error: publishResult.error
-        };
     }
 
     /**
