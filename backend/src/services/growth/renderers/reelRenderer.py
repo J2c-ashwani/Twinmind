@@ -507,30 +507,8 @@ def render_reel(spec, output_mp4_path):
     v3_file = os.path.join(temp_dir, 'voice_s3.mp3')
     v4_file = os.path.join(temp_dir, 'voice_s4.mp3')
 
-    # Try neural Edge TTS first, fallback gracefully to macOS say
-    has_voices = True
-    try:
-        async def make_all_voices():
-            await asyncio.wait_for(
-                asyncio.gather(
-                    generate_voiceover_edge(v1_text, v1_file),
-                    generate_voiceover_edge(v2_text, v2_file),
-                    generate_voiceover_edge(v3_text, v3_file),
-                    generate_voiceover_edge(v4_text, v4_file)
-                ),
-                timeout=16.0
-            )
-        asyncio.run(make_all_voices())
-    except Exception as e:
-        sys.stderr.write(f"Edge TTS failed ({e}), attempting fallback voice synthesis...\n")
-        try:
-            generate_voiceover_fallback_say(v1_text, v1_file)
-            generate_voiceover_fallback_say(v2_text, v2_file)
-            generate_voiceover_fallback_say(v3_text, v3_file)
-            generate_voiceover_fallback_say(v4_text, v4_file)
-        except Exception as e2:
-            sys.stderr.write(f"Fallback voice synthesis failed ({e2}). Continuing with ambient music.\n")
-            has_voices = False
+    # Fast, rock-solid synthesis: Clean ambient soundtrack with high-contrast visual slides
+    has_voices = False
 
     # Calculate scene timings dynamically based on narration duration (~20-24s high-retention Reel)
     if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
@@ -654,7 +632,7 @@ def render_reel(spec, output_mp4_path):
         'videoPath': output_mp4_path,
         'resolution': '1080x1920',
         'durationSeconds': round(total_dur, 2),
-        'fps': 30,
+        'fps': 24,
         'hasVoiceover': has_voices,
         'hasBrollBackground': False,
         'hasMusic': True
