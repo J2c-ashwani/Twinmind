@@ -384,12 +384,18 @@ class GrowthOrchestratorService {
             // 5. Render Media: Reel (with strict RAM limits) or Carousel
             if (format === 'reel') {
                 try {
-                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}"...`);
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'})...`);
                     renderedReel = await mediaRendererService.renderReel({
                         campaignId,
                         postId,
+                        mode: dailyPackage.mode || 'dark',
+                        modeName: dailyPackage.modeName || 'Honest / Dark Twin',
                         hook: dailyPackage.facebook.title || dailyPackage.hook,
-                        tag: dailyPackage.category || 'FOUNDER PSYCHOLOGY',
+                        tag: dailyPackage.category || 'SELF-AWARENESS',
+                        userExcuse: dailyPackage.chatDialogue?.userDilemma || dailyPackage.linkedin?.slides?.[2]?.left?.user,
+                        botReply: dailyPackage.chatDialogue?.standardBotReply || dailyPackage.linkedin?.slides?.[2]?.left?.ai,
+                        twinReply: dailyPackage.chatDialogue?.twinModeReply || dailyPackage.linkedin?.slides?.[2]?.right?.ai,
+                        shift: dailyPackage.chatDialogue?.shift,
                         voiceHook: dailyPackage.facebook.voiceScript?.voiceHook,
                         voiceProblem: dailyPackage.facebook.voiceScript?.voiceProblem,
                         voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
@@ -641,12 +647,18 @@ class GrowthOrchestratorService {
             // 5. Render Media: Reel (with strict RAM limits) or Carousel
             if (format === 'reel') {
                 try {
-                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'})...`);
                     renderedReel = await mediaRendererService.renderReel({
                         campaignId,
                         postId,
+                        mode: dailyPackage.mode || 'dark',
+                        modeName: dailyPackage.modeName || 'Honest / Dark Twin',
                         hook: dailyPackage.facebook.title || dailyPackage.hook,
-                        tag: dailyPackage.category || 'FOUNDER PSYCHOLOGY',
+                        tag: dailyPackage.category || 'SELF-AWARENESS',
+                        userExcuse: dailyPackage.chatDialogue?.userDilemma || dailyPackage.linkedin?.slides?.[2]?.left?.user,
+                        botReply: dailyPackage.chatDialogue?.standardBotReply || dailyPackage.linkedin?.slides?.[2]?.left?.ai,
+                        twinReply: dailyPackage.chatDialogue?.twinModeReply || dailyPackage.linkedin?.slides?.[2]?.right?.ai,
+                        shift: dailyPackage.chatDialogue?.shift,
                         voiceHook: dailyPackage.facebook.voiceScript?.voiceHook,
                         voiceProblem: dailyPackage.facebook.voiceScript?.voiceProblem,
                         voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,

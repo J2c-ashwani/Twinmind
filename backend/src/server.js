@@ -216,6 +216,23 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================
+// 📲 SMART DEVICE-AWARE APP DOWNLOAD ROUTE
+// ============================================
+app.get('/download', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+  if (isAndroid) {
+    return res.redirect('https://play.google.com/store/apps/details?id=com.asmind.app');
+  }
+  if (isIOS) {
+    return res.redirect('https://twingenie.app/#ios-waitlist');
+  }
+  return res.redirect('https://play.google.com/store/apps/details?id=com.asmind.app');
+});
+
+// ============================================
 // 🔗 API ROUTES
 // ============================================
 

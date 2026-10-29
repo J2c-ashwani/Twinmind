@@ -1,114 +1,112 @@
 #!/usr/bin/env python3
 """
-TwinGenie Automated Reel Renderer (Commercial Dual-Layer 4K/1080p Engine)
-Engineered for razor-sharp fidelity, 100% safe-zone framing, and maximum mobile retention.
+TwinGenie Automated Reel Renderer (Smartphone Chat Screen Recording UI)
+Engineered for razor-sharp mobile fidelity, authentic app aesthetics, and high-retention social virality.
 
 Features:
-1. Dual-Layer Compositing Engine: Looping 1080x1920 tech network B-roll video background
-   with translucent glassmorphism HUD data cards alpha-composited on top.
-2. 1-Second Closed Keyframe Cadence (-g 30 -keyint_min 30 -sc_threshold 0) matching Meta's
-   exact DASH/HLS mobile streaming chunking boundaries.
-3. Tier-3 Ingestion Master Bitrate (-crf 17, 14M/18M High Profile 4.2) forcing Meta to assign
-   the highest-resolution 1080p transcoding profile.
-4. Domain-Specific Phonetic Normalization: Expands "TwinGenie" -> "Twin Genie", "Big 5" -> "Big Five",
-   "twingenie.app" -> "Twin Genie dot app", ensuring natural, broadcast-grade speech without mispronunciations.
-5. Safe-Zone Compliant Layout: Header at y=115 (clears camera hole-punches & FB top icons),
-   content ends at y=1380 (clears bottom caption & profile overlay), width restricted to x=910
-   (clears right floating action dock).
-6. Pure White Typography (#FFFFFF) for zero 4:2:0 chroma bleed.
+1. Authentic Smartphone Chat Interface: Top bezel, dynamic island, status bar, and 4-mode tabs.
+2. 4 Selectable Perspectives:
+   - 🔥 Honest / Dark Twin (Roast / Reality Check)
+   - ⏳ Future Self Twin (5-Years-Wiser Perspective)
+   - 🌿 Reflective Twin (Emotional Decompression)
+   - ⚡ Normal Twin (Daily Sounding Board)
+3. Dynamic Side-by-Side Contrast: User dilemma vs Standard Sycophantic Bot vs Active Twin Mode.
+4. Ultra-Low RAM Footprint (<25MB RAM) with native FFmpeg concat demuxer and 24fps H.264 MP4.
+5. High-Retention 20-22s duration pacing optimized for Instagram Reels, TikTok, and YouTube Shorts.
 """
 
 import os
 import sys
 import json
-import asyncio
 import subprocess
-import wave
 import math
-import struct
 import re
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-BG_RGBA = (10, 8, 24, 205)       # 80% Translucent Deep Obsidian
-SURFACE_DARK = (20, 15, 44, 245) # 96% Translucent Dark Surface
-SURFACE_LIGHT = (32, 24, 68, 245)
-CARD_BORDER = (75, 58, 140, 255)
-BORDER_PURPLE = (147, 51, 234, 255)
-
-PURPLE_PRIMARY = (147, 51, 234)  # #9333EA
-PURPLE_GLOW = (192, 132, 252)    # #C084FC
-CYAN_ACCENT = (56, 189, 248)     # #38BDF8
-EMERALD_ACCENT = (52, 211, 153)  # #34D399
-AMBER_ACCENT = (251, 191, 36)    # #FBBF24
-ROSE_ACCENT = (244, 63, 94)      # #F43F5E
+# Base Palette
+BG_DARK = (10, 8, 22, 255)         # Deep Obsidian Canvas
+PHONE_BEZEL = (18, 14, 34, 255)     # Phone Body
+CARD_SURFACE = (25, 20, 48, 240)    # Glassmorphism Card
+BORDER_DEFAULT = (65, 50, 110, 255) # Subtle Border
 
 TEXT_WHITE = (255, 255, 255)
-TEXT_LIGHT = (245, 247, 250)
-TEXT_MUTED = (215, 222, 235)
-TEXT_DIM = (165, 175, 195)
+TEXT_LIGHT = (240, 244, 250)
+TEXT_MUTED = (195, 205, 225)
+TEXT_DIM = (145, 155, 180)
+
+# Mode Specific Design Matrix
+MODE_CONFIGS = {
+    'dark': {
+        'id': 'dark',
+        'tabName': '🔥 HONEST',
+        'fullName': 'HONEST / DARK TWIN',
+        'badge': 'ROAST & REALITY CHECK',
+        'accent': (255, 59, 92),        # #FF3B5C Crimson Neon
+        'glow': (255, 59, 92, 120),
+        'bgCard': (42, 14, 26, 245),
+        'border': (255, 59, 92, 230),
+        'role': 'Zero-flattery cognitive mirror calling out avoidance & excuses',
+        'defaultDilemma': "I've been scrolling for 3 hours and feel completely paralyzed. Should I just give up on today?",
+        'defaultBot': "Totally understandable! Rest is productive! Don't be hard on yourself. Start fresh next week!",
+        'defaultReply': "You let yourself scroll for three hours, then you're stuck blaming yourself. Guilt is just another excuse to avoid the real work. What is the one task you're terrified of facing?",
+        'shift': "Exposes the guilt-avoidance loop and forces immediate decisive action."
+    },
+    'future': {
+        'id': 'future',
+        'tabName': '⏳ FUTURE',
+        'fullName': 'FUTURE SELF (2031)',
+        'badge': '5-YEARS-WISER PERSPECTIVE',
+        'accent': (255, 184, 0),       # #FFB800 Amber Gold
+        'glow': (255, 184, 0, 120),
+        'bgCard': (42, 32, 12, 245),
+        'border': (255, 184, 0, 230),
+        'role': 'Reframes short-term panic and anxiety through 5-year longitudinal wisdom',
+        'defaultDilemma': "Left on read for 6 hours. I'm spiraling and about to send a passive-aggressive text.",
+        'defaultBot': "That's so disrespectful of them! Send a firm message letting them know your time is valuable!",
+        'defaultReply': "Seeing them online fuels the fear that you're being dismissed. But in 5 years, this silence won't matter. What would it feel like to let the silence exist without trying to control their response?",
+        'shift': "Calms anxious attachment and stops self-sabotaging emotional reactions."
+    },
+    'reflective': {
+        'id': 'reflective',
+        'tabName': '🌿 REFLECT',
+        'fullName': 'REFLECTIVE TWIN',
+        'badge': 'EMOTIONAL DECOMPRESSION',
+        'accent': (52, 211, 153),      # #34D399 Mint / Emerald
+        'glow': (52, 211, 153, 120),
+        'bgCard': (14, 40, 28, 245),
+        'border': (52, 211, 153, 230),
+        'role': 'Therapist-grade emotional decompression without toxic positivity',
+        'defaultDilemma': "I agreed to help someone move this weekend even though I'm completely exhausted and need rest. Why do I do this?",
+        'defaultBot': "You are such a kind, generous friend! Just make sure to drink water and get some rest when you can!",
+        'defaultReply': "You didn't volunteer because you have energy; you volunteered because saying no makes you feel like a burden. What part of your identity depends on being the one who always shows up?",
+        'shift': "Exposes people-pleasing as fear of rejection and restores healthy boundaries."
+    },
+    'normal': {
+        'id': 'normal',
+        'tabName': '⚡ NORMAL',
+        'fullName': 'NORMAL TWIN',
+        'badge': 'GROUNDED SOUNDING BOARD',
+        'accent': (56, 189, 248),      # #38BDF8 Electric Cyan
+        'glow': (56, 189, 248, 120),
+        'bgCard': (16, 32, 52, 245),
+        'border': (56, 189, 248, 230),
+        'role': 'Daily alter-ego and thinking partner with persistent conversation memory',
+        'defaultDilemma': "I think I should put my main goal on hold and start a brand-new project today.",
+        'defaultBot': "That sounds so exciting! Follow your passion! Here are 5 brainstorming ideas for your new idea!",
+        'defaultReply': "Memory check: You said this exact same thing 14 days ago right before launch. You aren't inspired—you're avoiding market feedback. Close the new tabs and finish what you started.",
+        'shift': "Catches circular rationalizations and grounds you in long-term goals."
+    }
+}
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_BG_MUSIC = os.path.join(SCRIPT_DIR, '../assets/audio/bg_ambient.m4a')
-DEFAULT_BROLL_PATH = os.path.join(SCRIPT_DIR, '../assets/broll/tech-network.mp4')
 FONT_BLACK_PATH = os.path.join(SCRIPT_DIR, '../assets/fonts/Font-Black.ttf')
 FONT_BOLD_PATH = os.path.join(SCRIPT_DIR, '../assets/fonts/Font-Bold.ttf')
 
 def sanitize_text(text):
     if not isinstance(text, str):
         return str(text) if text is not None else ""
-    emoji_pattern = re.compile(
-        "[\U00010000-\U0010ffff]|[\u2600-\u27bf]|[\u2300-\u23ff]|[\u2b50-\u2b55]",
-        flags=re.UNICODE
-    )
-    cleaned = emoji_pattern.sub('', text)
-    cleaned = (cleaned.replace('★', '5.0 ')
-                      .replace('⭐', '')
-                      .replace('⚡', '')
-                      .replace('❌', '')
-                      .replace('⚠', '')
-                      .replace('🎯', '')
-                      .replace('🔒', '')
-                      .replace('📲', '')
-                      .replace('🧠', '')
-                      .replace('✦', '')
-                      .replace('✓', '')
-                      .replace('✔', ''))
-    return ' '.join(cleaned.split())
-
-# ─── Domain-Specific Phonetic Normalization Engine ───────────
-def normalize_phonetics(text):
-    """
-    Expands acronyms, domain names, and brand terms so Edge-TTS pronounces
-    them with natural human cadence without robotic butchering.
-    """
-    if not text or not isinstance(text, str):
-        return ""
-    
-    # Expand brand name so TTS pronounces "Twin Genie" and never "Twin Jenny"
-    text = re.sub(r"\bTwinGenie's\b", "Twin Genie's", text, flags=re.IGNORECASE)
-    text = re.sub(r"\bTwinGenie\b", "Twin Genie", text, flags=re.IGNORECASE)
-
-    # Expand domain names and URLs
-    text = re.sub(r"\btwingenie\.app\b", "Twin Genie dot app", text, flags=re.IGNORECASE)
-
-    # Expand technical terms and acronyms
-    text = re.sub(r"\bAI\b", "A I", text)
-    text = re.sub(r"\bBig 5\b", "Big Five", text, flags=re.IGNORECASE)
-
-    # Expand numerical quantities for smooth natural cadence
-    text = re.sub(r"\b10 tasks\b", "ten tasks", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b14 days\b", "fourteen days", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b2 weeks\b", "two weeks", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b9 tabs\b", "nine tabs", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b35-Question\b", "thirty-five question", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b4 perspectives\b", "four perspectives", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b100%\b", "one hundred percent", text, flags=re.IGNORECASE)
-    text = re.sub(r"\b5\.0\b", "five point zero", text, flags=re.IGNORECASE)
-
-    # Strip symbols
-    for ch in ['★', '⭐', '⚡', '❌', '⚠', '🎯', '🔒', '📲', '🧠', '✦', '✓', '✔']:
-        text = text.replace(ch, '')
-
+    text = re.sub(r'[\r\n]+', ' ', text)
     return ' '.join(text.split())
 
 def f_black(size):
@@ -143,8 +141,8 @@ def f_bold(size):
 
 def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.25):
     text = sanitize_text(text)
-    lines = []
     words = text.split()
+    lines = []
     current_line = []
     for word in words:
         test_line = ' '.join(current_line + [word])
@@ -164,280 +162,329 @@ def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.25
         cur_y += int((bbox[3] - bbox[1]) * line_spacing)
     return cur_y
 
-def draw_star(draw, cx, cy, r_outer=13, r_inner=6, fill=AMBER_ACCENT):
-    points = []
-    for i in range(10):
-        angle = i * math.pi / 5 - math.pi / 2
-        r = r_outer if i % 2 == 0 else r_inner
-        points.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
-    draw.polygon(points, fill=fill)
+def get_text_height(draw, text, font, max_width, line_spacing=1.25):
+    text = sanitize_text(text)
+    words = text.split()
+    lines = []
+    current_line = []
+    for word in words:
+        test_line = ' '.join(current_line + [word])
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        if (bbox[2] - bbox[0]) <= max_width:
+            current_line.append(word)
+        else:
+            if current_line:
+                lines.append(' '.join(current_line))
+            current_line = [word]
+    if current_line:
+        lines.append(' '.join(current_line))
+    total_h = 0
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font)
+        total_h += int((bbox[3] - bbox[1]) * line_spacing)
+    return total_h
 
-def create_base_canvas(w=1080, h=1920):
+def resolve_mode_config(spec):
+    mode_id = spec.get('mode', '').lower().strip()
+    if 'dark' in mode_id or 'honest' in mode_id or 'shadow' in mode_id:
+        return MODE_CONFIGS['dark']
+    if 'future' in mode_id:
+        return MODE_CONFIGS['future']
+    if 'reflect' in mode_id or 'therap' in mode_id:
+        return MODE_CONFIGS['reflective']
+    if 'normal' in mode_id:
+        return MODE_CONFIGS['normal']
+    # Default to dark (the high-impact roast mode)
+    return MODE_CONFIGS['dark']
+
+def create_smartphone_base(w=1080, h=1920, active_mode_id='dark'):
     """
-    Creates a translucent RGBA canvas with subtle purple ambient glow.
-    When overlaid on the B-roll video, the moving tech network shines through
-    while ensuring 100% readability for all text elements.
+    Renders an authentic dark smartphone UI:
+    - Status bar (9:41, Dynamic Island, 5G / Battery)
+    - App Header: TWINGENIE • AI DIGITAL TWIN
+    - Top Mode Switcher Bar showing 4 perspectives with the active one highlighted.
     """
-    img = Image.new('RGBA', (w, h), BG_RGBA)
+    img = Image.new('RGBA', (w, h), BG_DARK)
+    
+    # Ambient colored glow behind canvas based on active mode
+    mcfg = MODE_CONFIGS.get(active_mode_id, MODE_CONFIGS['dark'])
+    accent_rgb = mcfg['accent']
     glow = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow)
-    glow_draw.ellipse([-200, -200, 1300, 850], fill=(85, 28, 140, 140))
-    glow_draw.ellipse([300, 1200, 1400, 2100], fill=(25, 60, 130, 140))
-    glow = glow.filter(ImageFilter.GaussianBlur(160))
+    glow_draw.ellipse([w // 2 - 400, 100, w // 2 + 400, 700], fill=(accent_rgb[0] // 3, accent_rgb[1] // 3, accent_rgb[2] // 3, 70))
+    glow_draw.ellipse([w // 2 - 350, 1200, w // 2 + 350, 1850], fill=(60, 30, 110, 80))
+    glow = glow.filter(ImageFilter.GaussianBlur(140))
     img = Image.alpha_composite(img, glow)
     draw = ImageDraw.Draw(img)
 
-    # Top Brand Header - Centered at y=115, completely clear of phone notch and FB top icons
-    brand_txt = "TWINGENIE"
-    sub_txt = "•  PERSONAL AI"
-    b_font = f_black(26)
-    s_font = f_bold(24)
-    b_bbox = draw.textbbox((0, 0), brand_txt, font=b_font)
-    s_bbox = draw.textbbox((0, 0), sub_txt, font=s_font)
-    b_w = b_bbox[2] - b_bbox[0]
-    s_w = s_bbox[2] - s_bbox[0]
-    dot_d = 16
-    gap1 = 12
-    gap2 = 14
-    pad_h = 24
-    pill_w = pad_h + dot_d + gap1 + b_w + gap2 + s_w + pad_h
-    pill_h = 52
-    pill_x = int((w - pill_w) / 2)
-    pill_y = 115
+    # 1. Status Bar (y: 35 to 80)
+    draw.text((75, 42), "9:41", font=f_bold(24), fill=TEXT_MUTED)
+    # Dynamic Island Pill
+    draw.rounded_rectangle([440, 38, 640, 74], radius=18, fill=(12, 10, 24), outline=(45, 38, 70), width=1)
+    draw.ellipse([605, 48, 621, 64], fill=(24, 20, 42)) # Camera lens dot
+    # Status Icons
+    draw.text((915, 42), "5G  100%", font=f_bold(22), fill=TEXT_MUTED)
 
-    draw.rounded_rectangle([pill_x, pill_y, pill_x + pill_w, pill_y + pill_h], radius=26, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
-    dot_y = pill_y + int((pill_h - dot_d) / 2)
-    draw.ellipse([pill_x + pad_h, dot_y, pill_x + pad_h + dot_d, dot_y + dot_d], fill=PURPLE_GLOW)
-    draw.text((pill_x + pad_h + dot_d + gap1, pill_y + 10), brand_txt, font=b_font, fill=TEXT_WHITE)
-    draw.text((pill_x + pad_h + dot_d + gap1 + b_w + gap2, pill_y + 12), sub_txt, font=s_font, fill=CYAN_ACCENT)
+    # 2. App Navigation Bar (y: 95 to 160)
+    draw.rounded_rectangle([60, 95, 1020, 160], radius=20, fill=(22, 18, 42, 240), outline=CARD_SURFACE, width=2)
+    draw.text((90, 114), "TWINGENIE", font=f_black(26), fill=TEXT_WHITE)
+    draw.text((260, 116), "•  COGNITIVE MIRROR", font=f_bold(22), fill=(56, 189, 248))
+    # Active mode pill badge at right of app bar
+    r_tag = mcfg['badge']
+    r_bbox = draw.textbbox((0, 0), r_tag, font=f_bold(18))
+    r_w = r_bbox[2] - r_bbox[0] + 24
+    draw.rounded_rectangle([990 - r_w, 110, 990, 146], radius=12, fill=mcfg['bgCard'], outline=mcfg['accent'], width=1)
+    draw.text((990 - r_w + 12, 118), r_tag, font=f_bold(18), fill=mcfg['accent'])
+
+    # 3. 4-Mode Switcher Tabs Bar (y: 175 to 232)
+    # [ ⚡ Normal ]  [ 🌿 Reflect ]  [ 🔥 Honest ]  [ ⏳ Future ]
+    tabs = [
+        ('normal', '⚡ NORMAL'),
+        ('reflective', '🌿 REFLECT'),
+        ('dark', '🔥 HONEST'),
+        ('future', '⏳ FUTURE')
+    ]
+    tab_w = 215
+    start_x = 65
+    gap = 20
+    for i, (mid, label) in enumerate(tabs):
+        tx = start_x + i * (tab_w + gap)
+        ty = 175
+        is_active = (mid == active_mode_id)
+        if is_active:
+            draw.rounded_rectangle([tx, ty, tx + tab_w, ty + 50], radius=18, fill=mcfg['bgCard'], outline=mcfg['accent'], width=3)
+            draw.ellipse([tx + 14, ty + 18, tx + 28, ty + 32], fill=mcfg['accent'])
+            draw.text((tx + 34, ty + 13), label, font=f_black(20), fill=TEXT_WHITE)
+        else:
+            draw.rounded_rectangle([tx, ty, tx + tab_w, ty + 50], radius=18, fill=(18, 15, 34, 210), outline=(55, 42, 85), width=1)
+            draw.text((tx + 20, ty + 14), label, font=f_bold(19), fill=TEXT_DIM)
+
     return img, draw
 
-# SCENE 1: HOOK (The Flattery Trap)
+# =========================================================================
+# SCENE 1: THE 2 AM DILEMMA / CONFESSION (0s - 5.2s)
+# =========================================================================
 def render_scene1(spec, out_path):
     w, h = 1080, 1920
-    img, draw = create_base_canvas(w, h)
-    
-    tag = sanitize_text(spec.get('tag', 'COGNITIVE ARCHITECTURE')).upper()
-    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
-    tag_w = tag_bbox[2] - tag_bbox[0]
-    pill_y = 185
-    pad_x = 30
-    pill_w = tag_w + pad_x * 2
-    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(45, 24, 90, 240), outline=PURPLE_PRIMARY, width=2)
-    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, mcfg['id'])
 
-    hook_title = sanitize_text(spec.get('hook', 'What happens when your AI stops flattering you?'))
-    cur_y = draw_wrapped_text(draw, hook_title, f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
-    
-    c1_y = cur_y + 35
-    c1_h = 270
-    draw.rounded_rectangle([90, c1_y, 910, c1_y + c1_h], radius=28, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=2)
-    draw.rounded_rectangle([90, c1_y + 25, 98, c1_y + c1_h - 25], radius=4, fill=PURPLE_GLOW)
-    draw.text((130, c1_y + 36), "THE FLATTERY TRAP", font=f_black(30), fill=PURPLE_GLOW)
-    draw_wrapped_text(draw, "Conventional chatbots agree with your doubts, validate procrastination, and reset every single session.", f_bold(32), TEXT_WHITE, 130, c1_y + 98, 740, 1.35)
+    # Top Viral Hook Banner (y: 255)
+    hook_text = sanitize_text(spec.get('hook', "POV: You told an AI the thing you can't admit to anyone 💀"))
+    draw.rounded_rectangle([60, 255, 1020, 325], radius=20, fill=(35, 20, 50, 240), outline=mcfg['accent'], width=2)
+    draw.text((95, 275), hook_text, font=f_black(26), fill=TEXT_WHITE)
 
-    takeaways = [
-        "Why flattery AI creates dangerous confirmation loops",
-        "How 4 cognitive perspectives challenge your blind spots",
-        "Why persistent memory turns chat into real growth"
+    # User Chat Bubble (Right-Aligned iMessage Dark Style)
+    user_dilemma = sanitize_text(spec.get('userExcuse') or spec.get('userDilemma') or mcfg['defaultDilemma'])
+    bubble_w = 780
+    bubble_x1 = 1020 - bubble_w
+    bubble_x2 = 1020
+    bubble_y1 = 360
+
+    u_height = get_text_height(draw, f'"{user_dilemma}"', f_bold(32), bubble_w - 70, 1.32)
+    bubble_y2 = bubble_y1 + u_height + 95
+
+    # User Bubble Background
+    draw.rounded_rectangle([bubble_x1, bubble_y1, bubble_x2, bubble_y2], radius=26, fill=(45, 32, 82), outline=(95, 70, 155), width=2)
+    draw.text((bubble_x1 + 32, bubble_y1 + 22), "You (Seeking Validation):", font=f_black(22), fill=(180, 160, 235))
+    draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(32), TEXT_WHITE, bubble_x1 + 32, bubble_y1 + 58, bubble_w - 70, 1.32)
+    draw.text((bubble_x2 - 195, bubble_y2 - 32), "2:14 AM • Delivered ✓✓", font=f_bold(18), fill=TEXT_DIM)
+
+    # Mid Dilemma Analysis Card (y: bubble_y2 + 40)
+    card_y1 = bubble_y2 + 45
+    card_y2 = card_y1 + 420
+    draw.rounded_rectangle([60, card_y1, 1020, card_y2], radius=28, fill=CARD_SURFACE, outline=BORDER_DEFAULT, width=2)
+    
+    # Left accent vertical strip
+    draw.rounded_rectangle([60, card_y1 + 20, 72, card_y2 - 20], radius=6, fill=mcfg['accent'])
+    
+    tag = sanitize_text(spec.get('tag', 'COGNITIVE BLIND SPOT')).upper()
+    draw.text((100, card_y1 + 32), f"[ THE INNER CONFLICT: {tag} ]", font=f_black(26), fill=mcfg['accent'])
+    
+    bullets = [
+        "Why standard thinking rationalizes avoidance as 'self-care'",
+        "How agreeable yes-man chatbots trap you in recurring loops",
+        f"How TwinGenie's {mcfg['fullName']} exposes the real root cause"
     ]
-    ty = c1_y + c1_h + 35
-    draw.text((90, ty), "INSIDE THIS BREAKDOWN:", font=f_black(26), fill=TEXT_MUTED)
-    ty += 48
-    for i, t in enumerate(takeaways, 1):
-        box_h = 125
-        draw.rounded_rectangle([90, ty, 910, ty + box_h], radius=22, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=2)
-        draw.rounded_rectangle([115, ty + 24, 185, ty + box_h - 24], radius=16, fill=(45, 30, 95))
-        draw.text((130, ty + 44), f"0{i}", font=f_black(30), fill=CYAN_ACCENT)
-        draw_wrapped_text(draw, t, f_bold(30), TEXT_WHITE, 210, ty + 30, 670, 1.28)
-        ty += box_h + 20
+    by = card_y1 + 95
+    for i, b in enumerate(bullets, 1):
+        draw.rounded_rectangle([100, by, 165, by + 50], radius=14, fill=(42, 28, 75))
+        draw.text((118, by + 12), f"0{i}", font=f_black(24), fill=(56, 189, 248))
+        draw_wrapped_text(draw, b, f_bold(28), TEXT_WHITE, 185, by + 8, 790, 1.25)
+        by += 90
 
-    anchor_y = ty + 15
-    draw.rounded_rectangle([90, anchor_y, 910, anchor_y + 130], radius=24, fill=(35, 20, 65, 240), outline=PURPLE_PRIMARY, width=2)
-    draw.text((130, anchor_y + 26), "EXPERIMENT IN ACTION", font=f_black(22), fill=AMBER_ACCENT)
-    draw_wrapped_text(draw, "Watch what happens when AI replaces flattery with truth >>", f_bold(26), TEXT_WHITE, 130, anchor_y + 68, 740, 1.25)
+    # Bottom Status Bar (clears bottom IG overlay)
+    draw.rounded_rectangle([60, 1340, 1020, 1420], radius=20, fill=(24, 18, 45, 230), outline=(70, 52, 110), width=1)
+    draw.ellipse([95, 1368, 115, 1388], fill=mcfg['accent'])
+    draw.text((130, 1367), f"TwinGenie scanning longitudinal memory for recurring self-deception...", font=f_bold(22), fill=TEXT_MUTED)
 
     img.save(out_path, quality=98)
 
-# SCENE 2: CONVENTIONAL BOT (The Yes-Man Trap)
+# =========================================================================
+# SCENE 2: THE YES-MAN TRAP / STANDARD AI (5.2s - 10.5s)
+# =========================================================================
 def render_scene2(spec, out_path):
     w, h = 1080, 1920
-    img, draw = create_base_canvas(w, h)
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, mcfg['id'])
 
-    tag = "STANDARD CHATBOT • THE TRAP"
-    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
-    tag_w = tag_bbox[2] - tag_bbox[0]
-    pill_y = 185
-    pad_x = 30
-    pill_w = tag_w + pad_x * 2
-    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(60, 25, 40, 240), outline=ROSE_ACCENT, width=2)
-    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=ROSE_ACCENT)
+    # Warning Header Banner
+    draw.rounded_rectangle([60, 255, 1020, 325], radius=20, fill=(55, 18, 30, 240), outline=(244, 63, 94), width=2)
+    draw.text((95, 275), "❌ WHAT STANDARD AI SAYS (THE FLATTERY TRAP)", font=f_black(26), fill=(244, 63, 94))
 
-    title_y = draw_wrapped_text(draw, "The Yes-Man AI Trap", f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
-    sub_y = draw_wrapped_text(draw, "When you make an excuse, generic AI agrees with you:", f_bold(30), TEXT_WHITE, 90, title_y + 18, 820, 1.25)
+    # User Message (Compact at top for context)
+    user_dilemma = sanitize_text(spec.get('userExcuse') or spec.get('userDilemma') or mcfg['defaultDilemma'])
+    draw.rounded_rectangle([320, 350, 1020, 460], radius=20, fill=(45, 32, 82), outline=(95, 70, 155), width=2)
+    draw.text((345, 365), "You:", font=f_black(20), fill=(180, 160, 235))
+    draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(26), TEXT_WHITE, 345, 395, 630, 1.25)
 
-    c1_y = sub_y + 35
-    c1_h = 520
-    draw.rounded_rectangle([90, c1_y, 910, c1_y + c1_h], radius=28, fill=SURFACE_DARK, outline=(140, 50, 75), width=2)
+    # Standard Bot Response Bubble (Left-aligned, dull neutral gray)
+    bot_reply = sanitize_text(spec.get('botReply', mcfg['defaultBot']))
+    bubble_w = 840
+    bubble_x1 = 60
+    bubble_x2 = 60 + bubble_w
+    bubble_y1 = 490
+
+    b_height = get_text_height(draw, f'"{bot_reply}"', f_bold(32), bubble_w - 70, 1.32)
+    bubble_y2 = bubble_y1 + b_height + 115
+
+    draw.rounded_rectangle([bubble_x1, bubble_y1, bubble_x2, bubble_y2], radius=26, fill=(32, 34, 46), outline=(85, 90, 115), width=2)
     
-    # User Excuse Bubble
-    draw.text((130, c1_y + 32), "You (Feeling Avoidant & Overwhelmed):", font=f_black(24), fill=TEXT_MUTED)
-    draw.rounded_rectangle([130, c1_y + 75, 870, c1_y + 225], radius=20, fill=(35, 20, 42, 240), outline=(90, 35, 55), width=2)
-    user_txt = spec.get('userExcuse', "I'm overwhelmed with 10 tasks. Maybe I should just take the week off to reset.")
-    draw_wrapped_text(draw, f"\"{user_txt}\"", f_bold(30), TEXT_WHITE, 160, c1_y + 105, 670, 1.30)
+    # Bot Header Bar inside bubble
+    draw.ellipse([bubble_x1 + 32, bubble_y1 + 24, bubble_x1 + 68, bubble_y1 + 60], fill=(60, 65, 85))
+    draw.text((bubble_x1 + 42, bubble_y1 + 26), "🤖", font=f_bold(24), fill=TEXT_WHITE)
+    draw.text((bubble_x1 + 82, bubble_y1 + 28), "STANDARD AI CHATBOT", font=f_black(24), fill=TEXT_MUTED)
+    draw.rounded_rectangle([bubble_x2 - 210, bubble_y1 + 22, bubble_x2 - 30, bubble_y1 + 58], radius=10, fill=(65, 20, 30))
+    draw.text((bubble_x2 - 195, bubble_y1 + 30), "THE YES-MAN", font=f_bold(18), fill=(244, 63, 94))
 
-    # Generic Bot Reply Bubble
-    draw.text((130, c1_y + 255), "Generic AI Chatbot (Flattery Mode):", font=f_black(24), fill=ROSE_ACCENT)
-    draw.rounded_rectangle([130, c1_y + 298, 870, c1_y + 468], radius=20, fill=(35, 20, 42, 240), outline=(90, 35, 55), width=2)
-    bot_txt = spec.get('botReply', "Totally understandable! Rest is productive. Don't push yourself today—you deserve a break!")
-    draw_wrapped_text(draw, f"\"{bot_txt}\"", f_bold(30), TEXT_WHITE, 160, c1_y + 330, 670, 1.30)
+    draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(32), (220, 225, 240), bubble_x1 + 32, bubble_y1 + 75, bubble_w - 70, 1.32)
 
-    # Consequence Card
-    c2_y = c1_y + c1_h + 30
-    c2_h = 220
-    draw.rounded_rectangle([90, c2_y, 910, c2_y + c2_h], radius=24, fill=(45, 18, 32, 240), outline=ROSE_ACCENT, width=2)
-    draw.text((130, c2_y + 34), "[THE CONSEQUENCE]", font=f_black(26), fill=ROSE_ACCENT)
-    draw_wrapped_text(draw, "Your cognitive blind spot was reinforced. Avoidance disguised as self-care. Zero progress made.", f_bold(30), TEXT_WHITE, 130, c2_y + 88, 740, 1.35)
-
-    # Bottom anchor card
-    anchor_y = c2_y + c2_h + 30
-    anchor_h = 130
-    draw.rounded_rectangle([90, anchor_y, 910, anchor_y + anchor_h], radius=22, fill=(30, 20, 50, 240), outline=BORDER_PURPLE, width=2)
-    draw.text((130, anchor_y + 26), "COMING NEXT >>", font=f_black(22), fill=CYAN_ACCENT)
-    draw_wrapped_text(draw, "What happens when an AI actually remembers your patterns?", f_bold(26), TEXT_WHITE, 130, anchor_y + 68, 740, 1.25)
+    # Bottom Callout: The Harm of Sycophancy
+    warn_y1 = bubble_y2 + 45
+    warn_y2 = warn_y1 + 270
+    draw.rounded_rectangle([60, warn_y1, 1020, warn_y2], radius=26, fill=(35, 14, 24, 240), outline=(244, 63, 94), width=2)
+    draw.text((95, warn_y1 + 30), "[ THE CONSEQUENCE: WHY THIS HURTS YOU ]", font=f_black(26), fill=(244, 63, 94))
+    warn_bullets = [
+        "Reinforces self-sabotage by validating comfort zones",
+        "Disguises avoidance as 'self-care' and kills forward momentum",
+        "Resets memory every chat: never notices your repeating excuses"
+    ]
+    wy = warn_y1 + 80
+    for wb in warn_bullets:
+        draw.text((95, wy), "•", font=f_black(26), fill=(244, 63, 94))
+        draw_wrapped_text(draw, wb, f_bold(26), TEXT_WHITE, 125, wy, 840, 1.25)
+        wy += 55
 
     img.save(out_path, quality=98)
 
-# SCENE 3: TWINGENIE HONEST PERSPECTIVE
+# =========================================================================
+# SCENE 3: THE TWINGENIE BREAKTHROUGH (10.5s - 17.5s)
+# =========================================================================
 def render_scene3(spec, out_path):
     w, h = 1080, 1920
-    img, draw = create_base_canvas(w, h)
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, mcfg['id'])
 
-    tag = "HONEST MODE • NO FLATTERY"
-    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
-    tag_w = tag_bbox[2] - tag_bbox[0]
-    pill_y = 185
-    pad_x = 30
-    pill_w = tag_w + pad_x * 2
-    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(35, 22, 85, 240), outline=PURPLE_PRIMARY, width=2)
-    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
+    # Breakthrough Header Banner with mode accent
+    draw.rounded_rectangle([60, 255, 1020, 325], radius=20, fill=mcfg['bgCard'], outline=mcfg['accent'], width=3)
+    draw.text((95, 275), f"✅ WHAT TWINGENIE SAYS ({mcfg['fullName']})", font=f_black(26), fill=TEXT_WHITE)
 
-    title_y = draw_wrapped_text(draw, "The Honest Perspective", f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
-    sub_y = draw_wrapped_text(draw, "What happens when your companion holds persistent memory:", f_bold(30), TEXT_WHITE, 90, title_y + 18, 820, 1.25)
+    # User Message (Compact at top)
+    user_dilemma = sanitize_text(spec.get('userExcuse') or spec.get('userDilemma') or mcfg['defaultDilemma'])
+    draw.rounded_rectangle([320, 350, 1020, 460], radius=20, fill=(45, 32, 82), outline=(95, 70, 155), width=2)
+    draw.text((345, 365), "You:", font=f_black(20), fill=(180, 160, 235))
+    draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(26), TEXT_WHITE, 345, 395, 630, 1.25)
 
-    c1_y = sub_y + 35
-    c1_h = 530
-    draw.rounded_rectangle([90, c1_y, 910, c1_y + c1_h], radius=28, fill=SURFACE_LIGHT, outline=BORDER_PURPLE, width=2)
-    draw.text((130, c1_y + 34), "TwinGenie (Honest Twin):", font=f_black(28), fill=PURPLE_GLOW)
+    # TwinGenie Glowing Chat Bubble
+    twin_reply = sanitize_text(spec.get('twinReply', mcfg['defaultReply']))
+    bubble_w = 880
+    bubble_x1 = 60
+    bubble_x2 = 60 + bubble_w
+    bubble_y1 = 490
+
+    t_height = get_text_height(draw, f'"{twin_reply}"', f_bold(32), bubble_w - 70, 1.34)
+    bubble_y2 = bubble_y1 + t_height + 155
+
+    # Glowing Card Surface
+    draw.rounded_rectangle([bubble_x1, bubble_y1, bubble_x2, bubble_y2], radius=28, fill=(22, 16, 42), outline=mcfg['accent'], width=3)
     
-    draw.rounded_rectangle([130, c1_y + 82, 670, c1_y + 132], radius=14, fill=(45, 30, 95))
-    draw.text((150, c1_y + 96), "• RECALLED FROM MEMORY (14 DAYS AGO)", font=f_black(19), fill=CYAN_ACCENT)
+    # Twin Header inside bubble
+    draw.ellipse([bubble_x1 + 30, bubble_y1 + 22, bubble_x1 + 68, bubble_y1 + 60], fill=mcfg['accent'])
+    draw.text((bubble_x1 + 38, bubble_y1 + 24), "🪞", font=f_bold(24), fill=TEXT_WHITE)
+    draw.text((bubble_x1 + 82, bubble_y1 + 28), f"TWINGENIE • {mcfg['fullName']}", font=f_black(24), fill=TEXT_WHITE)
 
-    draw.rounded_rectangle([130, c1_y + 155, 870, c1_y + 480], radius=22, fill=(18, 14, 40, 240), outline=CARD_BORDER, width=2)
-    twin_txt = spec.get('twinReply', "Memory check: You said this exact same thing 2 weeks ago before the investor call. You aren't burnt out—you're scared of market feedback. Close the 9 tabs and execute.")
-    draw_wrapped_text(draw, f"\"{twin_txt}\"", f_bold(31), TEXT_WHITE, 160, c1_y + 190, 670, 1.38)
+    # Persistent Memory Tag Pill
+    mem_y = bubble_y1 + 72
+    draw.rounded_rectangle([bubble_x1 + 30, mem_y, bubble_x1 + 620, mem_y + 40], radius=10, fill=(35, 25, 65))
+    draw.text((bubble_x1 + 45, mem_y + 8), "🧠 RECALLED FROM MEMORY: 14 DAYS AGO", font=f_bold(19), fill=(56, 189, 248))
 
-    # Growth result card
-    c2_y = c1_y + c1_h + 30
-    c2_h = 210
-    draw.rounded_rectangle([90, c2_y, 910, c2_y + c2_h], radius=24, fill=(18, 42, 34, 240), outline=EMERALD_ACCENT, width=2)
-    draw.text((130, c2_y + 32), "[THE GROWTH RESULT]", font=f_black(26), fill=EMERALD_ACCENT)
-    draw_wrapped_text(draw, "Exposes the avoidance loop and drives decisive immediate action.", f_bold(30), TEXT_WHITE, 130, c2_y + 82, 740, 1.32)
+    # The Core Response Text
+    draw_wrapped_text(draw, f'"{twin_reply}"', f_bold(32), TEXT_WHITE, bubble_x1 + 32, bubble_y1 + 125, bubble_w - 70, 1.34)
 
-    # Bottom anchor
-    anchor_y = c2_y + c2_h + 30
-    anchor_h = 130
-    draw.rounded_rectangle([90, anchor_y, 910, anchor_y + anchor_h], radius=22, fill=(25, 22, 60, 240), outline=BORDER_PURPLE, width=2)
-    draw.text((130, anchor_y + 26), "CORE ARCHITECTURE", font=f_black(22), fill=CYAN_ACCENT)
-    draw_wrapped_text(draw, "Longitudinal Memory  •  4 Perspectives  •  Zero Flattery", f_bold(26), TEXT_WHITE, 130, anchor_y + 68, 740, 1.25)
+    # Bottom The Breakthrough Card
+    shift_y1 = bubble_y2 + 40
+    shift_y2 = shift_y1 + 210
+    draw.rounded_rectangle([60, shift_y1, 1020, shift_y2], radius=24, fill=(20, 35, 30) if mcfg['id'] == 'reflective' else (35, 20, 50), outline=mcfg['accent'], width=2)
+    draw.text((95, shift_y1 + 26), f"[ THE SHIFT: {mcfg['badge']} ]", font=f_black(26), fill=mcfg['accent'])
+    shift_desc = sanitize_text(spec.get('shift', mcfg['shift']))
+    draw_wrapped_text(draw, shift_desc, f_bold(28), TEXT_WHITE, 95, shift_y1 + 72, 830, 1.30)
 
     img.save(out_path, quality=98)
 
-# SCENE 4: CTA (Meet Your Digital Twin)
+# =========================================================================
+# SCENE 4: 4 PERSPECTIVES SHOWCASE & CTA (17.5s - 22.5s)
+# =========================================================================
 def render_scene4(spec, out_path):
     w, h = 1080, 1920
-    img, draw = create_base_canvas(w, h)
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, mcfg['id'])
 
-    tag = "AVAILABLE ON GOOGLE PLAY"
-    tag_bbox = draw.textbbox((0, 0), tag, font=f_black(22))
-    tag_w = tag_bbox[2] - tag_bbox[0]
-    pill_y = 185
-    pad_x = 30
-    pill_w = tag_w + pad_x * 2
-    draw.rounded_rectangle([90, pill_y, 90 + pill_w, pill_y + 48], radius=24, fill=(35, 22, 85, 240), outline=PURPLE_PRIMARY, width=2)
-    draw.text((90 + pad_x, pill_y + 11), tag, font=f_black(22), fill=CYAN_ACCENT)
+    # Title & Subtitle
+    draw.text((60, 255), "Stop Talking to AI That Forgets You.", font=f_black(48), fill=TEXT_WHITE)
+    draw.text((60, 320), "Meet the only AI with 4 distinct cognitive perspectives:", font=f_bold(28), fill=(56, 189, 248))
 
-    title_y = draw_wrapped_text(draw, "Meet Your Digital Twin Today", f_black(58), TEXT_WHITE, 90, 255, 820, 1.18)
-    sub_y = draw_wrapped_text(draw, "Stop using AI that forgets you. Start building real self-awareness.", f_bold(30), TEXT_WHITE, 90, title_y + 18, 820, 1.25)
-
-    box_y = sub_y + 35
-    box_h = 560
-    draw.rounded_rectangle([90, box_y, 910, box_y + box_h], radius=32, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=3)
-    
-    # Header inside card
-    draw.text((135, box_y + 38), "TWINGENIE", font=f_black(38), fill=TEXT_WHITE)
-    tg_bbox = draw.textbbox((135, box_y + 38), "TWINGENIE", font=f_black(38))
-    draw.text((tg_bbox[2] + 20, box_y + 48), "• PERSONAL DIGITAL TWIN", font=f_bold(24), fill=CYAN_ACCENT)
-
-    points = [
-        "35-Question Big Five personality baseline",
-        "4 perspectives: Normal, Reflective, Honest, Future",
-        "Persistent semantic memory across conversations",
-        "100% private, self-guided reflection"
+    # 4 Mode Cards Stacked
+    cards = [
+        ('dark', '🔥 HONEST / DARK TWIN', 'Zero-flattery reality check: cuts through excuses and rationalizations', (255, 59, 92)),
+        ('future', '⏳ FUTURE SELF (2031)', '5-years-wiser perspective: reframes short-term anxiety and drama', (255, 184, 0)),
+        ('reflective', '🌿 REFLECTIVE TWIN', 'Therapist-grade empathy: decompression without toxic positivity', (52, 211, 153)),
+        ('normal', '⚡ NORMAL TWIN', 'Daily alter-ego: persistent memory across all conversations', (56, 189, 248))
     ]
-    py = box_y + 115
-    for pt in points:
-        draw.ellipse([135, py + 2, 165, py + 32], fill=(45, 30, 95))
-        draw.line([(135 + 8, py + 2 + 15), (135 + 14, py + 2 + 22), (135 + 23, py + 2 + 8)], fill=EMERALD_ACCENT, width=4)
-        draw.text((185, py + 2), pt, font=f_bold(28), fill=TEXT_WHITE)
-        py += 76
+    cy = 385
+    for mid, name, desc, col in cards:
+        is_hero = (mid == mcfg['id'])
+        card_h = 135
+        border_col = col if is_hero else (65, 50, 100)
+        border_w = 3 if is_hero else 1
+        bg = (38, 18, 38) if is_hero else (24, 18, 44)
+        
+        draw.rounded_rectangle([60, cy, 1020, cy + card_h], radius=20, fill=bg, outline=border_col, width=border_w)
+        # Left accent dot
+        draw.ellipse([88, cy + 26, 108, cy + 46], fill=col)
+        draw.text((125, cy + 22), name, font=f_black(26), fill=TEXT_WHITE if is_hero else (230, 235, 245))
+        draw_wrapped_text(draw, desc, f_bold(22), TEXT_MUTED, 125, cy + 62, 850, 1.25)
+        cy += card_h + 20
 
-    # Rating strip inside card - perfectly centered with 5 gold stars
-    star_strip_y = box_y + 455
-    strip_x1, strip_x2 = 135, 865
-    strip_w = strip_x2 - strip_x1
-    draw.rounded_rectangle([strip_x1, star_strip_y, strip_x2, star_strip_y + 70], radius=18, fill=(28, 22, 58, 240), outline=CARD_BORDER, width=2)
-    
-    r_font = f_bold(24)
-    r_text = "5.0 Rating • Google Play Store • Free"
-    t_bbox = draw.textbbox((0, 0), r_text, font=r_font)
-    t_w = t_bbox[2] - t_bbox[0]
-    stars_w = 5 * 26 + 4 * 8
-    gap_stars_text = 18
-    total_rating_content_w = stars_w + gap_stars_text + t_w
-    start_x = strip_x1 + int((strip_w - total_rating_content_w) / 2)
+    # Big Download Button for Google Play
+    btn_y = cy + 30
+    btn_h = 100
+    draw.rounded_rectangle([60, btn_y, 1020, btn_y + btn_h], radius=28, fill=(147, 51, 234), outline=(192, 132, 252), width=3)
+    # Play store triangle
+    draw.polygon([(115, btn_y + 32), (115, btn_y + 68), (148, btn_y + 50)], fill=TEXT_WHITE)
+    draw.text((170, btn_y + 30), "DOWNLOAD TWINGENIE ON GOOGLE PLAY", font=f_black(32), fill=TEXT_WHITE)
 
-    for s_idx in range(5):
-        draw_star(draw, start_x + 13 + s_idx * 34, star_strip_y + 35, r_outer=12, r_inner=5.5, fill=AMBER_ACCENT)
-    draw.text((start_x + stars_w + gap_stars_text, star_strip_y + 21), r_text, font=r_font, fill=AMBER_ACCENT)
+    # Trust Rating Strip
+    star_y = btn_y + btn_h + 30
+    draw.rounded_rectangle([60, star_y, 1020, star_y + 70], radius=18, fill=(24, 18, 48), outline=CARD_SURFACE, width=1)
+    draw.text((110, star_y + 20), "⭐️⭐️⭐️⭐️⭐️  5.0 Rating  •  100% Free Baseline Assessment  •  Google Play", font=f_bold(23), fill=TEXT_MUTED)
 
-    # CTA Button
-    btn_y = box_y + box_h + 35
-    btn_h = 135
-    draw.rounded_rectangle([90, btn_y, 910, btn_y + btn_h], radius=32, fill=PURPLE_PRIMARY)
-    btn_label = "Download on Google Play"
-    b_bbox = draw.textbbox((0, 0), btn_label, font=f_black(38))
-    b_w = b_bbox[2] - b_bbox[0]
-    total_cta_w = 38 + 25 + b_w
-    tri_x = int((1080 - total_cta_w) / 2)
-    draw.polygon([(tri_x, btn_y + 48), (tri_x + 36, btn_y + 68), (tri_x, btn_y + 88)], fill=TEXT_WHITE)
-    draw.text((tri_x + 60, btn_y + 46), btn_label, font=f_black(38), fill=TEXT_WHITE)
-
-    # Trust Badges Bar
-    trust_y = btn_y + btn_h + 30
-    draw.text((130, trust_y), "• 100% PRIVATE & ENCRYPTED", font=f_bold(24), fill=TEXT_MUTED)
-    draw.text((580, trust_y), "• INSTANT LOCAL BASELINE", font=f_bold(24), fill=CYAN_ACCENT)
-
-    bottom_txt = "twingenie.app  •  Search \"TwinGenie\" on Google Play"
-    bm_bbox = draw.textbbox((0, 0), bottom_txt, font=f_bold(25))
-    bm_w = bm_bbox[2] - bm_bbox[0]
-    bm_x = int((1080 - bm_w) / 2)
-    draw.text((bm_x, trust_y + 44), bottom_txt, font=f_bold(25), fill=TEXT_WHITE)
+    # Bottom Bio Link Text
+    draw.text((280, star_y + 100), "Search \"TwinGenie\" on Google Play or link in bio!", font=f_black(22), fill=(56, 189, 248))
 
     img.save(out_path, quality=98)
 
 # SYNTHESIZE LIGHTWEIGHT AMBIENT AUDIO (<4MB RAM via native FFmpeg)
-def generate_ambient_audio(output_path, duration=36.0):
+def generate_ambient_audio(output_path, duration=24.0):
     cmd = [
         'ffmpeg', '-y',
         '-f', 'lavfi',
@@ -447,35 +494,6 @@ def generate_ambient_audio(output_path, duration=36.0):
         output_path
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-# GENERATE SCENE VOICE NARATION (ASYNC EDGE-TTS)
-async def generate_voiceover_edge(text, out_mp3, voice='en-US-ChristopherNeural', rate='+5%'):
-    import edge_tts
-    # Apply phonetic normalization so brand and acronyms sound crystal clear
-    spoken_text = normalize_phonetics(text)
-    communicate = edge_tts.Communicate(spoken_text, voice, rate=rate)
-    await asyncio.wait_for(communicate.save(out_mp3), timeout=12.0)
-
-def generate_voiceover_fallback_say(text, out_mp3):
-    if os.path.exists('/usr/bin/say'):
-        spoken_text = normalize_phonetics(text)
-        aiff_tmp = out_mp3 + '.aiff'
-        subprocess.run(['say', '-v', 'Samantha', '-r', '175', spoken_text, '-o', aiff_tmp], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['ffmpeg', '-y', '-i', aiff_tmp, '-filter:a', 'volume=1.8', '-c:a', 'libmp3lame', '-b:a', '128k', out_mp3], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if os.path.exists(aiff_tmp):
-            os.remove(aiff_tmp)
-        return True
-    return False
-
-def get_audio_duration(file_path):
-    cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
-    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if res.returncode == 0:
-        try:
-            return float(res.stdout.decode('utf-8').strip())
-        except Exception:
-            pass
-    return 7.5
 
 def render_reel(spec, output_mp4_path):
     temp_dir = os.path.dirname(output_mp4_path)
@@ -491,67 +509,12 @@ def render_reel(spec, output_mp4_path):
     render_scene3(spec, s3)
     render_scene4(spec, s4)
 
-    # Accessible, conversational voiceover narration scripts (~18-20 words per slide for natural pacing)
-    v1_default = "Did you know your AI chatbot always flatters you? It agrees with your excuses, but that trap stops your real growth."
-    v2_default = "When you feel like quitting, a normal bot says: Great idea, take a break! It feels good, but delays your goals."
-    v3_default = "TwinGenie is different. It remembers your conversations over time and speaks honestly, so you can break excuses and take action."
-    v4_default = "Stop using chatbots that forget who you are. Meet your personal digital twin. Download TwinGenie free on Google Play today."
-
-    v1_text = sanitize_text(spec.get('voiceHook', v1_default))
-    v2_text = sanitize_text(spec.get('voiceProblem', v2_default))
-    v3_text = sanitize_text(spec.get('voiceSolution', v3_default))
-    v4_text = sanitize_text(spec.get('voiceCta', v4_default))
-
-    v1_file = os.path.join(temp_dir, 'voice_s1.mp3')
-    v2_file = os.path.join(temp_dir, 'voice_s2.mp3')
-    v3_file = os.path.join(temp_dir, 'voice_s3.mp3')
-    v4_file = os.path.join(temp_dir, 'voice_s4.mp3')
-
-    # Fast, rock-solid synthesis: Clean ambient soundtrack with high-contrast visual slides
-    has_voices = False
-
-    # Calculate scene timings dynamically based on narration duration (~20-24s high-retention Reel)
-    if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
-        d1 = get_audio_duration(v1_file)
-        d2 = get_audio_duration(v2_file)
-        d3 = get_audio_duration(v3_file)
-        d4 = get_audio_duration(v4_file)
-    else:
-        d1, d2, d3, d4 = 5.2, 5.5, 5.5, 5.0
-
-    t1 = max(5.2, d1 + 0.3)
-    t2 = max(5.5, d2 + 0.3)
-    t3 = max(5.5, d3 + 0.3)
-    t4 = max(5.5, d4 + 0.5)
+    # Dynamic Scene Timings (~21.5s high-retention vertical Reel)
+    t1 = 5.2   # Scene 1: Hook & User Dilemma (5.2s)
+    t2 = 5.3   # Scene 2: Standard Yes-Man AI (5.3s)
+    t3 = 7.0   # Scene 3: The Active Twin Mode Breakthrough (7.0s)
+    t4 = 5.0   # Scene 4: 4 Perspectives & Download CTA (5.0s)
     total_dur = t1 + t2 + t3 + t4
-
-    # Compile Voiceover Stream with precise scene offsets
-    voice_track = os.path.join(temp_dir, 'voiceover_track.m4a')
-    if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
-        delay1 = int(250)
-        delay2 = int((t1 + 0.15) * 1000)
-        delay3 = int((t1 + t2 + 0.15) * 1000)
-        delay4 = int((t1 + t2 + t3 + 0.15) * 1000)
-
-        v_cmd = [
-            'ffmpeg', '-y',
-            '-i', v1_file,
-            '-i', v2_file,
-            '-i', v3_file,
-            '-i', v4_file,
-            '-filter_complex',
-            f'[0:a]adelay={delay1}|{delay1}[a0];'
-            f'[1:a]adelay={delay2}|{delay2}[a1];'
-            f'[2:a]adelay={delay3}|{delay3}[a2];'
-            f'[3:a]adelay={delay4}|{delay4}[a3];'
-            '[a0][a1][a2][a3]amix=inputs=4:duration=longest:dropout_transition=0:normalize=0[vaout]',
-            '-map', '[vaout]',
-            '-c:a', 'aac', '-b:a', '128k',
-            voice_track
-        ]
-        subprocess.run(v_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    else:
-        voice_track = None
 
     # Ambient Music Preparation
     bg_music_file = os.path.join(temp_dir, 'bg_music.m4a')
@@ -561,34 +524,19 @@ def render_reel(spec, output_mp4_path):
         generate_ambient_audio(bg_music_file, duration=total_dur + 3.0)
         bg_source = bg_music_file
 
-    # Mix Final Audio: Voiceover (1.20) + Ambient Ducked Music (0.08)
     final_audio = os.path.join(temp_dir, 'final_soundtrack.m4a')
-    if voice_track and os.path.exists(voice_track):
-        mix_cmd = [
-            'ffmpeg', '-y',
-            '-i', voice_track,
-            '-i', bg_source,
-            '-filter_complex',
-            f'[0:a]aformat=channel_layouts=stereo,volume=1.20[voice];'
-            f'[1:a]aformat=channel_layouts=stereo,volume=0.08,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
-            '[voice][bg]amix=inputs=2:duration=first:dropout_transition=1:normalize=0[aout]',
-            '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-            final_audio
-        ]
-    else:
-        mix_cmd = [
-            'ffmpeg', '-y',
-            '-i', bg_source,
-            '-filter_complex',
-            f'[0:a]volume=0.30,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
-            '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-            final_audio
-        ]
+    mix_cmd = [
+        'ffmpeg', '-y',
+        '-i', bg_source,
+        '-filter_complex',
+        f'[0:a]volume=0.30,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
+        '-map', '[aout]',
+        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
+        final_audio
+    ]
     subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Ultra-Low RAM Concat Demuxer for 512MB VPS (<20MB RAM, loads one image at a time)
+    # Ultra-Low RAM Concat Demuxer for 512MB VPS (<20MB RAM, streams one image at a time)
     concat_txt = os.path.join(temp_dir, 'concat.txt')
     with open(concat_txt, 'w') as f:
         f.write(f"file '{s1}'\nduration {t1:.2f}\n")
@@ -619,7 +567,7 @@ def render_reel(spec, output_mp4_path):
         raise RuntimeError(f"FFmpeg failed: {res.stderr.decode('utf-8')}")
 
     # Clean up temporary artifacts
-    cleanup_files = [s1, s2, s3, s4, v1_file, v2_file, v3_file, v4_file, voice_track, bg_music_file, final_audio, concat_txt]
+    cleanup_files = [s1, s2, s3, s4, bg_music_file, final_audio, concat_txt]
     for p in cleanup_files:
         if p and os.path.exists(p):
             try:
@@ -627,13 +575,16 @@ def render_reel(spec, output_mp4_path):
             except Exception:
                 pass
 
+    mcfg = resolve_mode_config(spec)
     return {
         'success': True,
         'videoPath': output_mp4_path,
         'resolution': '1080x1920',
         'durationSeconds': round(total_dur, 2),
         'fps': 24,
-        'hasVoiceover': has_voices,
+        'mode': mcfg['id'],
+        'modeName': mcfg['fullName'],
+        'hasVoiceover': False,
         'hasBrollBackground': False,
         'hasMusic': True
     }

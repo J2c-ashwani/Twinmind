@@ -187,11 +187,18 @@ router.all('/publish/facebook', requireAdminSecret, async (req, res) => {
             mediaPaths = rendered.pngPaths;
         } else {
             logger.info(`[GROWTH ROUTE] Rendering Reel video for Facebook...`);
+            const schedule = contentGeneratorService.getDailySchedule();
+            const mode = req.query.mode || req.body?.mode || schedule.activeMode?.id || 'dark';
             const rendered = await mediaRendererService.renderReel({
                 campaignId,
                 postId: `post_facebook_reel_${Date.now()}`,
+                mode,
+                modeName: schedule.activeMode?.name || 'Honest / Dark Twin',
                 hook: content.title || theme.hook,
-                tag: content.tag || theme.tag
+                tag: content.tag || theme.tag,
+                userExcuse: req.body?.userExcuse || theme.slides?.[2]?.left?.user,
+                botReply: req.body?.botReply || theme.slides?.[2]?.left?.ai,
+                twinReply: req.body?.twinReply || theme.slides?.[2]?.right?.ai
             });
             videoPath = rendered.videoPath;
         }
@@ -242,11 +249,18 @@ router.all('/publish/instagram', requireAdminSecret, async (req, res) => {
                 pngUrls = rendered.pngUrls;
             } else {
                 logger.info(`[GROWTH ROUTE] Rendering Reel video for Instagram...`);
+                const schedule = contentGeneratorService.getDailySchedule();
+                const mode = req.query.mode || req.body?.mode || schedule.activeMode?.id || 'dark';
                 const rendered = await mediaRendererService.renderReel({
                     campaignId,
                     postId: `post_ig_reel_${Date.now()}`,
+                    mode,
+                    modeName: schedule.activeMode?.name || 'Honest / Dark Twin',
                     hook: content.title || theme.hook,
-                    tag: content.tag || theme.tag
+                    tag: content.tag || theme.tag,
+                    userExcuse: req.body?.userExcuse || theme.slides?.[2]?.left?.user,
+                    botReply: req.body?.botReply || theme.slides?.[2]?.left?.ai,
+                    twinReply: req.body?.twinReply || theme.slides?.[2]?.right?.ai
                 });
                 videoUrl = rendered.videoUrl;
             }
@@ -466,13 +480,15 @@ router.all('/render-test', requireAdminSecret, async (req, res) => {
     try {
         const format = req.query.format || req.body?.format || 'carousel';
         if (format === 'reel') {
+            const mode = req.query.mode || req.body?.mode || 'dark';
             const rendered = await mediaRendererService.renderReel({
                 campaignId: 'test_render',
                 postId: Date.now(),
-                hook: 'When AI Flattery Stops Your Growth',
-                tag: 'SELF-AWARENESS'
+                mode,
+                hook: req.query.hook || 'POV: You told an AI your 2 AM excuses 💀',
+                tag: req.query.tag || 'SELF-AWARENESS'
             });
-            return res.json({ success: true, format: 'reel', rendered });
+            return res.json({ success: true, format: 'reel', mode, rendered });
         }
         const rendered = await mediaRendererService.renderCarousel({
             campaignId: 'test_render',

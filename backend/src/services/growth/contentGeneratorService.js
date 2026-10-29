@@ -341,11 +341,24 @@ class ContentGeneratorService {
         // Day 0: Carousel (both), Day 1: Reel (both), Day 2: Carousel (both), Day 3: Reel (both)...
         const metaSharedFormat = (dayNumber % 2 === 0) ? 'carousel' : 'reel';
 
+        // 4 Cognitive Perspectives Rotation:
+        // Systematically alternates the hero mode every day across all channels
+        const MODES = [
+            { id: 'dark', name: 'Honest / Dark Twin', tag: 'ROAST & REALITY CHECK', defaultDilemma: "I've been scrolling for 3 hours and feel completely guilty. Should I just give up on today?", defaultBot: "Rest is so productive! Don't push yourself today—you deserve a break!", defaultReply: "Guilt is just another excuse to avoid the real work. What is the one task you're terrified of facing?" },
+            { id: 'future', name: 'Future Self Twin', tag: '5-YEARS-WISER PERSPECTIVE', defaultDilemma: "Left on read for 6 hours. I'm spiraling and about to send a passive-aggressive text.", defaultBot: "That's so disrespectful of them! Send a firm message letting them know your worth!", defaultReply: "In 5 years, this silence won't even matter. What would it feel like to let the silence exist without trying to control their response?" },
+            { id: 'reflective', name: 'Reflective Twin', tag: 'EMOTIONAL DECOMPRESSION', defaultDilemma: "I agreed to help someone move this weekend even though I'm completely exhausted and need rest. Why do I do this?", defaultBot: "You're such a kind, generous friend! Just make sure to get some rest when you can!", defaultReply: "You didn't volunteer because you have energy; you volunteered because saying no makes you feel like a burden. Where did you learn that your rest has to be earned?" },
+            { id: 'normal', name: 'Normal Twin', tag: 'GROUNDED ALTER-EGO', defaultDilemma: "I think I should put my main project on hold and start a brand-new idea today.", defaultBot: "That sounds so exciting! Follow your passion! Here are 5 brainstorming ideas!", defaultReply: "Memory check: You said this exact same thing 14 days ago before launch. You aren't inspired—you're avoiding market feedback. Close the new tabs and finish what you started." }
+        ];
+        const activeMode = MODES[dayNumber % MODES.length];
+
         return {
             istDateStr,
             dayNumber,
             themeIndex,
             theme: currentTheme,
+            activeMode,
+            mode: activeMode.id,
+            modeName: activeMode.name,
             facebookFormat: metaSharedFormat,
             instagramFormat: metaSharedFormat,
             sharedFormat: metaSharedFormat
@@ -592,6 +605,8 @@ Output strictly valid JSON with this exact schema:
     }
 
     _getCuratedFallbackTheme(dayNumber) {
+        const schedule = this.getDailySchedule();
+        const activeMode = schedule.activeMode || { id: 'dark', name: 'Honest / Dark Twin' };
         const index = dayNumber % CURATED_FALLBACK_THEMES.length;
         const cur = CURATED_FALLBACK_THEMES[index];
         return {
@@ -599,6 +614,14 @@ Output strictly valid JSON with this exact schema:
             topic: cur.topic,
             category: cur.category,
             hook: cur.hook,
+            mode: activeMode.id,
+            modeName: activeMode.name,
+            chatDialogue: {
+                userDilemma: activeMode.defaultDilemma,
+                standardBotReply: activeMode.defaultBot,
+                twinModeReply: activeMode.defaultReply,
+                shift: `Exposes the avoidance loop and grounds you through ${activeMode.name}.`
+            },
             linkedin: {
                 title: cur.title,
                 caption: cur.linkedinCaption,
