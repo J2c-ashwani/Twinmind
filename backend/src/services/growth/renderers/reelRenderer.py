@@ -532,19 +532,19 @@ def render_reel(spec, output_mp4_path):
             sys.stderr.write(f"Fallback voice synthesis failed ({e2}). Continuing with ambient music.\n")
             has_voices = False
 
-    # Calculate scene timings dynamically based on narration duration to guarantee ~34-36s total duration
+    # Calculate scene timings dynamically based on narration duration (~20-24s high-retention Reel)
     if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
         d1 = get_audio_duration(v1_file)
         d2 = get_audio_duration(v2_file)
         d3 = get_audio_duration(v3_file)
         d4 = get_audio_duration(v4_file)
     else:
-        d1, d2, d3, d4 = 7.8, 8.0, 8.0, 8.5
+        d1, d2, d3, d4 = 5.2, 5.5, 5.5, 5.0
 
-    t1 = max(8.0, d1 + 0.5)
-    t2 = max(8.0, d2 + 0.5)
-    t3 = max(8.0, d3 + 0.5)
-    t4 = max(8.5, d4 + 1.0)
+    t1 = max(5.2, d1 + 0.3)
+    t2 = max(5.5, d2 + 0.3)
+    t3 = max(5.5, d3 + 0.3)
+    t4 = max(5.5, d4 + 0.5)
     total_dur = t1 + t2 + t3 + t4
 
     # Compile Voiceover Stream with precise scene offsets
@@ -626,11 +626,11 @@ def render_reel(spec, output_mp4_path):
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
         '-tune', 'stillimage',
-        '-threads', '1',
+        '-threads', '0',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
         '-b:a', '128k',
-        '-r', '30',
+        '-r', '24',
         '-t', str(total_dur),
         '-movflags', '+faststart',
         output_mp4_path

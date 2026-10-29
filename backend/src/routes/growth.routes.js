@@ -73,6 +73,10 @@ router.get('/diagnostic', requireAdminSecret, async (req, res) => {
     try { diag.ffprobe = execSync('ffprobe -version').toString().split('\n')[0].trim(); } catch (e) { diag.ffprobe = e.message; }
     try { diag.edgeTts = execSync('edge-tts --version').toString().trim(); } catch (e) { diag.edgeTts = e.message; }
     try { diag.pillow = execSync('python3 -c "import PIL; print(PIL.__version__)"').toString().trim(); } catch (e) { diag.pillow = e.message; }
+    try { 
+        const assetsDir = path.join(__dirname, '../../../public/growth_assets');
+        diag.recentAssets = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir).slice(-5) : []; 
+    } catch (e) { diag.recentAssets = e.message; }
     res.json({ success: true, diagnostic: diag });
 });
 
@@ -212,41 +216,58 @@ router.all('/publish/facebook', requireAdminSecret, async (req, res) => {
 router.all('/publish/instagram', requireAdminSecret, async (req, res) => {
     try {
         const format = req.body?.format || req.query?.format || 'carousel';
+        const isAsync = req.query.async === 'true' || req.body?.async === true;
         const themeId = req.body?.themeId;
         const theme = CAMPAIGN_THEMES.find(t => t.id === themeId) || CAMPAIGN_THEMES[0];
         const campaignId = `camp_ig_${theme.id}_${Date.now()}`;
         const content = contentGeneratorService._generateInstagramContent(theme, campaignId);
 
-        let pngUrls = [];
-        let videoUrl = null;
+        const executePublish = async () => {
+            let pngUrls = [];
+            let videoUrl = null;
 
-        if (format === 'carousel') {
-            logger.info(`[GROWTH ROUTE] Rendering multi-image carousel for Instagram...`);
-            const rendered = await mediaRendererService.renderCarousel({
-                campaignId,
-                postId: `post_ig_carousel_${Date.now()}`,
-                slides: content.slides
+            if (format === 'carousel') {
+                logger.info(`[GROWTH ROUTE] Rendering multi-image carousel for Instagram...`);
+                const rendered = await mediaRendererService.renderCarousel({
+                    campaignId,
+                    postId: `post_ig_carousel_${Date.now()}`,
+                    slides: content.slides
+                });
+                pngUrls = rendered.pngUrls;
+            } else {
+                logger.info(`[GROWTH ROUTE] Rendering Reel video for Instagram...`);
+                const rendered = await mediaRendererService.renderReel({
+                    campaignId,
+                    postId: `post_ig_reel_${Date.now()}`,
+                    hook: content.title || theme.hook,
+                    tag: content.tag || theme.tag
+                });
+                videoUrl = rendered.videoUrl;
+            }
+
+            logger.info(`[GROWTH ROUTE] Publishing to Instagram @twingenie.app...`);
+            const publishResult = await instagramAdapter.publish({
+                caption: content.caption,
+                pngUrls,
+                videoUrl,
+                format
             });
-            pngUrls = rendered.pngUrls;
-        } else {
-            logger.info(`[GROWTH ROUTE] Rendering Reel video for Instagram...`);
-            const rendered = await mediaRendererService.renderReel({
-                campaignId,
-                postId: `post_ig_reel_${Date.now()}`,
-                hook: content.title || theme.hook,
-                tag: content.tag || theme.tag
+            logger.info(`[GROWTH ROUTE] Instagram publish completed:`, publishResult);
+            return publishResult;
+        };
+
+        if (isAsync) {
+            executePublish().catch(e => logger.error('[GROWTH ROUTE] Async Instagram publish failed:', e));
+            return res.json({ 
+                success: true, 
+                platform: 'instagram', 
+                format, 
+                status: 'in_progress', 
+                message: 'Instagram publishing task running in background. Monitor via /api/admin/growth/status' 
             });
-            videoUrl = rendered.videoUrl;
         }
 
-        logger.info(`[GROWTH ROUTE] Publishing to Instagram @twingenie.app...`);
-        const publishResult = await instagramAdapter.publish({
-            caption: content.caption,
-            pngUrls,
-            videoUrl,
-            format
-        });
-
+        const publishResult = await executePublish();
         res.json({ success: true, platform: 'instagram', format, publishResult });
     } catch (error) {
         logger.error('[GROWTH ROUTE] Instagram publish failed:', error);
@@ -518,7 +539,20 @@ router.all('/cron/daily-instagram', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
         const format = req.query.format || req.body?.format || null;
-        logger.info(`[GROWTH CRON] Triggering automated daily Instagram publication (force=${force}, format=${format || 'auto'})...`);
+        const isAsync = req.query.async === 'true' || req.body?.async === true;
+        logger.info(`[GROWTH CRON] Triggering automated daily Instagram publication (force=${force}, format=${format || 'auto'}, async=${isAsync})...`);
+        
+        if (isAsync) {
+            growthOrchestratorService.publishDailyInstagram(force, format).catch(err => {
+                logger.error('[GROWTH CRON] Background Instagram publish error:', err);
+            });
+            return res.json({ 
+                success: true, 
+                status: 'in_progress', 
+                message: 'Daily Instagram publishing started in background. Monitor via /api/admin/growth/status.' 
+            });
+        }
+
         const result = await growthOrchestratorService.publishDailyInstagram(force, format);
         res.json({ success: true, result });
     } catch (error) {
