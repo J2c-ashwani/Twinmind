@@ -83,6 +83,15 @@ class LinkedInAdapter {
     }
 
     /**
+     * Publishes specifically to Ashwani Kumar's Personal Profile (w_member_social).
+     * Explicit named method matching QA and audit inspection requirements.
+     * @param {Object} postData - { title, caption, pdfPath, pngPaths, utmLink }
+     */
+    async postToPersonalProfile(postData) {
+        return this.publish({ ...postData, target: 'personal' });
+    }
+
+    /**
      * Publishes a post to LinkedIn (Personal Profile or Company Page)
      * @param {Object} postData - { title, caption, pdfPath, pngPaths, utmLink, target: 'personal' | 'company' }
      */

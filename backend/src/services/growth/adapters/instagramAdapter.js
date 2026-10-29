@@ -84,6 +84,8 @@ class InstagramAdapter {
             if (postData.format === 'reel' && postData.videoUrl) {
                 // Reel Publishing
                 creationId = await this._createReelContainer(accessToken, igUserId, postData.videoUrl, postData.caption);
+                // Instagram requires video containers to be transcoded and reach FINISHED before publishing
+                await this._waitForContainerReady(creationId, accessToken);
             } else if (postData.pngUrls && postData.pngUrls.length > 1) {
                 // Carousel Publishing (Multiple images)
                 creationId = await this._createCarouselContainer(accessToken, igUserId, postData.pngUrls, postData.caption);
@@ -189,6 +191,26 @@ class InstagramAdapter {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || 'Failed to create Reel container');
         return data.id;
+    }
+
+    /**
+     * Polls Instagram media container status until processing reaches FINISHED
+     */
+    async _waitForContainerReady(containerId, accessToken, maxAttempts = 20, delayMs = 3000) {
+        logger.info(`[INSTAGRAM] Polling container ${containerId} status until FINISHED...`);
+        for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, delayMs));
+            const res = await fetch(`${GRAPH_API_BASE}/${containerId}?fields=status_code,status&access_token=${accessToken}`);
+            const data = await res.json();
+            logger.info(`[INSTAGRAM] Container ${containerId} status: ${data.status_code || 'unknown'} (attempt ${i + 1}/${maxAttempts})`);
+            if (data.status_code === 'FINISHED') {
+                return true;
+            }
+            if (data.status_code === 'ERROR') {
+                throw new Error(`Instagram video processing error: ${data.status || 'Failed'}`);
+            }
+        }
+        throw new Error(`Instagram container processing timed out after ${maxAttempts * delayMs}ms`);
     }
 }
 

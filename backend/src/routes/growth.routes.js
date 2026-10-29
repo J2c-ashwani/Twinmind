@@ -451,7 +451,13 @@ router.post('/render-test', requireAdminSecret, async (req, res) => {
  * Generates fresh campaign content, renders 8Mbps CBR 1080x1920 Reel with neural voiceover,
  * and publishes directly to Facebook Reels.
  */
-router.all('/cron/daily-reel', requireAdminSecret, async (req, res) => {
+/**
+ * GET & POST /api/admin/growth/cron/daily-reel
+ * GET & POST /api/admin/growth/cron/daily-facebook
+ * Automated webhook called by cron-job.org daily at 4:30 PM IST (11:00 UTC).
+ * Alternates daily between Reel and Carousel.
+ */
+const handleDailyFacebook = async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
         const theme = req.query.theme || req.body?.theme || null;
@@ -460,10 +466,13 @@ router.all('/cron/daily-reel', requireAdminSecret, async (req, res) => {
         const result = await growthOrchestratorService.publishDailyFacebookReel(force, theme, format);
         res.json({ success: true, result });
     } catch (error) {
-        logger.error('[GROWTH CRON] Daily Reel automated publication failed:', error);
+        logger.error('[GROWTH CRON] Daily Facebook publication failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
-});
+};
+
+router.all('/cron/daily-reel', requireAdminSecret, handleDailyFacebook);
+router.all('/cron/daily-facebook', requireAdminSecret, handleDailyFacebook);
 
 /**
  * GET & POST /api/admin/growth/cron/daily-linkedin
@@ -491,8 +500,9 @@ router.all('/cron/daily-linkedin', requireAdminSecret, async (req, res) => {
 router.all('/cron/daily-instagram', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
-        logger.info(`[GROWTH CRON] Triggering automated daily Instagram Carousel publication (force=${force})...`);
-        const result = await growthOrchestratorService.publishDailyInstagram(force);
+        const format = req.query.format || req.body?.format || null;
+        logger.info(`[GROWTH CRON] Triggering automated daily Instagram publication (force=${force}, format=${format || 'auto'})...`);
+        const result = await growthOrchestratorService.publishDailyInstagram(force, format);
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily Instagram automated publication failed:', error);

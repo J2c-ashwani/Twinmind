@@ -181,11 +181,146 @@ class GrowthOrchestratorService {
      * and publishes directly to Facebook Reels.
      */
     /**
-     * Determines the next theme in sequence to guarantee zero consecutive duplicate posts
+     * Checks if today's broadcast for the given platform is already locked or completed in Supabase.
+     * Guarantees distributed idempotency across multiple containers, server restarts, and dual schedulers.
+     * @param {string} platform - 'facebook' | 'linkedin' | 'instagram' | 'threads'
+     * @param {string} todayIST - YYYY-MM-DD
      */
+    async checkDurableLedger(platform, todayIST) {
+        try {
+            const ledgerKey = `growth_ledger:${platform}:${todayIST}`;
+            const lockKey = `growth_lock:${platform}:${todayIST}`;
+
+            // 1. Check if already successfully published today in durable ledger
+            const { data: ledgerEntries } = await supabaseAdmin
+                .from('usage_tracking')
+                .select('id, created_at')
+                .eq('action_type', ledgerKey)
+                .limit(1);
+
+            if (ledgerEntries && ledgerEntries.length > 0) {
+                logger.info(`[GROWTH ORCHESTRATOR] Platform ${platform} already published today in durable ledger (${todayIST}). Skipping duplicate.`);
+                return { isBlocked: true, reason: 'already_published_today' };
+            }
+
+            // 2. Also check legacy action_type format (e.g. growth_facebook) for todayIST
+            const legacyType = `growth_${platform === 'linkedin' ? 'linkedin_personal' : platform}`;
+            const { data: legacyEntries } = await supabaseAdmin
+                .from('usage_tracking')
+                .select('created_at')
+                .eq('action_type', legacyType)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (legacyEntries && legacyEntries.length > 0) {
+                const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(legacyEntries[0].created_at));
+                if (lastIST === todayIST) {
+                    logger.info(`[GROWTH ORCHESTRATOR] Platform ${platform} already recorded today in legacy tracking (${todayIST}). Skipping duplicate.`);
+                    return { isBlocked: true, reason: 'already_published_today' };
+                }
+            }
+
+            // 3. Check if another concurrent process has an active distributed lock (< 15 min old)
+            const { data: activeLocks } = await supabaseAdmin
+                .from('usage_tracking')
+                .select('id, created_at')
+                .eq('action_type', lockKey)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (activeLocks && activeLocks.length > 0) {
+                const lockAgeMs = Date.now() - new Date(activeLocks[0].created_at).getTime();
+                if (lockAgeMs < 15 * 60 * 1000) {
+                    logger.warn(`[GROWTH ORCHESTRATOR] Active distributed lock found for ${platform} (${Math.round(lockAgeMs / 1000)}s old). Another worker is publishing. Skipping.`);
+                    return { isBlocked: true, reason: 'publish_in_progress' };
+                }
+            }
+
+            return { isBlocked: false };
+        } catch (err) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Durable ledger check warning for ${platform}:`, err.message);
+            return { isBlocked: false };
+        }
+    }
+
     /**
-     * Retrieves the non-repeating rotational theme.
-     * Uses deterministic calendar scheduling as the primary guarantee so server reboots never reset the rotation.
+     * Acquires a 15-minute distributed lease lock in Supabase before heavy processing
+     */
+    async acquireDurableLock(platform, todayIST) {
+        try {
+            const lockKey = `growth_lock:${platform}:${todayIST}`;
+            const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+            if (users && users.length > 0) {
+                const nowIso = new Date().toISOString();
+                await supabaseAdmin.from('usage_tracking').insert({
+                    user_id: users[0].id,
+                    action_type: lockKey,
+                    count: 1,
+                    period_start: nowIso,
+                    period_end: nowIso,
+                    created_at: nowIso
+                });
+                logger.info(`🔒 [GROWTH ORCHESTRATOR] Acquired durable distributed lock: ${lockKey}`);
+            }
+        } catch (err) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Failed to acquire durable lock for ${platform}:`, err.message);
+        }
+    }
+
+    /**
+     * Releases the distributed lease lock (e.g. on failure so retries are never permanently blocked)
+     */
+    async releaseDurableLock(platform, todayIST) {
+        try {
+            const lockKey = `growth_lock:${platform}:${todayIST}`;
+            await supabaseAdmin
+                .from('usage_tracking')
+                .delete()
+                .eq('action_type', lockKey);
+            logger.info(`🔓 [GROWTH ORCHESTRATOR] Released durable distributed lock: ${lockKey}`);
+        } catch (err) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Failed to release durable lock for ${platform}:`, err.message);
+        }
+    }
+
+    /**
+     * Commits successful publication to the durable ledger in Supabase
+     */
+    async commitDurableLedger(platform, todayIST, postId, postUrl) {
+        try {
+            const ledgerKey = `growth_ledger:${platform}:${todayIST}`;
+            const legacyType = `growth_${platform === 'linkedin' ? 'linkedin_personal' : platform}`;
+            const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+            if (users && users.length > 0) {
+                const nowIso = new Date().toISOString();
+                await supabaseAdmin.from('usage_tracking').insert([
+                    {
+                        user_id: users[0].id,
+                        action_type: ledgerKey,
+                        count: 1,
+                        period_start: nowIso,
+                        period_end: nowIso,
+                        created_at: nowIso
+                    },
+                    {
+                        user_id: users[0].id,
+                        action_type: legacyType,
+                        count: 1,
+                        period_start: nowIso,
+                        period_end: nowIso,
+                        created_at: nowIso
+                    }
+                ]);
+                logger.info(`📝 [GROWTH ORCHESTRATOR] Committed durable ledger record: ${ledgerKey} -> Post: ${postId}`);
+            }
+            await this.releaseDurableLock(platform, todayIST);
+        } catch (err) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Failed to commit durable ledger for ${platform}:`, err.message);
+        }
+    }
+
+    /**
+     * Determines the next theme in sequence to guarantee zero consecutive duplicate posts
      */
     getNextRotationalTheme(platform, target = null) {
         const schedule = contentGeneratorService.getDailySchedule();
@@ -204,7 +339,7 @@ class GrowthOrchestratorService {
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily Facebook publication flow for ${todayIST}...`);
 
-        // 1. Mutex Concurrency Lock: Prevent simultaneous executions from dual cron triggers or fast retries
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions in this process
         if (this._publishingLocks.facebook) {
             logger.warn(`[GROWTH ORCHESTRATOR] Facebook publication already in progress! Rejecting duplicate concurrent trigger.`);
             return { action: 'skipped', reason: 'publish_in_progress' };
@@ -216,25 +351,11 @@ class GrowthOrchestratorService {
             return { action: 'skipped', reason: 'recently_published' };
         }
 
-        // 3. Unless force=true, verify persistence in Supabase tracking + Meta Graph API
+        // 3. Durable Distributed Idempotency Ledger Check (Supabase + Meta Graph API)
         if (!force) {
-            try {
-                const { data: recent } = await supabaseAdmin
-                    .from('usage_tracking')
-                    .select('created_at')
-                    .eq('action_type', 'growth_facebook')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-
-                if (recent && recent.length > 0) {
-                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
-                    if (lastIST === todayIST) {
-                        logger.info(`[GROWTH ORCHESTRATOR] Facebook post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
-                        return { action: 'skipped', reason: 'already_published_today' };
-                    }
-                }
-            } catch (dbCheckErr) {
-                logger.warn('[GROWTH ORCHESTRATOR] Supabase Facebook date check warning:', dbCheckErr.message);
+            const ledgerCheck = await this.checkDurableLedger('facebook', todayIST);
+            if (ledgerCheck.isBlocked) {
+                return { action: 'skipped', reason: ledgerCheck.reason };
             }
 
             const alreadyPostedOnFB = await this.adapters.facebook.hasPublishedTodayIST();
@@ -244,8 +365,9 @@ class GrowthOrchestratorService {
             }
         }
 
-        // Acquire lock
+        // Acquire process lock and durable distributed lock
         this._publishingLocks.facebook = true;
+        await this.acquireDurableLock('facebook', todayIST);
 
         try {
             // 4. Fetch or dynamically generate today's 100% fresh content
@@ -302,22 +424,9 @@ class GrowthOrchestratorService {
             // 7. Track published timestamp in Supabase & update debounce timer
             if (publishResult.success) {
                 this._lastPublishedTimestamps.facebook = Date.now();
-                try {
-                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
-                    if (users && users.length > 0) {
-                        const nowIso = now.toISOString();
-                        await supabaseAdmin.from('usage_tracking').insert({
-                            user_id: users[0].id,
-                            action_type: 'growth_facebook',
-                            count: 1,
-                            period_start: nowIso,
-                            period_end: nowIso,
-                            created_at: nowIso
-                        });
-                    }
-                } catch (dbLogErr) {
-                    logger.warn('[GROWTH ORCHESTRATOR] Supabase Facebook log warning:', dbLogErr.message);
-                }
+                await this.commitDurableLedger('facebook', todayIST, publishResult.postId, publishResult.url);
+            } else {
+                await this.releaseDurableLock('facebook', todayIST);
             }
 
             // 8. Save to state
@@ -351,6 +460,9 @@ class GrowthOrchestratorService {
                 topic: dailyPackage.topic,
                 error: publishResult.error
             };
+        } catch (fbError) {
+            await this.releaseDurableLock('facebook', todayIST);
+            throw fbError;
         } finally {
             // Release lock unconditionally
             this._publishingLocks.facebook = false;
@@ -367,7 +479,7 @@ class GrowthOrchestratorService {
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
-        // 1. Mutex Concurrency Lock: Prevent simultaneous executions from dual cron triggers or fast retries
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions in this process
         if (this._publishingLocks.linkedin) {
             logger.warn(`[GROWTH ORCHESTRATOR] LinkedIn publication already in progress! Rejecting duplicate concurrent trigger.`);
             return { action: 'skipped', reason: 'publish_in_progress' };
@@ -379,25 +491,11 @@ class GrowthOrchestratorService {
             return { action: 'skipped', reason: 'recently_published' };
         }
 
-        // 3. Verify against Supabase persistence + memory state to prevent duplicate posts across server restarts
+        // 3. Durable Distributed Idempotency Ledger Check (Supabase + local state)
         if (!force) {
-            try {
-                const { data: recent } = await supabaseAdmin
-                    .from('usage_tracking')
-                    .select('created_at')
-                    .eq('action_type', 'growth_linkedin_personal')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-
-                if (recent && recent.length > 0) {
-                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
-                    if (lastIST === todayIST) {
-                        logger.info(`[GROWTH ORCHESTRATOR] LinkedIn personal post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
-                        return { action: 'skipped', reason: 'already_published_today' };
-                    }
-                }
-            } catch (dbCheckErr) {
-                logger.warn('[GROWTH ORCHESTRATOR] Supabase date check warning:', dbCheckErr.message);
+            const ledgerCheck = await this.checkDurableLedger('linkedin', todayIST);
+            if (ledgerCheck.isBlocked) {
+                return { action: 'skipped', reason: ledgerCheck.reason };
             }
 
             const alreadyPublishedInMemory = this.state.posts.some(p => {
@@ -411,8 +509,9 @@ class GrowthOrchestratorService {
             }
         }
 
-        // Acquire lock
+        // Acquire process lock and durable distributed lock
         this._publishingLocks.linkedin = true;
+        await this.acquireDurableLock('linkedin', todayIST);
 
         try {
             // 4. Fetch or dynamically generate today's 100% fresh content
@@ -430,36 +529,22 @@ class GrowthOrchestratorService {
                 slides: dailyPackage.linkedin.slides
             });
 
-            // 6. Publish to LinkedIn via official API
+            // 6. Publish to LinkedIn via official API (using dedicated postToPersonalProfile method)
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
-            const publishResult = await this.adapters.linkedin.publish({
+            const publishResult = await this.adapters.linkedin.postToPersonalProfile({
                 title: dailyPackage.linkedin.title,
                 caption: dailyPackage.linkedin.caption,
                 pdfPath: rendered.pdfPath,
                 pngPaths: rendered.pngPaths,
-                utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app',
-                target: 'personal'
+                utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app'
             });
 
-            // 7. Track published timestamp in Supabase (persists across Render container restarts)
+            // 7. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.linkedin = Date.now();
-                try {
-                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
-                    if (users && users.length > 0) {
-                        const nowIso = now.toISOString();
-                        await supabaseAdmin.from('usage_tracking').insert({
-                            user_id: users[0].id,
-                            action_type: 'growth_linkedin_personal',
-                            count: 1,
-                            period_start: nowIso,
-                            period_end: nowIso,
-                            created_at: nowIso
-                        });
-                    }
-                } catch (dbLogErr) {
-                    logger.warn('[GROWTH ORCHESTRATOR] Supabase log warning:', dbLogErr.message);
-                }
+                await this.commitDurableLedger('linkedin', todayIST, publishResult.postId, publishResult.url);
+            } else {
+                await this.releaseDurableLock('linkedin', todayIST);
             }
 
             // 8. Save to local state
@@ -495,21 +580,26 @@ class GrowthOrchestratorService {
                 pdfPath: rendered.pdfPath,
                 error: publishResult.error
             };
+        } catch (liError) {
+            await this.releaseDurableLock('linkedin', todayIST);
+            throw liError;
         } finally {
             this._publishingLocks.linkedin = false;
         }
     }
 
     /**
-     * Publishes today's high-converting Carousel to Instagram account @twingenie.app.
+     * Publishes today's high-converting Carousel or Reel to Instagram account @twingenie.app.
+     * Alternates formats daily in strict lockstep with Facebook: (Day N: Carousel, Day N+1: Reel).
      * @param {boolean} force - If true, bypasses the duplicate post throttle
+     * @param {string|null} specificFormat - Optional manual override ('carousel' | 'reel')
      */
-    async publishDailyInstagram(force = false) {
+    async publishDailyInstagram(force = false, specificFormat = null) {
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily Instagram publishing flow...`);
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
-        // 1. Mutex Concurrency Lock: Prevent simultaneous executions from dual cron triggers or fast retries
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions in this process
         if (this._publishingLocks.instagram) {
             logger.warn(`[GROWTH ORCHESTRATOR] Instagram publication already in progress! Rejecting duplicate concurrent trigger.`);
             return { action: 'skipped', reason: 'publish_in_progress' };
@@ -518,86 +608,92 @@ class GrowthOrchestratorService {
         // 2. Debounce Cooldown: If published within the last 15 minutes, skip immediately
         if (!force && this._lastPublishedTimestamps.instagram && (Date.now() - this._lastPublishedTimestamps.instagram < 15 * 60 * 1000)) {
             logger.info(`[GROWTH ORCHESTRATOR] Instagram post published within the last 15 minutes. Skipping duplicate.`);
-            return { action: 'skipped', reason: 'recently_published' };
+            return { action: 'recently_published' };
         }
 
-        // 3. Unless force=true, verify persistence in Supabase tracking
+        // 3. Durable Distributed Idempotency Ledger Check (Supabase)
         if (!force) {
-            try {
-                const { data: recent } = await supabaseAdmin
-                    .from('usage_tracking')
-                    .select('created_at')
-                    .eq('action_type', 'growth_instagram')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-
-                if (recent && recent.length > 0) {
-                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
-                    if (lastIST === todayIST) {
-                        logger.info(`[GROWTH ORCHESTRATOR] Instagram post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
-                        return { action: 'skipped', reason: 'already_published_today' };
-                    }
-                }
-            } catch (dbCheckErr) {
-                logger.warn('[GROWTH ORCHESTRATOR] Supabase Instagram date check warning:', dbCheckErr.message);
+            const ledgerCheck = await this.checkDurableLedger('instagram', todayIST);
+            if (ledgerCheck.isBlocked) {
+                return { action: 'skipped', reason: ledgerCheck.reason };
             }
         }
 
-        // Acquire lock
+        // Acquire process lock and durable distributed lock
         this._publishingLocks.instagram = true;
+        await this.acquireDurableLock('instagram', todayIST);
 
         try {
             // 4. Fetch or dynamically generate today's 100% fresh content
             const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            // Strictly synchronized alternating format matching Facebook: (carousel vs reel)
+            const format = specificFormat || dailyPackage.format;
             const campaignId = `camp_ig_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
             const postId = `post_instagram_${Date.now()}`;
 
-            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
-            const rendered = await mediaRendererService.renderCarousel({
-                campaignId,
-                postId,
-                slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
-            });
+            logger.info(`[GROWTH ORCHESTRATOR] Instagram Scheduled: Topic="${dailyPackage.topic}", Format="${format}"`);
 
             const igCaption = `${dailyPackage.hook || dailyPackage.topic} 🪞\n\n${dailyPackage.facebook?.caption || dailyPackage.linkedin?.caption || ''}\n\n📲 Experience your AI Digital Twin free on Google Play. Link in bio!\n\n#TwinGenie #SelfUnderstanding #PersonalGrowth #MentalHealth #Mindset`;
 
-            // 5. Dispatch carousel to Instagram via official API
-            logger.info(`[GROWTH ORCHESTRATOR] Dispatching carousel to Instagram account twingenie.app...`);
-            const publishResult = await this.adapters.instagram.publish({
-                caption: igCaption,
-                pngUrls: rendered.pngUrls,
-                format: 'carousel'
-            });
+            let renderedReel = null;
+            let renderedCarousel = null;
 
-            // 6. Track published timestamp in Supabase (persists across Render container restarts)
-            if (publishResult.success) {
-                this._lastPublishedTimestamps.instagram = Date.now();
+            // 5. Render Media: Reel (with strict RAM limits) or Carousel
+            if (format === 'reel') {
                 try {
-                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
-                    if (users && users.length > 0) {
-                        const nowIso = now.toISOString();
-                        await supabaseAdmin.from('usage_tracking').insert({
-                            user_id: users[0].id,
-                            action_type: 'growth_instagram',
-                            count: 1,
-                            period_start: nowIso,
-                            period_end: nowIso,
-                            created_at: nowIso
-                        });
-                    }
-                } catch (dbLogErr) {
-                    logger.warn('[GROWTH ORCHESTRATOR] Supabase Instagram log warning:', dbLogErr.message);
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
+                    renderedReel = await mediaRendererService.renderReel({
+                        campaignId,
+                        postId,
+                        hook: dailyPackage.facebook.title || dailyPackage.hook,
+                        tag: dailyPackage.category || 'FOUNDER PSYCHOLOGY',
+                        voiceHook: dailyPackage.facebook.voiceScript?.voiceHook,
+                        voiceProblem: dailyPackage.facebook.voiceScript?.voiceProblem,
+                        voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
+                        voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
+                    });
+                } catch (reelErr) {
+                    logger.warn(`[GROWTH ORCHESTRATOR] Instagram Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
                 }
             }
 
-            // 7. Save to local state
+            // Render carousel slides as primary (for carousel format) or guaranteed failover (if reel render fails)
+            if (!renderedReel) {
+                logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel slides for Instagram @twingenie.app: "${dailyPackage.topic}"...`);
+                renderedCarousel = await mediaRendererService.renderCarousel({
+                    campaignId,
+                    postId,
+                    slides: dailyPackage.facebook.slides || dailyPackage.linkedin.slides
+                });
+            }
+
+            // 6. Dispatch to Instagram via official API
+            logger.info(`[GROWTH ORCHESTRATOR] Dispatching ${renderedReel ? 'Reel' : 'Carousel'} to Instagram account @twingenie.app...`);
+            const publishResult = await this.adapters.instagram.publish({
+                caption: igCaption,
+                videoUrl: renderedReel?.videoUrl || null,
+                pngUrls: renderedCarousel?.pngUrls || [],
+                format: renderedReel ? 'reel' : 'carousel'
+            });
+
+            // 7. Commit to Durable Distributed Ledger
+            if (publishResult.success) {
+                this._lastPublishedTimestamps.instagram = Date.now();
+                await this.commitDurableLedger('instagram', todayIST, publishResult.postId, publishResult.url);
+            } else {
+                await this.releaseDurableLock('instagram', todayIST);
+            }
+
+            // 8. Save to local state
             const postRecord = {
                 id: postId,
                 campaignId,
                 platform: 'instagram',
-                format: 'carousel',
+                format: renderedReel ? 'reel' : 'carousel',
                 title: dailyPackage.topic,
                 caption: igCaption,
+                videoUrl: renderedReel?.videoUrl || null,
+                mediaUrls: renderedCarousel?.pngUrls || [],
                 status: publishResult.success ? 'published' : 'failed',
                 scheduledFor: now.toISOString(),
                 publishedAt: publishResult.success ? now.toISOString() : null,
@@ -614,9 +710,13 @@ class GrowthOrchestratorService {
                 postId: postRecord.id,
                 platformPostId: publishResult.postId,
                 url: publishResult.url,
+                format: postRecord.format,
                 topic: dailyPackage.topic,
                 error: publishResult.error
             };
+        } catch (igError) {
+            await this.releaseDurableLock('instagram', todayIST);
+            throw igError;
         } finally {
             this._publishingLocks.instagram = false;
         }
@@ -632,7 +732,7 @@ class GrowthOrchestratorService {
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
-        // 1. Mutex Concurrency Lock: Prevent simultaneous executions
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions in this process
         if (this._publishingLocks.threads) {
             logger.warn(`[GROWTH ORCHESTRATOR] Threads publication already in progress! Rejecting duplicate concurrent trigger.`);
             return { action: 'skipped', reason: 'publish_in_progress' };
@@ -641,33 +741,20 @@ class GrowthOrchestratorService {
         // 2. Debounce Cooldown: If published within the last 15 minutes, skip immediately
         if (!force && this._lastPublishedTimestamps.threads && (Date.now() - this._lastPublishedTimestamps.threads < 15 * 60 * 1000)) {
             logger.info(`[GROWTH ORCHESTRATOR] Threads post published within the last 15 minutes. Skipping duplicate.`);
-            return { action: 'skipped', reason: 'recently_published' };
+            return { action: 'recently_published' };
         }
 
-        // 3. Verify persistence in Supabase tracking
+        // 3. Durable Distributed Idempotency Ledger Check (Supabase)
         if (!force) {
-            try {
-                const { data: recent } = await supabaseAdmin
-                    .from('usage_tracking')
-                    .select('created_at')
-                    .eq('action_type', 'growth_threads')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-
-                if (recent && recent.length > 0) {
-                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
-                    if (lastIST === todayIST) {
-                        logger.info(`[GROWTH ORCHESTRATOR] Threads post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
-                        return { action: 'skipped', reason: 'already_published_today' };
-                    }
-                }
-            } catch (dbCheckErr) {
-                logger.warn('[GROWTH ORCHESTRATOR] Supabase Threads date check warning:', dbCheckErr.message);
+            const ledgerCheck = await this.checkDurableLedger('threads', todayIST);
+            if (ledgerCheck.isBlocked) {
+                return { action: 'skipped', reason: ledgerCheck.reason };
             }
         }
 
-        // Acquire lock
+        // Acquire process lock and durable distributed lock
         this._publishingLocks.threads = true;
+        await this.acquireDurableLock('threads', todayIST);
 
         try {
             // 4. Fetch or dynamically generate today's content
@@ -690,25 +777,12 @@ class GrowthOrchestratorService {
                 text: threadText
             });
 
-            // 5. Track published timestamp in Supabase
+            // 5. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.threads = Date.now();
-                try {
-                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
-                    if (users && users.length > 0) {
-                        const nowIso = now.toISOString();
-                        await supabaseAdmin.from('usage_tracking').insert({
-                            user_id: users[0].id,
-                            action_type: 'growth_threads',
-                            count: 1,
-                            period_start: nowIso,
-                            period_end: nowIso,
-                            created_at: nowIso
-                        });
-                    }
-                } catch (dbLogErr) {
-                    logger.warn('[GROWTH ORCHESTRATOR] Supabase Threads log warning:', dbLogErr.message);
-                }
+                await this.commitDurableLedger('threads', todayIST, publishResult.postId, publishResult.url);
+            } else {
+                await this.releaseDurableLock('threads', todayIST);
             }
 
             // 6. Save to local state
@@ -738,6 +812,9 @@ class GrowthOrchestratorService {
                 topic: dailyPackage.topic,
                 error: publishResult.error
             };
+        } catch (thError) {
+            await this.releaseDurableLock('threads', todayIST);
+            throw thError;
         } finally {
             this._publishingLocks.threads = false;
         }

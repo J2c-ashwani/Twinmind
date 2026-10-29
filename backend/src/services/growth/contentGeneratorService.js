@@ -337,16 +337,18 @@ class ContentGeneratorService {
         const themeIndex = dayNumber % themes.length;
         const currentTheme = themes[themeIndex];
 
-        // Format strictly alternates every single day on Facebook:
-        // Day 0: Carousel, Day 1: Reel, Day 2: Carousel, Day 3: Reel...
-        const facebookFormat = (dayNumber % 2 === 0) ? 'carousel' : 'reel';
+        // Format strictly alternates every single day in lockstep for BOTH Facebook and Instagram:
+        // Day 0: Carousel (both), Day 1: Reel (both), Day 2: Carousel (both), Day 3: Reel (both)...
+        const metaSharedFormat = (dayNumber % 2 === 0) ? 'carousel' : 'reel';
 
         return {
             istDateStr,
             dayNumber,
             themeIndex,
             theme: currentTheme,
-            facebookFormat
+            facebookFormat: metaSharedFormat,
+            instagramFormat: metaSharedFormat,
+            sharedFormat: metaSharedFormat
         };
     }
 
@@ -375,7 +377,7 @@ class ContentGeneratorService {
         const schedule = this.getDailySchedule(date);
         const istDateStr = schedule.istDateStr;
         const dayNumber = schedule.dayNumber;
-        const facebookFormat = schedule.facebookFormat;
+        const sharedFormat = schedule.sharedFormat;
 
         // 1. Fetch past topics from Supabase to guarantee zero repetition
         const previousTopics = [];
@@ -561,7 +563,9 @@ Output strictly valid JSON with this exact schema:
             parsed.facebook.slides = parsed.linkedin.slides;
         }
 
-        parsed.format = facebookFormat;
+        parsed.format = sharedFormat;
+        parsed.facebookFormat = sharedFormat;
+        parsed.instagramFormat = sharedFormat;
         parsed.dayNumber = dayNumber;
         parsed.istDateStr = istDateStr;
 
