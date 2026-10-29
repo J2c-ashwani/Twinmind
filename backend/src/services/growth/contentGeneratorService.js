@@ -519,10 +519,11 @@ Output strictly valid JSON with this exact schema:
         // Try Gemini 3.5 Flash Lite first
         if (process.env.GEMINI_API_KEY) {
             try {
-                logger.info('[CONTENT GENERATOR] Prompting Gemini 3.5 Flash Lite for fresh daily topic...');
+                const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+                logger.info(`[CONTENT GENERATOR] Prompting Gemini (${modelName}) for fresh daily topic...`);
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const model = genAI.getGenerativeModel({
-                    model: 'gemini-3.5-flash-lite',
+                    model: modelName,
                     generationConfig: { responseMimeType: 'application/json' }
                 });
                 const result = await model.generateContent(prompt);

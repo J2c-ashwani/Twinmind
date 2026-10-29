@@ -42,7 +42,9 @@ class MediaRendererService {
                 }
 
                 try {
-                    const result = JSON.parse(stdout.trim());
+                    const lines = stdout.trim().split('\n');
+                    const lastLine = lines[lines.length - 1];
+                    const result = JSON.parse(lastLine);
                     const baseUrl = process.env.RENDER_EXTERNAL_URL || process.env.API_BASE_URL || 'https://twingenie.app';
 
                     const pngUrls = result.pngPaths.map(p => {
@@ -98,7 +100,9 @@ class MediaRendererService {
                 }
 
                 try {
-                    const result = JSON.parse(stdout.trim());
+                    const lines = stdout.trim().split('\n');
+                    const lastLine = lines[lines.length - 1];
+                    const result = JSON.parse(lastLine);
                     const baseUrl = process.env.RENDER_EXTERNAL_URL || process.env.API_BASE_URL || 'https://twingenie.app';
                     const rel = path.relative(path.join(__dirname, '../../../public'), result.videoPath);
                     const videoUrl = `${baseUrl}/${rel.replace(/\\/g, '/')}`;

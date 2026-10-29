@@ -435,8 +435,18 @@ router.post('/toggle-pause', requireAdminSecret, (req, res) => {
  * POST /api/admin/growth/render-test
  * Quick test rendering of a 5-slide carousel and multi-page PDF
  */
-router.post('/render-test', requireAdminSecret, async (req, res) => {
+router.all('/render-test', requireAdminSecret, async (req, res) => {
     try {
+        const format = req.query.format || req.body?.format || 'carousel';
+        if (format === 'reel') {
+            const rendered = await mediaRendererService.renderReel({
+                campaignId: 'test_render',
+                postId: Date.now(),
+                hook: 'When AI Flattery Stops Your Growth',
+                tag: 'SELF-AWARENESS'
+            });
+            return res.json({ success: true, format: 'reel', rendered });
+        }
         const rendered = await mediaRendererService.renderCarousel({
             campaignId: 'test_render',
             postId: Date.now(),
@@ -446,7 +456,7 @@ router.post('/render-test', requireAdminSecret, async (req, res) => {
                 { title: 'Longitudinal Memory', content: 'pgvector memory connects insights across weeks.', highlight: 'DEEP CONTEXT', tag: 'MEMORY PIPELINE' }
             ]
         });
-        res.json({ success: true, rendered });
+        res.json({ success: true, format: 'carousel', rendered });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

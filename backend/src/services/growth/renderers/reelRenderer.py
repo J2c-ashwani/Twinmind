@@ -454,7 +454,7 @@ async def generate_voiceover_edge(text, out_mp3, voice='en-US-ChristopherNeural'
     # Apply phonetic normalization so brand and acronyms sound crystal clear
     spoken_text = normalize_phonetics(text)
     communicate = edge_tts.Communicate(spoken_text, voice, rate=rate)
-    await communicate.save(out_mp3)
+    await asyncio.wait_for(communicate.save(out_mp3), timeout=12.0)
 
 def generate_voiceover_fallback_say(text, out_mp3):
     if os.path.exists('/usr/bin/say'):
@@ -511,11 +511,14 @@ def render_reel(spec, output_mp4_path):
     has_voices = True
     try:
         async def make_all_voices():
-            await asyncio.gather(
-                generate_voiceover_edge(v1_text, v1_file),
-                generate_voiceover_edge(v2_text, v2_file),
-                generate_voiceover_edge(v3_text, v3_file),
-                generate_voiceover_edge(v4_text, v4_file)
+            await asyncio.wait_for(
+                asyncio.gather(
+                    generate_voiceover_edge(v1_text, v1_file),
+                    generate_voiceover_edge(v2_text, v2_file),
+                    generate_voiceover_edge(v3_text, v3_file),
+                    generate_voiceover_edge(v4_text, v4_file)
+                ),
+                timeout=16.0
             )
         asyncio.run(make_all_voices())
     except Exception as e:
