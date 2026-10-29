@@ -1,4 +1,7 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import growthOrchestratorService from '../services/growth/growthOrchestratorService.js';
 import mediaRendererService from '../services/growth/mediaRendererService.js';
 import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/contentGeneratorService.js';
@@ -11,6 +14,9 @@ import investorOutreachService from '../services/investorOutreachService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
 import growthDashboardService from '../services/growth/growthDashboardService.js';
 import logger from '../config/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
