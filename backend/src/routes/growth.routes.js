@@ -80,8 +80,8 @@ router.get('/diagnostic', requireAdminSecret, async (req, res) => {
     try { diag.edgeTts = execSync('edge-tts --version').toString().trim(); } catch (e) { diag.edgeTts = e.message; }
     try { diag.pillow = execSync('python3 -c "import PIL; print(PIL.__version__)"').toString().trim(); } catch (e) { diag.pillow = e.message; }
     try { 
-        const assetsDir = path.join(__dirname, '../../../public/growth_assets');
-        diag.recentAssets = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir).slice(-5) : []; 
+        const assetsDir = path.join(__dirname, '../../public/growth_assets');
+        diag.recentAssets = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir).slice(-10) : []; 
     } catch (e) { diag.recentAssets = e.message; }
     res.json({ success: true, diagnostic: diag });
 });

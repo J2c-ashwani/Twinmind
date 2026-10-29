@@ -603,7 +603,7 @@ def render_reel(spec, output_mp4_path):
         '-i', final_audio,
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
-        '-tune', 'stillimage',
+        '-crf', '28',
         '-threads', '0',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
