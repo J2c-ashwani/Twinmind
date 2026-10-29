@@ -653,7 +653,7 @@ def render_reel(spec, output_mp4_path):
         'durationSeconds': round(total_dur, 2),
         'fps': 30,
         'hasVoiceover': has_voices,
-        'hasBrollBackground': has_broll,
+        'hasBrollBackground': False,
         'hasMusic': True
     }
 
