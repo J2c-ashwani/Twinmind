@@ -45,20 +45,31 @@ export function initGrowthJobs() {
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // 4. Daily 08:30 PM IST (20:30) Evening Verification Trigger
+    // 4. Daily 07:30 PM IST (19:30) Meta Threads Micro-Essay Trigger
+    cron.schedule('30 19 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 07:30 PM IST reached! Triggering automated daily Threads broadcast...');
+            await growthOrchestratorService.publishDailyThreads(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 07:30 PM Threads broadcast error:', e);
+        }
+    }, { timezone: 'Asia/Kolkata' });
+
+    // 5. Daily 08:30 PM IST (20:30) Evening Verification Trigger
     // Runs once daily to safely catch up any missed daily post across platforms
     cron.schedule('30 20 * * *', async () => {
         try {
-            logger.info('⏰ [GROWTH JOB] 08:30 PM IST reached! Evening verification for LinkedIn, Facebook & Instagram...');
+            logger.info('⏰ [GROWTH JOB] 08:30 PM IST reached! Evening verification for LinkedIn, Facebook, Instagram & Threads...');
             await growthOrchestratorService.publishDailyLinkedInPersonal(false);
             await growthOrchestratorService.publishDailyFacebookReel(false);
             await growthOrchestratorService.publishDailyInstagram(false);
+            await growthOrchestratorService.publishDailyThreads(false);
         } catch (e) {
             logger.error('[GROWTH JOB] 08:30 PM evening broadcast verification error:', e);
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // 5. Boot check: safely catch up any missed daily posts on wake/restart (with mutex & date protection)
+    // 6. Boot check: safely catch up any missed daily posts on wake/restart (with mutex & date protection)
     setTimeout(async () => {
         try {
             logger.info('🚀 [GROWTH JOB] Checking for missed daily triggers on server boot...');
@@ -85,6 +96,11 @@ export function initGrowthJobs() {
             // After 07:00 PM IST (1140 min): ensure Instagram Carousel is published
             if (istTimeNum >= 1140) {
                 await growthOrchestratorService.publishDailyInstagram(false);
+            }
+
+            // After 07:30 PM IST (1170 min): ensure Threads micro-essay is published
+            if (istTimeNum >= 1170) {
+                await growthOrchestratorService.publishDailyThreads(false);
             }
         } catch (e) {
             logger.warn('[GROWTH JOB] Startup check warning:', e.message);

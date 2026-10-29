@@ -8,6 +8,7 @@ import linkedinAdapter from './adapters/linkedinAdapter.js';
 import instagramAdapter from './adapters/instagramAdapter.js';
 import facebookAdapter from './adapters/facebookAdapter.js';
 import youtubeAdapter from './adapters/youtubeAdapter.js';
+import threadsAdapter from './adapters/threadsAdapter.js';
 import { supabaseAdmin } from '../../config/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,20 +21,23 @@ class GrowthOrchestratorService {
             linkedin: linkedinAdapter,
             instagram: instagramAdapter,
             facebook: facebookAdapter,
-            youtube: youtubeAdapter
+            youtube: youtubeAdapter,
+            threads: threadsAdapter
         };
         this.state = this._loadState();
         // In-flight mutex locks to prevent race-condition duplicate posts
         this._publishingLocks = {
             facebook: false,
             linkedin: false,
-            instagram: false
+            instagram: false,
+            threads: false
         };
         // Short-term execution timestamps for debounce protection
         this._lastPublishedTimestamps = {
             facebook: 0,
             linkedin: 0,
-            instagram: 0
+            instagram: 0,
+            threads: 0
         };
     }
 
@@ -619,16 +623,138 @@ class GrowthOrchestratorService {
     }
 
     /**
-     * Unified Daily Broadcast: Dispatches Facebook Reel, LinkedIn Carousel & Instagram Carousel.
+     * Publishes today's high-engagement micro-reflection to Threads account @twingenie.app.
+     * Enforces strict 500-character limits and natural conversational engagement.
+     * @param {boolean} force - If true, bypasses the duplicate post throttle
+     */
+    async publishDailyThreads(force = false) {
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily Threads publishing flow...`);
+        const now = new Date();
+        const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+
+        // 1. Mutex Concurrency Lock: Prevent simultaneous executions
+        if (this._publishingLocks.threads) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Threads publication already in progress! Rejecting duplicate concurrent trigger.`);
+            return { action: 'skipped', reason: 'publish_in_progress' };
+        }
+
+        // 2. Debounce Cooldown: If published within the last 15 minutes, skip immediately
+        if (!force && this._lastPublishedTimestamps.threads && (Date.now() - this._lastPublishedTimestamps.threads < 15 * 60 * 1000)) {
+            logger.info(`[GROWTH ORCHESTRATOR] Threads post published within the last 15 minutes. Skipping duplicate.`);
+            return { action: 'skipped', reason: 'recently_published' };
+        }
+
+        // 3. Verify persistence in Supabase tracking
+        if (!force) {
+            try {
+                const { data: recent } = await supabaseAdmin
+                    .from('usage_tracking')
+                    .select('created_at')
+                    .eq('action_type', 'growth_threads')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (recent && recent.length > 0) {
+                    const lastIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(recent[0].created_at));
+                    if (lastIST === todayIST) {
+                        logger.info(`[GROWTH ORCHESTRATOR] Threads post already published today in Supabase tracking (${todayIST}). Skipping duplicate.`);
+                        return { action: 'skipped', reason: 'already_published_today' };
+                    }
+                }
+            } catch (dbCheckErr) {
+                logger.warn('[GROWTH ORCHESTRATOR] Supabase Threads date check warning:', dbCheckErr.message);
+            }
+        }
+
+        // Acquire lock
+        this._publishingLocks.threads = true;
+
+        try {
+            // 4. Fetch or dynamically generate today's content
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            const campaignId = `camp_th_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+            const postId = `post_threads_${Date.now()}`;
+
+            // Threads 500-character micro-essay format
+            const hook = dailyPackage.hook || dailyPackage.facebook?.title || dailyPackage.topic;
+            const insight = dailyPackage.facebook?.caption ? dailyPackage.facebook.caption.split('\n')[0] : 'Most AI tools flatter you. TwinGenie acts as a true cognitive mirror.';
+            const playStoreLink = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+
+            let threadText = `${hook} 🪞\n\n${insight}\n\nMeet your AI digital twin free on Google Play:\n📲 ${playStoreLink}`;
+            if (threadText.length > 500) {
+                threadText = threadText.slice(0, 496) + '...';
+            }
+
+            logger.info(`[GROWTH ORCHESTRATOR] Dispatching micro-reflection to Threads account @twingenie.app...`);
+            const publishResult = await this.adapters.threads.publish({
+                text: threadText
+            });
+
+            // 5. Track published timestamp in Supabase
+            if (publishResult.success) {
+                this._lastPublishedTimestamps.threads = Date.now();
+                try {
+                    const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                    if (users && users.length > 0) {
+                        const nowIso = now.toISOString();
+                        await supabaseAdmin.from('usage_tracking').insert({
+                            user_id: users[0].id,
+                            action_type: 'growth_threads',
+                            count: 1,
+                            period_start: nowIso,
+                            period_end: nowIso,
+                            created_at: nowIso
+                        });
+                    }
+                } catch (dbLogErr) {
+                    logger.warn('[GROWTH ORCHESTRATOR] Supabase Threads log warning:', dbLogErr.message);
+                }
+            }
+
+            // 6. Save to local state
+            const postRecord = {
+                id: postId,
+                campaignId,
+                platform: 'threads',
+                format: 'text',
+                title: dailyPackage.topic,
+                caption: threadText,
+                status: publishResult.success ? 'published' : 'failed',
+                scheduledFor: now.toISOString(),
+                publishedAt: publishResult.success ? now.toISOString() : null,
+                platformPostId: publishResult.postId,
+                platformPostUrl: publishResult.url,
+                error: publishResult.error || null
+            };
+
+            this.state.posts.push(postRecord);
+            this._saveState();
+
+            return {
+                success: publishResult.success,
+                postId: postRecord.id,
+                platformPostId: publishResult.postId,
+                url: publishResult.url,
+                topic: dailyPackage.topic,
+                error: publishResult.error
+            };
+        } finally {
+            this._publishingLocks.threads = false;
+        }
+    }
+
+    /**
+     * Unified Daily Broadcast: Dispatches Facebook Reel, LinkedIn Carousel, Instagram Carousel & Threads.
      * @param {boolean} force - Force publish even if already published today
      */
     async publishDailyBroadcast(force = false) {
-        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook + LinkedIn + Instagram, force=${force})...`);
+        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook + LinkedIn + Instagram + Threads, force=${force})...`);
         const results = {
             timestamp: new Date().toISOString(),
             facebook: null,
             linkedin: null,
-            instagram: null
+            instagram: null,
+            threads: null
         };
 
         try {
@@ -652,7 +778,14 @@ class GrowthOrchestratorService {
             results.instagram = { success: false, error: igErr.message };
         }
 
-        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB success=${results.facebook?.success}, LI success=${results.linkedin?.success}, IG success=${results.instagram?.success}`);
+        try {
+            results.threads = await this.publishDailyThreads(force);
+        } catch (thErr) {
+            logger.error('[GROWTH ORCHESTRATOR] Daily Threads publish failed:', thErr);
+            results.threads = { success: false, error: thErr.message };
+        }
+
+        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB success=${results.facebook?.success}, LI success=${results.linkedin?.success}, IG success=${results.instagram?.success}, Threads success=${results.threads?.success}`);
         return results;
     }
 }

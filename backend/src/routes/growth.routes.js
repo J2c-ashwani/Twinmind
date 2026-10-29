@@ -5,6 +5,7 @@ import contentGeneratorService, { CAMPAIGN_THEMES } from '../services/growth/con
 import linkedinAdapter from '../services/growth/adapters/linkedinAdapter.js';
 import facebookAdapter from '../services/growth/adapters/facebookAdapter.js';
 import instagramAdapter from '../services/growth/adapters/instagramAdapter.js';
+import threadsAdapter from '../services/growth/adapters/threadsAdapter.js';
 import prOutreachService from '../services/prOutreachService.js';
 import investorOutreachService from '../services/investorOutreachService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
@@ -256,6 +257,47 @@ router.get('/instagram/status', requireAdminSecret, async (req, res) => {
 });
 
 /**
+ * GET & POST /api/admin/growth/publish/threads
+ * Dedicated Threads pipeline trigger (Text micro-essay or Image post)
+ * Body/Query: { text?: string, linkAttachment?: string }
+ */
+router.all('/publish/threads', requireAdminSecret, async (req, res) => {
+    try {
+        const text = req.body?.text || req.query?.text;
+        const linkAttachment = req.body?.linkAttachment || req.query?.linkAttachment;
+        
+        let threadText = text;
+        if (!threadText) {
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(new Date());
+            const hook = dailyPackage.hook || dailyPackage.facebook?.title || dailyPackage.topic;
+            const insight = dailyPackage.facebook?.caption ? dailyPackage.facebook.caption.split('\n')[0] : 'Most AI tools flatter you. TwinGenie acts as a true cognitive mirror.';
+            const playStoreLink = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+            threadText = `${hook} 🪞\n\n${insight}\n\nMeet your AI digital twin free on Google Play:\n📲 ${playStoreLink}`;
+        }
+
+        logger.info(`[GROWTH ROUTE] Publishing to Threads @twingenie.app...`);
+        const publishResult = await threadsAdapter.publish({
+            text: threadText,
+            linkAttachment
+        });
+
+        res.json({ success: true, platform: 'threads', publishResult });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Threads publish failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/growth/threads/status
+ * Check Threads connection health
+ */
+router.get('/threads/status', requireAdminSecret, async (req, res) => {
+    const health = await threadsAdapter.getHealthStatus();
+    res.json({ success: true, health });
+});
+
+/**
  * POST /api/admin/growth/publish/:id
  * Force publish a specific post immediately
  */
@@ -454,6 +496,23 @@ router.all('/cron/daily-instagram', requireAdminSecret, async (req, res) => {
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily Instagram automated publication failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET & POST /api/admin/growth/cron/daily-threads
+ * Automated webhook called by cron-job.org daily at 7:30 PM IST (10:00 AM EDT)
+ * Publishes daily 500-char micro-reflection to @twingenie.app on Threads.
+ */
+router.all('/cron/daily-threads', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        logger.info(`[GROWTH CRON] Triggering automated daily Threads publication (force=${force})...`);
+        const result = await growthOrchestratorService.publishDailyThreads(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Daily Threads automated publication failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
