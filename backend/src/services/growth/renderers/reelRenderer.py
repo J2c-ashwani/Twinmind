@@ -436,73 +436,17 @@ def render_scene4(spec, out_path):
 
     img.save(out_path, quality=98)
 
-# SYNTHESIZE AMBIENT BACKGROUND MUSIC
+# SYNTHESIZE LIGHTWEIGHT AMBIENT AUDIO (<4MB RAM via native FFmpeg)
 def generate_ambient_audio(output_path, duration=36.0):
-    sr = 44100
-    n = int(sr * duration)
-    prog = [
-        [ (82.4, 0.40), (164.8, 0.30), (196.0, 0.35), (246.9, 0.35), (293.7, 0.30), (370.0, 0.25) ],
-        [ (65.4, 0.40), (130.8, 0.30), (196.0, 0.35), (246.9, 0.35), (329.6, 0.30), (392.0, 0.25) ],
-        [ (98.0, 0.40), (146.8, 0.30), (196.0, 0.35), (246.9, 0.35), (293.7, 0.30), (370.0, 0.25) ],
-        [ (73.4, 0.40), (146.8, 0.30), (220.0, 0.35), (246.9, 0.30), (293.7, 0.35), (370.0, 0.25) ]
+    cmd = [
+        'ffmpeg', '-y',
+        '-f', 'lavfi',
+        '-i', f'sine=frequency=110:sample_rate=44100:duration={duration}',
+        '-filter:a', 'volume=0.03,lowpass=f=220',
+        '-c:a', 'aac', '-b:a', '64k',
+        output_path
     ]
-    chord_dur = 4.0
-    cycles = int(math.ceil(duration / (4.0 * len(prog))))
-    chords = []
-    for cycle in range(cycles):
-        for idx, chord in enumerate(prog):
-            st = (cycle * 4 + idx) * chord_dur
-            et = st + chord_dur
-            chords.append((st, et, chord))
-
-    frames = bytearray()
-    for i in range(n):
-        t = i / sr
-        cur_notes = chords[-1][2]
-        chord_env = 1.0
-        for s_start, s_end, notes in chords:
-            if s_start <= t < s_end:
-                cur_notes = notes
-                ct = t - s_start
-                attack = min(1.0, ct / 0.40)
-                release = min(1.0, (s_end - t) / 0.40)
-                chord_env = attack * release
-                break
-
-        m_in = min(1.0, t / 0.8)
-        m_out = min(1.0, (duration - t) / 2.0)
-        master = m_in * m_out
-
-        left_sample = 0.0
-        right_sample = 0.0
-        lfo = math.sin(2 * math.pi * 0.25 * t) * 0.003
-
-        for f, amp in cur_notes:
-            w1 = math.sin(2 * math.pi * f * t)
-            w2 = math.sin(2 * math.pi * (f * 2) * t) * 0.22
-            w3 = math.sin(2 * math.pi * (f * 3) * t) * 0.06
-            w_detune_l = math.sin(2 * math.pi * (f * (1.0012 + lfo)) * t) * 0.18
-            w_detune_r = math.sin(2 * math.pi * (f * (0.9988 - lfo)) * t) * 0.18
-
-            comp = (w1 + w2 + w3) * amp
-            left_sample += (comp + w_detune_l * amp)
-            right_sample += (comp + w_detune_r * amp)
-
-        gain = 0.12 * chord_env * master
-        ls = max(-1.0, min(1.0, left_sample * gain))
-        rs = max(-1.0, min(1.0, right_sample * gain))
-        frames.extend(struct.pack('<hh', int(ls * 32767), int(rs * 32767)))
-
-    wav_tmp = output_path + '.wav'
-    with wave.open(wav_tmp, 'wb') as wf:
-        wf.setnchannels(2)
-        wf.setsampwidth(2)
-        wf.setframerate(sr)
-        wf.writeframes(frames)
-
-    subprocess.run(['ffmpeg', '-y', '-i', wav_tmp, '-c:a', 'aac', '-b:a', '192k', output_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    if os.path.exists(wav_tmp):
-        os.remove(wav_tmp)
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 # GENERATE SCENE VOICE NARATION (ASYNC EDGE-TTS)
 async def generate_voiceover_edge(text, out_mp3, voice='en-US-ChristopherNeural', rate='+5%'):
@@ -594,24 +538,19 @@ def render_reel(spec, output_mp4_path):
     else:
         d1, d2, d3, d4 = 7.8, 8.0, 8.0, 8.5
 
-    t1 = max(8.5, d1 + 0.8)
-    t2 = max(8.5, d2 + 0.8)
-    t3 = max(8.5, d3 + 0.8)
-    t4 = max(9.0, d4 + 1.0)
-    xfade = 0.6
-
-    offset1 = t1 - xfade
-    offset2 = offset1 + t2 - xfade
-    offset3 = offset2 + t3 - xfade
-    total_dur = offset3 + t4
+    t1 = max(8.0, d1 + 0.5)
+    t2 = max(8.0, d2 + 0.5)
+    t3 = max(8.0, d3 + 0.5)
+    t4 = max(8.5, d4 + 1.0)
+    total_dur = t1 + t2 + t3 + t4
 
     # Compile Voiceover Stream with precise scene offsets
     voice_track = os.path.join(temp_dir, 'voiceover_track.m4a')
     if has_voices and all(os.path.exists(f) for f in [v1_file, v2_file, v3_file, v4_file]):
         delay1 = int(250)
-        delay2 = int((offset1 + 0.20) * 1000)
-        delay3 = int((offset2 + 0.20) * 1000)
-        delay4 = int((offset3 + 0.20) * 1000)
+        delay2 = int((t1 + 0.15) * 1000)
+        delay3 = int((t1 + t2 + 0.15) * 1000)
+        delay4 = int((t1 + t2 + t3 + 0.15) * 1000)
 
         v_cmd = [
             'ffmpeg', '-y',
@@ -626,7 +565,7 @@ def render_reel(spec, output_mp4_path):
             f'[3:a]adelay={delay4}|{delay4}[a3];'
             '[a0][a1][a2][a3]amix=inputs=4:duration=longest:dropout_transition=0:normalize=0[vaout]',
             '-map', '[vaout]',
-            '-c:a', 'aac', '-b:a', '256k',
+            '-c:a', 'aac', '-b:a', '128k',
             voice_track
         ]
         subprocess.run(v_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -641,7 +580,7 @@ def render_reel(spec, output_mp4_path):
         generate_ambient_audio(bg_music_file, duration=total_dur + 3.0)
         bg_source = bg_music_file
 
-    # Mix Final Audio: Voiceover (1.20) + Ambient Ducked Music (0.10) with Broadcast Loudness Normalization (-14 LUFS)
+    # Mix Final Audio: Voiceover (1.20) + Ambient Ducked Music (0.08)
     final_audio = os.path.join(temp_dir, 'final_soundtrack.m4a')
     if voice_track and os.path.exists(voice_track):
         mix_cmd = [
@@ -650,11 +589,10 @@ def render_reel(spec, output_mp4_path):
             '-i', bg_source,
             '-filter_complex',
             f'[0:a]aformat=channel_layouts=stereo,volume=1.20[voice];'
-            f'[1:a]aformat=channel_layouts=stereo,volume=0.10,aloop=loop=-1:size=2e+09,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
-            '[voice][bg]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mixed];'
-            '[mixed]loudnorm=I=-14:TP=-1.5:LRA=11[aout]',
+            f'[1:a]aformat=channel_layouts=stereo,volume=0.08,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
+            '[voice][bg]amix=inputs=2:duration=first:dropout_transition=1:normalize=0[aout]',
             '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '256k', '-ar', '44100', '-ac', '2',
+            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
             final_audio
         ]
     else:
@@ -662,83 +600,33 @@ def render_reel(spec, output_mp4_path):
             'ffmpeg', '-y',
             '-i', bg_source,
             '-filter_complex',
-            f'[0:a]volume=0.50,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[raw];'
-            '[raw]loudnorm=I=-14:TP=-1.5:LRA=11[aout]',
+            f'[0:a]volume=0.30,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
             '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '256k', '-ar', '44100', '-ac', '2',
+            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
             final_audio
         ]
     subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Enforce ultra-low RAM crossfade mode to prevent Render container from exceeding 512MB limit
-    has_broll = False
+    # Ultra-Low RAM Concat Demuxer for 512MB VPS (<20MB RAM, loads one image at a time)
+    concat_txt = os.path.join(temp_dir, 'concat.txt')
+    with open(concat_txt, 'w') as f:
+        f.write(f"file '{s1}'\nduration {t1:.2f}\n")
+        f.write(f"file '{s2}'\nduration {t2:.2f}\n")
+        f.write(f"file '{s3}'\nduration {t3:.2f}\n")
+        f.write(f"file '{s4}'\nduration {t4:.2f}\n")
+        f.write(f"file '{s4}'\n")
 
-    if has_broll:
-        # Dual-Layer Compositing Engine:
-        # [0:v] Looping 1080x1920 tech network B-roll video with high-contrast color grading
-        # [1:v]..[4:v] Translucent HUD cards with 0.6s crossfades
-        # [bg][fg] Alpha overlay composite at 1080x1920
-        filter_complex = (
-            f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,eq=brightness=-0.12:contrast=1.15[bg];"
-            f"[1:v][2:v]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];"
-            f"[v01][3:v]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];"
-            f"[v02][4:v]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[fg];"
-            f"[bg][fg]overlay=0:0:shortest=1[v]"
-        )
-        v_inputs = [
-            '-stream_loop', '-1', '-i', DEFAULT_BROLL_PATH,
-            '-loop', '1', '-t', str(t1), '-i', s1,
-            '-loop', '1', '-t', str(t2), '-i', s2,
-            '-loop', '1', '-t', str(t3), '-i', s3,
-            '-loop', '1', '-t', str(t4), '-i', s4,
-            '-i', final_audio
-        ]
-        audio_map_index = '5:a'
-    else:
-        # High-Efficiency Memory-Constrained Crossfade (Strict Ultra-Low RAM for 512MB VPS)
-        filter_complex = (
-            f"[0:v]format=yuv420p[v0];"
-            f"[1:v]format=yuv420p[v1];"
-            f"[2:v]format=yuv420p[v2];"
-            f"[3:v]format=yuv420p[v3];"
-            f"[v0][v1]xfade=transition=fade:duration={xfade}:offset={offset1:.2f}[v01];"
-            f"[v01][v2]xfade=transition=fade:duration={xfade}:offset={offset2:.2f}[v02];"
-            f"[v02][v3]xfade=transition=fade:duration={xfade}:offset={offset3:.2f}[v]"
-        )
-        v_inputs = [
-            '-loop', '1', '-t', str(t1), '-r', '30', '-i', s1,
-            '-loop', '1', '-t', str(t2), '-r', '30', '-i', s2,
-            '-loop', '1', '-t', str(t3), '-r', '30', '-i', s3,
-            '-loop', '1', '-t', str(t4), '-r', '30', '-i', s4,
-            '-i', final_audio
-        ]
-        audio_map_index = '4:a'
-
-    # Production Mobile Master with Strict 60MB RAM Cap
     cmd = [
         'ffmpeg', '-y',
-        *v_inputs,
-        '-filter_complex', filter_complex,
-        '-map', '[v]',
-        '-map', audio_map_index,
+        '-f', 'concat', '-safe', '0', '-i', concat_txt,
+        '-i', final_audio,
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
+        '-tune', 'stillimage',
         '-threads', '1',
-        '-rc-lookahead', '5',
-        '-profile:v', 'main',
-        '-level:v', '4.0',
-        '-crf', '22',
-        '-b:v', '3M',
-        '-maxrate', '4M',
-        '-bufsize', '2M',
-        '-g', '30',
-        '-keyint_min', '30',
-        '-sc_threshold', '0',
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
         '-b:a', '128k',
-        '-ar', '44100',
-        '-ac', '2',
         '-r', '30',
         '-t', str(total_dur),
         '-movflags', '+faststart',
@@ -750,7 +638,7 @@ def render_reel(spec, output_mp4_path):
         raise RuntimeError(f"FFmpeg failed: {res.stderr.decode('utf-8')}")
 
     # Clean up temporary artifacts
-    cleanup_files = [s1, s2, s3, s4, v1_file, v2_file, v3_file, v4_file, voice_track, bg_music_file, final_audio]
+    cleanup_files = [s1, s2, s3, s4, v1_file, v2_file, v3_file, v4_file, voice_track, bg_music_file, final_audio, concat_txt]
     for p in cleanup_files:
         if p and os.path.exists(p):
             try:

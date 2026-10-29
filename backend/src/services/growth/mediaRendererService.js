@@ -24,12 +24,18 @@ class MediaRendererService {
      */
     async renderCarousel(spec) {
         return new Promise((resolve, reject) => {
+            if (global.gc) {
+                try { global.gc(); } catch (e) {}
+            }
             const folderName = `${spec.campaignId || 'camp'}_${spec.postId || Date.now()}`;
             const targetDir = path.join(PUBLIC_ASSETS_DIR, folderName);
 
             const specJson = JSON.stringify({ slides: spec.slides });
 
-            execFile('python3', [PYTHON_RENDERER_PATH, specJson, targetDir], (error, stdout, stderr) => {
+            execFile('python3', [PYTHON_RENDERER_PATH, specJson, targetDir], { timeout: 60000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+                if (global.gc) {
+                    try { global.gc(); } catch (e) {}
+                }
                 if (error) {
                     logger.error('[MEDIA RENDERER] Carousel rendering failed:', error, stderr);
                     return reject(new Error(`Carousel rendering error: ${stderr || error.message}`));
@@ -65,12 +71,15 @@ class MediaRendererService {
     }
 
     /**
-     * Renders a 1080x1920 motion Reel video (MP4) with smooth transitions
-     * @param {Object} spec - { campaignId, postId, hook, tag }
+     * Renders a 1080x1920 motion Reel video (MP4) with ultra-low RAM concat demuxer (<20MB RAM)
+     * @param {Object} spec - { campaignId, postId, hook, tag, voiceHook, voiceProblem, voiceSolution, voiceCta }
      * @returns {Promise<{ videoPath: string, videoUrl: string, durationSeconds: number, resolution: string, localDir: string }>}
      */
     async renderReel(spec) {
         return new Promise((resolve, reject) => {
+            if (global.gc) {
+                try { global.gc(); } catch (e) {}
+            }
             const folderName = `${spec.campaignId || 'camp'}_${spec.postId || Date.now()}`;
             const targetDir = path.join(PUBLIC_ASSETS_DIR, folderName);
             if (!fs.existsSync(targetDir)) {
@@ -79,7 +88,10 @@ class MediaRendererService {
             const outputMp4 = path.join(targetDir, 'reel.mp4');
             const specJson = JSON.stringify(spec);
 
-            execFile('python3', [PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], (error, stdout, stderr) => {
+            execFile('python3', [PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: 90000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+                if (global.gc) {
+                    try { global.gc(); } catch (e) {}
+                }
                 if (error) {
                     logger.error('[MEDIA RENDERER] Reel rendering failed:', error, stderr);
                     return reject(new Error(`Reel rendering error: ${stderr || error.message}`));
