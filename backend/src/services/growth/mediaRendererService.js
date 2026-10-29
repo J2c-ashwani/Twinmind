@@ -90,13 +90,13 @@ class MediaRendererService {
             const outputMp4 = path.join(targetDir, 'reel.mp4');
             const specJson = JSON.stringify(spec);
 
-            execFile('python3', [PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: 90000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            execFile('python3', [PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: 180000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
                 if (global.gc) {
                     try { global.gc(); } catch (e) {}
                 }
                 if (error) {
-                    logger.error('[MEDIA RENDERER] Reel rendering failed:', error, stderr);
-                    return reject(new Error(`Reel rendering error: ${stderr || error.message}`));
+                    logger.error('[MEDIA RENDERER] Reel rendering failed:', error, stderr, stdout);
+                    return reject(new Error(`Reel rendering error: ${stderr || stdout || error.message || error}`));
                 }
 
                 try {

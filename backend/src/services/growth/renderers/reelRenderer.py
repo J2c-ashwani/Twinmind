@@ -658,7 +658,7 @@ def render_scene4(spec, out_path):
 # AUDIO & NEURAL VOICEOVER SYNTHESIS PIPELINE
 # =========================================================================
 
-def synthesize_voiceover_segment(text, out_mp3_path, voice='en-US-ChristopherNeural', rate='+20%'):
+def synthesize_voiceover_segment(text, out_mp3_path, voice='en-US-ChristopherNeural', rate='+25%'):
     cmd = [
         'edge-tts',
         '--voice', voice,
@@ -666,7 +666,18 @@ def synthesize_voiceover_segment(text, out_mp3_path, voice='en-US-ChristopherNeu
         '--text', text,
         '--write-media', out_mp3_path
     ]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        # Fallback to python3 -m edge_tts if edge-tts binary isn't in $PATH
+        cmd_fallback = [
+            sys.executable, '-m', 'edge_tts',
+            '--voice', voice,
+            '--rate=' + rate,
+            '--text', text,
+            '--write-media', out_mp3_path
+        ]
+        subprocess.run(cmd_fallback, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def get_audio_duration(file_path):
     cmd = [
@@ -811,6 +822,7 @@ def render_reel(spec, output_mp4_path):
         '-i', final_audio,
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
+        '-tune', 'stillimage',
         '-crf', '28',
         '-threads', '0',
         '-pix_fmt', 'yuv420p',
