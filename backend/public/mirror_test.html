@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>The 1-Minute AI Mirror Test | TwinGenie</title>
+  <meta name="description" content="Discover your hidden cognitive blind spot in 60 seconds. The only AI assessment that refuses to flatter you.">
+  <meta property="og:title" content="The 1-Minute AI Mirror Test | What Is Your Blind Spot?">
+  <meta property="og:description" content="Take the 60-second assessment that exposes the excuse keeping you stuck.">
+  <meta property="og:image" content="/og-image.png">
+  <meta name="theme-color" content="#0A0816">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #0A0816;
+      --card-bg: rgba(22, 17, 38, 0.85);
+      --card-border: rgba(75, 58, 115, 0.45);
+      --accent-crimson: #FF3B5C;
+      --accent-cyan: #38BDF8;
+      --accent-gold: #FFB800;
+      --accent-emerald: #34D399;
+      --accent-purple: #9333EA;
+      --text-white: #FFFFFF;
+      --text-light: #F1F5F9;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px 16px 40px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Background Glow */
+    .glow-blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-1 {
+      top: -10%;
+      left: 10%;
+      width: 380px;
+      height: 380px;
+      background: rgba(147, 51, 234, 0.22);
+    }
+    .glow-2 {
+      bottom: 5%;
+      right: 5%;
+      width: 420px;
+      height: 420px;
+      background: rgba(255, 59, 92, 0.16);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header Nav */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: rgba(20, 15, 36, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-crimson));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 16px;
+      color: white;
+      box-shadow: 0 4px 14px rgba(255, 59, 92, 0.35);
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: var(--text-white);
+    }
+
+    .mode-pill {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      background: rgba(255, 59, 92, 0.15);
+      border: 1px solid var(--accent-crimson);
+      color: var(--accent-crimson);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mode-pill::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent-crimson);
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px var(--accent-crimson);
+    }
+
+    /* Progress Indicator */
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 33%;
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-crimson));
+      border-radius: 10px;
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Quiz Card Surface */
+    .quiz-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--card-border);
+      border-radius: 26px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .badge-tag {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      display: inline-block;
+    }
+
+    .question-title {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.35;
+      color: var(--text-white);
+      letter-spacing: -0.4px;
+    }
+
+    .question-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-top: -8px;
+    }
+
+    /* Options List */
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .option-btn {
+      background: rgba(28, 22, 48, 0.65);
+      border: 1.5px solid rgba(80, 62, 120, 0.45);
+      border-radius: 18px;
+      padding: 16px 18px;
+      text-align: left;
+      color: var(--text-light);
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.4;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-btn:hover {
+      background: rgba(45, 34, 76, 0.85);
+      border-color: var(--accent-purple);
+      transform: translateY(-2px);
+    }
+
+    .option-btn:active {
+      transform: scale(0.98);
+    }
+
+    .option-key {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--accent-cyan);
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .option-btn:hover .option-key {
+      background: var(--accent-purple);
+      color: white;
+    }
+
+    /* Scanning State (Loading Animation) */
+    .scanning-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 40px 20px;
+      gap: 24px;
+    }
+
+    .scanner-orb {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,59,92,0.4) 0%, rgba(147,51,234,0.1) 70%);
+      border: 2px solid var(--accent-crimson);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: pulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.96); box-shadow: 0 0 15px rgba(255, 59, 92, 0.4); }
+      50% { transform: scale(1.06); box-shadow: 0 0 35px rgba(255, 59, 92, 0.8); }
+      100% { transform: scale(0.96); box-shadow: 0 0 15px rgba(255, 59, 92, 0.4); }
+    }
+
+    .scan-status-text {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-white);
+    }
+
+    .scan-subtext {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 320px;
+    }
+
+    /* Results Screen */
+    .results-screen {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-badge {
+      align-self: flex-start;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      background: rgba(255, 59, 92, 0.15);
+      border: 1px solid var(--accent-crimson);
+      color: var(--accent-crimson);
+    }
+
+    .blindspot-card {
+      background: rgba(42, 14, 26, 0.6);
+      border: 1.5px solid rgba(255, 59, 92, 0.4);
+      border-radius: 20px;
+      padding: 22px;
+      position: relative;
+    }
+
+    .blindspot-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--accent-crimson);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .blindspot-title {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.3;
+      color: var(--text-white);
+      margin-bottom: 10px;
+    }
+
+    .blindspot-desc {
+      font-size: 15px;
+      line-height: 1.5;
+      color: rgba(241, 245, 249, 0.9);
+    }
+
+    /* Flattery Contrast Box */
+    .contrast-card {
+      background: rgba(24, 18, 42, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .contrast-row {
+      display: flex;
+      gap: 12px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .contrast-tag {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      height: fit-content;
+      margin-top: 2px;
+    }
+
+    .tag-bad {
+      background: rgba(244, 63, 94, 0.2);
+      color: #F43F5E;
+      border: 1px solid rgba(244, 63, 94, 0.4);
+    }
+
+    .tag-good {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* CTA Section */
+    .cta-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #9333EA 0%, #D946EF 50%, #FF3B5C 100%);
+      border: none;
+      border-radius: 20px;
+      padding: 18px 24px;
+      color: white;
+      font-size: 17px;
+      font-weight: 900;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+      box-shadow: 0 10px 28px rgba(217, 70, 239, 0.4);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 34px rgba(217, 70, 239, 0.55);
+    }
+
+    .primary-btn:active {
+      transform: scale(0.98);
+    }
+
+    .rating-proof {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .stars {
+      color: var(--accent-gold);
+      letter-spacing: 2px;
+      font-size: 15px;
+    }
+
+    .secondary-share-btn {
+      background: transparent;
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 12px;
+      color: var(--text-light);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .secondary-share-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Trust Footer */
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.5;
+      padding-top: 10px;
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glow-blob glow-1"></div>
+  <div class="glow-blob glow-2"></div>
+
+  <div class="container">
+    
+    <!-- Top Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-logo">TG</div>
+        <span class="brand-name">TwinGenie</span>
+      </div>
+      <div class="mode-pill" id="headerPill">Mirror Test</div>
+    </header>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar-container" id="progressBarContainer">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+
+    <!-- Active Question Card -->
+    <div class="quiz-card" id="quizCard">
+      <span class="badge-tag" id="stepBadge">Question 1 of 3</span>
+      <h1 class="question-title" id="questionTitle">Loading assessment...</h1>
+      <p class="question-subtitle" id="questionSubtitle">Select the choice that reflects your honest instinct, not who you want to be.</p>
+      
+      <div class="options-list" id="optionsContainer">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Dynamic Scanning State -->
+    <div class="quiz-card scanning-screen" id="scanningScreen">
+      <div class="scanner-orb">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FF3B5C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="scan-status-text" id="scanStatus">Analyzing Cognitive Friction...</div>
+        <div class="scan-subtext" id="scanSub">Cross-referencing 35 behavioral archetypes and excuse rationalizations...</div>
+      </div>
+    </div>
+
+    <!-- Provocative Result Card -->
+    <div class="quiz-card results-screen" id="resultsScreen">
+      <div class="result-badge" id="resArchetypeBadge">ARCHETYPE IDENTIFIED</div>
+      
+      <div class="blindspot-card">
+        <div class="blindspot-label">Your Core Blind Spot</div>
+        <div class="blindspot-title" id="resBlindSpotTitle">Intellectualized Avoidance</div>
+        <div class="blindspot-desc" id="resBlindSpotDesc">
+          You use intelligence to justify procrastination. You confuse the dopamine of research with the friction of real execution.
+        </div>
+      </div>
+
+      <div class="contrast-card">
+        <div class="contrast-row">
+          <span class="contrast-tag tag-bad">ChatGPT / Yes-Man</span>
+          <div>"Rest is productive! Take your time to plan perfectly before doing anything!"</div>
+        </div>
+        <div class="contrast-row">
+          <span class="contrast-tag tag-good" id="resModeTag">Honest Twin</span>
+          <div id="resTwinCallout">"You've been 'planning' for 3 weeks. You aren't strategizing—you're terrified of failure. Face the friction today."</div>
+        </div>
+      </div>
+
+      <!-- Conversion Gate to App Store -->
+      <div class="cta-container">
+        <a href="/download?ref=mirror_test" class="primary-btn" id="appDownloadBtn">
+          <span>Unlock Your AI Twin on Google Play</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3.609 1.814L13.792 12 3.61 22.186a2.38 2.38 0 0 1-.22-.321V2.135c.068-.112.143-.22.22-.321zm11.233 11.234l2.585-2.586a1.32 1.32 0 0 0 0-1.924l-2.585-2.586-7.854 7.854 7.854 7.854zm1.042-3.628l2.943 1.682c1.077.616 1.077 1.624 0 2.24l-2.943 1.682-2.128-2.128 2.128-2.128zM4.685 1.054l8.914 8.914-2.128 2.128L2.557 3.182c.48-.992 1.385-1.572 2.128-1.572zm0 21.892c-.743 0-1.648-.58-2.128-1.572l8.914-8.914 2.128 2.128-8.914 8.914z"/>
+          </svg>
+        </a>
+
+        <div class="rating-proof">
+          <span class="stars">★★★★★</span>
+          <span>5.0 Rating • 100% Free Baseline Assessment</span>
+        </div>
+
+        <button class="secondary-share-btn" onclick="copyResultLink()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span id="shareBtnText">Share My Mirror Test Result</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Trust Footer -->
+    <footer>
+      <div>TwinGenie • The Cognitive Digital Twin with Long-Term Memory</div>
+      <div style="margin-top: 4px;">
+        <a href="/privacy">Privacy Policy</a> • <a href="/terms">Terms of Service</a> • <a href="/download">Google Play</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // 3 Diagnostic High-Friction Questions
+    const QUESTIONS = [
+      {
+        tag: "Question 1 of 3: The Avoidance Trigger",
+        title: "When you have a critical high-friction task to finish, what is your go-to excuse?",
+        options: [
+          { text: "I need to do more research and plan perfectly before I can start.", archetype: "intellectual", weight: "intellectual" },
+          { text: "I'm exhausted right now. I'll wake up early and tackle it tomorrow.", archetype: "exhaustion", weight: "exhaustion" },
+          { text: "Let me clean my room, clear my emails, and fix small tasks first.", archetype: "productive_proc", weight: "productive_proc" },
+          { text: "I work best under extreme last-minute deadline pressure anyway.", archetype: "adrenaline", weight: "adrenaline" }
+        ]
+      },
+      {
+        tag: "Question 2 of 3: The Interpersonal Reflex",
+        title: "When someone you respect leaves you on read for 6 hours, what does your brain do?",
+        options: [
+          { text: "I replay our last interactions to figure out what I did to upset them.", archetype: "overthinker", weight: "anxious" },
+          { text: "I feel an urgent itch to send a casual follow-up or check-in text.", archetype: "control", weight: "reactive" },
+          { text: "I pretend I don't care, but repeatedly check if they've been active.", archetype: "avoidant", weight: "hypervigilant" },
+          { text: "I assume they're dismissive and mentally detach to protect my ego.", archetype: "defensive", weight: "detached" }
+        ]
+      },
+      {
+        tag: "Question 3 of 3: The Unspoken Truth",
+        title: "What is the hard truth your closest friends are too polite to say to your face?",
+        options: [
+          { text: "You start 10 ambitious ideas with immense energy and finish zero of them.", archetype: "starter", weight: "novelty" },
+          { text: "You overanalyze simple decisions until the window of opportunity closes.", archetype: "paralysis", weight: "analysis" },
+          { text: "You say yes to everyone to feel needed, then silently resent them.", archetype: "people_pleaser", weight: "boundaries" },
+          { text: "You talk constantly about who you want to be, but repeat the exact same week.", archetype: "loop", weight: "circular" }
+        ]
+      }
+    ];
+
+    // Profiles & Archetypes
+    const ARCHETYPES = {
+      intellectual: {
+        badge: "ARCHETYPE: THE INTELLECTUAL AVOIDER",
+        title: "Chronic Procrastination Masked as 'Research'",
+        desc: "You use high intelligence to justify avoidance. You convince yourself you aren't procrastinating because you're 'gathering information', but it's fear of imperfect execution.",
+        mode: "HONEST / DARK TWIN",
+        callout: "You've been 'planning' for 3 weeks. You aren't strategizing—you're terrified of being evaluated. Take the single imperfect action today."
+      },
+      exhaustion: {
+        badge: "ARCHETYPE: THE TOMORROW FALLACIST",
+        title: "Emotional Guilt Disguised as 'Physical Fatigue'",
+        desc: "You mistake emotional dread for physical tiredness. You routinely delegate today's friction to an idealized 'future version' of yourself tomorrow who never shows up.",
+        mode: "HONEST / DARK TWIN",
+        callout: "You aren't tired from work; you're exhausted from the mental weight of avoiding it. Starting for 5 minutes will give you more energy than scrolling for 2 hours."
+      },
+      productive_proc: {
+        badge: "ARCHETYPE: THE PRODUCTIVE PROCRASTINATOR",
+        title: "False Momentum via Low-Stakes Busywork",
+        desc: "You clean your desk, organize your tabs, and answer routine emails to feel productive, while the single needle-moving priority remains untouched.",
+        mode: "HONEST / DARK TWIN",
+        callout: "Organizing your desk is just avoidance in a suit. Stop clearing minor hurdles to avoid the real milestone."
+      },
+      people_pleaser: {
+        badge: "ARCHETYPE: THE BURDEN MINIMIZER",
+        title: "People-Pleasing Disguised as Kindness",
+        desc: "You volunteer your time even when empty because saying 'no' makes you feel like an inconvenient burden. You sacrifice personal boundaries for temporary approval.",
+        mode: "REFLECTIVE TWIN",
+        callout: "Where did you learn that your rest has to be earned? Saying no to others is the only way to say yes to your own life."
+      },
+      default: {
+        badge: "ARCHETYPE: THE CIRCULAR OVERTHINKER",
+        title: "Analysis Paralysis & Rationalization Loops",
+        desc: "Your cognitive default is overthinking. Standard yes-man AI fuels this by agreeing with every nuance, trapping you in recursive mental loops instead of decisive action.",
+        mode: "HONEST / DARK TWIN",
+        callout: "You don't need more advice or another chatbot to agree with you. You need persistent accountability that catches you repeating your favorite excuses."
+      }
+    };
+
+    let currentStep = 0;
+    const userAnswers = [];
+
+    function renderQuestion() {
+      const q = QUESTIONS[currentStep];
+      document.getElementById('stepBadge').innerText = `Question ${currentStep + 1} of 3`;
+      document.getElementById('questionTitle').innerText = q.title;
+      
+      const progressPercent = Math.round(((currentStep + 1) / QUESTIONS.length) * 100);
+      document.getElementById('progressBar').style.width = `${progressPercent}%`;
+
+      const container = document.getElementById('optionsContainer');
+      container.innerHTML = '';
+
+      const letters = ['A', 'B', 'C', 'D'];
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `
+          <div class="option-key">${letters[idx]}</div>
+          <div>${opt.text}</div>
+        `;
+        btn.onclick = () => selectOption(opt);
+        container.appendChild(btn);
+      });
+    }
+
+    function selectOption(option) {
+      userAnswers.push(option);
+      if (currentStep < QUESTIONS.length - 1) {
+        currentStep++;
+        renderQuestion();
+      } else {
+        triggerScanningSequence();
+      }
+    }
+
+    function triggerScanningSequence() {
+      document.getElementById('quizCard').style.display = 'none';
+      document.getElementById('progressBarContainer').style.display = 'none';
+      document.getElementById('scanningScreen').style.display = 'flex';
+
+      const scanPhases = [
+        "Analyzing Cognitive Friction...",
+        "Cross-referencing 35 Personality Archetypes...",
+        "Exposing Recurring Rationalization Loops...",
+        "Calibrating TwinGenie Perspective Mirror..."
+      ];
+
+      let phaseIdx = 0;
+      const interval = setInterval(() => {
+        phaseIdx++;
+        if (phaseIdx < scanPhases.length) {
+          document.getElementById('scanStatus').innerText = scanPhases[phaseIdx];
+        } else {
+          clearInterval(interval);
+          showResults();
+        }
+      }, 700);
+    }
+
+    function showResults() {
+      document.getElementById('scanningScreen').style.display = 'none';
+      document.getElementById('resultsScreen').style.display = 'flex';
+      document.getElementById('headerPill').innerText = "Results Unlocked";
+      document.getElementById('headerPill').style.borderColor = "var(--accent-emerald)";
+      document.getElementById('headerPill').style.color = "var(--accent-emerald)";
+
+      // Match archetype based on selected triggers
+      const firstAnswer = userAnswers[0]?.archetype || 'intellectual';
+      const thirdAnswer = userAnswers[2]?.archetype;
+      
+      let profile = ARCHETYPES[firstAnswer] || ARCHETYPES[thirdAnswer] || ARCHETYPES.default;
+
+      document.getElementById('resArchetypeBadge').innerText = profile.badge;
+      document.getElementById('resBlindSpotTitle').innerText = profile.title;
+      document.getElementById('resBlindSpotDesc').innerText = profile.desc;
+      document.getElementById('resModeTag').innerText = profile.mode;
+      document.getElementById('resTwinCallout').innerText = `"${profile.callout}"`;
+
+      // Update CTA with deep-link attribution
+      const downloadBtn = document.getElementById('appDownloadBtn');
+      downloadBtn.href = `/download?ref=mirror_test&archetype=${firstAnswer}&utm_source=mirror_quiz&utm_medium=web_funnel`;
+
+      // Store in localStorage for seamless transfer
+      try {
+        localStorage.setItem('twingenie_mirror_result', JSON.stringify({
+          archetype: firstAnswer,
+          profile: profile.title,
+          completedAt: new Date().toISOString()
+        }));
+      } catch (e) {}
+    }
+
+    function copyResultLink() {
+      const shareUrl = window.location.origin + '/test?ref=share';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          const btnText = document.getElementById('shareBtnText');
+          const original = btnText.innerText;
+          btnText.innerText = "✓ Link Copied to Clipboard!";
+          setTimeout(() => { btnText.innerText = original; }, 2500);
+        });
+      } else {
+        alert("Copy this link to test your friends: " + shareUrl);
+      }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      renderQuestion();
+    });
+  </script>
+</body>
+</html>

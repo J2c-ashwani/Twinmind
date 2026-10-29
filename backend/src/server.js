@@ -224,6 +224,13 @@ app.get(['/download', '/open', '/app', '/get'], (req, res) => {
 });
 
 // ============================================
+// 🪞 1-MINUTE WEB "MIRROR TEST" (WEB-TO-APP BRIDGE)
+// ============================================
+app.get(['/test', '/mirror-test', '/quiz', '/assessment'], (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'mirror_test.html'));
+});
+
+// ============================================
 // 🔗 API ROUTES
 // ============================================
 
