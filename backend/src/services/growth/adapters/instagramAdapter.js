@@ -41,11 +41,24 @@ class InstagramAdapter {
             const { accessToken, igUserId } = this.getCredentials();
             const res = await fetch(`${GRAPH_API_BASE}/${igUserId}?fields=id,username&access_token=${accessToken}`);
             const data = await res.json();
+
+            let recentMedia = [];
+            try {
+                const mediaRes = await fetch(`${GRAPH_API_BASE}/${igUserId}/media?fields=id,caption,media_type,permalink,timestamp&limit=5&access_token=${accessToken}`);
+                const mediaData = await mediaRes.json();
+                if (mediaData.data) {
+                    recentMedia = mediaData.data;
+                }
+            } catch (mErr) {
+                logger.warn('[INSTAGRAM] Failed to fetch recent media:', mErr.message);
+            }
+
             return {
                 platform: this.platform,
                 status: res.ok ? 'connected' : 'token_expired_or_invalid',
                 ready: res.ok,
                 account: data.username || igUserId,
+                recentMedia,
                 error: data.error?.message
             };
         } catch (e) {
