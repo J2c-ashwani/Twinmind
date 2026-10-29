@@ -13,6 +13,7 @@ import prOutreachService from '../services/prOutreachService.js';
 import investorOutreachService from '../services/investorOutreachService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
 import growthDashboardService from '../services/growth/growthDashboardService.js';
+import smartRouterService from '../services/growth/smartRouterService.js';
 import logger from '../config/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -758,6 +759,20 @@ router.get('/dashboard', requireAdminSecret, async (req, res) => {
         res.json({ success: true, dashboard: metrics });
     } catch (error) {
         logger.error('[GROWTH ROUTE] Dashboard retrieval failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/admin/growth/analytics/clicks
+ * Returns real-time smart router click metrics & attribution by platform/device
+ */
+router.get('/analytics/clicks', requireAdminSecret, (req, res) => {
+    try {
+        const analytics = smartRouterService.getAnalytics();
+        res.json({ success: true, analytics });
+    } catch (error) {
+        logger.error('[GROWTH ROUTE] Click analytics failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

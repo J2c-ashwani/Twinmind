@@ -128,6 +128,9 @@ class InstagramAdapter {
             const postId = pubData.id;
             logger.info(`🎉 [INSTAGRAM] Published successfully! Post ID: ${postId}`);
 
+            // Post first comment with direct download CTA to maximize conversion
+            await this._postFirstComment(postId, postData, accessToken);
+
             return {
                 success: true,
                 platform: this.platform,
@@ -224,6 +227,34 @@ class InstagramAdapter {
             }
         }
         throw new Error(`Instagram container processing timed out after ${maxAttempts * delayMs}ms`);
+    }
+
+    /**
+     * Posts a first comment with the direct download link
+     */
+    async _postFirstComment(mediaId, postData, accessToken) {
+        if (!mediaId) return;
+        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+        const commentMsg = postData.firstComment || 
+            `📲 Experience your AI Digital Twin free on Google Play:\n${playStoreUrl}\n\nTake your 35-question Big Five personality baseline today!`;
+        try {
+            const res = await fetch(`${GRAPH_API_BASE}/${mediaId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: commentMsg,
+                    access_token: accessToken
+                })
+            });
+            const data = await res.json();
+            if (data.id) {
+                logger.info(`💬 [INSTAGRAM] First-comment link posted successfully on ${mediaId}`);
+            } else if (data.error) {
+                logger.warn('[INSTAGRAM] Non-blocking first-comment notice:', data.error.message || data.error);
+            }
+        } catch (err) {
+            logger.warn('[INSTAGRAM] Non-blocking first-comment notice:', err.message);
+        }
     }
 }
 

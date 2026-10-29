@@ -32,6 +32,7 @@ import lifeCoachRoutes from './routes/lifeCoach.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import proactiveRoutes from './routes/proactive.routes.js';
 import growthRoutes from './routes/growth.routes.js';
+import smartRouterService from './services/growth/smartRouterService.js';
 import { initJobs } from './jobs/reminderJob.js';
 
 dotenv.config();
@@ -218,18 +219,8 @@ app.get('/api/health', (req, res) => {
 // ============================================
 // 📲 SMART DEVICE-AWARE APP DOWNLOAD ROUTE
 // ============================================
-app.get('/download', (req, res) => {
-  const ua = req.headers['user-agent'] || '';
-  const isAndroid = /Android/i.test(ua);
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-
-  if (isAndroid) {
-    return res.redirect('https://play.google.com/store/apps/details?id=com.asmind.app');
-  }
-  if (isIOS) {
-    return res.redirect('https://twingenie.app/#ios-waitlist');
-  }
-  return res.redirect('https://play.google.com/store/apps/details?id=com.asmind.app');
+app.get(['/download', '/open', '/app', '/get'], (req, res) => {
+  return smartRouterService.handleDownload(req, res);
 });
 
 // ============================================
@@ -301,43 +292,6 @@ app.get('/privacy', (req, res) => {
 
 app.get('/terms', (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'terms.html'));
-});
-
-// Smart App Link Redirect — matches sending domain (twingenie.app) for high deliverability
-app.get(['/open', '/app', '/download'], (req, res) => {
-  const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.asmind.app';
-  res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Opening TwinGenie...</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="2;url=${playStoreUrl}">
-  <style>
-    body { background-color: #0b0716; color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-    .card { background: #161129; border: 1px solid #2e2456; border-radius: 16px; padding: 32px 24px; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    h2 { color: #fff; margin-top: 0; }
-    p { color: #9ca3af; font-size: 14px; line-height: 1.5; }
-    .btn { display: inline-block; background: linear-gradient(135deg, #9333ea, #3b82f6); color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 25px; font-weight: 600; margin-top: 16px; }
-  </style>
-  <script>
-    var playStoreUrl = "${playStoreUrl}";
-    var isAndroid = /android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      window.location.href = "intent://chat#Intent;scheme=twingenie;package=com.asmind.app;S.browser_fallback_url=" + encodeURIComponent(playStoreUrl) + ";end";
-    } else {
-      window.location.href = playStoreUrl;
-    }
-  </script>
-</head>
-<body>
-  <div class="card">
-    <h2>Opening TwinGenie...</h2>
-    <p>Launching your AI Twin. If nothing happens, tap the button below:</p>
-    <a href="${playStoreUrl}" class="btn">Open in Google Play →</a>
-  </div>
-</body>
-</html>`);
 });
 
 // Handle SPA routing - send index.html for any non-API route
