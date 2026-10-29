@@ -14,6 +14,13 @@ import logger from '../config/logger.js';
 
 const router = express.Router();
 
+// Extend socket timeout for media rendering and Instagram container processing
+router.use((req, res, next) => {
+    req.setTimeout(180000);
+    res.setTimeout(180000);
+    next();
+});
+
 // Strict server-level secret check for high-risk growth administration
 const requireAdminSecret = (req, res, next) => {
     const authHeader = req.headers['authorization'];

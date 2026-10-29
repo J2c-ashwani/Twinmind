@@ -103,10 +103,11 @@ app.use(cors({
 // 🚀 STABILITY ENHANCEMENTS
 // ============================================
 
-// Request timeout middleware (30 seconds default)
+// Request timeout middleware (30 seconds default, 180s for cron & growth endpoints)
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT_MS) || 30000;
 app.use((req, res, next) => {
-  req.setTimeout(REQUEST_TIMEOUT, () => {
+  const timeoutMs = req.path.includes('/growth') || req.path.includes('/cron') ? 180000 : REQUEST_TIMEOUT;
+  req.setTimeout(timeoutMs, () => {
     logger.error(`Request timeout: ${req.method} ${req.path}`);
     if (!res.headersSent) {
       res.status(408).json({ error: 'Request timeout' });
