@@ -442,6 +442,23 @@ router.all('/cron/daily-linkedin', requireAdminSecret, async (req, res) => {
 });
 
 /**
+ * GET & POST /api/admin/growth/cron/daily-instagram
+ * Automated webhook called by cron-job.org daily
+ * Renders daily carousel slides and publishes to @twingenie.app on Instagram.
+ */
+router.all('/cron/daily-instagram', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        logger.info(`[GROWTH CRON] Triggering automated daily Instagram Carousel publication (force=${force})...`);
+        const result = await growthOrchestratorService.publishDailyInstagram(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Daily Instagram automated publication failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * GET & POST /api/admin/growth/cron/daily-publish
  * Unified Daily 4:00 PM IST Broadcast Trigger
  * Publishes both Facebook Reel and Ashwani Kumar's LinkedIn Personal Carousel.
