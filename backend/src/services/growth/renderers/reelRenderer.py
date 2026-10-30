@@ -55,6 +55,15 @@ MODE_CONFIGS = {
         'trapInsight': "ChatGPT gives textbook advice you never execute; life coaches enforce momentum.",
         'actionInsight': "Day 1: 2-minute trigger audit to identify root cause before taking action.",
         'breakthroughInsight': "Transforms morning paralysis into disciplined, step-by-step clarity.",
+        'splitFlawTag': "❌ THE AMNESIA TRAP",
+        'splitFlawDesc': "Resets memory every chat. Forgets your goals tomorrow.",
+        'splitFlawDetail': "• Spits out 10 textbook bullet points with ZERO day-by-day follow-up.",
+        'splitVerdictLeft': "Tells you what feels comfortable, not what you need to do.",
+        'splitEdgeTag': "✅ 7-DAY GUIDED ACTION",
+        'splitEdgeDesc': "Enrolled in Day 1 of Anxiety Reset. Daily exercises, not walls of text.",
+        'splitMemTag': "🧠 PERSISTENT MEMORY",
+        'splitMemDesc': "Connects recurring patterns across weeks to prevent repeating avoidance cycles.",
+        'splitVerdictRight': "Structured daily transformation.",
         'voiceVoice': 'en-US-ChristopherNeural'
     },
     'dark': {
@@ -75,6 +84,15 @@ MODE_CONFIGS = {
         'trapInsight': "Guilt is sophisticated avoidance pretending to be remorse.",
         'actionInsight': "Face the single hardest friction task for 5 minutes right now.",
         'breakthroughInsight': "Breaks the paralysis spiral before it steals another day.",
+        'splitFlawTag': "❌ THE YES-MAN TRAP",
+        'splitFlawDesc': "Agrees with every excuse and calls scrolling 'productive rest'.",
+        'splitFlawDetail': "• Validates your comfort zone and lets you delay the real work.",
+        'splitVerdictLeft': "Enables self-sabotage under the disguise of toxic flattery.",
+        'splitEdgeTag': "🔥 UNFILTERED ROAST",
+        'splitEdgeDesc': "Cuts through rationalizations using your own words from 2 weeks ago.",
+        'splitMemTag': "🧠 MEMORY ACCOUNTABILITY",
+        'splitMemDesc': "Remembers you used this exact excuse 14 days ago. Zero flattery.",
+        'splitVerdictRight': "Brutal reality check that breaks procrastination.",
         'voiceVoice': 'en-US-ChristopherNeural'
     },
     'future': {
@@ -95,6 +113,15 @@ MODE_CONFIGS = {
         'trapInsight': "Anxious spiraling tries to force certainty where none exists.",
         'actionInsight': "Allow the silence to exist without reacting. Guard your peace.",
         'breakthroughInsight': "Transforms reactive insecurity into grounded emotional sovereignty.",
+        'splitFlawTag': "❌ REACTIVE SPIRALING",
+        'splitFlawDesc': "Fuels panic over temporary drama and 6-hour message delays.",
+        'splitFlawDetail': "• Tells you to send aggressive texts and feeds reactive spirals.",
+        'splitVerdictLeft': "Locks you into short-term reactive panic loops.",
+        'splitEdgeTag': "⏳ 5-YEARS-WISER PERSPECTIVE",
+        'splitEdgeDesc': "Reframes dilemmas through 2031 longitudinal wisdom.",
+        'splitMemTag': "🧠 EMOTIONAL SOVEREIGNTY",
+        'splitMemDesc': "Grounds your nervous system so you let silence exist without fear.",
+        'splitVerdictRight': "Calms anxious attachment and restores inner peace.",
         'voiceVoice': 'en-US-ChristopherNeural'
     },
     'reflective': {
@@ -115,6 +142,15 @@ MODE_CONFIGS = {
         'trapInsight': "People-pleasing is self-abandonment disguised as kindness.",
         'actionInsight': "Rest does not need to be earned. Practice saying no without guilt.",
         'breakthroughInsight': "Replaces compulsive approval-seeking with authentic self-trust.",
+        'splitFlawTag': "❌ TOXIC POSITIVITY",
+        'splitFlawDesc': "Praises you for helping others while ignoring severe burnout.",
+        'splitFlawDetail': "• 'You are such a kind friend!' validates chronic people-pleasing.",
+        'splitVerdictLeft': "Encourages self-abandonment disguised as kindness.",
+        'splitEdgeTag': "🌿 THERAPIST-GRADE EMPATHY",
+        'splitEdgeDesc': "Uncovers why saying no makes you feel like an emotional burden.",
+        'splitMemTag': "🧠 COMPASSIONATE INQUIRY",
+        'splitMemDesc': "Teaches that rest does not have to be earned through exhaustion.",
+        'splitVerdictRight': "Replaces approval-seeking with authentic self-trust.",
         'voiceVoice': 'en-US-ChristopherNeural'
     },
     'normal': {
@@ -135,6 +171,15 @@ MODE_CONFIGS = {
         'trapInsight': "Starting over is often just avoiding the discomfort of completion.",
         'actionInsight': "Close the new brainstorming tabs and finish your existing milestone.",
         'breakthroughInsight': "Prevents novelty addiction by holding you accountable to your commitments.",
+        'splitFlawTag': "❌ STATELESS AMNESIA",
+        'splitFlawDesc': "Blank slate every chat. Forgets everything you built yesterday.",
+        'splitFlawDetail': "• Gives you 5 new ideas for shiny projects to abandon your real goal.",
+        'splitVerdictLeft': "Feeds novelty addiction and restarts the loop every morning.",
+        'splitEdgeTag': "🧠 CONTINUOUS MEMORY GRAPH",
+        'splitEdgeDesc': "Flags that you abandoned the last launch at this exact step 14 days ago.",
+        'splitMemTag': "🎯 GROUNDED EXECUTION",
+        'splitMemDesc': "Keeps you accountable to finishing existing milestones before starting new ones.",
+        'splitVerdictRight': "Longitudinal memory that ensures real project completion.",
         'voiceVoice': 'en-US-ChristopherNeural'
     }
 }
@@ -491,7 +536,7 @@ def render_left_right_split(spec, out_path):
 
     # ChatGPT Flaw Cards
     flaws = [
-        ("❌ THE AMNESIA TRAP", "Resets memory every chat. Forgets your goals tomorrow."),
+        (mcfg.get("splitFlawTag", "❌ THE YES-MAN TRAP"), mcfg.get("splitFlawDesc", "Resets memory every chat. Forgets your goals tomorrow.")),
         ("❌ GENERIC ESSAYS", "10 textbook bullet points you will never execute."),
         ("❌ ZERO ACCOUNTABILITY", "No follow-up. Validates your comfortable excuses.")
     ]
@@ -505,7 +550,7 @@ def render_left_right_split(spec, out_path):
     # Verdict Box Left
     draw.rounded_rectangle([lx1 + 20, col_y2 - 95, lx2 - 20, col_y2 - 20], radius=12, fill=(38, 22, 28))
     draw.text((lx1 + 35, col_y2 - 82), "VERDICT:", font=f_black(16), fill=(244, 63, 94))
-    draw_wrapped_text(draw, "Feels good in the moment, solves nothing.", f_bold(18), (255, 200, 210), lx1 + 35, col_y2 - 58, 390, 1.2)
+    draw_wrapped_text(draw, mcfg.get("splitVerdictLeft", "Feels good in the moment, solves nothing."), f_bold(18), (255, 200, 210), lx1 + 35, col_y2 - 58, 390, 1.2)
 
     # 2. RIGHT COLUMN: TWINGENIE
     rx1, rx2 = 560, 1020
@@ -515,7 +560,7 @@ def render_left_right_split(spec, out_path):
     draw_avatar_badge(draw, rx1 + 45, col_y1 + 42, radius=20, text="TG", bg_color=mcfg["bgCard"][:3], border_color=mcfg["accent"])
     draw.text((rx1 + 80, col_y1 + 30), "TWINGENIE", font=f_black(24), fill=TEXT_WHITE)
     draw.rounded_rectangle([rx2 - 145, col_y1 + 25, rx2 - 20, col_y1 + 60], radius=8, fill=(50, 24, 75))
-    badge_label = "LIFE COACH" if "coach" in mcfg["id"] else "HONEST TWIN"
+    badge_label = "LIFE COACH" if "coach" in mcfg["id"] else f"{mcfg['tabName']} TWIN"
     draw.text((rx2 - 135, col_y1 + 33), badge_label, font=f_bold(16), fill=mcfg["accent"])
 
     # TwinGenie Response Bubble
@@ -526,8 +571,8 @@ def render_left_right_split(spec, out_path):
 
     # TwinGenie Advantage Cards
     strengths = [
-        ("✅ STRUCTURED ACTION", "Enrolled in Day 1 of reset. Daily exercises, not theory."),
-        ("🧠 PERSISTENT MEMORY", "Tracks recurring patterns across weeks and months."),
+        (mcfg.get("splitEdgeTag", "✅ STRUCTURED ACTION"), mcfg.get("splitEdgeDesc", "Enrolled in Day 1 of reset. Daily exercises, not theory.")),
+        (mcfg.get("splitMemTag", "🧠 PERSISTENT MEMORY"), mcfg.get("splitMemDesc", "Tracks recurring patterns across weeks and months.")),
         ("🎯 REAL ACCOUNTABILITY", "Reflects your stated goals when you start stalling.")
     ]
     sy = col_y1 + 480
@@ -540,7 +585,7 @@ def render_left_right_split(spec, out_path):
     # Verdict Box Right
     draw.rounded_rectangle([rx1 + 20, col_y2 - 95, rx2 - 20, col_y2 - 20], radius=12, fill=(25, 45, 38))
     draw.text((rx1 + 35, col_y2 - 82), "VERDICT:", font=f_black(16), fill=(52, 211, 153))
-    draw_wrapped_text(draw, "Structured daily transformation.", f_bold(18), (180, 255, 220), rx1 + 35, col_y2 - 58, 390, 1.2)
+    draw_wrapped_text(draw, mcfg.get("splitVerdictRight", "Structured daily transformation."), f_bold(18), (180, 255, 220), rx1 + 35, col_y2 - 58, 390, 1.2)
 
     # 3. CENTER FLOATING VS PILL (y: 950 to 1050)
     vs_cy = 990
@@ -559,7 +604,18 @@ def render_top_bottom_split(spec, out_path):
     mcfg = resolve_mode_config(spec)
     img, draw = create_smartphone_base(w, h, mcfg["id"])
     full_name = mcfg["fullName"]
-    badge_label = mcfg["badge"] if len(mcfg["badge"]) < 18 else "7-DAY RESET"
+    if "coach" in mcfg["id"]:
+        badge_label = "7-DAY RESET"
+    elif "dark" in mcfg["id"]:
+        badge_label = "ROAST MODE"
+    elif "future" in mcfg["id"]:
+        badge_label = "FUTURE (2031)"
+    elif "reflect" in mcfg["id"]:
+        badge_label = "THERAPY TWIN"
+    elif "normal" in mcfg["id"]:
+        badge_label = "GROUNDED TWIN"
+    else:
+        badge_label = mcfg.get("tabName", "TWIN") + " MODE"
 
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(30, 20, 48), outline=mcfg["accent"], width=2)
@@ -589,16 +645,15 @@ def render_top_bottom_split(spec, out_path):
     draw.text((115, top_y1 + 95), "ChatGPT Output (Polite Validation):", font=f_bold(20), fill=(16, 163, 127))
     draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(32), (230, 235, 250), 115, top_y1 + 130, 850, 1.28)
 
-    # ChatGPT Flaw Badges
-    draw.rounded_rectangle([90, top_y1 + 285, 990, top_y1 + 365], radius=14, fill=(45, 20, 28), outline=(95, 30, 45), width=1)
-    draw.text((115, top_y1 + 298), "❌ THE AMNESIA TRAP:", font=f_black(20), fill=(244, 63, 94))
-    draw.text((375, top_y1 + 298), "Resets every chat. Forgets your goals tomorrow.", font=f_bold(20), fill=TEXT_LIGHT)
-    draw.text((115, top_y1 + 330), "• Spits out 10 textbook bullet points with ZERO day-by-day follow-up.", font=f_bold(18), fill=(200, 160, 170))
+    # ChatGPT Flaw Card (Stacked hierarchy - zero collision!)
+    draw.rounded_rectangle([90, top_y1 + 285, 990, top_y1 + 375], radius=14, fill=(45, 20, 28), outline=(95, 30, 45), width=1)
+    draw.text((115, top_y1 + 296), mcfg.get("splitFlawTag", "❌ THE YES-MAN TRAP"), font=f_black(20), fill=(244, 63, 94))
+    flaw_full = mcfg.get("splitFlawDesc", "") + " " + mcfg.get("splitFlawDetail", "")
+    draw_wrapped_text(draw, flaw_full, f_bold(20), TEXT_LIGHT, 115, top_y1 + 328, 850, 1.22)
 
-    top_y1_bottom = top_y1 + 378
-    draw.rounded_rectangle([90, top_y1_bottom, 990, top_y1_bottom + 80], radius=14, fill=(38, 22, 28))
-    draw.text((115, top_y1_bottom + 14), "VERDICT: Tells you what feels comfortable, not what you need to do.", font=f_bold(20), fill=(255, 180, 190))
-    draw.text((115, top_y1_bottom + 44), "Blank slate resets prevent any real habit or mindset shifts.", font=f_bold(18), fill=(200, 150, 160))
+    top_y1_bottom = top_y1 + 390
+    draw.rounded_rectangle([90, top_y1_bottom, 990, top_y1_bottom + 65], radius=12, fill=(38, 22, 28))
+    draw.text((115, top_y1_bottom + 14), "VERDICT: " + mcfg.get("splitVerdictLeft", "Tells you what feels comfortable."), font=f_bold(20), fill=(255, 180, 190))
 
     # CENTRAL VS BADGE DIVIDER (y: 960 to 1025)
     divider_y = 992
@@ -610,8 +665,8 @@ def render_top_bottom_split(spec, out_path):
     draw.ellipse([540 - 36, divider_y - 36, 540 + 36, divider_y + 36], outline=(255, 255, 255), width=3)
     draw.text((516, divider_y - 18), "VS", font=f_black(32), fill=TEXT_WHITE)
 
-    # BOTTOM SECTION: TWINGENIE (y: 1040 to 1530)
-    bot_y1, bot_y2 = 1040, 1530
+    # BOTTOM SECTION: TWINGENIE (y: 1040 to 1540)
+    bot_y1, bot_y2 = 1040, 1540
     draw.rounded_rectangle([60, bot_y1, 1020, bot_y2], radius=24, fill=mcfg["bgCard"], outline=mcfg["accent"], width=3)
 
     # Bottom Header
@@ -622,24 +677,23 @@ def render_top_bottom_split(spec, out_path):
 
     # TwinGenie Content Box
     twin_reply = sanitize_text(spec.get("twinReply") or mcfg["defaultReply"])
-    draw.rounded_rectangle([90, bot_y1 + 80, 990, bot_y1 + 290], radius=18, fill=(20, 12, 34), outline=mcfg["accent"], width=1)
+    draw.rounded_rectangle([90, bot_y1 + 80, 990, bot_y1 + 280], radius=18, fill=(20, 12, 34), outline=mcfg["accent"], width=1)
     draw.text((115, bot_y1 + 95), "TwinGenie Direct Action:", font=f_bold(20), fill=mcfg["accent"])
     draw_wrapped_text(draw, f'"{twin_reply}"', f_bold(32), TEXT_WHITE, 115, bot_y1 + 130, 850, 1.28)
 
-    # TwinGenie Advantage Callouts
-    draw.rounded_rectangle([90, bot_y1 + 305, 990, bot_y1 + 380], radius=14, fill=(20, 40, 32), outline=(40, 120, 90), width=1)
-    draw.text((115, bot_y1 + 318), "✅ 7-DAY GUIDED ACTION:", font=f_black(20), fill=(52, 211, 153))
-    draw.text((410, bot_y1 + 318), "Enrolled in Day 1 of Anxiety Reset.", font=f_bold(20), fill=TEXT_WHITE)
-    draw.text((115, bot_y1 + 346), "• Step-by-step daily micro-exercises instead of passive textbook advice.", font=f_bold(18), fill=(180, 235, 210))
+    # TwinGenie Advantage Card 1 (Stacked hierarchy - zero collision!)
+    draw.rounded_rectangle([90, bot_y1 + 295, 990, bot_y1 + 390], radius=14, fill=(20, 40, 32), outline=(40, 120, 90), width=1)
+    draw.text((115, bot_y1 + 306), mcfg.get("splitEdgeTag", "✅ ACTIVE ACCOUNTABILITY"), font=f_black(20), fill=(52, 211, 153))
+    draw_wrapped_text(draw, mcfg.get("splitEdgeDesc", ""), f_bold(20), TEXT_WHITE, 115, bot_y1 + 338, 850, 1.22)
 
-    bot_y1_mem = bot_y1 + 392
+    # TwinGenie Advantage Card 2 (Stacked hierarchy - zero collision!)
+    bot_y1_mem = bot_y1 + 405
     draw.rounded_rectangle([90, bot_y1_mem, 990, bot_y1_mem + 80], radius=14, fill=(22, 32, 54), outline=(45, 75, 120), width=1)
-    draw.text((115, bot_y1_mem + 16), "🧠 PERSISTENT MEMORY:", font=f_black(20), fill=(56, 189, 248))
-    draw.text((395, bot_y1_mem + 16), "Remembers goals & flags excuses.", font=f_bold(20), fill=TEXT_WHITE)
-    draw.text((115, bot_y1_mem + 44), "• Connects recurring patterns across weeks to prevent repeating loops.", font=f_bold(18), fill=(180, 210, 245))
+    draw.text((115, bot_y1_mem + 12), mcfg.get("splitMemTag", "🧠 PERSISTENT MEMORY"), font=f_black(20), fill=(56, 189, 248))
+    draw_wrapped_text(draw, mcfg.get("splitMemDesc", ""), f_bold(20), TEXT_WHITE, 115, bot_y1_mem + 40, 850, 1.22)
 
     # Smartphone input bar
-    draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: Grounded reflection active with persistent memory.")
+    draw_smartphone_bottom_input(draw, w, h, mcfg, f"{full_name}: Grounded reflection active with memory.")
     img.save(out_path, quality=98)
 
 # =========================================================================
