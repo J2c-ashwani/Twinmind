@@ -359,9 +359,9 @@ class ContentGeneratorService {
         const themeIndex = dayNumber % themes.length;
         const currentTheme = themes[themeIndex];
 
-        // Format strictly alternates every single day in lockstep for BOTH Facebook and Instagram:
-        // Day 0: Carousel (both), Day 1: Reel (both), Day 2: Carousel (both), Day 3: Reel (both)...
-        const metaSharedFormat = (dayNumber % 2 === 0) ? 'carousel' : 'reel';
+        // Facebook & Instagram are locked to 100% REELS for maximum viral reach & downloads.
+        // LinkedIn retains high-authority PDF Carousels.
+        const metaSharedFormat = 'reel';
 
         // 5 Cognitive Perspectives & Growth Programs Rotation:
         // Systematically alternates the hero mode every day across all channels

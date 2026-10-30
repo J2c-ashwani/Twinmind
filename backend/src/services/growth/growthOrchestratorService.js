@@ -372,7 +372,7 @@ class GrowthOrchestratorService {
         try {
             // 4. Fetch or dynamically generate today's 100% fresh content
             const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
-            const format = specificFormat || dailyPackage.format; // Strictly alternating: carousel vs reel!
+            const format = specificFormat || 'reel'; // 100% Reels for maximum organic reach and app downloads!
             const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
             const postId = `post_facebook_${Date.now()}`;
 
@@ -633,8 +633,8 @@ class GrowthOrchestratorService {
         try {
             // 4. Fetch or dynamically generate today's 100% fresh content
             const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
-            // Strictly synchronized alternating format matching Facebook: (carousel vs reel)
-            const format = specificFormat || dailyPackage.format;
+            // Locked to 100% REELS for maximum algorithmic distribution & installs
+            const format = specificFormat || 'reel';
             const campaignId = `camp_ig_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
             const postId = `post_instagram_${Date.now()}`;
 

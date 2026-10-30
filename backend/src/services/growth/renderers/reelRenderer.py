@@ -1069,27 +1069,29 @@ def render_reel(spec, output_mp4_path):
             '-c', 'copy', master_voice
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-        # Mix voiceover (foreground volume=1.0) with ambient pad (background volume=0.12)
+        # Mix voiceover (foreground volume=1.00) with ambient music (quiet background volume=0.10)
+        # normalize=0 prevents ffmpeg from halving the voiceover volume
+        # -stream_loop -1 ensures background music never cuts off mid-video
         mix_cmd = [
             'ffmpeg', '-y',
             '-i', master_voice,
-            '-i', bg_source,
+            '-stream_loop', '-1', '-i', bg_source,
             '-filter_complex',
-            f'[1:a]volume=0.12,atrim=0:{total_dur}[bg];'
+            f'[1:a]volume=0.10,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
             f'[0:a]volume=1.00,atrim=0:{total_dur}[vo];'
-            f'[vo][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]',
+            f'[vo][bg]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]',
             '-map', '[aout]',
             '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
             final_audio
         ]
         subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
-        # Fallback ambient soundtrack
+        # Fallback ambient soundtrack (when voiceover offline)
         mix_cmd = [
             'ffmpeg', '-y',
-            '-i', bg_source,
+            '-stream_loop', '-1', '-i', bg_source,
             '-filter_complex',
-            f'[0:a]volume=0.30,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
+            f'[0:a]volume=0.25,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
             '-map', '[aout]',
             '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
             final_audio
