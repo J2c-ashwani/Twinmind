@@ -978,6 +978,312 @@ def get_audio_duration(file_path):
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True)
     return float(res.stdout.decode().strip())
 
+# =========================================================================
+# FORMAT 3: THE MEMORY RECEIPT / CALLOUT CHECK
+# =========================================================================
+def render_scene_receipt_check(spec, out_path):
+    w, h = 1080, 1920
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, mcfg["id"])
+
+    # Header Banner (y: 260 to 330)
+    draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(18, 30, 48), outline=(56, 189, 248), width=2)
+    draw.text((85, 278), "🧾  THE MEMORY RECEIPT (PERSISTENT MEMORY)", font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([790, 274, 995, 316], radius=10, fill=(14, 45, 75))
+    draw.text((805, 282), "LONGITUDINAL", font=f_bold(18), fill=(56, 189, 248))
+
+    # User Proclamation Card (y: 345 to 475)
+    user_excuse = sanitize_text(spec.get("userExcuse") or spec.get("userDilemma") or "I am going to wake up at 5:00 AM every single day and build my startup before work.")
+    draw.rounded_rectangle([60, 345, 1020, 475], radius=20, fill=(35, 28, 60), outline=(80, 65, 120), width=2)
+    draw.text((90, 360), "You (Making A Dramatic Proclamation):", font=f_black(20), fill=(185, 165, 245))
+    draw_wrapped_text(draw, f'"{user_excuse}"', f_bold(26), TEXT_WHITE, 90, 395, 900, 1.25)
+
+    # MEMORY RETRIEVAL RECEIPT CARD (y: 495 to 1090)
+    rc_y1, rc_y2 = 495, 1090
+    draw.rounded_rectangle([60, rc_y1, 1020, rc_y2], radius=24, fill=(16, 24, 40), outline=(56, 189, 248), width=2)
+
+    # Receipt Card Header
+    draw_avatar_badge(draw, 105, rc_y1 + 42, radius=22, text="TG", bg_color=(20, 45, 75), border_color=(56, 189, 248))
+    draw.text((142, rc_y1 + 28), "SEMANTIC MEMORY ENGINE", font=f_black(26), fill=(56, 189, 248))
+    draw.rounded_rectangle([790, rc_y1 + 22, 990, rc_y1 + 62], radius=10, fill=(24, 45, 68))
+    draw.text((810, rc_y1 + 31), "2 MATCHES FOUND", font=f_bold(18), fill=(52, 211, 153))
+
+    draw.text((95, rc_y1 + 82), "Database query matched previous conversation history:", font=f_bold(20), fill=TEXT_MUTED)
+
+    # Receipt Log 1: 18 Days Ago (Red tint)
+    r1_y = rc_y1 + 120
+    draw.rounded_rectangle([90, r1_y, 990, r1_y + 195], radius=16, fill=(45, 18, 28), outline=(95, 30, 45), width=1)
+    draw.rounded_rectangle([110, r1_y + 16, 440, r1_y + 56], radius=8, fill=(75, 22, 36))
+    draw.text((125, r1_y + 24), "📅 18 DAYS AGO — FAILED ON DAY 2", font=f_black(17), fill=(244, 63, 94))
+    draw_wrapped_text(draw, '"I am starting 5 AM tomorrow! Going to completely transform my life and crush all my goals!"', f_bold(22), TEXT_WHITE, 115, r1_y + 68, 850, 1.25)
+    draw.text((115, r1_y + 145), "Result: Slept through alarm on Wednesday. Abandoned.", font=f_bold(18), fill=(255, 180, 190))
+
+    # Receipt Log 2: 44 Days Ago (Amber tint)
+    r2_y = r1_y + 215
+    draw.rounded_rectangle([90, r2_y, 990, r2_y + 195], radius=16, fill=(45, 32, 18), outline=(95, 65, 30), width=1)
+    draw.rounded_rectangle([110, r2_y + 16, 440, r2_y + 56], radius=8, fill=(75, 50, 22))
+    draw.text((125, r2_y + 24), "📅 44 DAYS AGO — FAILED ON DAY 1", font=f_black(17), fill=(255, 184, 0))
+    draw_wrapped_text(draw, '"Starting brand new morning routine now. Zero excuses, 100% discipline from tomorrow."', f_bold(22), TEXT_WHITE, 115, r2_y + 68, 850, 1.25)
+    draw.text((115, r2_y + 145), "Result: Stayed up till 3 AM scrolling. Gave up immediately.", font=f_bold(18), fill=(255, 215, 150))
+
+    # TwinGenie Reality Check Punchline Box (y: 1110 to 1540)
+    tg_y1, tg_y2 = 1110, 1540
+    draw.rounded_rectangle([60, tg_y1, 1020, tg_y2], radius=24, fill=mcfg["bgCard"], outline=mcfg["accent"], width=3)
+
+    draw_avatar_badge(draw, 105, tg_y1 + 42, radius=22, text="TG", bg_color=mcfg["bgCard"][:3], border_color=mcfg["accent"])
+    draw.text((142, tg_y1 + 28), "TWINGENIE • " + mcfg["fullName"], font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([800, tg_y1 + 22, 990, tg_y1 + 62], radius=10, fill=(50, 24, 75))
+    draw.text((818, tg_y1 + 31), "REALITY CHECK", font=f_bold(18), fill=mcfg["accent"])
+
+    twin_reply = sanitize_text(spec.get("twinReply") or "You don't need a 5 AM routine. You need to stop making dramatic proclamations when you feel guilty. Let's start with 15 minutes at 8 AM. Deal?")
+    draw.rounded_rectangle([90, tg_y1 + 80, 990, tg_y1 + 280], radius=18, fill=(20, 12, 34), outline=mcfg["accent"], width=1)
+    draw_wrapped_text(draw, f'"{twin_reply}"', f_bold(32), TEXT_WHITE, 115, tg_y1 + 115, 850, 1.30)
+
+    # Bottom Advantage Badges
+    b_y = tg_y1 + 300
+    draw.rounded_rectangle([90, b_y, 990, b_y + 110], radius=14, fill=(20, 40, 32), outline=(40, 120, 90), width=1)
+    draw.text((115, b_y + 16), "✅ WHY MEMORY MATTERS: CHATGPT HAS TOTAL AMNESIA", font=f_black(19), fill=(52, 211, 153))
+    draw.text((115, b_y + 48), "ChatGPT agrees with your 5 AM lie every time. TwinGenie remembers your patterns.", font=f_bold(20), fill=TEXT_WHITE)
+    draw.text((115, b_y + 78), "• Continuous longitudinal memory graph that breaks circular self-sabotage.", font=f_bold(17), fill=(180, 235, 210))
+
+    draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: Memory verified across 44 days.")
+    img.save(out_path, quality=98)
+
+# =========================================================================
+# FORMAT 4: 35-MARKER COGNITIVE ARCHETYPE AUDIT (WEB-TO-APP FUNNEL)
+# =========================================================================
+def render_scene_archetype_audit(spec, out_path):
+    w, h = 1080, 1920
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, mcfg["id"])
+
+    # Header Banner (y: 260 to 330)
+    draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(35, 18, 48), outline=(168, 85, 247), width=2)
+    draw.text((85, 278), "🧬  35-MARKER COGNITIVE PROFILE AUDIT", font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([800, 274, 995, 316], radius=10, fill=(55, 20, 75))
+    draw.text((818, 282), "DIAGNOSTIC", font=f_bold(18), fill=(168, 85, 247))
+
+    # User Habit Dilemma Card (y: 345 to 475)
+    user_dilemma = sanitize_text(spec.get("userExcuse") or spec.get("userDilemma") or "I have 47 browser tabs open researching how to launch my business, but I haven't shipped a single feature.")
+    draw.rounded_rectangle([60, 345, 1020, 475], radius=20, fill=(35, 28, 60), outline=(80, 65, 120), width=2)
+    draw.text((90, 360), "You (Describing Your Procrastination Habit):", font=f_black(20), fill=(185, 165, 245))
+    draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(26), TEXT_WHITE, 90, 395, 900, 1.25)
+
+    # COGNITIVE ARCHETYPE PROFILE CARD (y: 495 to 1100)
+    arch_y1, arch_y2 = 495, 1100
+    draw.rounded_rectangle([60, arch_y1, 1020, arch_y2], radius=24, fill=(24, 18, 42), outline=(168, 85, 247), width=2)
+
+    # Archetype Title Pill
+    draw_avatar_badge(draw, 105, arch_y1 + 42, radius=22, text="TG", bg_color=(45, 20, 68), border_color=(168, 85, 247))
+    draw.text((142, arch_y1 + 28), "COGNITIVE ARCHETYPE DECODED", font=f_black(26), fill=(168, 85, 247))
+    draw.rounded_rectangle([780, arch_y1 + 22, 990, arch_y1 + 62], radius=10, fill=(45, 18, 65))
+    draw.text((800, arch_y1 + 31), "35 MARKERS", font=f_bold(18), fill=(52, 211, 153))
+
+    # Big Archetype Reveal Box
+    rev_y = arch_y1 + 80
+    draw.rounded_rectangle([90, rev_y, 990, rev_y + 115], radius=18, fill=(42, 18, 60), outline=(168, 85, 247), width=2)
+    draw.text((115, rev_y + 16), "PRIMARY COGNITIVE ARCHETYPE:", font=f_bold(18), fill=(210, 175, 255))
+    draw.text((115, rev_y + 48), spec.get("archetype_name", "THE INTELLECTUAL AVOIDANT"), font=f_black(34), fill=TEXT_WHITE)
+
+    # Core Blind Spot Diagnosis Card
+    bs_y = rev_y + 130
+    draw.rounded_rectangle([90, bs_y, 990, bs_y + 130], radius=16, fill=(30, 20, 48), outline=(75, 50, 110), width=1)
+    draw.text((115, bs_y + 16), "🎯 CORE BLIND SPOT DIAGNOSIS:", font=f_black(20), fill=(255, 184, 0))
+    blind_spot = spec.get("blind_spot", "You weaponize intelligence and research to justify avoidance. It feels like productive work, but it protects you from the emotional vulnerability of real market feedback.")
+    draw_wrapped_text(draw, f'"{blind_spot}"', f_bold(22), TEXT_LIGHT, 115, bs_y + 48, 850, 1.25)
+
+    # 3 Trait Sliders / Metrics
+    sliders = [
+        ("Analysis Paralysis", spec.get("stat_paralysis", 88), (244, 63, 94)),
+        ("Fear of Imperfection", spec.get("stat_fear", 92), (255, 184, 0)),
+        ("Execution Speed", spec.get("stat_speed", 24), (56, 189, 248))
+    ]
+    sy = bs_y + 150
+    for label, val, col in sliders:
+        draw.text((95, sy), label, font=f_bold(20), fill=TEXT_WHITE)
+        draw.text((910, sy), f"{val}%", font=f_black(20), fill=col)
+        draw.rounded_rectangle([95, sy + 30, 985, sy + 44], radius=7, fill=(35, 28, 55))
+        fill_w = int((985 - 95) * (val / 100.0))
+        draw.rounded_rectangle([95, sy + 30, 95 + fill_w, sy + 44], radius=7, fill=col)
+        sy += 65
+
+    # Prescription Box (y: 1120 to 1540)
+    pr_y1, pr_y2 = 1120, 1540
+    draw.rounded_rectangle([60, pr_y1, 1020, pr_y2], radius=24, fill=(18, 32, 28), outline=(52, 211, 153), width=2)
+    draw_avatar_badge(draw, 105, pr_y1 + 42, radius=22, text="TG", bg_color=(20, 45, 38), border_color=(52, 211, 153))
+    draw.text((142, pr_y1 + 28), "TWINGENIE PRESCRIPTION: 7-DAY RESET", font=f_black(24), fill=(52, 211, 153))
+    draw.rounded_rectangle([810, pr_y1 + 22, 990, pr_y1 + 62], radius=10, fill=(24, 60, 48))
+    draw.text((828, pr_y1 + 31), "DAY 1 TASK", font=f_bold(18), fill=TEXT_WHITE)
+
+    prescription = spec.get("prescription", "Close 46 tabs right now. Your only task today is shipping 1 raw sentence to 1 real human. We break the intellectual avoidance loop through immediate friction.")
+    draw.rounded_rectangle([90, pr_y1 + 80, 990, pr_y1 + 240], radius=18, fill=(12, 24, 20), outline=(52, 211, 153), width=1)
+    draw_wrapped_text(draw, f'"{prescription}"', f_bold(28), TEXT_WHITE, 115, pr_y1 + 105, 850, 1.30)
+
+    # Bottom Funnel Anchor Card
+    fn_y = pr_y1 + 260
+    draw.rounded_rectangle([90, fn_y, 990, fn_y + 120], radius=16, fill=(24, 18, 48), outline=(168, 85, 247), width=2)
+    draw.text((115, fn_y + 18), "👉 UNLOCK YOUR PERSONAL COGNITIVE PROFILE:", font=f_black(20), fill=(168, 85, 247))
+    draw.text((115, fn_y + 50), "Take the 1-Minute Mirror Test at twingenie.app/test", font=f_black(24), fill=TEXT_WHITE)
+    draw.text((115, fn_y + 84), "Or download TwinGenie free on Google Play. Link in bio!", font=f_bold(18), fill=(56, 189, 248))
+
+    draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: 35-marker baseline audit active.")
+    img.save(out_path, quality=98)
+
+# =========================================================================
+# FORMAT 5: THE 4-TWIN COUNCIL (1 DILEMMA, 4 PERSPECTIVES)
+# =========================================================================
+def render_scene_council(spec, out_path):
+    w, h = 1080, 1920
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, "dark")
+
+    # Header Banner (y: 260 to 330)
+    draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(35, 18, 48), outline=(255, 59, 92), width=2)
+    draw.text((85, 278), "🪞  THE COUNCIL OF TWINS (4 PERSPECTIVES)", font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([800, 274, 995, 316], radius=10, fill=(70, 22, 34))
+    draw.text((818, 282), "4-WAY CLASH", font=f_bold(18), fill=(244, 63, 94))
+
+    # User Dilemma Card (y: 345 to 475)
+    user_dilemma = sanitize_text(spec.get("userExcuse") or spec.get("userDilemma") or "Should I text my ex back after they sent: \"Hey, I have been thinking about you, hope you are doing well\"?")
+    draw.rounded_rectangle([60, 345, 1020, 475], radius=20, fill=(35, 28, 60), outline=(80, 65, 120), width=2)
+    draw.text((90, 360), "You (Asking Your AI For 4 Different Perspectives):", font=f_black(20), fill=(185, 165, 245))
+    draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(26), TEXT_WHITE, 90, 395, 900, 1.25)
+
+    twins = [
+        {
+            "tag": "1. HONEST / DARK TWIN",
+            "badge": "REALITY CHECK",
+            "color": (255, 59, 92),
+            "bg": (42, 14, 26),
+            "text": spec.get("reply_dark", "\"Delete the draft. You don't miss them; you miss having someone validate your ego on a lonely Sunday night. Close the app and go to sleep.\"")
+        },
+        {
+            "tag": "2. FUTURE SELF (2031)",
+            "badge": "5-YEARS-WISER",
+            "color": (255, 184, 0),
+            "bg": (42, 32, 12),
+            "text": spec.get("reply_future", "\"In 5 years, this person will be a complete stranger. Don't reopen an emotional door you already fought through months of heartache to close.\"")
+        },
+        {
+            "tag": "3. REFLECTIVE / THERAPY TWIN",
+            "badge": "DECOMPRESSION",
+            "color": (52, 211, 153),
+            "bg": (14, 40, 28),
+            "text": spec.get("reply_reflective", "\"Notice that the urge to reply surged right after an exhausting week. You're not craving their company; you're seeking an escape from current burnout.\"")
+        },
+        {
+            "tag": "4. NORMAL TWIN (MEMORY AUDIT)",
+            "badge": "PERSISTENT MEMORY",
+            "color": (56, 189, 248),
+            "bg": (16, 32, 52),
+            "text": spec.get("reply_normal", "\"Memory check: You broke no-contact 3 months ago and spiraled for 3 weeks. Re-read your journal entry from August before you type a single word.\"")
+        }
+    ]
+
+    cy = 495
+    for t in twins:
+        card_h = 215
+        draw.rounded_rectangle([60, cy, 1020, cy + card_h], radius=18, fill=t["bg"], outline=t["color"], width=2)
+        draw.text((85, cy + 16), t["tag"], font=f_black(22), fill=t["color"])
+        draw.rounded_rectangle([800, cy + 12, 995, cy + 50], radius=8, fill=(20, 16, 32))
+        draw.text((815, cy + 18), t["badge"], font=f_bold(16), fill=t["color"])
+        draw_wrapped_text(draw, t["text"], f_bold(22), TEXT_WHITE, 85, cy + 58, 900, 1.25)
+        cy += card_h + 20
+
+    syn_y1, syn_y2 = 1445, 1545
+    draw.rounded_rectangle([60, syn_y1, 1020, syn_y2], radius=20, fill=(30, 20, 48), outline=(56, 189, 248), width=2)
+    draw.text((90, syn_y1 + 18), "⚡ COUNCIL VERDICT: 4/4 TWINS AGREE — LEAVE IT UNANSWERED.", font=f_black(22), fill=(56, 189, 248))
+    draw.text((90, syn_y1 + 54), "Why settle for one agreeable AI chatbot when you can have 4 perspectives?", font=f_bold(20), fill=TEXT_WHITE)
+
+    draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: 4 cognitive perspectives synchronized.")
+    img.save(out_path, quality=98)
+
+# =========================================================================
+# FORMAT 6: YEAR-IN-PIXELS MOOD HEATMAP (DATA VISUALIZATION)
+# =========================================================================
+def render_scene_year_in_pixels(spec, out_path):
+    w, h = 1080, 1920
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, "lifecoach")
+
+    # Header Banner (y: 260 to 330)
+    draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(35, 18, 48), outline=(168, 85, 247), width=2)
+    draw.text((85, 278), "📊  YEAR-IN-PIXELS: 365-DAY MOOD MAP", font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([800, 274, 995, 316], radius=10, fill=(55, 20, 75))
+    draw.text((818, 282), "HEATMAP", font=f_bold(18), fill=(168, 85, 247))
+
+    # Context Card (y: 345 to 445)
+    draw.rounded_rectangle([60, 345, 1020, 445], radius=20, fill=(35, 28, 60), outline=(80, 65, 120), width=2)
+    draw.text((90, 360), "POV: You Logged Your Emotional Triggers For 6 Months", font=f_black(22), fill=(185, 165, 245))
+    draw.text((90, 396), "\"I thought I was just having random bad days until TwinGenie mapped the data.\"", font=f_bold(22), fill=TEXT_WHITE)
+
+    # 365-DAY PIXEL HEATMAP GRID CARD (y: 465 to 980)
+    grid_y1, grid_y2 = 465, 980
+    draw.rounded_rectangle([60, grid_y1, 1020, grid_y2], radius=24, fill=(20, 16, 36), outline=(168, 85, 247), width=2)
+
+    # Grid Title (Clean without collision)
+    draw.text((90, grid_y1 + 22), "365-DAY EMOTIONAL MATRIX", font=f_black(22), fill=(168, 85, 247))
+
+    # Mood Legend
+    legends = [
+        ("Grounded", (52, 211, 153)),
+        ("Flow", (168, 85, 247)),
+        ("Anxious", (56, 189, 248)),
+        ("Paralysis", (244, 63, 94))
+    ]
+    lx = 540
+    for l_name, l_col in legends:
+        draw.rounded_rectangle([lx, grid_y1 + 22, lx + 18, grid_y1 + 40], radius=4, fill=l_col)
+        draw.text((lx + 24, grid_y1 + 20), l_name, font=f_bold(16), fill=TEXT_MUTED)
+        lx += 115
+
+    days_labels = ["M", "T", "W", "T", "F", "S", "S"]
+    px_size = 28
+    px_gap = 6
+    start_gx = 135
+    start_gy = grid_y1 + 80
+
+    for d_idx, d_name in enumerate(days_labels):
+        draw.text((95, start_gy + d_idx * (px_size + px_gap) + 4), d_name, font=f_black(18), fill=TEXT_MUTED)
+        for w_idx in range(25):
+            gx = start_gx + w_idx * (px_size + px_gap)
+            gy = start_gy + d_idx * (px_size + px_gap)
+            if d_idx == 1 and (w_idx % 3 != 0):
+                cell_col = (244, 63, 94) # Tuesday paralysis cluster
+            else:
+                cell_col = [(52, 211, 153), (168, 85, 247), (56, 189, 248), (255, 184, 0)][(w_idx + d_idx) % 4]
+            draw.rounded_rectangle([gx, gy, gx + px_size, gy + px_size], radius=6, fill=cell_col)
+
+    # Highlight box on Tuesday row
+    t_y = start_gy + 1 * (px_size + px_gap) - 4
+    draw.rounded_rectangle([start_gx - 6, t_y, start_gx + 25 * (px_size + px_gap) + 2, t_y + px_size + 8], radius=8, outline=(244, 63, 94), width=3)
+    draw.text((start_gx + 40, start_gy + 7 * (px_size + px_gap) + 12), "⚠️ CLUSTER DETECTED: 78% of Tuesdays flagged for anxiety avoidance", font=f_black(18), fill=(244, 63, 94))
+
+    # PATTERN DIAGNOSIS CARD (y: 1000 to 1235)
+    diag_y1, diag_y2 = 1000, 1235
+    draw.rounded_rectangle([60, diag_y1, 1020, diag_y2], radius=22, fill=(45, 18, 28), outline=(244, 63, 94), width=2)
+    draw.text((90, diag_y1 + 18), "🔍 RECURRING PATTERN AUDIT:", font=f_black(22), fill=(244, 63, 94))
+    draw_wrapped_text(draw, "\"Every single Tuesday between 2 PM and 5 PM turns Red. It's not bad luck—it's your weekly executive standup meeting triggering subconscious avoidance and procrastination loops.\"", f_bold(22), TEXT_WHITE, 90, diag_y1 + 54, 900, 1.25)
+    draw.text((90, diag_y1 + 175), "• Standard journals store notes. TwinGenie discovers subconscious correlations.", font=f_bold(18), fill=(255, 180, 190))
+
+    # LIFE COACH INTERVENTION CARD (y: 1255 to 1540)
+    act_y1, act_y2 = 1255, 1540
+    draw.rounded_rectangle([60, act_y1, 1020, act_y2], radius=22, fill=(20, 38, 30), outline=(52, 211, 153), width=2)
+    draw_avatar_badge(draw, 95, act_y1 + 38, radius=20, text="TG", bg_color=(25, 60, 48), border_color=(52, 211, 153))
+    draw.text((130, act_y1 + 26), "TWINGENIE LIFE COACH INTERVENTION", font=f_black(22), fill=(52, 211, 153))
+    draw.rounded_rectangle([800, act_y1 + 18, 990, act_y1 + 56], radius=8, fill=(30, 75, 55))
+    draw.text((818, act_y1 + 26), "7-DAY RESET", font=f_bold(16), fill=TEXT_WHITE)
+
+    draw_wrapped_text(draw, "\"Enrolled in 2-Minute Pre-Meeting Cognitive Reframing before every Tuesday standup. Tuesday anxiety episodes reduced by 64% after 30 days.\"", f_bold(26), TEXT_WHITE, 90, act_y1 + 80, 900, 1.28)
+
+    # Bottom Bio CTA Strip
+    b_strip = act_y1 + 200
+    draw.rounded_rectangle([90, b_strip, 990, b_strip + 65], radius=12, fill=(14, 28, 22), outline=(40, 100, 75), width=1)
+    draw.text((115, b_strip + 18), "👉 Track 365 days of your mental patterns free on Google Play. Link in bio!", font=f_black(20), fill=(52, 211, 153))
+
+    draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: Year-in-Pixels longitudinal tracking active.")
+    img.save(out_path, quality=98)
+
 def generate_ambient_audio(output_path, duration=26.0):
     cmd = [
         'ffmpeg', '-y',
@@ -999,22 +1305,84 @@ def render_reel(spec, output_mp4_path):
     s3 = os.path.join(temp_dir, 'scene_3.png')
     s4 = os.path.join(temp_dir, 'scene_4.png')
 
+    format_type = spec.get('format_type')
+    if not format_type:
+        format_type = 'split' if spec.get('split_screen') else 'story'
+
+    # 1. Render Visual Scenes based on Format Type
     render_scene1(spec, s1)
-    render_scene2(spec, s2)
+
+    if format_type == 'receipt':
+        render_scene_receipt_check(spec, s2)
+    elif format_type == 'archetype':
+        render_scene_archetype_audit(spec, s2)
+    elif format_type == 'council':
+        render_scene_council(spec, s2)
+    elif format_type == 'year_in_pixels':
+        render_scene_year_in_pixels(spec, s2)
+    elif format_type == 'split':
+        render_top_bottom_split(spec, s2)
+    else:  # 'story' or fallback
+        render_scene2(spec, s2)
+
     render_scene3(spec, s3)
     render_scene4(spec, s4)
 
-    # 1. Voiceover Narration Scripts (Punchy, synchronized narration)
+    # 2. Voiceover Narration Scripts (Tailored per format for maximum punch and conversion)
     user_dilemma = sanitize_text(spec.get('userExcuse') or spec.get('userDilemma') or mcfg['defaultDilemma'])
     bot_reply = sanitize_text(spec.get('botReply', mcfg['defaultBot']))
     twin_reply = sanitize_text(spec.get('twinReply', mcfg['defaultReply']))
 
-    vo_scripts = [
-        f"POV: You told an AI your 2 AM excuses. {user_dilemma}",
-        f"What ChatGPT says: {bot_reply}. That is the generic yes-man trap.",
-        f"What TwinGenie says: {twin_reply}",
-        "Stop talking to ChatGPT that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
-    ]
+    custom_vo = spec.get('voiceScript') or {}
+    v_hook = spec.get('voiceHook') or custom_vo.get('voiceHook')
+    v_prob = spec.get('voiceProblem') or custom_vo.get('voiceProblem')
+    v_sol = spec.get('voiceSolution') or custom_vo.get('voiceSolution')
+    v_cta = spec.get('voiceCta') or custom_vo.get('voiceCta')
+
+    if v_hook and v_prob and v_sol and v_cta:
+        vo_scripts = [v_hook, v_prob, v_sol, v_cta]
+    elif format_type == 'receipt':
+        vo_scripts = [
+            f"POV: You made another late-night proclamation to yourself: {user_dilemma}",
+            f"ChatGPT forgets everything tomorrow. But TwinGenie pulled the receipts from 18 days ago when you quit on day 2. TwinGenie calls you out: {twin_reply}",
+            "Real self-growth requires persistent longitudinal memory. TwinGenie logs your rationalizations to break self-sabotage loops before they start.",
+            "Stop using an AI with amnesia. Download TwinGenie free on Google Play. Link in bio."
+        ]
+    elif format_type == 'archetype':
+        vo_scripts = [
+            "POV: You took the 35-Marker Cognitive Mirror audit at twingenie.app/test.",
+            "Your audit uncovered the Perfectionist Paralyzer shadow: high conscientiousness trapped in catastrophic overthinking. TwinGenie activates your tailored 7-Day Reset.",
+            "Instead of generic personality labels, TwinGenie turns your shadow into structured daily momentum and real progress.",
+            "Discover your cognitive archetype and meet your personal digital twin today on Google Play. Link in bio."
+        ]
+    elif format_type == 'council':
+        vo_scripts = [
+            f"What happens when you bring one life dilemma to the 4-Twin Council? {user_dilemma}",
+            f"Honest Twin roasts your excuses. Future Twin asks if it matters in 2031. Reflective Twin uncovers the root fear. And Life Coach gives you a 2-minute reset.",
+            "Four distinct cognitive perspectives working in real-time. Stop relying on one agreeable chatbot that just flatters you.",
+            "Meet the 4-Twin Council on TwinGenie. Download free on Google Play. Link in bio."
+        ]
+    elif format_type == 'year_in_pixels':
+        vo_scripts = [
+            "POV: You tracked your emotional triggers for 6 months on TwinGenie's Year-in-Pixels.",
+            "You thought you were having random bad days. TwinGenie discovered 78% of your Tuesdays turn Red because of pre-meeting anxiety avoidance.",
+            "TwinGenie Life Coach immediately enrolled you in a 2-minute pre-meeting cognitive reframing exercise, cutting anxiety episodes by 64%.",
+            "Map 365 days of your mental patterns and build real momentum. Download TwinGenie free on Google Play. Link in bio."
+        ]
+    elif format_type == 'split':
+        vo_scripts = [
+            f"POV: You asked AI for help with your excuses. {user_dilemma}",
+            f"What ChatGPT says: {bot_reply}. That is the yes-man trap that keeps you stuck. What TwinGenie says: {twin_reply}",
+            "TwinGenie remembers your patterns and gives you structured daily transformation instead of empty motivational quotes.",
+            "Stop using an AI that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
+        ]
+    else:  # 'story'
+        vo_scripts = [
+            f"POV: You told an AI your 2 AM excuses. {user_dilemma}",
+            f"What ChatGPT says: {bot_reply}. That is the generic yes-man trap.",
+            f"What TwinGenie says: {twin_reply}",
+            "Stop talking to ChatGPT that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
+        ]
 
     has_voiceover = False
     voice_files = []
@@ -1146,7 +1514,8 @@ def render_reel(spec, output_mp4_path):
         'modeName': mcfg['fullName'],
         'hasVoiceover': has_voiceover,
         'hasBrollBackground': False,
-        'hasMusic': True
+        'hasMusic': True,
+        'formatType': format_type
     }
 
 if __name__ == '__main__':

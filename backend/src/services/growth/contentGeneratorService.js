@@ -352,7 +352,7 @@ class ContentGeneratorService {
     getDailySchedule(date = new Date()) {
         const istDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(date);
         const epoch = new Date('2026-10-20T00:00:00+05:30');
-        const target = new Date(`${istDateStr}T00:00:00+05:30`);
+        const target = new Date(`${istDateStr}T12:00:00+05:30`);
         const dayNumber = Math.max(0, Math.round((target - epoch) / (1000 * 60 * 60 * 24)));
 
         const themes = this.themes;
@@ -363,8 +363,7 @@ class ContentGeneratorService {
         // LinkedIn retains high-authority PDF Carousels.
         const metaSharedFormat = 'reel';
 
-        // 5 Cognitive Perspectives & Growth Programs Rotation:
-        // Systematically alternates the hero mode every day across all channels
+        // 5 Cognitive Perspectives & Growth Programs
         const MODES = [
             { id: 'dark', name: 'Honest / Dark Twin', tag: 'ROAST & REALITY CHECK', defaultDilemma: "I've been scrolling for 3 hours and feel completely guilty. Should I just give up on today?", defaultBot: "Rest is so productive! Don't push yourself today—you deserve a break!", defaultReply: "Guilt is just another excuse to avoid the real work. What is the one task you're terrified of facing?" },
             { id: 'lifecoach', name: 'Life Coach (7-Day Reset)', tag: 'STRUCTURED 7-DAY ACTION', defaultDilemma: "I have so much career anxiety that I am completely frozen and dread starting each morning.", defaultBot: "Everything happens for a reason! Just believe in yourself and make a 10-step plan to stay positive!", defaultReply: "Motivational quotes don't heal anxiety; daily structured action does. Enrolled in Day 1 of the 7-Day Anxiety Reset. Your only task today is a 2-minute trigger audit. Ready?" },
@@ -372,16 +371,43 @@ class ContentGeneratorService {
             { id: 'reflective', name: 'Reflective Twin', tag: 'EMOTIONAL DECOMPRESSION', defaultDilemma: "I agreed to help someone move this weekend even though I'm completely exhausted and need rest. Why do I do this?", defaultBot: "You're such a kind, generous friend! Just make sure to get some rest when you can!", defaultReply: "You didn't volunteer because you have energy; you volunteered because saying no makes you feel like a burden. Where did you learn that your rest has to be earned?" },
             { id: 'normal', name: 'Normal Twin', tag: 'GROUNDED ALTER-EGO', defaultDilemma: "I think I should put my main project on hold and start a brand-new idea today.", defaultBot: "That sounds so exciting! Follow your passion! Here are 5 brainstorming ideas!", defaultReply: "Memory check: You said this exact same thing 14 days ago before launch. You aren't inspired—you're avoiding market feedback. Close the new tabs and finish what you started." }
         ];
-        const activeMode = MODES[dayNumber % MODES.length];
+
+        // IST Day of Week: 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+        const istDayOfWeek = target.getDay();
+
+        // 7-DAY MASTER REEL FORMAT & COGNITIVE MODE CALENDAR:
+        // Mon (1): 'split'          - Honest / Dark Twin (Roast & Reality Check on Monday procrastination)
+        // Tue (2): 'receipt'        - Normal Twin (Persistent Memory receipts from past weeks)
+        // Wed (3): 'archetype'      - Life Coach (35-Marker Archetype Audit & Web Quiz Funnel)
+        // Thu (4): 'council'        - Honest / Council (The 4-Twin Council: 1 Dilemma, 4 Perspectives)
+        // Fri (5): 'story'          - Reflective Twin (Cinematic Story & Decompression for burnout)
+        // Sat (6): 'year_in_pixels' - Life Coach (365-Day Mood Matrix & habit transformation)
+        // Sun (0): 'split'          - Future Self Twin (5-Years-Wiser Perspective for Sunday recalibration)
+        const REEL_WEEKLY_CALENDAR = {
+            1: { formatType: 'split', modeId: 'dark', title: 'Head-to-Head Roast: ChatGPT vs TwinGenie' },
+            2: { formatType: 'receipt', modeId: 'normal', title: 'The Memory Receipt: Past Excuse Retrieval' },
+            3: { formatType: 'archetype', modeId: 'lifecoach', title: '35-Marker Archetype Audit: Shadow Analysis' },
+            4: { formatType: 'council', modeId: 'dark', title: 'The 4-Twin Council: 1 Dilemma, 4 Minds' },
+            5: { formatType: 'story', modeId: 'reflective', title: 'Cinematic Story: Emotional Decompression' },
+            6: { formatType: 'year_in_pixels', modeId: 'lifecoach', title: 'Year-in-Pixels Heatmap: Pattern Discovery' },
+            0: { formatType: 'split', modeId: 'future', title: 'Future Self Recalibration: 2031 Perspective' }
+        };
+
+        const todayPlan = REEL_WEEKLY_CALENDAR[istDayOfWeek] || REEL_WEEKLY_CALENDAR[1];
+        const activeMode = MODES.find(m => m.id === todayPlan.modeId) || MODES[0];
+        const formatType = todayPlan.formatType;
 
         return {
             istDateStr,
             dayNumber,
+            istDayOfWeek,
             themeIndex,
             theme: currentTheme,
             activeMode,
             mode: activeMode.id,
             modeName: activeMode.name,
+            formatType,
+            calendarTitle: todayPlan.title,
             facebookFormat: metaSharedFormat,
             instagramFormat: metaSharedFormat,
             sharedFormat: metaSharedFormat
@@ -603,6 +629,7 @@ Output strictly valid JSON with this exact schema:
         parsed.format = sharedFormat;
         parsed.facebookFormat = sharedFormat;
         parsed.instagramFormat = sharedFormat;
+        parsed.formatType = schedule.formatType;
         parsed.dayNumber = dayNumber;
         parsed.istDateStr = istDateStr;
 
@@ -639,6 +666,7 @@ Output strictly valid JSON with this exact schema:
             hook: cur.hook,
             mode: activeMode.id,
             modeName: activeMode.name,
+            formatType: schedule.formatType,
             chatDialogue: {
                 userDilemma: activeMode.defaultDilemma,
                 standardBotReply: activeMode.defaultBot,

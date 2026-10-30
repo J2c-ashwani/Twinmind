@@ -190,9 +190,11 @@ router.all('/publish/facebook', requireAdminSecret, async (req, res) => {
             logger.info(`[GROWTH ROUTE] Rendering Reel video for Facebook...`);
             const schedule = contentGeneratorService.getDailySchedule();
             const mode = req.query.mode || req.body?.mode || schedule.activeMode?.id || 'dark';
+            const format_type = req.query.format_type || req.body?.format_type || schedule.formatType || 'split';
             const rendered = await mediaRendererService.renderReel({
                 campaignId,
                 postId: `post_facebook_reel_${Date.now()}`,
+                format_type,
                 mode,
                 modeName: schedule.activeMode?.name || 'Honest / Dark Twin',
                 hook: content.title || theme.hook,
@@ -252,9 +254,11 @@ router.all('/publish/instagram', requireAdminSecret, async (req, res) => {
                 logger.info(`[GROWTH ROUTE] Rendering Reel video for Instagram...`);
                 const schedule = contentGeneratorService.getDailySchedule();
                 const mode = req.query.mode || req.body?.mode || schedule.activeMode?.id || 'dark';
+                const format_type = req.query.format_type || req.body?.format_type || schedule.formatType || 'split';
                 const rendered = await mediaRendererService.renderReel({
                     campaignId,
                     postId: `post_ig_reel_${Date.now()}`,
+                    format_type,
                     mode,
                     modeName: schedule.activeMode?.name || 'Honest / Dark Twin',
                     hook: content.title || theme.hook,
@@ -482,12 +486,15 @@ router.all('/render-test', requireAdminSecret, async (req, res) => {
         const format = req.query.format || req.body?.format || 'carousel';
         if (format === 'reel') {
             const mode = req.query.mode || req.body?.mode || 'dark';
+            const format_type = req.query.format_type || req.body?.format_type || 'split';
             const rendered = await mediaRendererService.renderReel({
                 campaignId: 'test_render',
                 postId: Date.now(),
+                format_type,
                 mode,
                 hook: req.query.hook || 'POV: You told an AI your 2 AM excuses 💀',
-                tag: req.query.tag || 'SELF-AWARENESS'
+                tag: req.query.tag || 'SELF-AWARENESS',
+                split_screen: true
             });
             return res.json({ success: true, format: 'reel', mode, rendered });
         }

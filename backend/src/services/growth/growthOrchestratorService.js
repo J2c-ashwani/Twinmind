@@ -384,10 +384,11 @@ class GrowthOrchestratorService {
             // 5. Render Media: Reel (with strict RAM limits) or Carousel
             if (format === 'reel') {
                 try {
-                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'})...`);
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'}, Format: ${dailyPackage.formatType || 'split'})...`);
                     renderedReel = await mediaRendererService.renderReel({
                         campaignId,
                         postId,
+                        format_type: dailyPackage.formatType || 'split',
                         mode: dailyPackage.mode || 'dark',
                         modeName: dailyPackage.modeName || 'Honest / Dark Twin',
                         hook: dailyPackage.facebook.title || dailyPackage.hook,
@@ -648,10 +649,11 @@ class GrowthOrchestratorService {
             // 5. Render Media: Reel (with strict RAM limits) or Carousel
             if (format === 'reel') {
                 try {
-                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'})...`);
+                    logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'}, Format: ${dailyPackage.formatType || 'split'})...`);
                     renderedReel = await mediaRendererService.renderReel({
                         campaignId,
                         postId,
+                        format_type: dailyPackage.formatType || 'split',
                         mode: dailyPackage.mode || 'dark',
                         modeName: dailyPackage.modeName || 'Honest / Dark Twin',
                         hook: dailyPackage.facebook.title || dailyPackage.hook,
