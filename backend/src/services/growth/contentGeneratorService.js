@@ -67,6 +67,28 @@ export const CAMPAIGN_THEMES = [
             optionA: "🅰️ They have zero memory and forget everything you told them yesterday",
             optionB: "🅱️ They agree with everything you say like a mindless yes-man"
         }
+    },
+    {
+        id: 'lifecoach_programs',
+        name: 'Guided Life Coach Programs',
+        hook: 'Why generic advice fails but 7-day structured coaching works',
+        tag: 'LIFE COACH',
+        binaryQuestion: {
+            prompt: "When you are dealing with burnout or morning anxiety, what actually works for you?",
+            optionA: "🅰️ Reading motivational quotes and generic 10-point lists (ChatGPT style)",
+            optionB: "🅱️ A structured 7-day program with one 2-minute micro-exercise per day (TwinGenie Life Coach)"
+        }
+    },
+    {
+        id: 'chatgpt_vs_twingenie',
+        name: 'ChatGPT vs TwinGenie Head-to-Head',
+        hook: 'What happens when you give the exact same dilemma to ChatGPT and TwinGenie',
+        tag: 'HEAD-TO-HEAD BATTLE',
+        binaryQuestion: {
+            prompt: "Which AI response would actually change your life?",
+            optionA: "🅰️ ChatGPT: 'Everything happens for a reason! Just believe in yourself!'",
+            optionB: "🅱️ TwinGenie: 'Motivational quotes don\'t heal anxiety; daily structured action does.'"
+        }
     }
 ];
 
@@ -341,10 +363,11 @@ class ContentGeneratorService {
         // Day 0: Carousel (both), Day 1: Reel (both), Day 2: Carousel (both), Day 3: Reel (both)...
         const metaSharedFormat = (dayNumber % 2 === 0) ? 'carousel' : 'reel';
 
-        // 4 Cognitive Perspectives Rotation:
+        // 5 Cognitive Perspectives & Growth Programs Rotation:
         // Systematically alternates the hero mode every day across all channels
         const MODES = [
             { id: 'dark', name: 'Honest / Dark Twin', tag: 'ROAST & REALITY CHECK', defaultDilemma: "I've been scrolling for 3 hours and feel completely guilty. Should I just give up on today?", defaultBot: "Rest is so productive! Don't push yourself today—you deserve a break!", defaultReply: "Guilt is just another excuse to avoid the real work. What is the one task you're terrified of facing?" },
+            { id: 'lifecoach', name: 'Life Coach (7-Day Reset)', tag: 'STRUCTURED 7-DAY ACTION', defaultDilemma: "I have so much career anxiety that I am completely frozen and dread starting each morning.", defaultBot: "Everything happens for a reason! Just believe in yourself and make a 10-step plan to stay positive!", defaultReply: "Motivational quotes don't heal anxiety; daily structured action does. Enrolled in Day 1 of the 7-Day Anxiety Reset. Your only task today is a 2-minute trigger audit. Ready?" },
             { id: 'future', name: 'Future Self Twin', tag: '5-YEARS-WISER PERSPECTIVE', defaultDilemma: "Left on read for 6 hours. I'm spiraling and about to send a passive-aggressive text.", defaultBot: "That's so disrespectful of them! Send a firm message letting them know your worth!", defaultReply: "In 5 years, this silence won't even matter. What would it feel like to let the silence exist without trying to control their response?" },
             { id: 'reflective', name: 'Reflective Twin', tag: 'EMOTIONAL DECOMPRESSION', defaultDilemma: "I agreed to help someone move this weekend even though I'm completely exhausted and need rest. Why do I do this?", defaultBot: "You're such a kind, generous friend! Just make sure to get some rest when you can!", defaultReply: "You didn't volunteer because you have energy; you volunteered because saying no makes you feel like a burden. Where did you learn that your rest has to be earned?" },
             { id: 'normal', name: 'Normal Twin', tag: 'GROUNDED ALTER-EGO', defaultDilemma: "I think I should put my main project on hold and start a brand-new idea today.", defaultBot: "That sounds so exciting! Follow your passion! Here are 5 brainstorming ideas!", defaultReply: "Memory check: You said this exact same thing 14 days ago before launch. You aren't inspired—you're avoiding market feedback. Close the new tabs and finish what you started." }
