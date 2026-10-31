@@ -62,6 +62,41 @@ class LinkedInAdapter {
     }
 
     /**
+     * Reconciles whether LinkedIn has already published today in Asia/Kolkata timezone.
+     * Prevents duplicate posts across server restarts and ambiguous timeouts.
+     */
+    async hasPublishedTodayIST(target = 'personal') {
+        const creds = this.getCredentials(target);
+        const accessToken = creds.accessToken;
+        const authorUrn = creds.authorUrn;
+        if (!accessToken || !authorUrn) return false;
+
+        try {
+            const url = `https://api.linkedin.com/v2/ugcPosts?q=authors&authors=List(${encodeURIComponent(authorUrn)})`;
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'X-Restli-Protocol-Version': '2.0.0'
+                }
+            });
+            const data = await res.json();
+            if (data && Array.isArray(data.elements) && data.elements.length > 0) {
+                const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+                const postedToday = data.elements.some(p => {
+                    const ts = p.created?.time || p.firstPublishedAt;
+                    if (!ts) return false;
+                    const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(ts));
+                    return postDateIST === todayIST;
+                });
+                return postedToday;
+            }
+        } catch (e) {
+            logger.warn('[LINKEDIN] Error checking today posts on LinkedIn:', e.message);
+        }
+        return false;
+    }
+
+    /**
      * Sanitizes commentary string for LinkedIn's "Little Text" format.
      * Escapes reserved characters (( ) [ ] { } < > | ~ \) that otherwise cause
      * LinkedIn's Little Text parser to silently truncate the post from the unescaped character onward.

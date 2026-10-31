@@ -22,6 +22,7 @@ import subprocess
 import math
 import re
 import wave
+import time
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # Base Palette
@@ -947,7 +948,7 @@ def render_scene4(spec, out_path):
 # AUDIO & NEURAL VOICEOVER SYNTHESIS PIPELINE
 # =========================================================================
 
-def synthesize_voiceover_segment(text, out_mp3_path, voice='en-US-ChristopherNeural', rate='+25%'):
+def synthesize_voiceover_segment(text, out_mp3_path, voice='en-US-ChristopherNeural', rate='+25%', max_retries=3):
     cmd = [
         'edge-tts',
         '--voice', voice,
@@ -955,18 +956,29 @@ def synthesize_voiceover_segment(text, out_mp3_path, voice='en-US-ChristopherNeu
         '--text', text,
         '--write-media', out_mp3_path
     ]
-    try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
-        # Fallback to python3 -m edge_tts if edge-tts binary isn't in $PATH
-        cmd_fallback = [
-            sys.executable, '-m', 'edge_tts',
-            '--voice', voice,
-            '--rate=' + rate,
-            '--text', text,
-            '--write-media', out_mp3_path
-        ]
-        subprocess.run(cmd_fallback, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    last_err = None
+    for attempt in range(max_retries):
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            if os.path.exists(out_mp3_path) and os.path.getsize(out_mp3_path) > 100:
+                return
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            last_err = e
+            cmd_fallback = [
+                sys.executable, '-m', 'edge_tts',
+                '--voice', voice,
+                '--rate=' + rate,
+                '--text', text,
+                '--write-media', out_mp3_path
+            ]
+            try:
+                subprocess.run(cmd_fallback, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                if os.path.exists(out_mp3_path) and os.path.getsize(out_mp3_path) > 100:
+                    return
+            except Exception as fb_err:
+                last_err = fb_err
+        time.sleep(0.5 * (attempt + 1))
+    raise RuntimeError(f"Voiceover synthesis failed after {max_retries} attempts: {last_err}")
 
 def get_audio_duration(file_path):
     cmd = [
@@ -1498,13 +1510,13 @@ def render_reel(spec, output_mp4_path):
 
         has_voiceover = True
     except Exception as e:
-        print(f"[REEL RENDERER] Voiceover generation warning: {e}. Falling back to ambient audio.")
-        has_voiceover = False
+        print(f"[REEL RENDERER] Voiceover generation failed: {e}. Aborting reel to trigger Carousel failover.")
+        raise RuntimeError(f"Reel generation aborted: Voiceover failed ({e}). Failover directly to multi-slide Carousel.")
 
     t1, t2, t3, t4 = timings
     total_dur = t1 + t2 + t3 + t4
 
-    # 2. Audio Track Assembly
+    # 2. Audio Track Assembly with Loudness Normalization (-15 LUFS, True Peak -1.0 dBFS)
     final_audio = os.path.join(temp_dir, 'final_soundtrack.m4a')
     bg_music_file = os.path.join(temp_dir, 'bg_music.m4a')
     
@@ -1514,47 +1526,35 @@ def render_reel(spec, output_mp4_path):
         generate_ambient_audio(bg_music_file, duration=total_dur + 3.0)
         bg_source = bg_music_file
 
-    if has_voiceover and len(voice_files) == 4:
-        # Concatenate 4 scene voiceovers
-        concat_audio_txt = os.path.join(temp_dir, 'audio_concat.txt')
-        with open(concat_audio_txt, 'w') as f:
-            for vf in voice_files:
-                f.write(f"file '{vf}'\n")
+    # Concatenate 4 scene voiceovers
+    concat_audio_txt = os.path.join(temp_dir, 'audio_concat.txt')
+    with open(concat_audio_txt, 'w') as f:
+        for vf in voice_files:
+            f.write(f"file '{vf}'\n")
 
-        master_voice = os.path.join(temp_dir, 'master_voice.wav')
-        subprocess.run([
-            'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', concat_audio_txt,
-            '-c', 'copy', master_voice
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    master_voice = os.path.join(temp_dir, 'master_voice.wav')
+    subprocess.run([
+        'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', concat_audio_txt,
+        '-c', 'copy', master_voice
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-        # Mix voiceover (foreground volume=1.00) with ambient music (quiet background volume=0.10)
-        # normalize=0 prevents ffmpeg from halving the voiceover volume
-        # -stream_loop -1 ensures background music never cuts off mid-video
-        mix_cmd = [
-            'ffmpeg', '-y',
-            '-i', master_voice,
-            '-stream_loop', '-1', '-i', bg_source,
-            '-filter_complex',
-            f'[1:a]volume=0.10,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
-            f'[0:a]volume=1.00,atrim=0:{total_dur}[vo];'
-            f'[vo][bg]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]',
-            '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-            final_audio
-        ]
-        subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    else:
-        # Fallback ambient soundtrack (when voiceover offline)
-        mix_cmd = [
-            'ffmpeg', '-y',
-            '-stream_loop', '-1', '-i', bg_source,
-            '-filter_complex',
-            f'[0:a]volume=0.25,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[aout]',
-            '-map', '[aout]',
-            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-            final_audio
-        ]
-        subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Mix voiceover (foreground volume=1.00) with ambient music (quiet background volume=0.10)
+    # Apply EBU R128 Loudness Normalization (-15.0 LUFS, True Peak -1.0 dBFS, LRA 7.0 LU)
+    # Ensures voice is crisp and clear on phone speakers without digital clipping
+    mix_cmd = [
+        'ffmpeg', '-y',
+        '-i', master_voice,
+        '-stream_loop', '-1', '-i', bg_source,
+        '-filter_complex',
+        f'[1:a]volume=0.10,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
+        f'[0:a]volume=1.00,atrim=0:{total_dur}[vo];'
+        f'[vo][bg]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mixed];'
+        f'[mixed]loudnorm=I=-15.0:TP=-1.0:LRA=7.0[aout]',
+        '-map', '[aout]',
+        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
+        final_audio
+    ]
+    subprocess.run(mix_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # 3. Ultra-Low RAM Concat Demuxer for 512MB VPS (<20MB RAM)
     concat_txt = os.path.join(temp_dir, 'concat.txt')

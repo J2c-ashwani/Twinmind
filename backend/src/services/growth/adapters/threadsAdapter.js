@@ -93,6 +93,33 @@ class ThreadsAdapter {
     }
 
     /**
+     * Reconciles whether Threads has already published today in Asia/Kolkata timezone.
+     * Prevents duplicate posts across server restarts and ambiguous timeouts.
+     */
+    async hasPublishedTodayIST() {
+        const { accessToken } = this.getCredentials();
+        if (!accessToken) return false;
+
+        try {
+            const url = `${THREADS_API_BASE}/me/threads?fields=id,text,timestamp&limit=5&access_token=${accessToken}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data && Array.isArray(data.data) && data.data.length > 0) {
+                const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+                const postedToday = data.data.some(p => {
+                    if (!p.timestamp) return false;
+                    const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.timestamp));
+                    return postDateIST === todayIST;
+                });
+                return postedToday;
+            }
+        } catch (e) {
+            logger.warn('[THREADS] Error checking today posts on Threads:', e.message);
+        }
+        return false;
+    }
+
+    /**
      * Publishes content to Threads
      * @param {Object} postData - { text, imageUrl, linkAttachment }
      */

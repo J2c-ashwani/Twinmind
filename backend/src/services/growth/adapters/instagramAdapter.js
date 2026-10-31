@@ -72,6 +72,32 @@ class InstagramAdapter {
     }
 
     /**
+     * Reconciles whether Instagram has already published today in Asia/Kolkata timezone.
+     * Prevents duplicate posts across server restarts and ambiguous timeouts.
+     */
+    async hasPublishedTodayIST() {
+        const { accessToken, igUserId } = this.getCredentials();
+        if (!accessToken || !igUserId) return false;
+
+        try {
+            const mediaRes = await fetch(`${GRAPH_API_BASE}/${igUserId}/media?fields=id,caption,media_type,permalink,timestamp&limit=5&access_token=${accessToken}`);
+            const mediaData = await mediaRes.json();
+            if (mediaData && Array.isArray(mediaData.data) && mediaData.data.length > 0) {
+                const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+                const postedToday = mediaData.data.some(p => {
+                    if (!p.timestamp) return false;
+                    const postDateIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(p.timestamp));
+                    return postDateIST === todayIST;
+                });
+                return postedToday;
+            }
+        } catch (e) {
+            logger.warn('[INSTAGRAM] Error checking today posts on Instagram:', e.message);
+        }
+        return false;
+    }
+
+    /**
      * Publishes content to Instagram
      * @param {Object} postData - { caption, pngUrls, videoUrl, format }
      */

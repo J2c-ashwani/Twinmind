@@ -9,6 +9,7 @@ import instagramAdapter from './adapters/instagramAdapter.js';
 import facebookAdapter from './adapters/facebookAdapter.js';
 import youtubeAdapter from './adapters/youtubeAdapter.js';
 import threadsAdapter from './adapters/threadsAdapter.js';
+import publicationSlotService, { SlotStatus } from './publicationSlotService.js';
 import { supabaseAdmin } from '../../config/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -365,6 +366,18 @@ class GrowthOrchestratorService {
             }
         }
 
+        // Acquire persistent slot lease (State: RENDERING)
+        const slotClaim = await publicationSlotService.claimSlot({
+            platform: 'facebook',
+            slotDate: todayIST,
+            slotIndex: 1,
+            force
+        });
+        if (!slotClaim.granted && !force) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Facebook publication skipped: slot claim not granted (${slotClaim.reason})`);
+            return { action: 'skipped', reason: slotClaim.reason };
+        }
+
         // Acquire process lock and durable distributed lock
         this._publishingLocks.facebook = true;
         await this.acquireDurableLock('facebook', todayIST);
@@ -420,20 +433,43 @@ class GrowthOrchestratorService {
 
             // 6. Publish to Facebook Page as Reel or Carousel with First Comment
             logger.info(`[GROWTH ORCHESTRATOR] Publishing ${renderedReel ? 'Reel' : 'Carousel'} directly to Facebook Page...`);
-            const publishResult = await this.adapters.facebook.publish({
-                title: dailyPackage.facebook.title,
-                caption: dailyPackage.facebook.caption,
-                firstComment: dailyPackage.facebook.firstComment,
-                videoPath: renderedReel?.videoPath || null,
-                mediaPaths: renderedCarousel?.pngPaths || [],
-                format: renderedReel ? 'reel' : 'carousel'
-            });
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            let publishResult;
+            try {
+                publishResult = await this.adapters.facebook.publish({
+                    title: dailyPackage.facebook.title,
+                    caption: dailyPackage.facebook.caption,
+                    firstComment: dailyPackage.facebook.firstComment,
+                    videoPath: renderedReel?.videoPath || null,
+                    mediaPaths: renderedCarousel?.pngPaths || [],
+                    format: renderedReel ? 'reel' : 'carousel'
+                });
+            } catch (netErr) {
+                logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during Facebook publish: ${netErr.message}. Triggering reconciliation...`);
+                const rec = await publicationSlotService.reconcileAmbiguousTimeout({
+                    platform: 'facebook',
+                    slotKey: slotClaim.slotKey,
+                    adapter: this.adapters.facebook
+                });
+                if (rec.status === SlotStatus.PUBLISHED) {
+                    publishResult = { success: true, postId: 'reconciled_after_timeout', url: 'https://facebook.com/TwinGenie' };
+                } else {
+                    throw netErr;
+                }
+            }
 
             // 7. Track published timestamp in Supabase & update debounce timer
             if (publishResult.success) {
                 this._lastPublishedTimestamps.facebook = Date.now();
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                    postId: publishResult.postId,
+                    postUrl: publishResult.url
+                });
                 await this.commitDurableLedger('facebook', todayIST, publishResult.postId, publishResult.url);
             } else {
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                    errorMessage: publishResult.error?.message || 'Publishing rejected by Facebook'
+                });
                 await this.releaseDurableLock('facebook', todayIST);
             }
 
@@ -469,9 +505,13 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (fbError) {
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                errorMessage: fbError.message
+            });
             await this.releaseDurableLock('facebook', todayIST);
             throw fbError;
         } finally {
+            publicationSlotService.releaseSlot(slotClaim.slotKey);
             // Release lock unconditionally
             this._publishingLocks.facebook = false;
         }
@@ -515,6 +555,24 @@ class GrowthOrchestratorService {
                 logger.info(`[GROWTH ORCHESTRATOR] LinkedIn personal post already published today in local state (${todayIST}). Skipping duplicate.`);
                 return { action: 'skipped', reason: 'already_published_today' };
             }
+
+            const alreadyPostedOnLI = await this.adapters.linkedin.hasPublishedTodayIST('personal');
+            if (alreadyPostedOnLI) {
+                logger.info(`[GROWTH ORCHESTRATOR] LinkedIn Personal Profile already has a post today (${todayIST}). Skipping duplicate.`);
+                return { action: 'skipped', reason: 'already_published_today' };
+            }
+        }
+
+        // Acquire persistent slot lease (State: RENDERING)
+        const slotClaim = await publicationSlotService.claimSlot({
+            platform: 'linkedin',
+            slotDate: todayIST,
+            slotIndex: 1,
+            force
+        });
+        if (!slotClaim.granted && !force) {
+            logger.warn(`[GROWTH ORCHESTRATOR] LinkedIn publication skipped: slot claim not granted (${slotClaim.reason})`);
+            return { action: 'skipped', reason: slotClaim.reason };
         }
 
         // Acquire process lock and durable distributed lock
@@ -539,19 +597,42 @@ class GrowthOrchestratorService {
 
             // 6. Publish to LinkedIn via official API (using dedicated postToPersonalProfile method)
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
-            const publishResult = await this.adapters.linkedin.postToPersonalProfile({
-                title: dailyPackage.linkedin.title,
-                caption: dailyPackage.linkedin.caption,
-                pdfPath: rendered.pdfPath,
-                pngPaths: rendered.pngPaths,
-                utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app'
-            });
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            let publishResult;
+            try {
+                publishResult = await this.adapters.linkedin.postToPersonalProfile({
+                    title: dailyPackage.linkedin.title,
+                    caption: dailyPackage.linkedin.caption,
+                    pdfPath: rendered.pdfPath,
+                    pngPaths: rendered.pngPaths,
+                    utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app'
+                });
+            } catch (netErr) {
+                logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during LinkedIn publish: ${netErr.message}. Triggering reconciliation...`);
+                const rec = await publicationSlotService.reconcileAmbiguousTimeout({
+                    platform: 'linkedin',
+                    slotKey: slotClaim.slotKey,
+                    adapter: this.adapters.linkedin
+                });
+                if (rec.status === SlotStatus.PUBLISHED) {
+                    publishResult = { success: true, postId: 'reconciled_after_timeout', url: 'https://linkedin.com/in/ashwanikumar' };
+                } else {
+                    throw netErr;
+                }
+            }
 
             // 7. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.linkedin = Date.now();
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                    postId: publishResult.postId,
+                    postUrl: publishResult.url
+                });
                 await this.commitDurableLedger('linkedin', todayIST, publishResult.postId, publishResult.url);
             } else {
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                    errorMessage: publishResult.error?.message || 'Publishing rejected by LinkedIn'
+                });
                 await this.releaseDurableLock('linkedin', todayIST);
             }
 
@@ -589,9 +670,13 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (liError) {
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                errorMessage: liError.message
+            });
             await this.releaseDurableLock('linkedin', todayIST);
             throw liError;
         } finally {
+            publicationSlotService.releaseSlot(slotClaim.slotKey);
             this._publishingLocks.linkedin = false;
         }
     }
@@ -619,12 +704,30 @@ class GrowthOrchestratorService {
             return { action: 'recently_published' };
         }
 
-        // 3. Durable Distributed Idempotency Ledger Check (Supabase)
+        // 3. Durable Distributed Idempotency Ledger Check (Supabase + Instagram API verification)
         if (!force) {
             const ledgerCheck = await this.checkDurableLedger('instagram', todayIST);
             if (ledgerCheck.isBlocked) {
                 return { action: 'skipped', reason: ledgerCheck.reason };
             }
+
+            const alreadyPostedOnIG = await this.adapters.instagram.hasPublishedTodayIST();
+            if (alreadyPostedOnIG) {
+                logger.info(`[GROWTH ORCHESTRATOR] Instagram account @twingenie.app already has a post today (${todayIST}). Skipping duplicate.`);
+                return { action: 'skipped', reason: 'already_published_today' };
+            }
+        }
+
+        // Acquire persistent slot lease (State: RENDERING)
+        const slotClaim = await publicationSlotService.claimSlot({
+            platform: 'instagram',
+            slotDate: todayIST,
+            slotIndex: 1,
+            force
+        });
+        if (!slotClaim.granted && !force) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Instagram publication skipped: slot claim not granted (${slotClaim.reason})`);
+            return { action: 'skipped', reason: slotClaim.reason };
         }
 
         // Acquire process lock and durable distributed lock
@@ -685,18 +788,41 @@ class GrowthOrchestratorService {
 
             // 6. Dispatch to Instagram via official API
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching ${renderedReel ? 'Reel' : 'Carousel'} to Instagram account @twingenie.app...`);
-            const publishResult = await this.adapters.instagram.publish({
-                caption: igCaption,
-                videoUrl: renderedReel?.videoUrl || null,
-                pngUrls: renderedCarousel?.pngUrls || [],
-                format: renderedReel ? 'reel' : 'carousel'
-            });
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            let publishResult;
+            try {
+                publishResult = await this.adapters.instagram.publish({
+                    caption: igCaption,
+                    videoUrl: renderedReel?.videoUrl || null,
+                    pngUrls: renderedCarousel?.pngUrls || [],
+                    format: renderedReel ? 'reel' : 'carousel'
+                });
+            } catch (netErr) {
+                logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during Instagram publish: ${netErr.message}. Triggering reconciliation...`);
+                const rec = await publicationSlotService.reconcileAmbiguousTimeout({
+                    platform: 'instagram',
+                    slotKey: slotClaim.slotKey,
+                    adapter: this.adapters.instagram
+                });
+                if (rec.status === SlotStatus.PUBLISHED) {
+                    publishResult = { success: true, postId: 'reconciled_after_timeout', url: 'https://instagram.com/twingenie.app' };
+                } else {
+                    throw netErr;
+                }
+            }
 
             // 7. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.instagram = Date.now();
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                    postId: publishResult.postId,
+                    postUrl: publishResult.url
+                });
                 await this.commitDurableLedger('instagram', todayIST, publishResult.postId, publishResult.url);
             } else {
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                    errorMessage: publishResult.error?.message || 'Publishing rejected by Instagram'
+                });
                 await this.releaseDurableLock('instagram', todayIST);
             }
 
@@ -731,9 +857,13 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (igError) {
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                errorMessage: igError.message
+            });
             await this.releaseDurableLock('instagram', todayIST);
             throw igError;
         } finally {
+            publicationSlotService.releaseSlot(slotClaim.slotKey);
             this._publishingLocks.instagram = false;
         }
     }
@@ -760,12 +890,30 @@ class GrowthOrchestratorService {
             return { action: 'recently_published' };
         }
 
-        // 3. Durable Distributed Idempotency Ledger Check (Supabase)
+        // 3. Durable Distributed Idempotency Ledger Check (Supabase + Threads API verification)
         if (!force) {
             const ledgerCheck = await this.checkDurableLedger('threads', todayIST);
             if (ledgerCheck.isBlocked) {
                 return { action: 'skipped', reason: ledgerCheck.reason };
             }
+
+            const alreadyPostedOnThreads = await this.adapters.threads.hasPublishedTodayIST();
+            if (alreadyPostedOnThreads) {
+                logger.info(`[GROWTH ORCHESTRATOR] Threads account @twingenie.app already has a post today (${todayIST}). Skipping duplicate.`);
+                return { action: 'skipped', reason: 'already_published_today' };
+            }
+        }
+
+        // Acquire persistent slot lease (State: RENDERING)
+        const slotClaim = await publicationSlotService.claimSlot({
+            platform: 'threads',
+            slotDate: todayIST,
+            slotIndex: 1,
+            force
+        });
+        if (!slotClaim.granted && !force) {
+            logger.warn(`[GROWTH ORCHESTRATOR] Threads publication skipped: slot claim not granted (${slotClaim.reason})`);
+            return { action: 'skipped', reason: slotClaim.reason };
         }
 
         // Acquire process lock and durable distributed lock
@@ -789,15 +937,38 @@ class GrowthOrchestratorService {
             }
 
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching micro-reflection to Threads account @twingenie.app...`);
-            const publishResult = await this.adapters.threads.publish({
-                text: threadText
-            });
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            let publishResult;
+            try {
+                publishResult = await this.adapters.threads.publish({
+                    text: threadText
+                });
+            } catch (netErr) {
+                logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during Threads publish: ${netErr.message}. Triggering reconciliation...`);
+                const rec = await publicationSlotService.reconcileAmbiguousTimeout({
+                    platform: 'threads',
+                    slotKey: slotClaim.slotKey,
+                    adapter: this.adapters.threads
+                });
+                if (rec.status === SlotStatus.PUBLISHED) {
+                    publishResult = { success: true, postId: 'reconciled_after_timeout', url: 'https://threads.net/@twingenie.app' };
+                } else {
+                    throw netErr;
+                }
+            }
 
             // 5. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.threads = Date.now();
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                    postId: publishResult.postId,
+                    postUrl: publishResult.url
+                });
                 await this.commitDurableLedger('threads', todayIST, publishResult.postId, publishResult.url);
             } else {
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                    errorMessage: publishResult.error?.message || 'Publishing rejected by Threads'
+                });
                 await this.releaseDurableLock('threads', todayIST);
             }
 
@@ -829,9 +1000,13 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (thError) {
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                errorMessage: thError.message
+            });
             await this.releaseDurableLock('threads', todayIST);
             throw thError;
         } finally {
+            publicationSlotService.releaseSlot(slotClaim.slotKey);
             this._publishingLocks.threads = false;
         }
     }
