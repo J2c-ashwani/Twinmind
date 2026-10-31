@@ -711,11 +711,17 @@ def render_scene2(spec, out_path):
     mcfg = resolve_mode_config(spec)
     img, draw = create_smartphone_base(w, h, mcfg['id'])
 
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    comp_badge = spec.get('competitorBadge', f'{comp_name.upper()}')
+    comp_tag = spec.get('competitorTag', 'THE YES-MAN')
+    comp_pill = spec.get('competitorPill', f"{comp_name.upper()} • FLATTERY TRAP • RESETS CONTEXT")
+    comp_header = spec.get('competitorHeader', f"WHAT {comp_name.upper()} SAYS (THE FLATTERY TRAP)")
+
     # Warning Header Banner (y: 260 to 345)
     draw.rounded_rectangle([60, 260, 1020, 345], radius=22, fill=(55, 18, 30, 240), outline=(244, 63, 94), width=2)
     draw.rounded_rectangle([95, 278, 135, 318], radius=8, fill=(244, 63, 94))
     draw.text((105, 282), "X", font=f_black(24), fill=TEXT_WHITE)
-    draw.text((150, 282), "WHAT CHATGPT SAYS (THE FLATTERY TRAP)", font=f_black(26), fill=(244, 63, 94))
+    draw.text((150, 282), comp_header[:42], font=f_black(26), fill=(244, 63, 94))
 
     # User Message (Compact context bubble at top: y: 365 to 495)
     user_dilemma = sanitize_text(spec.get('userExcuse') or spec.get('userDilemma') or mcfg['defaultDilemma'])
@@ -724,7 +730,7 @@ def render_scene2(spec, out_path):
     draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(28), TEXT_WHITE, 250, 412, 730, 1.25)
     draw_double_checkmarks(draw, 985, 465, size=14, color=(56, 189, 248), width=2)
 
-    # ChatGPT Response Bubble (Recognizable OpenAI Teal avatar + large 42pt text)
+    # Competitor Response Bubble
     bot_reply = sanitize_text(spec.get('botReply', mcfg['defaultBot']))
     bubble_w = 960
     bubble_x1 = 60
@@ -736,18 +742,18 @@ def render_scene2(spec, out_path):
 
     draw.rounded_rectangle([bubble_x1, bubble_y1, bubble_x2, bubble_y2], radius=30, fill=(30, 36, 44), outline=(16, 163, 127), width=2)
     
-    # Official ChatGPT green badge
-    draw_avatar_badge(draw, bubble_x1 + 55, bubble_y1 + 44, radius=24, text="GPT", bg_color=(16, 163, 127), border_color=(52, 211, 153))
-    draw.text((bubble_x1 + 95, bubble_y1 + 30), "CHATGPT (OPENAI)", font=f_black(26), fill=TEXT_LIGHT)
-    draw.rounded_rectangle([bubble_x2 - 225, bubble_y1 + 22, bubble_x2 - 35, bubble_y1 + 62], radius=12, fill=(70, 22, 34))
-    draw.text((bubble_x2 - 208, bubble_y1 + 31), "THE YES-MAN", font=f_bold(20), fill=(244, 63, 94))
+    # Competitor Badge
+    draw_avatar_badge(draw, bubble_x1 + 55, bubble_y1 + 44, radius=24, text=comp_name[:3].upper(), bg_color=(16, 163, 127), border_color=(52, 211, 153))
+    draw.text((bubble_x1 + 95, bubble_y1 + 30), comp_badge[:22], font=f_black(26), fill=TEXT_LIGHT)
+    draw.rounded_rectangle([bubble_x2 - 245, bubble_y1 + 22, bubble_x2 - 35, bubble_y1 + 62], radius=12, fill=(70, 22, 34))
+    draw.text((bubble_x2 - 230, bubble_y1 + 31), comp_tag[:14], font=f_bold(20), fill=(244, 63, 94))
 
     draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(42), (230, 235, 250), bubble_x1 + 38, bubble_y1 + 90, bubble_w - 76, 1.32)
 
-    # ChatGPT Flattery Sub-label
+    # Flattery Sub-label
     pill_y = bubble_y2 - 50
-    draw.rounded_rectangle([bubble_x1 + 38, pill_y, bubble_x1 + 580, pill_y + 36], radius=10, fill=(48, 22, 32))
-    draw.text((bubble_x1 + 50, pill_y + 8), "CHATGPT • GENERIC TEXTBOOK ADVICE • ZERO MEMORY", font=f_bold(18), fill=(244, 63, 94))
+    draw.rounded_rectangle([bubble_x1 + 38, pill_y, bubble_x1 + 620, pill_y + 36], radius=10, fill=(48, 22, 32))
+    draw.text((bubble_x1 + 50, pill_y + 8), comp_pill[:52], font=f_bold(18), fill=(244, 63, 94))
 
     # The Consequence Breakdown Card (fills space down to y: 1530 with ZERO blank void!)
     warn_y1 = bubble_y2 + 25
@@ -877,7 +883,8 @@ def render_scene4(spec, out_path):
     img, draw = create_smartphone_base(w, h, mcfg['id'])
 
     # Title & Subtitle (y: 260 to 360)
-    draw.text((60, 260), "Why TwinGenie Beats ChatGPT.", font=f_black(48), fill=TEXT_WHITE)
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    draw.text((60, 260), f"Why TwinGenie Beats {comp_name}.", font=f_black(48), fill=TEXT_WHITE)
     draw.text((60, 328), "A complete cognitive growth ecosystem built for real transformation:", font=f_bold(26), fill=(56, 189, 248))
 
     # 4 Comprehensive Feature Ecosystem Cards (Comfortably fills y: 380 to 1120)

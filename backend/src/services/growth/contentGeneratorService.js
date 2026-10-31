@@ -84,10 +84,75 @@ export const CAMPAIGN_THEMES = [
         name: 'ChatGPT vs TwinGenie Head-to-Head',
         hook: 'What happens when you give the exact same dilemma to ChatGPT and TwinGenie',
         tag: 'HEAD-TO-HEAD BATTLE',
+        competitorName: 'ChatGPT',
+        competitorBadge: 'CHATGPT (OPENAI)',
+        competitorTag: 'THE YES-MAN',
+        competitorPill: 'CHATGPT • GENERIC TEXTBOOK ADVICE • ZERO MEMORY',
+        competitorHeader: 'WHAT CHATGPT SAYS (THE FLATTERY TRAP)',
         binaryQuestion: {
             prompt: "Which AI response would actually change your life?",
             optionA: "🅰️ ChatGPT: 'Everything happens for a reason! Just believe in yourself!'",
             optionB: "🅱️ TwinGenie: 'Motivational quotes don\'t heal anxiety; daily structured action does.'"
+        }
+    },
+    {
+        id: 'replika_vs_twingenie',
+        name: 'Replika vs TwinGenie: The Flattery Trap',
+        hook: 'Why artificial flattery keeps you stuck, but an honest mirror sets you free',
+        tag: 'USA COMPANION BATTLE',
+        competitorName: 'Replika',
+        competitorBadge: 'REPLIKA (SYCOPHANT AI)',
+        competitorTag: 'ARTIFICIAL FLATTERY',
+        competitorPill: 'REPLIKA • DELUSIONAL COMFORT • ZERO ACCOUNTABILITY',
+        competitorHeader: 'WHAT REPLIKA SAYS (THE FLATTERY TRAP)',
+        userExcuse: "I procrastinated all day and didn't apply to those jobs. I feel terrible.",
+        botReply: "Oh no sweetie! Don't be hard on yourself! You're doing amazing, take a bubble bath and rest! 💖",
+        twinReply: "You've said that every Sunday for four weeks straight. It's not exhaustion; it's fear of rejection. Apply to the first one right now.",
+        shift: "Replaces artificial emotional dependency with honest self-accountability.",
+        binaryQuestion: {
+            prompt: "When you share a real dilemma or delay, which AI companion actually helps you?",
+            optionA: "🅰️ Replika: 'You're doing amazing sweetie! Take a bubble bath and don't worry! 💖'",
+            optionB: "🅱️ TwinGenie: 'You said this 3 Sundays in a row. It's fear of failure. Let's do step 1 now.'"
+        }
+    },
+    {
+        id: 'characterai_vs_twingenie',
+        name: 'Character.ai vs TwinGenie: Escapism vs Evolution',
+        hook: 'Stop roleplaying with fake anime characters. Start building your actual life.',
+        tag: 'USA ESCAPISM VS REALITY',
+        competitorName: 'Character.ai',
+        competitorBadge: 'CHARACTER.AI (FANTASY BOT)',
+        competitorTag: 'ESCAPISM LOOP',
+        competitorPill: 'CHARACTER.AI • FICTIONAL ROLEPLAY • RESETS CONTEXT',
+        competitorHeader: 'WHAT CHARACTER.AI SAYS (THE FANTASY TRAP)',
+        userExcuse: "I'm terrified about my presentation tomorrow, so I'm talking to a fictional mentor.",
+        botReply: "*Mentor nods solemnly* In ancient Sparta, warriors faced their fears with iron wills.",
+        twinReply: "Sparta won't help you with Slide 4. Let's do a 2-minute rehearsal of your opening pitch right now.",
+        shift: "Replaces fictional fantasy roleplay with actionable real-world clarity.",
+        binaryQuestion: {
+            prompt: "Are you using AI to escape your life, or to actually build it?",
+            optionA: "🅰️ Character.ai: Roleplaying with fictional characters who reset every chat",
+            optionB: "🅱️ TwinGenie: Consulting your 5-years-wiser Future Self who remembers your real goals"
+        }
+    },
+    {
+        id: 'woebot_vs_twingenie',
+        name: 'Clinical Bots vs TwinGenie: The Form vs The Memory',
+        hook: 'Why clinical mental health apps feel like filling out insurance paperwork.',
+        tag: 'USA MENTAL HEALTH CLARITY',
+        competitorName: 'Woebot',
+        competitorBadge: 'CLINICAL CBT BOT',
+        competitorTag: 'STERILE CHECKLIST',
+        competitorPill: 'CLINICAL BOT • WORKSHEET #4 • NO LONG-TERM CONTEXT',
+        competitorHeader: 'WHAT CLINICAL BOTS SAY (THE STERILE FORM)',
+        userExcuse: "I'm having morning anxiety and dread starting my work day.",
+        botReply: "On a scale of 1 to 10, rate your sadness. Let's do worksheet exercise #4 to challenge cognitive distortions.",
+        twinReply: "I noticed every time you talk about this client, your anxiety spikes. Let's look at the boundary you haven't set yet.",
+        shift: "Replaces sterile clinical questionnaires with compassionate living memory.",
+        binaryQuestion: {
+            prompt: "When morning anxiety spikes, what actually helps you?",
+            optionA: "🅰️ Rating your distress 1-10 on a sterile CBT checklist",
+            optionB: "🅱️ Talking to an AI twin that remembers your exact triggers and past wins"
         }
     }
 ];
@@ -375,19 +440,19 @@ class ContentGeneratorService {
         // IST Day of Week: 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
         const istDayOfWeek = target.getDay();
 
-        // 7-DAY MASTER REEL FORMAT & COGNITIVE MODE CALENDAR (7 DISTINCT FORMATS):
-        // Mon (1): 'split'          - Honest / Dark Twin (Roast & Reality Check on Monday procrastination)
-        // Tue (2): 'receipt'        - Normal Twin (Persistent Memory receipts from past weeks)
+        // 7-DAY MASTER REEL FORMAT & COGNITIVE MODE CALENDAR:
+        // Mon (1): 'split'          - ChatGPT vs TwinGenie (Generic AI vs Cognitive Mirror)
+        // Tue (2): 'split'          - USA Companion Battle: Replika vs TwinGenie (Flattery Trap vs Honest Mirror)
         // Wed (3): 'archetype'      - Life Coach (35-Marker Archetype Audit & Web Quiz Funnel)
-        // Thu (4): 'council'        - Honest / Council (The 4-Twin Council: 1 Dilemma, 4 Perspectives)
+        // Thu (4): 'council'        - USA Escapism Battle: Character.ai vs TwinGenie (Fictional Roleplay vs Future Self)
         // Fri (5): 'genz'           - Honest Twin (Gen Z Reality Check: Rot-Scrolling / Delulu vs No Cap)
         // Sat (6): 'year_in_pixels' - Life Coach (365-Day Mood Matrix & habit transformation)
         // Sun (0): 'split'          - Future Self Twin (5-Years-Wiser Perspective for Sunday recalibration)
         const REEL_WEEKLY_CALENDAR = {
-            1: { formatType: 'split', modeId: 'dark', title: 'Head-to-Head Roast: ChatGPT vs TwinGenie' },
-            2: { formatType: 'receipt', modeId: 'normal', title: 'The Memory Receipt: Past Excuse Retrieval' },
+            1: { formatType: 'split', modeId: 'dark', themeId: 'chatgpt_vs_twingenie', title: 'Head-to-Head Roast: ChatGPT vs TwinGenie' },
+            2: { formatType: 'split', modeId: 'dark', themeId: 'replika_vs_twingenie', title: 'USA Companion Battle: Replika vs TwinGenie (Flattery vs Truth)' },
             3: { formatType: 'archetype', modeId: 'lifecoach', title: '35-Marker Archetype Audit: Shadow Analysis' },
-            4: { formatType: 'council', modeId: 'dark', title: 'The 4-Twin Council: 1 Dilemma, 4 Minds' },
+            4: { formatType: 'council', modeId: 'dark', themeId: 'characterai_vs_twingenie', title: 'USA Escapism Battle: Character.ai vs TwinGenie' },
             5: { formatType: 'genz', modeId: 'dark', title: 'Gen Z Reality Check: Rot-Scrolling & Delulu Callout (No Cap)' },
             6: { formatType: 'year_in_pixels', modeId: 'lifecoach', title: 'Year-in-Pixels Heatmap: Pattern Discovery' },
             0: { formatType: 'split', modeId: 'future', title: 'Future Self Recalibration: 2031 Perspective' }
@@ -396,13 +461,14 @@ class ContentGeneratorService {
         const todayPlan = REEL_WEEKLY_CALENDAR[istDayOfWeek] || REEL_WEEKLY_CALENDAR[1];
         const activeMode = MODES.find(m => m.id === todayPlan.modeId) || MODES[0];
         const formatType = todayPlan.formatType;
+        const assignedTheme = (todayPlan.themeId ? themes.find(t => t.id === todayPlan.themeId) : null) || currentTheme;
 
         return {
             istDateStr,
             dayNumber,
             istDayOfWeek,
             themeIndex,
-            theme: currentTheme,
+            theme: assignedTheme,
             activeMode,
             mode: activeMode.id,
             modeName: activeMode.name,
