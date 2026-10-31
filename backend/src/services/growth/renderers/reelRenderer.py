@@ -1545,15 +1545,15 @@ def render_reel(spec, output_mp4_path):
         '-c', 'copy', master_voice
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-    # Mix voiceover (foreground volume=1.00) with ambient music (quiet background volume=0.10)
+    # Mix voiceover (foreground volume=1.00) with ambient music (audible background groove volume=0.28)
     # Apply EBU R128 Loudness Normalization (-15.0 LUFS, True Peak -1.0 dBFS, LRA 7.0 LU)
-    # Ensures voice is crisp and clear on phone speakers without digital clipping
+    # Ensures voice is crisp and clear while background music is unmistakably audible on phone speakers
     mix_cmd = [
         'ffmpeg', '-y',
         '-i', master_voice,
         '-stream_loop', '-1', '-i', bg_source,
         '-filter_complex',
-        f'[1:a]volume=0.10,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
+        f'[1:a]volume=0.28,atrim=0:{total_dur},afade=t=out:st={total_dur - 1.5}:d=1.5[bg];'
         f'[0:a]volume=1.00,atrim=0:{total_dur}[vo];'
         f'[vo][bg]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mixed];'
         f'[mixed]loudnorm=I=-15.0:TP=-1.0:LRA=7.0[aout]',
