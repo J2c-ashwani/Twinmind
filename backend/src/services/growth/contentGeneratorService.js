@@ -468,17 +468,23 @@ class ContentGeneratorService {
             : 'No previous topics recorded yet.';
 
         const prompt = `You are the Chief Storyteller and Cognitive Psychologist writing for Ashwani Kumar, Creator of TwinGenie.
-TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING—not just founders or tech workers.
-Its core capabilities:
-- 4 Cognitive Perspectives: Normal (daily conversational alter-ego), Reflective (empathy, decompression, stress relief, emotional regulation), Honest (unfiltered clarity that challenges blind spots, rationalizations, people-pleasing & procrastination), Future You (5-years-wiser compassionate perspective that puts short-term worries into perspective).
-- 35-Question Big Five baseline assessment that benchmarks psychological traits, emotional triggers, attachment styles, and cognitive blind spots.
-- Persistent pgvector semantic memory across conversations to detect repeating self-deception and avoidance patterns over time.
+TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING—leaders, creators, professionals, and individuals navigating growth, overthinking, and habits.
+Its core verified capabilities:
+- 4 Cognitive Perspectives: Normal (grounded daily alter-ego), Reflective (empathy, decompression, stress relief), Honest (unfiltered reality check cutting through excuses), Future You (5-years-wiser 2031 perspective).
+- Guided 7-Day Life Coach Programs: Structured daily micro-exercises (7-Day Anxiety Reset, 5-Day Confidence Boost).
+- 35-Question Big Five Assessment (twingenie.app/test): Benchmarks cognitive archetypes and subconscious shadows.
+- Year-in-Pixels 365-Day Mood Matrix: Discovers subconscious emotional rhythms and recurring trigger patterns.
+- Persistent pgvector Semantic Memory: Retrieves past logs and receipts across conversations (ChatGPT resets every chat).
+
+TODAY'S MASTER OMNICHANNEL CALENDAR:
+- Daily Format: ${schedule.formatType.toUpperCase()} (${schedule.calendarTitle})
+- Hero Mode: ${schedule.modeName} (${schedule.activeMode.tag})
 
 ${avoidTopicsStr}
 
 TASK:
-Generate a completely fresh, original, thought-provoking human psychology, personal clarity, or self-awareness topic for today.
-Target audience: ALL HUMAN BEINGS—everyday individuals, students, creators, professionals, and anyone navigating life dilemmas, relationships, habits, emotions, and personal growth.
+Generate a completely fresh, original, thought-provoking human psychology, personal clarity, or executive self-awareness topic for today. Align the theme with today's master format (${schedule.formatType.toUpperCase()}) and mode (${schedule.modeName}).
+Target audience: High-achieving professionals, founders, leaders, and ambitious individuals dealing with overthinking, decision fatigue, executive burnout, people-pleasing, and avoidance loops.
 Universal themes to explore: people-pleasing, fear of being disliked, overthinking relationship texts/silence, productive procrastination, breaking bad habits, handling criticism, letting go of unfulfilling paths, fear of failure, boundary-setting, and learning to trust oneself.
 
 Output strictly valid JSON with this exact schema:
@@ -659,6 +665,22 @@ Output strictly valid JSON with this exact schema:
         const activeMode = schedule.activeMode || { id: 'dark', name: 'Honest / Dark Twin' };
         const index = dayNumber % CURATED_FALLBACK_THEMES.length;
         const cur = CURATED_FALLBACK_THEMES[index];
+
+        const slides = JSON.parse(JSON.stringify(cur.slides || []));
+        if (slides[2] && slides[2].type === 'comparison') {
+            slides[2].title = `Standard AI vs ${activeMode.name}`;
+            slides[2].right = {
+                badge: `[ TWINGENIE (${activeMode.name.toUpperCase()}) ]`,
+                user: activeMode.defaultDilemma,
+                ai: activeMode.defaultReply,
+                outcome: `Brings immediate clarity through ${activeMode.name}`
+            };
+            if (slides[2].left) {
+                slides[2].left.user = activeMode.defaultDilemma;
+                slides[2].left.ai = activeMode.defaultBot;
+            }
+        }
+
         return {
             themeId: cur.id,
             topic: cur.topic,
@@ -676,7 +698,7 @@ Output strictly valid JSON with this exact schema:
             linkedin: {
                 title: cur.title,
                 caption: cur.linkedinCaption,
-                slides: cur.slides
+                slides: slides
             },
             facebook: {
                 title: cur.title,
@@ -684,7 +706,7 @@ Output strictly valid JSON with this exact schema:
                 firstComment: '📲 Experience your digital twin free on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app\nTake your 35-question personality baseline today!',
                 binaryQuestion: cur.binaryQuestion,
                 voiceScript: cur.voiceScript,
-                slides: cur.slides
+                slides: slides
             }
         };
     }
