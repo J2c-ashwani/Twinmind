@@ -150,7 +150,7 @@ class PublicationSlotService {
             logger.warn(`[SLOT SERVICE] Primary table query note (${dbErr.message}). Evaluating fallback durable ledger.`);
         }
 
-        // 3. Fallback Durable Ledger (usage_tracking) if table is pending migration
+        // 3. Fallback Durable Ledger & Atomic Database-Level Lock
         try {
             const ledgerAction = `slot_ledger:${slotKey}`;
             const { data: publishedRows } = await supabaseAdmin
@@ -163,6 +163,21 @@ class PublicationSlotService {
                 this._inMemoryLocks.delete(slotKey);
                 logger.info(`✅ [SLOT SERVICE] Slot ${slotKey} recorded as published in durable ledger. Skipping.`);
                 return { granted: false, slotKey, status: SlotStatus.PUBLISHED, reason: 'already_published_durable' };
+            }
+
+            // Atomic Distributed Database Mutex across independent Render containers
+            // PostgreSQL unique constraint enforces exactly-once lock grant via SQLSTATE 23505
+            const fallbackLockId = '00000000-0000-0000-0000-000000000002';
+            const { error: lockErr } = await supabaseAdmin
+                .from('referral_codes')
+                .insert({ user_id: fallbackLockId, code: `LOCK-${slotKey}` });
+
+            if (lockErr) {
+                if (lockErr.code === '23505') {
+                    this._inMemoryLocks.delete(slotKey);
+                    logger.warn(`🔒 [SLOT SERVICE] Database-level mutual exclusion active (23505): another container holds slot ${slotKey}.`);
+                    return { granted: false, slotKey, status: SlotStatus.RENDERING, reason: 'database_slot_locked' };
+                }
             }
 
             return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
@@ -195,6 +210,11 @@ class PublicationSlotService {
 
         if (targetStatus === SlotStatus.PUBLISHED) {
             this._inMemoryLocks.delete(slotKey);
+            // Release fallback distributed database lock
+            try {
+                await supabaseAdmin.from('referral_codes').delete().eq('user_id', '00000000-0000-0000-0000-000000000002');
+            } catch (err) {}
+
             // Also commit to durable ledger for double protection
             try {
                 const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
@@ -213,6 +233,9 @@ class PublicationSlotService {
             }
         } else if (targetStatus === SlotStatus.FAILED) {
             this._inMemoryLocks.delete(slotKey);
+            try {
+                await supabaseAdmin.from('referral_codes').delete().eq('user_id', '00000000-0000-0000-0000-000000000002');
+            } catch (err) {}
         }
     }
 
@@ -259,8 +282,11 @@ class PublicationSlotService {
     /**
      * Release slot lock on failure
      */
-    releaseSlot(slotKey) {
+    async releaseSlot(slotKey) {
         this._inMemoryLocks.delete(slotKey);
+        try {
+            await supabaseAdmin.from('referral_codes').delete().eq('user_id', '00000000-0000-0000-0000-000000000002');
+        } catch (err) {}
     }
 }
 

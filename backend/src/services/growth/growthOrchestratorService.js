@@ -511,7 +511,7 @@ class GrowthOrchestratorService {
             await this.releaseDurableLock('facebook', todayIST);
             throw fbError;
         } finally {
-            publicationSlotService.releaseSlot(slotClaim.slotKey);
+            await publicationSlotService.releaseSlot(slotClaim.slotKey);
             // Release lock unconditionally
             this._publishingLocks.facebook = false;
         }
@@ -676,7 +676,7 @@ class GrowthOrchestratorService {
             await this.releaseDurableLock('linkedin', todayIST);
             throw liError;
         } finally {
-            publicationSlotService.releaseSlot(slotClaim.slotKey);
+            await publicationSlotService.releaseSlot(slotClaim.slotKey);
             this._publishingLocks.linkedin = false;
         }
     }
@@ -863,7 +863,7 @@ class GrowthOrchestratorService {
             await this.releaseDurableLock('instagram', todayIST);
             throw igError;
         } finally {
-            publicationSlotService.releaseSlot(slotClaim.slotKey);
+            await publicationSlotService.releaseSlot(slotClaim.slotKey);
             this._publishingLocks.instagram = false;
         }
     }
@@ -1006,7 +1006,7 @@ class GrowthOrchestratorService {
             await this.releaseDurableLock('threads', todayIST);
             throw thError;
         } finally {
-            publicationSlotService.releaseSlot(slotClaim.slotKey);
+            await publicationSlotService.releaseSlot(slotClaim.slotKey);
             this._publishingLocks.threads = false;
         }
     }
