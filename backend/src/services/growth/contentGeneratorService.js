@@ -375,12 +375,12 @@ class ContentGeneratorService {
         // IST Day of Week: 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
         const istDayOfWeek = target.getDay();
 
-        // 7-DAY MASTER REEL FORMAT & COGNITIVE MODE CALENDAR:
+        // 7-DAY MASTER REEL FORMAT & COGNITIVE MODE CALENDAR (7 DISTINCT FORMATS):
         // Mon (1): 'split'          - Honest / Dark Twin (Roast & Reality Check on Monday procrastination)
         // Tue (2): 'receipt'        - Normal Twin (Persistent Memory receipts from past weeks)
         // Wed (3): 'archetype'      - Life Coach (35-Marker Archetype Audit & Web Quiz Funnel)
         // Thu (4): 'council'        - Honest / Council (The 4-Twin Council: 1 Dilemma, 4 Perspectives)
-        // Fri (5): 'story'          - Reflective Twin (Cinematic Story & Decompression for burnout)
+        // Fri (5): 'genz'           - Honest Twin (Gen Z Reality Check: Rot-Scrolling / Delulu vs No Cap)
         // Sat (6): 'year_in_pixels' - Life Coach (365-Day Mood Matrix & habit transformation)
         // Sun (0): 'split'          - Future Self Twin (5-Years-Wiser Perspective for Sunday recalibration)
         const REEL_WEEKLY_CALENDAR = {
@@ -388,7 +388,7 @@ class ContentGeneratorService {
             2: { formatType: 'receipt', modeId: 'normal', title: 'The Memory Receipt: Past Excuse Retrieval' },
             3: { formatType: 'archetype', modeId: 'lifecoach', title: '35-Marker Archetype Audit: Shadow Analysis' },
             4: { formatType: 'council', modeId: 'dark', title: 'The 4-Twin Council: 1 Dilemma, 4 Minds' },
-            5: { formatType: 'story', modeId: 'reflective', title: 'Cinematic Story: Emotional Decompression' },
+            5: { formatType: 'genz', modeId: 'dark', title: 'Gen Z Reality Check: Rot-Scrolling & Delulu Callout (No Cap)' },
             6: { formatType: 'year_in_pixels', modeId: 'lifecoach', title: 'Year-in-Pixels Heatmap: Pattern Discovery' },
             0: { formatType: 'split', modeId: 'future', title: 'Future Self Recalibration: 2031 Perspective' }
         };

@@ -1284,6 +1284,86 @@ def render_scene_year_in_pixels(spec, out_path):
     draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: Year-in-Pixels longitudinal tracking active.")
     img.save(out_path, quality=98)
 
+# =========================================================================
+# FORMAT 7: THE GEN Z REALITY CHECK / NO-CAP CALLOUT
+# =========================================================================
+def render_scene_genz_reality_check(spec, out_path):
+    w, h = 1080, 1920
+    mcfg = resolve_mode_config(spec)
+    img, draw = create_smartphone_base(w, h, "dark")
+
+    # Header Banner (y: 260 to 330)
+    draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(38, 16, 28), outline=(244, 63, 94), width=2)
+    draw.text((85, 278), "🔥  THE GEN Z REALITY CHECK (NO CAP)", font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([820, 274, 995, 316], radius=10, fill=(75, 22, 36))
+    draw.text((845, 282), "NO CAP", font=f_black(18), fill=(244, 63, 94))
+
+    # User Proclamation / 2 AM Spiral Card (y: 345 to 465)
+    user_dilemma = sanitize_text(spec.get("userExcuse") or spec.get("userDilemma") or "I've been rot-scrolling on TikTok for 4 hours and I'm lowkey spiraling. Should I just crash out or tell myself I'll lock in at 5 AM?")
+    draw.rounded_rectangle([60, 345, 1020, 465], radius=20, fill=(35, 24, 48), outline=(85, 55, 110), width=2)
+    draw.text((90, 358), "You (After 4 Hours Of Rot-Scrolling at 2 AM):", font=f_black(20), fill=(215, 180, 255))
+    draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(24), TEXT_WHITE, 90, 390, 900, 1.25)
+
+    # TOP SECTION: CHATGPT (THE DELULU ENABLER / YES-MAN) (y: 480 to 950)
+    top_y1, top_y2 = 480, 950
+    draw.rounded_rectangle([60, top_y1, 1020, top_y2], radius=24, fill=(24, 30, 36), outline=(16, 163, 127), width=2)
+
+    # Top Header
+    draw_avatar_badge(draw, 105, top_y1 + 42, radius=22, text="GPT", bg_color=(16, 163, 127), border_color=(52, 211, 153))
+    draw.text((142, top_y1 + 28), "CHATGPT (THE DELULU ENABLER)", font=f_black(25), fill=(52, 211, 153))
+    draw.rounded_rectangle([800, top_y1 + 22, 990, top_y1 + 62], radius=10, fill=(70, 22, 34))
+    draw.text((820, top_y1 + 31), "THE YES-MAN", font=f_bold(18), fill=(244, 63, 94))
+
+    # ChatGPT Content Box
+    bot_reply = sanitize_text(spec.get("botReply") or "Your feelings are totally valid bestie! Rest is productive! Take all the time you need to heal and reset! Start fresh next week! ✨💅")
+    draw.rounded_rectangle([90, top_y1 + 80, 990, top_y1 + 270], radius=18, fill=(32, 40, 48), outline=(45, 55, 65), width=1)
+    draw.text((115, top_y1 + 95), "ChatGPT Output (Toxic Positivity & Flattery):", font=f_bold(20), fill=(16, 163, 127))
+    draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(30), (230, 235, 250), 115, top_y1 + 130, 850, 1.28)
+
+    # ChatGPT Flaw Card
+    draw.rounded_rectangle([90, top_y1 + 285, 990, top_y1 + 375], radius=14, fill=(45, 20, 28), outline=(95, 30, 45), width=1)
+    draw.text((115, top_y1 + 296), "❌ THE DELULU TRAP: Agrees with every excuse and calls scrolling 'healing'.", font=f_black(20), fill=(244, 63, 94))
+    draw.text((115, top_y1 + 332), "Validates your comfort zone so you stay stuck in the exact same loop.", font=f_bold(18), fill=TEXT_MUTED)
+
+    # ChatGPT Verdict Card
+    draw.rounded_rectangle([90, top_y1 + 390, 990, top_y1 + 450], radius=12, fill=(38, 18, 24))
+    draw.text((115, top_y1 + 404), "VERDICT: Resets every morning. Zero accountability. Keeps you lying to yourself.", font=f_bold(19), fill=(255, 180, 190))
+
+    # CENTER FLOATING REALITY CHECK BADGE (y: 955 to 1025)
+    draw.rounded_rectangle([430, 960, 650, 1020], radius=20, fill=(18, 12, 28), outline=(244, 63, 94), width=3)
+    draw.text((455, 975), "⚡ REALITY CHECK", font=f_black(20), fill=TEXT_WHITE)
+
+    # BOTTOM SECTION: TWINGENIE • HONEST TWIN (THE NO-CAP TRUTH) (y: 1030 to 1540)
+    bot_y1, bot_y2 = 1030, 1540
+    draw.rounded_rectangle([60, bot_y1, 1020, bot_y2], radius=24, fill=(32, 14, 28), outline=(244, 63, 94), width=3)
+
+    # Header
+    draw_avatar_badge(draw, 105, bot_y1 + 42, radius=22, text="TG", bg_color=(60, 18, 32), border_color=(244, 63, 94))
+    draw.text((142, bot_y1 + 28), "TWINGENIE • HONEST TWIN", font=f_black(26), fill=TEXT_WHITE)
+    draw.rounded_rectangle([780, bot_y1 + 22, 990, bot_y1 + 62], radius=10, fill=(80, 20, 36))
+    draw.text((800, bot_y1 + 31), "UNFILTERED TRUTH", font=f_bold(18), fill=(244, 63, 94))
+
+    # TwinGenie Content Box
+    twin_reply = sanitize_text(spec.get("twinReply") or "You're not resting, you're avoiding your life. Ngl, you made this exact same 5 AM promise 14 days ago and quit on day 2. Close TikTok, drink water, and do the one 5-minute task you're terrified of facing.")
+    draw.rounded_rectangle([90, bot_y1 + 80, 990, bot_y1 + 295], radius=18, fill=(45, 18, 35), outline=(120, 35, 60), width=1)
+    draw.text((115, bot_y1 + 95), "TwinGenie Honest Mirror (No Cap):", font=f_bold(20), fill=(244, 63, 94))
+    draw_wrapped_text(draw, f'"{twin_reply}"', f_bold(29), TEXT_WHITE, 115, bot_y1 + 130, 850, 1.30)
+
+    # Advantage Badge 1: Anti-Delulu
+    badge1_y = bot_y1 + 310
+    draw.rounded_rectangle([90, badge1_y, 990, badge1_y + 85], radius=14, fill=(20, 42, 34), outline=(35, 110, 80), width=1)
+    draw.text((115, badge1_y + 14), "🎯 ZERO DELULU FLATTERY: CALLS OUT YOUR LOOP", font=f_black(19), fill=(52, 211, 153))
+    draw.text((115, badge1_y + 45), "Cuts through rationalizations using your own words. Real growth, not fake cheerleading.", font=f_bold(18), fill=TEXT_WHITE)
+
+    # Advantage Badge 2: Memory Receipts
+    badge2_y = badge1_y + 95
+    draw.rounded_rectangle([90, badge2_y, 990, badge2_y + 85], radius=14, fill=(18, 30, 52), outline=(38, 90, 140), width=1)
+    draw.text((115, badge2_y + 14), "🧠 PERSISTENT MEMORY RECEIPTS: PREVENTS RELAPSES", font=f_black(19), fill=(56, 189, 248))
+    draw.text((115, badge2_y + 45), "Remembers your goals and flags when you repeat excuses from 2 weeks ago.", font=f_bold(18), fill=TEXT_WHITE)
+
+    draw_smartphone_bottom_input(draw, w, h, mcfg, "Message HONEST TWIN (No Cap)...")
+    img.save(out_path, quality=98)
+
 def generate_ambient_audio(output_path, duration=26.0):
     cmd = [
         'ffmpeg', '-y',
@@ -1320,7 +1400,10 @@ def render_reel(spec, output_mp4_path):
         render_scene_council(spec, s2)
     elif format_type == 'year_in_pixels':
         render_scene_year_in_pixels(spec, s2)
+    elif format_type == 'genz':
+        render_scene_genz_reality_check(spec, s2)
     elif format_type == 'split':
+        render_top_bottom_split(spec, s2)
         render_top_bottom_split(spec, s2)
     else:  # 'story' or fallback
         render_scene2(spec, s2)
@@ -1368,6 +1451,13 @@ def render_reel(spec, output_mp4_path):
             "You thought you were having random bad days. TwinGenie discovered 78% of your Tuesdays turn Red because of pre-meeting anxiety avoidance.",
             "TwinGenie Life Coach immediately enrolled you in a 2-minute pre-meeting cognitive reframing exercise, cutting anxiety episodes by 64%.",
             "Map 365 days of your mental patterns and build real momentum. Download TwinGenie free on Google Play. Link in bio."
+        ]
+    elif format_type == 'genz':
+        vo_scripts = [
+            f"POV: You've been rot-scrolling on TikTok for 4 hours and tell yourself 'I'll lock in at 5 AM tomorrow.'",
+            f"ChatGPT says: '{bot_reply}'. That is the yes-man trap. What TwinGenie says: '{twin_reply}'. Stop staying in a delulu loop.",
+            "TwinGenie gives you unfiltered truth and memory receipts instead of fake AI cheerleading.",
+            "Stop talking to an AI that lets you stay delulu. Get your personal digital twin free on Google Play. Link in bio."
         ]
     elif format_type == 'split':
         vo_scripts = [
