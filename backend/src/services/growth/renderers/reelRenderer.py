@@ -52,8 +52,8 @@ MODE_CONFIGS = {
         'defaultDilemma': "I have so much career anxiety that I'm completely frozen and dread starting each morning.",
         'defaultBot': "Everything happens for a reason! Just believe in yourself and make a 10-step plan to stay positive!",
         'defaultReply': "Motivational quotes don't heal anxiety; daily structured action does. I've enrolled you in Day 1 of the 7-Day Anxiety Reset. Your only task today is a 2-minute trigger audit. Ready?",
-        'shift': "Replaces ChatGPT's generic 10-point lists with structured day-by-day coaching.",
-        'trapInsight': "ChatGPT gives textbook advice you never execute; life coaches enforce momentum.",
+        'shift': "Replaces generic 10-point lists with structured day-by-day coaching.",
+        'trapInsight': "Generic AI gives textbook advice you never execute; life coaches enforce momentum.",
         'actionInsight': "Day 1: 2-minute trigger audit to identify root cause before taking action.",
         'breakthroughInsight': "Transforms morning paralysis into disciplined, step-by-step clarity.",
         'splitFlawTag': "❌ THE AMNESIA TRAP",
@@ -501,9 +501,13 @@ def render_left_right_split(spec, out_path):
     mcfg = resolve_mode_config(spec)
     img, draw = create_smartphone_base(w, h, mcfg["id"])
 
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    comp_badge = spec.get('competitorBadge', f'{comp_name.upper()}')
+    comp_tag = spec.get('competitorTag', 'YES-MAN')
+
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(30, 20, 48), outline=mcfg["accent"], width=2)
-    draw.text((85, 278), "⚔️  HEAD-TO-HEAD COMPARISON", font=f_black(26), fill=TEXT_WHITE)
+    draw.text((85, 278), f"⚔️  HEAD-TO-HEAD: {comp_name.upper()} VS TWINGENIE", font=f_black(26), fill=TEXT_WHITE)
     draw.rounded_rectangle([800, 274, 995, 316], radius=10, fill=mcfg["bgCard"])
     draw.text((818, 282), "DUAL COLUMN", font=f_bold(18), fill=mcfg["accent"])
 
@@ -519,26 +523,26 @@ def render_left_right_split(spec, out_path):
     col_y1 = 475
     col_y2 = 1530
 
-    # 1. LEFT COLUMN: CHATGPT
+    # 1. LEFT COLUMN: COMPETITOR
     lx1, lx2 = 60, 520
     draw.rounded_rectangle([lx1, col_y1, lx2, col_y2], radius=24, fill=(24, 30, 36), outline=(16, 163, 127), width=2)
 
-    # ChatGPT Header
-    draw_avatar_badge(draw, lx1 + 45, col_y1 + 42, radius=20, text="GPT", bg_color=(16, 163, 127), border_color=(52, 211, 153))
-    draw.text((lx1 + 80, col_y1 + 30), "CHATGPT", font=f_black(24), fill=(52, 211, 153))
+    # Competitor Header
+    draw_avatar_badge(draw, lx1 + 45, col_y1 + 42, radius=20, text=comp_name[:3].upper(), bg_color=(16, 163, 127), border_color=(52, 211, 153))
+    draw.text((lx1 + 80, col_y1 + 30), comp_badge[:12].upper(), font=f_black(22), fill=(52, 211, 153))
     draw.rounded_rectangle([lx2 - 130, col_y1 + 25, lx2 - 20, col_y1 + 60], radius=8, fill=(70, 22, 34))
-    draw.text((lx2 - 120, col_y1 + 33), "YES-MAN", font=f_bold(16), fill=(244, 63, 94))
+    draw.text((lx2 - 120, col_y1 + 33), comp_tag[:10].upper(), font=f_bold(16), fill=(244, 63, 94))
 
-    # ChatGPT Response Bubble
+    # Competitor Response Bubble
     bot_reply = sanitize_text(spec.get("botReply") or mcfg["defaultBot"])
     draw.rounded_rectangle([lx1 + 20, col_y1 + 80, lx2 - 20, col_y1 + 460], radius=16, fill=(32, 40, 48), outline=(45, 55, 65), width=1)
-    draw.text((lx1 + 35, col_y1 + 95), "ChatGPT Output:", font=f_bold(18), fill=(16, 163, 127))
+    draw.text((lx1 + 35, col_y1 + 95), f"{comp_name} Output:", font=f_bold(18), fill=(16, 163, 127))
     draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(26), (230, 235, 250), lx1 + 35, col_y1 + 130, 390, 1.28)
 
-    # ChatGPT Flaw Cards
+    # Competitor Flaw Cards
     flaws = [
-        (mcfg.get("splitFlawTag", "❌ THE YES-MAN TRAP"), mcfg.get("splitFlawDesc", "Resets memory every chat. Forgets your goals tomorrow.")),
-        ("❌ GENERIC ESSAYS", "10 textbook bullet points you will never execute."),
+        (mcfg.get("splitFlawTag", f"❌ THE {comp_name.upper()} TRAP"), mcfg.get("splitFlawDesc", f"Resets memory or flatters excuses. Forgets goals tomorrow.")),
+        ("❌ DELUSIONAL VALIDATION", "Tells you what feels comfortable while real progress stays stalled."),
         ("❌ ZERO ACCOUNTABILITY", "No follow-up. Validates your comfortable excuses.")
     ]
     fy = col_y1 + 480
@@ -551,7 +555,7 @@ def render_left_right_split(spec, out_path):
     # Verdict Box Left
     draw.rounded_rectangle([lx1 + 20, col_y2 - 95, lx2 - 20, col_y2 - 20], radius=12, fill=(38, 22, 28))
     draw.text((lx1 + 35, col_y2 - 82), "VERDICT:", font=f_black(16), fill=(244, 63, 94))
-    draw_wrapped_text(draw, mcfg.get("splitVerdictLeft", "Feels good in the moment, solves nothing."), f_bold(18), (255, 200, 210), lx1 + 35, col_y2 - 58, 390, 1.2)
+    draw_wrapped_text(draw, mcfg.get("splitVerdictLeft", f"Feels good in the moment, solves nothing with {comp_name}."), f_bold(18), (255, 200, 210), lx1 + 35, col_y2 - 58, 390, 1.2)
 
     # 2. RIGHT COLUMN: TWINGENIE
     rx1, rx2 = 560, 1020
@@ -618,9 +622,15 @@ def render_top_bottom_split(spec, out_path):
     else:
         badge_label = mcfg.get("tabName", "TWIN") + " MODE"
 
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    comp_badge = spec.get('competitorBadge', f'{comp_name.upper()}')
+    comp_tag = spec.get('competitorTag', 'THE YES-MAN')
+    comp_pill = spec.get('competitorPill', f"{comp_name.upper()} • FLATTERY TRAP • ZERO MEMORY")
+    comp_header = spec.get('competitorHeader', f"WHAT {comp_name.upper()} SAYS (THE FLATTERY TRAP)")
+
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(30, 20, 48), outline=mcfg["accent"], width=2)
-    draw.text((85, 278), "⚔️  HEAD-TO-HEAD: CHATGPT VS TWINGENIE", font=f_black(26), fill=TEXT_WHITE)
+    draw.text((85, 278), f"⚔️  HEAD-TO-HEAD: {comp_name.upper()} VS TWINGENIE", font=f_black(26), fill=TEXT_WHITE)
     draw.rounded_rectangle([820, 274, 995, 316], radius=10, fill=mcfg["bgCard"])
     draw.text((838, 282), "HORIZONTAL", font=f_bold(18), fill=mcfg["accent"])
 
@@ -630,31 +640,33 @@ def render_top_bottom_split(spec, out_path):
     draw.text((90, 360), "You (Asking For Guidance):", font=f_black(20), fill=(185, 165, 245))
     draw_wrapped_text(draw, f'"{user_text}"', f_bold(24), TEXT_WHITE, 90, 390, 900, 1.25)
 
-    # TOP SECTION: CHATGPT (THE YES-MAN) (y: 470 to 950)
+    # TOP SECTION: COMPETITOR (y: 470 to 950)
     top_y1, top_y2 = 470, 950
     draw.rounded_rectangle([60, top_y1, 1020, top_y2], radius=24, fill=(24, 30, 36), outline=(16, 163, 127), width=2)
 
     # Top Header
-    draw_avatar_badge(draw, 105, top_y1 + 42, radius=22, text="GPT", bg_color=(16, 163, 127), border_color=(52, 211, 153))
-    draw.text((142, top_y1 + 28), "CHATGPT (OPENAI)", font=f_black(26), fill=(52, 211, 153))
+    draw_avatar_badge(draw, 105, top_y1 + 42, radius=22, text=comp_name[:3].upper(), bg_color=(16, 163, 127), border_color=(52, 211, 153))
+    draw.text((142, top_y1 + 28), comp_badge[:22].upper(), font=f_black(26), fill=(52, 211, 153))
     draw.rounded_rectangle([810, top_y1 + 22, 990, top_y1 + 62], radius=10, fill=(70, 22, 34))
-    draw.text((830, top_y1 + 31), "THE YES-MAN", font=f_bold(20), fill=(244, 63, 94))
+    draw.text((830, top_y1 + 31), comp_tag[:14].upper(), font=f_bold(20), fill=(244, 63, 94))
 
-    # ChatGPT Content Box
+    # Competitor Content Box
     bot_reply = sanitize_text(spec.get("botReply") or mcfg["defaultBot"])
     draw.rounded_rectangle([90, top_y1 + 80, 990, top_y1 + 270], radius=18, fill=(32, 40, 48), outline=(45, 55, 65), width=1)
-    draw.text((115, top_y1 + 95), "ChatGPT Output (Polite Validation):", font=f_bold(20), fill=(16, 163, 127))
+    draw.text((115, top_y1 + 95), f"{comp_name} Output (Delusional Validation):", font=f_bold(20), fill=(16, 163, 127))
     draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(32), (230, 235, 250), 115, top_y1 + 130, 850, 1.28)
 
-    # ChatGPT Flaw Card (Stacked hierarchy - zero collision!)
+    # Competitor Flaw Card (Stacked hierarchy - zero collision!)
     draw.rounded_rectangle([90, top_y1 + 285, 990, top_y1 + 375], radius=14, fill=(45, 20, 28), outline=(95, 30, 45), width=1)
-    draw.text((115, top_y1 + 296), mcfg.get("splitFlawTag", "❌ THE YES-MAN TRAP"), font=f_black(20), fill=(244, 63, 94))
-    flaw_full = mcfg.get("splitFlawDesc", "") + " " + mcfg.get("splitFlawDetail", "")
+    draw.text((115, top_y1 + 296), mcfg.get("splitFlawTag", f"❌ THE {comp_name.upper()} TRAP"), font=f_black(20), fill=(244, 63, 94))
+    flaw_full = (mcfg.get("splitFlawDesc", "") + " " + mcfg.get("splitFlawDetail", "")).strip()
+    if not flaw_full:
+        flaw_full = f"Validates your comfortable excuses so you stay stuck. Never forces real change."
     draw_wrapped_text(draw, flaw_full, f_bold(20), TEXT_LIGHT, 115, top_y1 + 328, 850, 1.22)
 
     top_y1_bottom = top_y1 + 390
     draw.rounded_rectangle([90, top_y1_bottom, 990, top_y1_bottom + 65], radius=12, fill=(38, 22, 28))
-    draw.text((115, top_y1_bottom + 14), "VERDICT: " + mcfg.get("splitVerdictLeft", "Tells you what feels comfortable."), font=f_bold(20), fill=(255, 180, 190))
+    draw.text((115, top_y1_bottom + 14), "VERDICT: " + mcfg.get("splitVerdictLeft", f"Validates comfort zone, solves nothing."), font=f_bold(20), fill=(255, 180, 190))
 
     # CENTRAL VS BADGE DIVIDER (y: 960 to 1025)
     divider_y = 992
@@ -759,11 +771,11 @@ def render_scene2(spec, out_path):
     warn_y1 = bubble_y2 + 25
     warn_y2 = 1530
     draw.rounded_rectangle([60, warn_y1, 1020, warn_y2], radius=28, fill=(35, 14, 24, 240), outline=(244, 63, 94), width=2)
-    draw.text((100, warn_y1 + 24), "[ WHY CHATGPT FAILS YOU IN REAL LIFE ]", font=f_black(28), fill=(244, 63, 94))
+    draw.text((100, warn_y1 + 24), f"[ WHY {comp_name.upper()} FAILS YOU IN REAL LIFE ]", font=f_black(28), fill=(244, 63, 94))
     
     # Impact Quote Box
     callout_y = warn_y1 + 70
-    callout_text = "ChatGPT tells you what feels comfortable, not what you actually need to do."
+    callout_text = f"{comp_name} tells you what feels comfortable, not what you actually need to do."
     callout_h = get_text_height(draw, callout_text, f_bold(24), 820, 1.25)
     callout_box_h = max(75, callout_h + 36)
     draw.rounded_rectangle([100, callout_y, 980, callout_y + callout_box_h], radius=16, fill=(55, 18, 30))
@@ -771,8 +783,8 @@ def render_scene2(spec, out_path):
 
     # 3 High-Impact Full-Width Contrast Cards
     badges = [
-        ("THE AMNESIA TRAP", "ChatGPT resets every session: never remembers your goals or past excuses.", (244, 63, 94)),
-        ("GENERIC ESSAYS", "Spits out 10 textbook bullet points that sound smart but you never execute.", (255, 184, 0)),
+        ("THE AMNESIA TRAP", f"{comp_name} resets or flatters: never remembers your goals or past excuses.", (244, 63, 94)),
+        ("GENERIC ESSAYS", "Spits out textbook bullet points that sound smart but you never execute.", (255, 184, 0)),
         ("NO COACHING", "Zero multi-day structure: cannot guide you through a real 7-day reset.", (168, 85, 247))
     ]
     by = callout_y + callout_box_h + 16
@@ -788,7 +800,7 @@ def render_scene2(spec, out_path):
     draw_wrapped_text(draw, "TWINGENIE CONTRAST: 7-Day guided programs + persistent memory + accountability.", f_bold(20), (56, 189, 248), 125, by + 20, 830, 1.2)
 
     # Bottom Smartphone Input Bar
-    draw_smartphone_bottom_input(draw, w, h, mcfg, "ChatGPT: Stateless AI. Resets memory and validates comfort zones.")
+    draw_smartphone_bottom_input(draw, w, h, mcfg, f"{comp_name}: Stateless or sycophant AI. Validates comfort zones.")
 
     img.save(out_path, quality=98)
 
@@ -892,7 +904,7 @@ def render_scene4(spec, out_path):
         ('lifecoach', 'GUIDED LIFE COACH PROGRAMS', '7-Day Anxiety Reset, 5-Day Confidence Boost & step-by-step habit roadmaps', (168, 85, 247)),
         ('dark', '4 COGNITIVE DIGITAL TWINS', 'Honest Twin, Future Self (2031), Reflective & Grounded Alter-Ego perspectives', (255, 59, 92)),
         ('normal', 'YEAR-IN-PIXELS MOOD MAP', 'Visual 365-day tracking of emotional rhythms, triggers, and cognitive blind spots', (56, 189, 248)),
-        ('reflective', 'PERSISTENT SEMANTIC MEMORY', 'Remembers your goals and flags recurring rationalizations (ChatGPT resets)', (52, 211, 153))
+        ('reflective', 'PERSISTENT SEMANTIC MEMORY', f'Remembers your goals and flags recurring rationalizations ({comp_name} resets)', (52, 211, 153))
     ]
     cy = 380
     card_h = 165
@@ -1059,10 +1071,11 @@ def render_scene_receipt_check(spec, out_path):
     draw_wrapped_text(draw, f'"{twin_reply}"', f_bold(32), TEXT_WHITE, 115, tg_y1 + 115, 850, 1.30)
 
     # Bottom Advantage Badges
+    comp_name = spec.get('competitorName', 'ChatGPT')
     b_y = tg_y1 + 300
     draw.rounded_rectangle([90, b_y, 990, b_y + 110], radius=14, fill=(20, 40, 32), outline=(40, 120, 90), width=1)
-    draw.text((115, b_y + 16), "✅ WHY MEMORY MATTERS: CHATGPT HAS TOTAL AMNESIA", font=f_black(19), fill=(52, 211, 153))
-    draw.text((115, b_y + 48), "ChatGPT agrees with your 5 AM lie every time. TwinGenie remembers your patterns.", font=f_bold(20), fill=TEXT_WHITE)
+    draw.text((115, b_y + 16), f"✅ WHY MEMORY MATTERS: {comp_name.upper()} HAS TOTAL AMNESIA", font=f_black(19), fill=(52, 211, 153))
+    draw.text((115, b_y + 48), f"{comp_name} agrees with your 5 AM lie every time. TwinGenie remembers your patterns.", font=f_bold(20), fill=TEXT_WHITE)
     draw.text((115, b_y + 78), "• Continuous longitudinal memory graph that breaks circular self-sabotage.", font=f_bold(17), fill=(180, 235, 210))
 
     draw_smartphone_bottom_input(draw, w, h, mcfg, "TwinGenie: Memory verified across 44 days.")
@@ -1323,20 +1336,21 @@ def render_scene_genz_reality_check(spec, out_path):
     draw.text((90, 358), "You (After 4 Hours Of Rot-Scrolling at 2 AM):", font=f_black(20), fill=(215, 180, 255))
     draw_wrapped_text(draw, f'"{user_dilemma}"', f_bold(24), TEXT_WHITE, 90, 390, 900, 1.25)
 
-    # TOP SECTION: CHATGPT (THE DELULU ENABLER / YES-MAN) (y: 480 to 950)
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    # TOP SECTION: COMPETITOR (THE DELULU ENABLER / YES-MAN) (y: 480 to 950)
     top_y1, top_y2 = 480, 950
     draw.rounded_rectangle([60, top_y1, 1020, top_y2], radius=24, fill=(24, 30, 36), outline=(16, 163, 127), width=2)
 
     # Top Header
-    draw_avatar_badge(draw, 105, top_y1 + 42, radius=22, text="GPT", bg_color=(16, 163, 127), border_color=(52, 211, 153))
-    draw.text((142, top_y1 + 28), "CHATGPT (THE DELULU ENABLER)", font=f_black(25), fill=(52, 211, 153))
+    draw_avatar_badge(draw, 105, top_y1 + 42, radius=22, text=comp_name[:3].upper(), bg_color=(16, 163, 127), border_color=(52, 211, 153))
+    draw.text((142, top_y1 + 28), f"{comp_name.upper()} (THE DELULU ENABLER)", font=f_black(25), fill=(52, 211, 153))
     draw.rounded_rectangle([800, top_y1 + 22, 990, top_y1 + 62], radius=10, fill=(70, 22, 34))
     draw.text((820, top_y1 + 31), "THE YES-MAN", font=f_bold(18), fill=(244, 63, 94))
 
-    # ChatGPT Content Box
+    # Competitor Content Box
     bot_reply = sanitize_text(spec.get("botReply") or "Your feelings are totally valid bestie! Rest is productive! Take all the time you need to heal and reset! Start fresh next week! ✨💅")
     draw.rounded_rectangle([90, top_y1 + 80, 990, top_y1 + 270], radius=18, fill=(32, 40, 48), outline=(45, 55, 65), width=1)
-    draw.text((115, top_y1 + 95), "ChatGPT Output (Toxic Positivity & Flattery):", font=f_bold(20), fill=(16, 163, 127))
+    draw.text((115, top_y1 + 95), f"{comp_name} Output (Toxic Positivity & Flattery):", font=f_bold(20), fill=(16, 163, 127))
     draw_wrapped_text(draw, f'"{bot_reply}"', f_bold(30), (230, 235, 250), 115, top_y1 + 130, 850, 1.28)
 
     # ChatGPT Flaw Card
@@ -1441,12 +1455,14 @@ def render_reel(spec, output_mp4_path):
     v_sol = spec.get('voiceSolution') or custom_vo.get('voiceSolution')
     v_cta = spec.get('voiceCta') or custom_vo.get('voiceCta')
 
+    comp_name = spec.get('competitorName', 'ChatGPT')
+
     if v_hook and v_prob and v_sol and v_cta:
         vo_scripts = [v_hook, v_prob, v_sol, v_cta]
     elif format_type == 'receipt':
         vo_scripts = [
             f"POV: You made another late-night proclamation to yourself: {user_dilemma}",
-            f"ChatGPT forgets everything tomorrow. But TwinGenie pulled the receipts from 18 days ago when you quit on day 2. TwinGenie calls you out: {twin_reply}",
+            f"{comp_name} forgets everything tomorrow. But TwinGenie pulled the receipts from 18 days ago when you quit on day 2. TwinGenie calls you out: {twin_reply}",
             "Real self-growth requires persistent longitudinal memory. TwinGenie logs your rationalizations to break self-sabotage loops before they start.",
             "Stop using an AI with amnesia. Download TwinGenie free on Google Play. Link in bio."
         ]
@@ -1474,24 +1490,30 @@ def render_reel(spec, output_mp4_path):
     elif format_type == 'genz':
         vo_scripts = [
             f"POV: You've been rot-scrolling on TikTok for 4 hours and tell yourself 'I'll lock in at 5 AM tomorrow.'",
-            f"ChatGPT says: '{bot_reply}'. That is the yes-man trap. What TwinGenie says: '{twin_reply}'. Stop staying in a delulu loop.",
+            f"{comp_name} says: '{bot_reply}'. That is the yes-man trap. What TwinGenie says: '{twin_reply}'. Stop staying in a delulu loop.",
             "TwinGenie gives you unfiltered truth and memory receipts instead of fake AI cheerleading.",
-            "Stop talking to an AI that lets you stay delulu. Get your personal digital twin free on Google Play. Link in bio."
+            f"Stop talking to an AI that lets you stay delulu. Get your personal digital twin free on Google Play. Link in bio."
         ]
     elif format_type == 'split':
         vo_scripts = [
             f"POV: You asked AI for help with your excuses. {user_dilemma}",
-            f"What ChatGPT says: {bot_reply}. That is the yes-man trap that keeps you stuck. What TwinGenie says: {twin_reply}",
+            f"What {comp_name} says: {bot_reply}. That is the yes-man trap that keeps you stuck. What TwinGenie says: {twin_reply}",
             "TwinGenie remembers your patterns and gives you structured daily transformation instead of empty motivational quotes.",
-            "Stop using an AI that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
+            f"Stop using an AI that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
         ]
     else:  # 'story'
         vo_scripts = [
             f"POV: You told an AI your 2 AM excuses. {user_dilemma}",
-            f"What ChatGPT says: {bot_reply}. That is the generic yes-man trap.",
+            f"What {comp_name} says: {bot_reply}. That is the generic yes-man trap.",
             f"What TwinGenie says: {twin_reply}",
-            "Stop talking to ChatGPT that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
+            f"Stop talking to {comp_name} that forgets you tomorrow. Experience real 7-day life coaching and cognitive memory on TwinGenie. Download free on Google Play. Link in bio."
         ]
+
+    # 2.5 Strict Integrity Check: Guarantee NO ChatGPT reference when another competitor is targeted
+    if comp_name.lower() != 'chatgpt':
+        for idx, script in enumerate(vo_scripts, 1):
+            if 'chatgpt' in script.lower():
+                raise ValueError(f"CRITICAL BRAND SAFETY ERROR: Competitor is set to '{comp_name}', but Scene {idx} voiceover leaked 'ChatGPT'! Script: '{script}'")
 
     has_voiceover = False
     voice_files = []
