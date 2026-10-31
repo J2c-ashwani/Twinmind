@@ -468,11 +468,11 @@ class ContentGeneratorService {
             : 'No previous topics recorded yet.';
 
         const prompt = `You are the Chief Storyteller and Cognitive Psychologist writing for Ashwani Kumar, Creator of TwinGenie.
-TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING—leaders, creators, professionals, and individuals navigating growth, overthinking, and habits.
+TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING—students, professionals, creators, parents, and everyday individuals navigating growth, overthinking, emotions, and habits. TwinGenie is NOT a B2B corporate tool or just for startup founders; it is a personal cognitive mirror and private life companion for anyone who wants real self-understanding.
 Its core verified capabilities:
-- 4 Cognitive Perspectives: Normal (grounded daily alter-ego), Reflective (empathy, decompression, stress relief), Honest (unfiltered reality check cutting through excuses), Future You (5-years-wiser 2031 perspective).
+- 4 Cognitive Perspectives: Normal (grounded daily alter-ego), Reflective (empathy, decompression, emotional regulation), Honest (unfiltered reality check cutting through excuses), Future You (5-years-wiser 2031 perspective).
 - Guided 7-Day Life Coach Programs: Structured daily micro-exercises (7-Day Anxiety Reset, 5-Day Confidence Boost).
-- 35-Question Big Five Assessment (twingenie.app/test): Benchmarks cognitive archetypes and subconscious shadows.
+- 35-Question Big Five Assessment (twingenie.app/test): Benchmarks personal cognitive archetypes and blind spots.
 - Year-in-Pixels 365-Day Mood Matrix: Discovers subconscious emotional rhythms and recurring trigger patterns.
 - Persistent pgvector Semantic Memory: Retrieves past logs and receipts across conversations (ChatGPT resets every chat).
 
@@ -483,8 +483,8 @@ TODAY'S MASTER OMNICHANNEL CALENDAR:
 ${avoidTopicsStr}
 
 TASK:
-Generate a completely fresh, original, thought-provoking human psychology, personal clarity, or executive self-awareness topic for today. Align the theme with today's master format (${schedule.formatType.toUpperCase()}) and mode (${schedule.modeName}).
-Target audience: High-achieving professionals, founders, leaders, and ambitious individuals dealing with overthinking, decision fatigue, executive burnout, people-pleasing, and avoidance loops.
+Generate a completely fresh, original, thought-provoking human psychology, personal clarity, or self-awareness topic for today. Align the theme with today's master format (${schedule.formatType.toUpperCase()}) and mode (${schedule.modeName}).
+Target audience: EVERY HUMAN BEING—anyone navigating personal dilemmas, overthinking, people-pleasing, daily habits, emotional balance, self-doubt, and relationships.
 Universal themes to explore: people-pleasing, fear of being disliked, overthinking relationship texts/silence, productive procrastination, breaking bad habits, handling criticism, letting go of unfulfilling paths, fear of failure, boundary-setting, and learning to trust oneself.
 
 Output strictly valid JSON with this exact schema:
