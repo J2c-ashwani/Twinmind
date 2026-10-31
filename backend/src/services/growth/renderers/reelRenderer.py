@@ -240,6 +240,10 @@ def f_bold(size):
 
 def draw_wrapped_text(draw, text, font, fill, x, y, max_width, line_spacing=1.30):
     text = sanitize_text(text)
+    comp_name = getattr(draw, 'comp_name', None)
+    if comp_name and comp_name.lower() != 'chatgpt':
+        text = re.sub(r'\bchatgpt\b', comp_name, text, flags=re.IGNORECASE)
+        text = re.sub(r'\bopenai\b', comp_name[:3].upper(), text, flags=re.IGNORECASE)
     words = text.split()
     lines = []
     current_line = []
@@ -360,7 +364,26 @@ def resolve_mode_config(spec):
         return MODE_CONFIGS['normal']
     return MODE_CONFIGS['dark']
 
-def create_smartphone_base(w=1080, h=1920, active_mode_id='dark'):
+class SafeDraw:
+    """
+    Automated Brand Safety Interceptor:
+    Guarantees that no drawn text or label can ever leak 'ChatGPT' or 'OpenAI'
+    when rendering content for an incumbent competitor like Replika or Character.ai.
+    """
+    def __init__(self, draw_obj, comp_name=None):
+        self._draw = draw_obj
+        self.comp_name = comp_name
+
+    def text(self, xy, text, *args, **kwargs):
+        if self.comp_name and self.comp_name.lower() != 'chatgpt' and isinstance(text, str):
+            text = re.sub(r'\bchatgpt\b', self.comp_name, text, flags=re.IGNORECASE)
+            text = re.sub(r'\bopenai\b', self.comp_name[:3].upper(), text, flags=re.IGNORECASE)
+        return self._draw.text(xy, text, *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._draw, name)
+
+def create_smartphone_base(w=1080, h=1920, active_mode_id='dark', comp_name=None):
     img = Image.new('RGBA', (w, h), BG_DARK)
     mcfg = MODE_CONFIGS.get(active_mode_id, MODE_CONFIGS['dark'])
     accent = mcfg['accent']
@@ -370,7 +393,7 @@ def create_smartphone_base(w=1080, h=1920, active_mode_id='dark'):
     glow_draw.ellipse([w // 2 - 350, 1100, w // 2 + 350, 1850], fill=(60, 30, 110, 85))
     glow = glow.filter(ImageFilter.GaussianBlur(140))
     img = Image.alpha_composite(img, glow)
-    draw = ImageDraw.Draw(img)
+    draw = SafeDraw(ImageDraw.Draw(img), comp_name)
 
     # 1. Status Bar (y: 35 to 80)
     draw.text((75, 42), "9:41", font=f_bold(26), fill=TEXT_MUTED)
@@ -428,7 +451,7 @@ def create_smartphone_base(w=1080, h=1920, active_mode_id='dark'):
 def render_scene1(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg['id'])
+    img, draw = create_smartphone_base(w, h, mcfg['id'], comp_name=spec.get('competitorName', 'ChatGPT'))
 
     # Top Viral Hook Banner (y: 260 to 345)
     raw_hook = spec.get('hook', "POV: You told an AI the thing you can't admit to anyone")
@@ -499,9 +522,8 @@ def render_scene1(spec, out_path):
 def render_left_right_split(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg["id"])
-
     comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg["id"], comp_name=comp_name)
     comp_badge = spec.get('competitorBadge', f'{comp_name.upper()}')
     comp_tag = spec.get('competitorTag', 'YES-MAN')
 
@@ -607,7 +629,8 @@ def render_left_right_split(spec, out_path):
 def render_top_bottom_split(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg["id"])
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg["id"], comp_name=comp_name)
     full_name = mcfg["fullName"]
     if "coach" in mcfg["id"]:
         badge_label = "7-DAY RESET"
@@ -721,9 +744,8 @@ def render_scene2(spec, out_path):
 
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg['id'])
-
     comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg['id'], comp_name=comp_name)
     comp_badge = spec.get('competitorBadge', f'{comp_name.upper()}')
     comp_tag = spec.get('competitorTag', 'THE YES-MAN')
     comp_pill = spec.get('competitorPill', f"{comp_name.upper()} • FLATTERY TRAP • RESETS CONTEXT")
@@ -810,7 +832,8 @@ def render_scene2(spec, out_path):
 def render_scene3(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg['id'])
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg['id'], comp_name=comp_name)
 
     # Breakthrough Header Banner (y: 260 to 345)
     draw.rounded_rectangle([60, 260, 1020, 345], radius=22, fill=mcfg['bgCard'], outline=mcfg['accent'], width=3)
@@ -892,7 +915,8 @@ def render_scene3(spec, out_path):
 def render_scene4(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg['id'])
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg['id'], comp_name=comp_name)
 
     # Title & Subtitle (y: 260 to 360)
     comp_name = spec.get('competitorName', 'ChatGPT')
@@ -1015,7 +1039,8 @@ def get_audio_duration(file_path):
 def render_scene_receipt_check(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg["id"])
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg["id"], comp_name=comp_name)
 
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(18, 30, 48), outline=(56, 189, 248), width=2)
@@ -1087,7 +1112,8 @@ def render_scene_receipt_check(spec, out_path):
 def render_scene_archetype_audit(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, mcfg["id"])
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, mcfg["id"], comp_name=comp_name)
 
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(35, 18, 48), outline=(168, 85, 247), width=2)
@@ -1167,7 +1193,8 @@ def render_scene_archetype_audit(spec, out_path):
 def render_scene_council(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, "dark")
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, "dark", comp_name=comp_name)
 
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(35, 18, 48), outline=(255, 59, 92), width=2)
@@ -1236,7 +1263,8 @@ def render_scene_council(spec, out_path):
 def render_scene_year_in_pixels(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, "lifecoach")
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, "lifecoach", comp_name=comp_name)
 
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(35, 18, 48), outline=(168, 85, 247), width=2)
@@ -1322,7 +1350,8 @@ def render_scene_year_in_pixels(spec, out_path):
 def render_scene_genz_reality_check(spec, out_path):
     w, h = 1080, 1920
     mcfg = resolve_mode_config(spec)
-    img, draw = create_smartphone_base(w, h, "dark")
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    img, draw = create_smartphone_base(w, h, "dark", comp_name=comp_name)
 
     # Header Banner (y: 260 to 330)
     draw.rounded_rectangle([60, 260, 1020, 330], radius=18, fill=(38, 16, 28), outline=(244, 63, 94), width=2)
@@ -1411,6 +1440,22 @@ def generate_ambient_audio(output_path, duration=26.0):
 def render_reel(spec, output_mp4_path):
     temp_dir = os.path.dirname(output_mp4_path)
     os.makedirs(temp_dir, exist_ok=True)
+
+    # 0. Recursive Auto-Sanitization: Cleanse any accidental competitor mention in input payload
+    comp_name = spec.get('competitorName', 'ChatGPT')
+    if comp_name.lower() != 'chatgpt':
+        def auto_sanitize_val(v):
+            if isinstance(v, str):
+                res = re.sub(r'\bchatgpt\b', comp_name, v, flags=re.IGNORECASE)
+                res = re.sub(r'\bopenai\b', comp_name[:3].upper(), res, flags=re.IGNORECASE)
+                return res
+            elif isinstance(v, dict):
+                return {k: auto_sanitize_val(val) for k, val in v.items()}
+            elif isinstance(v, list):
+                return [auto_sanitize_val(item) for item in v]
+            return v
+        for k in list(spec.keys()):
+            spec[k] = auto_sanitize_val(spec[k])
     
     mcfg = resolve_mode_config(spec)
     s1 = os.path.join(temp_dir, 'scene_1.png')
