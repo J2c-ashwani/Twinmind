@@ -36,6 +36,8 @@ class TermsScreen extends StatelessWidget {
                 'We reserve the right to terminate or suspend your account immediately, without prior notice or liability, for any reason, including without limitation if you breach the Terms.'),
             _buildSection('7. Changes to Terms',
                 'We reserve the right to modify or replace these Terms at any time. We will provide notice of any significant changes.'),
+            _buildSection('8. Contact Us',
+                'For questions about these Terms of Service or legal notices, contact us at founder@twingenie.app or ashwani@twingenie.app.\n\nOfficial Website: https://twingenie.app'),
           ],
         ),
       ),

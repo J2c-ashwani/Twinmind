@@ -114,6 +114,7 @@ export default function TermsOfService() {
                         <p><strong className="text-white">Organization:</strong> TwinGenie</p>
                         <p><strong className="text-white">Founder & CEO:</strong> Ashwani Kumar</p>
                         <p><strong className="text-white">Official Domain:</strong> <a href="https://twingenie.app" className="text-purple-400 hover:underline">https://twingenie.app</a></p>
+                        <p><strong className="text-white">Legal & Founder Desk:</strong> <a href="mailto:founder@twingenie.app" className="text-purple-400 hover:underline">founder@twingenie.app</a></p>
                         <p><strong className="text-white">Direct Email:</strong> <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a></p>
                         <p><strong className="text-white">Customer Support:</strong> <a href="mailto:support@twingenie.app" className="text-purple-400 hover:underline">support@twingenie.app</a></p>
                     </div>

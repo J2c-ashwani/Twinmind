@@ -4,7 +4,7 @@
 
 ## Introduction
 
-TwinMind ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mental wellness application.
+TwinGenie ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mental wellness application.
 
 ## Information We Collect
 
@@ -70,7 +70,9 @@ We may update this Privacy Policy periodically. We will notify you of significan
 ## Contact Us
 
 For privacy questions or concerns:
-- Email: founder@twingenie.app
+- Founder & CEO: ashwani@twingenie.app
+- Legal & Privacy Desk: founder@twingenie.app
+- Support: support@twingenie.app
 - Website: https://twingenie.app/privacy
 
 ---

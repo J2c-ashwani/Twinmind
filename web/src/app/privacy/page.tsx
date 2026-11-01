@@ -128,6 +128,7 @@ export default function PrivacyPolicy() {
                     <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-2 text-sm text-gray-300">
                         <p><strong className="text-white">Organization:</strong> TwinGenie</p>
                         <p><strong className="text-white">Founder & CEO:</strong> Ashwani Kumar</p>
+                        <p><strong className="text-white">Legal & Founder Desk:</strong> <a href="mailto:founder@twingenie.app" className="text-purple-400 hover:underline">founder@twingenie.app</a></p>
                         <p><strong className="text-white">Direct Email:</strong> <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a></p>
                         <p><strong className="text-white">Support:</strong> <a href="mailto:support@twingenie.app" className="text-purple-400 hover:underline">support@twingenie.app</a></p>
                         <p><strong className="text-white">Domain:</strong> <a href="https://twingenie.app" className="text-purple-400 hover:underline">https://twingenie.app</a></p>

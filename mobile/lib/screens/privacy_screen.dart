@@ -31,7 +31,7 @@ class PrivacyScreen extends StatelessWidget {
             _buildSection('4. Data Security',
                 'We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction.'),
             _buildSection('5. Contact Us',
-                'If you have any questions about this Privacy Policy, please contact us at hello@fsidigital.ca.'),
+                'If you have any questions about this Privacy Policy, please contact us at founder@twingenie.app or ashwani@twingenie.app.\n\nOfficial Website: https://twingenie.app'),
           ],
         ),
       ),

@@ -1056,6 +1056,11 @@ export default function Home() {
                             <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                             <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
                             <li>
+                                <a href="mailto:founder@twingenie.app" className="hover:text-purple-300 transition-colors">
+                                    founder@twingenie.app
+                                </a>
+                            </li>
+                            <li>
                                 <a href="mailto:ashwani@twingenie.app" className="hover:text-purple-300 transition-colors">
                                     ashwani@twingenie.app
                                 </a>

@@ -79,7 +79,9 @@ We may modify these Terms at any time. Continued use of the Service after change
 ## 12. Contact
 
 For questions about these Terms:
-- Email: hello@fsidigital.ca
+- Founder & CEO: ashwani@twingenie.app
+- Legal & Founder Desk: founder@twingenie.app
+- Support: support@twingenie.app
 - Website: https://twingenie.app
 
 ---
