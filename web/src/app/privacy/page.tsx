@@ -47,7 +47,7 @@ export default function PrivacyPolicy() {
                         1. Introduction & Company Identity
                     </h2>
                     <p className="text-gray-300 leading-relaxed">
-                        TwinGenie ("we", "our", "us"), operated by <strong className="text-white">Admitwave Education Services Pvt Ltd</strong> and founded by Ashwani Kumar, operates <span className="text-purple-300">https://twingenie.app</span> and the TwinGenie mobile application on Google Play. Our core philosophy is built on private, self-directed personal reflection. We believe personal introspection requires uncompromising privacy. This Privacy Policy details the strict standards we apply to collect, protect, process, and respect your personal information.
+                        TwinGenie ("we", "our", "us"), founded by Ashwani Kumar, operates <span className="text-purple-300">https://twingenie.app</span> and the TwinGenie mobile application on Google Play. Our core philosophy is built on private, self-directed personal reflection. We believe personal introspection requires uncompromising privacy. This Privacy Policy details the strict standards we apply to collect, protect, process, and respect your personal information.
                     </p>
                 </section>
 
@@ -126,8 +126,7 @@ export default function PrivacyPolicy() {
                         For any inquiries, data deletion requests, or compliance questions regarding this policy, contact:
                     </p>
                     <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-2 text-sm text-gray-300">
-                        <p><strong className="text-white">Operating Company:</strong> Admitwave Education Services Pvt Ltd</p>
-                        <p><strong className="text-white">Product / Brand:</strong> TwinGenie</p>
+                        <p><strong className="text-white">Organization:</strong> TwinGenie</p>
                         <p><strong className="text-white">Founder & CEO:</strong> Ashwani Kumar</p>
                         <p><strong className="text-white">Direct Email:</strong> <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a></p>
                         <p><strong className="text-white">Support:</strong> <a href="mailto:support@twingenie.app" className="text-purple-400 hover:underline">support@twingenie.app</a></p>
@@ -138,7 +137,7 @@ export default function PrivacyPolicy() {
 
             {/* Footer */}
             <footer className="border-t border-white/10 bg-slate-900/40 py-8 text-center text-sm text-gray-500">
-                <p>© {new Date().getFullYear()} TwinGenie (Admitwave Education Services Pvt Ltd). All rights reserved.</p>
+                <p>© {new Date().getFullYear()} TwinGenie. All rights reserved.</p>
             </footer>
         </div>
     )

@@ -897,7 +897,7 @@ export default function Home() {
                                     "Most AI products are programmed to be people-pleasers. They confirm your cognitive biases, flatter your half-baked hypotheses, and give you comforting illusions. TwinGenie was born from a fundamental belief: real growth requires intellectual friction. We built an AI that cares enough about your potential to tell you the truth."
                                 </p>
                                 <div className="pt-2 text-sm text-gray-400">
-                                    <strong className="text-white">Ashwani Kumar</strong> — Founder & CEO, TwinGenie (Operating under Admitwave Education Services Pvt Ltd) • <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a>
+                                    <strong className="text-white">Ashwani Kumar</strong> — Founder & CEO, TwinGenie • <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a>
                                 </div>
                             </div>
                         </div>
@@ -1073,7 +1073,7 @@ export default function Home() {
                 </div>
 
                 <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-                    <p>© {new Date().getFullYear()} TwinGenie (Admitwave Education Services Pvt Ltd). All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} TwinGenie. All rights reserved.</p>
                     <p className="flex items-center gap-2">
                         <span>Powered by Node.js & Supabase • Migrating to Google Cloud Platform</span>
                     </p>
