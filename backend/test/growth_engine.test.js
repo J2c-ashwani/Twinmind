@@ -9,35 +9,15 @@ describe('Growth Engine Reliability & Synchronized Multi-Platform Publishing', (
         setTimeout(() => process.exit(0), 50);
     });
 
-    describe('Meta Synchronized Format Alternation (Facebook + Instagram)', () => {
-        it('should strictly alternate Facebook and Instagram together in lockstep (Carousel on even days, Reel on odd days)', () => {
-            // Day 0 (2026-10-20): Carousel
-            const day0 = new Date('2026-10-20T10:00:00+05:30');
-            const sched0 = contentGeneratorService.getDailySchedule(day0);
-            assert.strictEqual(sched0.facebookFormat, 'carousel');
-            assert.strictEqual(sched0.instagramFormat, 'carousel');
-            assert.strictEqual(sched0.sharedFormat, 'carousel');
-
-            // Day 1 (2026-10-21): Reel
-            const day1 = new Date('2026-10-21T10:00:00+05:30');
-            const sched1 = contentGeneratorService.getDailySchedule(day1);
-            assert.strictEqual(sched1.facebookFormat, 'reel');
-            assert.strictEqual(sched1.instagramFormat, 'reel');
-            assert.strictEqual(sched1.sharedFormat, 'reel');
-
-            // Day 2 (2026-10-22): Carousel
-            const day2 = new Date('2026-10-22T10:00:00+05:30');
-            const sched2 = contentGeneratorService.getDailySchedule(day2);
-            assert.strictEqual(sched2.facebookFormat, 'carousel');
-            assert.strictEqual(sched2.instagramFormat, 'carousel');
-            assert.strictEqual(sched2.sharedFormat, 'carousel');
-
-            // Day 3 (2026-10-23): Reel
-            const day3 = new Date('2026-10-23T10:00:00+05:30');
-            const sched3 = contentGeneratorService.getDailySchedule(day3);
-            assert.strictEqual(sched3.facebookFormat, 'reel');
-            assert.strictEqual(sched3.instagramFormat, 'reel');
-            assert.strictEqual(sched3.sharedFormat, 'reel');
+    describe('Meta Synchronized Format (Facebook + Instagram locked to 100% Reels)', () => {
+        it('should strictly lock Facebook and Instagram to 100% Reels for viral distribution', () => {
+            for (let d = 0; d < 7; d++) {
+                const testDate = new Date(`2026-10-${20 + d}T10:00:00+05:30`);
+                const sched = contentGeneratorService.getDailySchedule(testDate);
+                assert.strictEqual(sched.facebookFormat, 'reel');
+                assert.strictEqual(sched.instagramFormat, 'reel');
+                assert.strictEqual(sched.sharedFormat, 'reel');
+            }
         });
 
         it('should guarantee Facebook and Instagram never desynchronize their publishing format', () => {
