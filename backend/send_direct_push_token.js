@@ -5,7 +5,7 @@ dotenv.config();
 
 const supabase = createClient(
     process.env.SUPABASE_URL || 'https://lhwtfjgtripwikxwookp.supabase.co',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxod3Rmamd0cmlwd2lreHdvb2twIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDYwNTQ0NiwiZXhwIjoyMDgwMTgxNDQ2fQ.hN8Zk_lM2J1mS0l_-Xn7rGZ9hC8x1A9N7d8K4h1W4h8'
+    process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 async function sendDirect() {
