@@ -418,9 +418,11 @@ export default function OnboardingPage() {
                 >
                     <div className="glass-card p-8">
                         <div className="text-center mb-8">
-                            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mb-4">
-                                <Brain className="w-8 h-8 text-white" />
-                            </div>
+                            <img
+                                src="/logo.png"
+                                alt="TwinGenie Logo"
+                                className="w-16 h-16 mx-auto rounded-2xl object-cover shadow-lg shadow-purple-500/25 mb-4"
+                            />
                             <h2 className="text-3xl font-bold mb-2">Create Your Account</h2>
                             <p className="text-gray-400">Just one more step to meet your digital twin</p>
                         </div>

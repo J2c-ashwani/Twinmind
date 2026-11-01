@@ -78,8 +78,8 @@ export const metadata: Metadata = {
 
     // Icons
     icons: {
-        icon: '/icons/icon-192x192.png',
-        apple: '/icons/icon-192x192.png',
+        icon: '/logo.png',
+        apple: '/logo.png',
     },
 
     // Manifest
@@ -95,7 +95,7 @@ const jsonLd = {
             '@id': 'https://twingenie.app/#organization',
             name: 'TwinGenie',
             url: 'https://twingenie.app',
-            logo: 'https://twingenie.app/icons/icon-192x192.png',
+            logo: 'https://twingenie.app/logo.png',
             founder: {
                 '@type': 'Person',
                 name: 'Ashwani Kumar',

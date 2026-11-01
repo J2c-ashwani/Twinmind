@@ -10,9 +10,11 @@ export default function PrivacyPolicy() {
             <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                            <Brain className="w-5 h-5 text-white" />
-                        </div>
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie"
+                            className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform"
+                        />
                         <span className="font-bold text-xl tracking-tight text-white group-hover:text-purple-300 transition-colors">
                             TwinGenie
                         </span>

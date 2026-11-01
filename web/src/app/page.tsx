@@ -107,23 +107,25 @@ export default function Home() {
     const playStoreUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app'
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white selection:bg-purple-500 selection:text-white">
-            {/* Ambient Background Glows */}
+        <div className="min-h-screen bg-[#0F0F1E] text-white selection:bg-purple-600 selection:text-white">
+            {/* Ambient Background Glows matching Mobile App Palette */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-10 left-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-[128px] animate-pulse" style={{ animationDuration: '6s' }} />
+                <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '6s' }} />
                 <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '8s' }} />
-                <div className="absolute bottom-10 left-10 w-96 h-96 bg-pink-600/10 rounded-full blur-[128px]" />
+                <div className="absolute bottom-10 left-10 w-96 h-96 bg-purple-900/15 rounded-full blur-[128px]" />
             </div>
 
-            {/* Sticky Navigation Bar */}
-            <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/75 border-b border-white/10">
+            {/* Clean Consumer Navigation Bar */}
+            <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0F0F1E]/80 border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
-                            <Brain className="w-6 h-6 text-white" />
-                        </div>
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie"
+                            className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform"
+                        />
                         <div>
-                            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-gray-200 to-purple-200 bg-clip-text text-transparent">
+                            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-gray-100 to-purple-200 bg-clip-text text-transparent">
                                 TwinGenie
                             </span>
                             <span className="hidden sm:inline-block ml-2 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
@@ -132,35 +134,31 @@ export default function Home() {
                         </div>
                     </Link>
 
-                    {/* Desktop Nav Links */}
-                    <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+                    {/* Human-Friendly Navigation Links */}
+                    <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-300">
+                        <a href="#features" className="hover:text-white transition-colors">Features</a>
                         <a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a>
                         <a href="#modes" className="hover:text-white transition-colors">4 Twin Modes</a>
-                        <a href="#features" className="hover:text-white transition-colors">Features</a>
-                        <a href="#architecture" className="hover:text-white transition-colors">Cloud Architecture</a>
                         <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
                         <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
                     </nav>
 
-                    {/* Action Buttons */}
+                    {/* Clean Consumer CTAs */}
                     <div className="flex items-center gap-3">
-                        <a
-                            href={playStoreUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-gray-200 hover:text-white"
+                        <Link
+                            href="/login"
+                            className="px-3.5 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
                         >
-                            <Smartphone className="w-4 h-4 text-emerald-400" />
-                            <span>Google Play</span>
-                        </a>
+                            Sign In
+                        </Link>
 
-                        <button
-                            onClick={() => router.push('/onboarding')}
-                            className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-105"
+                        <Link
+                            href="/onboarding"
+                            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-105"
                         >
                             <Sparkles className="w-4 h-4" />
-                            <span>Launch Web App</span>
-                        </button>
+                            <span>Create Your Twin</span>
+                        </Link>
                     </div>
                 </div>
             </header>
@@ -175,8 +173,8 @@ export default function Home() {
                         transition={{ duration: 0.6 }}
                         className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs sm:text-sm font-medium mb-8"
                     >
-                        <Zap className="w-4 h-4 text-purple-400" />
-                        <span>Google Cloud Architecture Ready • Multi-Perspective AI Engine</span>
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <span>AI Digital Twin & Personal Reflection Companion</span>
                     </motion.div>
 
                     <motion.h1
@@ -207,14 +205,14 @@ export default function Home() {
                         transition={{ duration: 0.7, delay: 0.3 }}
                         className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-14"
                     >
-                        <a
-                            href="#demo"
-                            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-size-200 font-semibold text-base shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 text-white"
+                        <Link
+                            href="/onboarding"
+                            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 font-semibold text-base shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 text-white"
                         >
                             <Sparkles className="w-5 h-5" />
-                            <span>Try Live Demo Below</span>
+                            <span>Create Your Twin (Free)</span>
                             <ArrowRight className="w-5 h-5" />
-                        </a>
+                        </Link>
 
                         <a
                             href={playStoreUrl}
@@ -223,16 +221,16 @@ export default function Home() {
                             className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 font-semibold text-base transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 text-white"
                         >
                             <Smartphone className="w-5 h-5 text-emerald-400" />
-                            <span>Download Android App</span>
+                            <span>Get on Google Play</span>
                             <ExternalLink className="w-4 h-4 text-gray-400" />
                         </a>
 
-                        <button
-                            onClick={() => router.push('/onboarding')}
-                            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-purple-500/30 font-semibold text-base transition-all duration-300 text-purple-200"
+                        <a
+                            href="#demo"
+                            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-purple-500/30 font-semibold text-base transition-all duration-300 text-purple-200"
                         >
-                            Start 5-Min Assessment
-                        </button>
+                            Try Interactive Demo ↓
+                        </a>
                     </motion.div>
 
                     {/* Verification & Trust Badges */}
@@ -995,12 +993,14 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
                     {/* Brand column */}
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                <Brain className="w-5 h-5 text-white" />
-                            </div>
+                        <Link href="/" className="flex items-center gap-3">
+                            <img
+                                src="/logo.png"
+                                alt="TwinGenie Logo"
+                                className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20"
+                            />
                             <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
-                        </div>
+                        </Link>
                         <p className="text-gray-400 text-xs leading-relaxed">
                             AI-powered digital companion for personal reflection, cognitive clarity, and deliberate personal growth.
                         </p>

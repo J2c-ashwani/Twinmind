@@ -88,9 +88,11 @@ export default function LoginPage() {
             >
                 <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/10">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-                            <Brain className="w-8 h-8 text-white" />
-                        </div>
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie Logo"
+                            className="w-16 h-16 mx-auto rounded-2xl object-cover shadow-lg shadow-purple-500/25 mb-4"
+                        />
                         <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
                         <p className="text-gray-400">Sign in to continue your journey</p>
                     </div>
