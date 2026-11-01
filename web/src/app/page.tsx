@@ -91,13 +91,13 @@ export default function Home() {
         setTimeout(() => {
             let res = ""
             if (activeTwinMode === 'honest') {
-                res = `[Honest Twin]: Examining "${customPrompt}": You're rationalizing an assumption here. Rather than asking for validation, ask what specific constraint or fear is stopping you from testing this hypothesis right now.`
+                res = `[Demonstration Preview — Honest Mode]: Examining "${customPrompt}": You may be rationalizing an assumption here. Rather than seeking confirmation, examine what specific risk or constraint is preventing you from testing this hypothesis immediately.`
             } else if (activeTwinMode === 'future') {
-                res = `[Future Twin]: In the grand arc of your journey, "${customPrompt}" is a temporary detour if you lose sight of your primary goal. Focus on compound returns, not short-term noise.`
+                res = `[Demonstration Preview — Future Mode]: Evaluating "${customPrompt}" over a 5-year arc: Prioritize compound returns and long-term leverage over temporary distractions.`
             } else if (activeTwinMode === 'therapist') {
-                res = `[Reflective Twin]: Reflecting on "${customPrompt}": What emotion surfaces first when you voice this thought? Let's examine the underlying pattern before rushing to a fix.`
+                res = `[Demonstration Preview — Reflective Mode]: Reflecting on "${customPrompt}": What emotional tension surfaces first as you examine this? Exploring the root feeling can clarify your next action.`
             } else {
-                res = `[Normal Twin]: Considering "${customPrompt}" through your psychological profile: This aligns with your drive for growth, but check if your expectations match your current bandwidth.`
+                res = `[Demonstration Preview — Normal Mode]: Mirroring your baseline perspective on "${customPrompt}": This connects to your core growth drivers, but ensure your timeline matches your actual available bandwidth.`
             }
             setSimulatedCustomResponse(res)
             setIsSimulating(false)
@@ -281,13 +281,13 @@ export default function Home() {
                     <div className="text-center mb-10">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3">
                             <Eye className="w-3.5 h-3.5" />
-                            Interactive Simulator
+                            Interactive Product Demonstration • Sample Scenarios
                         </div>
                         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
                             Experience the 4 Perspectives in Action
                         </h2>
                         <p className="text-gray-400 mt-2 max-w-2xl mx-auto text-sm sm:text-base">
-                            Select a scenario or type a thought. Switch perspectives to see how TwinGenie adapts its cognitive framing.
+                            This preview demonstrates how TwinGenie adapts cognitive framing across 4 perspectives using illustrative dilemma scenarios. For live AI inference calibrated to your unique 35-trait personality profile with persistent vector memory, launch the web app or install the Android app.
                         </p>
                     </div>
 
@@ -640,52 +640,111 @@ export default function Home() {
                     </div>
                 </section>
 
-                {/* Section: Technical & Google Cloud Architecture (Directly for Cloud Reviewers) */}
+                {/* Section: Technical & Google Cloud Architecture */}
                 <section id="architecture" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
                     <div className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3">
                             <Cpu className="w-3.5 h-3.5" />
-                            Scalable Cloud Architecture
+                            Technical Architecture & Cloud Roadmap
                         </div>
                         <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Built for Enterprise Cloud Scale
+                            Built for Scalable Cognitive AI
                         </h2>
                         <p className="text-gray-400 mt-4 max-w-3xl mx-auto text-base sm:text-lg">
-                            TwinGenie utilizes high-performance cloud microservices, vector similarity search, and multi-LLM orchestration designed to scale seamlessly with Google Cloud infrastructure.
+                            Transparent breakdown of our current production stack, active Google Cloud migration, and long-term infrastructure roadmap.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div className="p-6 rounded-2xl bg-slate-900/60 border border-white/10">
-                            <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">Inference Layer</div>
-                            <h4 className="text-lg font-bold text-white mb-2">Multi-LLM Orchestration</h4>
-                            <p className="text-xs text-gray-400 leading-relaxed">
-                                Dynamic prompt injection with Google Gemini 1.5 Pro and high-speed Flash models for low-latency emotional dialogue and cognitive reasoning.
-                            </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Currently Running */}
+                        <div className="p-8 rounded-3xl bg-slate-900/80 border border-blue-500/30 flex flex-col justify-between">
+                            <div>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-300 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-500/20">
+                                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                    Currently Running (Production)
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Core Application Engine</h3>
+                                <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                                    Live services powering daily user reflections, psychometric profile generation, and mobile app sync:
+                                </p>
+                                <ul className="space-y-3 text-xs text-gray-300">
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Backend API:</strong> Node.js / Express REST microservices with CORS isolation and JWT authentication.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Database & Auth:</strong> Supabase-managed PostgreSQL with Row-Level Security (RLS).</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Vector Memory:</strong> pgvector extension storing 1536-dim semantic embeddings for conversation continuity.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>AI Model Routing:</strong> Google Gemini 1.5 & OpenAI multi-provider inference routing.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Mobile Distribution:</strong> Production Android app on Google Play with In-App Billing.</span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
 
-                        <div className="p-6 rounded-2xl bg-slate-900/60 border border-white/10">
-                            <div className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">Memory Engine</div>
-                            <h4 className="text-lg font-bold text-white mb-2">Vector Search (pgvector)</h4>
-                            <p className="text-xs text-gray-400 leading-relaxed">
-                                1536-dimensional semantic embeddings stored in scalable PostgreSQL partitions, enabling contextual memory retrieval across hundreds of conversations.
-                            </p>
+                        {/* Currently Integrating */}
+                        <div className="p-8 rounded-3xl bg-slate-900/80 border border-purple-500/30 flex flex-col justify-between">
+                            <div>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 text-purple-300 text-xs font-bold uppercase tracking-wider mb-4 border border-purple-500/20">
+                                    <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                                    Active Cloud Migration
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Google Cloud Infrastructure</h3>
+                                <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                                    Target deployment workloads utilizing Google Cloud startup program credits:
+                                </p>
+                                <ul className="space-y-3 text-xs text-gray-300">
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Cloud Run Deployment:</strong> Containerizing the Express microservices for serverless horizontal autoscaling.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Vertex AI Gemini Pipelines:</strong> Consolidating AI inference directly onto Google Vertex AI Gemini 1.5 Pro and Flash endpoints.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Firebase Cloud Messaging:</strong> Reliable push notifications for daily mood check-ins and reflection streaks.</span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
 
-                        <div className="p-6 rounded-2xl bg-slate-900/60 border border-white/10">
-                            <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">Security & Identity</div>
-                            <h4 className="text-lg font-bold text-white mb-2">Zero-Knowledge RLS</h4>
-                            <p className="text-xs text-gray-400 leading-relaxed">
-                                Row-Level Security (RLS) policies and AES-256 encryption at rest ensure user reflection journals are isolated and completely inaccessible to other tenants.
-                            </p>
-                        </div>
-
-                        <div className="p-6 rounded-2xl bg-slate-900/60 border border-white/10">
-                            <div className="text-xs font-bold text-pink-400 uppercase tracking-wider mb-2">Scalable Runtime</div>
-                            <h4 className="text-lg font-bold text-white mb-2">Cloud Run & Edge Ready</h4>
-                            <p className="text-xs text-gray-400 leading-relaxed">
-                                Containerized Node.js REST API microservices with Redis caching and asynchronous cron workers for scheduled cognitive habit reminders.
-                            </p>
+                        {/* Architecture Roadmap */}
+                        <div className="p-8 rounded-3xl bg-slate-900/80 border border-emerald-500/30 flex flex-col justify-between">
+                            <div>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4 border border-emerald-500/20">
+                                    Roadmap (Next Milestones)
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Enterprise Scalability</h3>
+                                <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                                    Planned high-throughput architecture as our active user base scales:
+                                </p>
+                                <ul className="space-y-3 text-xs text-gray-300">
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Cloud SQL Multi-Region:</strong> Automated replication and failover for high availability.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>BigQuery Analytics:</strong> Aggregated, anonymized cognitive telemetry to identify population-level decision trends.</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                                        <span><strong>Fine-Tuned Cognitive Adapters:</strong> Custom LoRA model fine-tuning on Vertex AI for personalized voice and style mimicry.</span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -787,7 +846,7 @@ export default function Home() {
                             <div>
                                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Annual Pass</div>
                                 <div className="text-4xl font-extrabold text-white mb-4">$47.88 <span className="text-base text-gray-400 font-normal">/ year</span></div>
-                                <div className="text-xs text-emerald-400 mb-4 font-semibold">Save 33% • Equivalent to $3.99/mo</div>
+                                <div className="text-xs text-emerald-400 mb-4 font-semibold">Save 33% • Equivalent to $3.99/mo ($47.88/yr, or ₹3,999/yr in India via Google Play)</div>
                                 <p className="text-sm text-gray-400 mb-6">For committed thinkers tracking full-year cognitive development.</p>
                                 <ul className="space-y-3 text-sm text-gray-300 mb-8">
                                     <li className="flex items-center gap-2">
@@ -838,7 +897,7 @@ export default function Home() {
                                     "Most AI products are programmed to be people-pleasers. They confirm your cognitive biases, flatter your half-baked hypotheses, and give you comforting illusions. TwinGenie was born from a fundamental belief: real growth requires intellectual friction. We built an AI that cares enough about your potential to tell you the truth."
                                 </p>
                                 <div className="pt-2 text-sm text-gray-400">
-                                    <strong className="text-white">Ashwani Kumar</strong> — Founder & CEO, TwinGenie • <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a>
+                                    <strong className="text-white">Ashwani Kumar</strong> — Founder & CEO, TwinGenie (Operating under Admitwave Education Services Pvt Ltd) • <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a>
                                 </div>
                             </div>
                         </div>
@@ -1014,9 +1073,9 @@ export default function Home() {
                 </div>
 
                 <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-                    <p>© {new Date().getFullYear()} TwinGenie Inc. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} TwinGenie (Admitwave Education Services Pvt Ltd). All rights reserved.</p>
                     <p className="flex items-center gap-2">
-                        <span>Built with Google Gemini & Google Cloud Infrastructure Ready</span>
+                        <span>Powered by Node.js & Supabase • Migrating to Google Cloud Platform</span>
                     </p>
                 </div>
             </footer>

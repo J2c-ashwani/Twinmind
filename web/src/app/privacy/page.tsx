@@ -44,10 +44,10 @@ export default function PrivacyPolicy() {
                 <section className="space-y-4">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <FileText className="w-5 h-5 text-purple-400" />
-                        1. Introduction & Mission
+                        1. Introduction & Company Identity
                     </h2>
                     <p className="text-gray-300 leading-relaxed">
-                        TwinGenie ("we", "our", "us", or "the Company"), founded by Ashwani Kumar, operates <span className="text-purple-300">https://twingenie.app</span> and the TwinGenie mobile application on Google Play. Our core philosophy is built on private, self-directed personal reflection. We believe personal introspection requires uncompromising privacy. This Privacy Policy details the strict standards we apply to collect, protect, process, and respect your personal information.
+                        TwinGenie ("we", "our", "us"), operated by <strong className="text-white">Admitwave Education Services Pvt Ltd</strong> and founded by Ashwani Kumar, operates <span className="text-purple-300">https://twingenie.app</span> and the TwinGenie mobile application on Google Play. Our core philosophy is built on private, self-directed personal reflection. We believe personal introspection requires uncompromising privacy. This Privacy Policy details the strict standards we apply to collect, protect, process, and respect your personal information.
                     </p>
                 </section>
 
@@ -94,49 +94,51 @@ export default function PrivacyPolicy() {
                 </section>
 
                 <section className="space-y-4">
-                    <h2 className="text-xl font-bold text-white">4. Data Security & Encryption</h2>
+                    <h2 className="text-xl font-bold text-white">4. Data Security & Storage</h2>
                     <p className="text-gray-300 leading-relaxed">
-                        We employ industry-leading technical and organizational security controls:
+                        We apply verified technical controls across our cloud architecture:
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-gray-300">
-                        <li><strong>Data in Transit:</strong> Encrypted using TLS 1.3 protocol with strict transport security (HSTS).</li>
-                        <li><strong>Data at Rest:</strong> Encrypted using AES-256 bit encryption in secure database partitions with Row-Level Security (RLS) enforcement.</li>
-                        <li><strong>Access Controls:</strong> Strict least-privilege administrative access controls and continuous vulnerability monitoring.</li>
+                        <li><strong>Data in Transit:</strong> Encrypted using TLS 1.3 / HTTPS across all API and web interactions.</li>
+                        <li><strong>Data at Rest:</strong> Hosted in Supabase-managed PostgreSQL clusters with Row-Level Security (RLS) enforcement and standard volume encryption.</li>
+                        <li><strong>AI Processing Terms:</strong> Commercial model APIs (including Google Gemini) process queries under enterprise data protection terms prohibiting the use of customer inputs to train public foundation models.</li>
                     </ul>
                 </section>
 
                 <section className="space-y-4">
-                    <h2 className="text-xl font-bold text-white">5. Your Privacy Rights (GDPR & CCPA)</h2>
+                    <h2 className="text-xl font-bold text-white">5. Your Privacy Rights</h2>
                     <p className="text-gray-300 leading-relaxed">
-                        Regardless of your geographical location, you have full ownership over your digital twin data:
+                        You have full ownership over your digital twin data:
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-gray-300">
                         <li><strong>Right to Access:</strong> View all stored conversations and memory summaries at any time.</li>
                         <li><strong>Right to Deletion:</strong> Permanently erase your account, personality profile, and memory vectors via application settings or by emailing our team.</li>
-                        <li><strong>Right to Portability:</strong> Request an export of your reflection history in machine-readable format.</li>
+                        <li><strong>Data Retention:</strong> We delete associated vectors and personality records within 30 days of an account deletion request.</li>
                     </ul>
                 </section>
 
                 <section className="space-y-4">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Mail className="w-5 h-5 text-purple-400" />
-                        6. Contact Our Privacy & Security Team
+                        6. Contact & Legal Entity
                     </h2>
                     <p className="text-gray-300 leading-relaxed">
-                        For any inquiries, data deletion requests, or compliance questions regarding this policy, reach out directly to the founder:
+                        For any inquiries, data deletion requests, or compliance questions regarding this policy, contact:
                     </p>
                     <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-2 text-sm text-gray-300">
+                        <p><strong className="text-white">Operating Company:</strong> Admitwave Education Services Pvt Ltd</p>
+                        <p><strong className="text-white">Product / Brand:</strong> TwinGenie</p>
                         <p><strong className="text-white">Founder & CEO:</strong> Ashwani Kumar</p>
                         <p><strong className="text-white">Direct Email:</strong> <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a></p>
-                        <p><strong className="text-white">General Support:</strong> <a href="mailto:support@twingenie.app" className="text-purple-400 hover:underline">support@twingenie.app</a></p>
-                        <p><strong className="text-white">Website:</strong> <a href="https://twingenie.app" className="text-purple-400 hover:underline">https://twingenie.app</a></p>
+                        <p><strong className="text-white">Support:</strong> <a href="mailto:support@twingenie.app" className="text-purple-400 hover:underline">support@twingenie.app</a></p>
+                        <p><strong className="text-white">Domain:</strong> <a href="https://twingenie.app" className="text-purple-400 hover:underline">https://twingenie.app</a></p>
                     </div>
                 </section>
             </main>
 
             {/* Footer */}
             <footer className="border-t border-white/10 bg-slate-900/40 py-8 text-center text-sm text-gray-500">
-                <p>© {new Date().getFullYear()} TwinGenie Inc. All rights reserved.</p>
+                <p>© {new Date().getFullYear()} TwinGenie (Admitwave Education Services Pvt Ltd). All rights reserved.</p>
             </footer>
         </div>
     )

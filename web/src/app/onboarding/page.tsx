@@ -22,17 +22,52 @@ interface Answer {
     answer_text?: string
 }
 
+// Authentic 35-question Big Five psychometric assessment matching production database and scoring engine
 const DEFAULT_FALLBACK_QUESTIONS: Question[] = [
-    { id: 1, question_text: "What's your name?", question_type: "text", options_json: null, screen_number: 1, allow_other: false },
-    { id: 2, question_text: "How old are you?", question_type: "number", options_json: null, screen_number: 1, allow_other: false },
-    { id: 3, question_text: "What describes your energy best?", question_type: "multiple_choice", options_json: ["Deep Introvert", "Thoughtful Ambivert", "Dynamic Extrovert"], screen_number: 2, allow_other: true },
-    { id: 4, question_text: "What areas of your life are you actively growing in?", question_type: "multiple_select", options_json: ["Career & Leadership", "Emotional Wellness", "Deep Focus & Habits", "Relationships", "Creativity & Craft"], screen_number: 2, allow_other: true },
-    { id: 5, question_text: "When you face high-stakes stress, how do you typically react?", question_type: "multiple_choice", options_json: ["Overanalyze every variable", "Seek quick action to relieve tension", "Withdraw and process silently", "Seek sounding boards and counsel"], screen_number: 3, allow_other: true },
-    { id: 6, question_text: "What is your primary driver right now?", question_type: "text", options_json: null, screen_number: 3, allow_other: false },
-    { id: 7, question_text: "Describe what a truly meaningful, fulfilling day looks like for you:", question_type: "text", options_json: null, screen_number: 4, allow_other: false },
-    { id: 8, question_text: "What core values matter most in your decisions?", question_type: "multiple_select", options_json: ["Radical Honesty", "Intellectual Curiosity", "Empathy & Kindness", "Personal Autonomy", "Relentless Growth", "Family & Loyalty"], screen_number: 4, allow_other: true },
-    { id: 9, question_text: "How would you prefer your AI Twin to engage with you?", question_type: "multiple_choice", options_json: ["Brutally honest reality check", "Compassionate self-reflection guide", "Strategic 5-year future perspective", "Adaptive balance of all three"], screen_number: 5, allow_other: false },
-    { id: 10, question_text: "What is the single biggest question or challenge on your mind right now?", question_type: "text", options_json: null, screen_number: 5, allow_other: false }
+    // Screen 1: Openness, Extraversion, Conscientiousness (Q1 - Q7)
+    { id: 1, question_text: "How do you usually approach new experiences?", question_type: "single_choice", options_json: ["Curious and excited", "Cautious but willing", "Prefer familiar things", "Avoid them"], screen_number: 1, allow_other: false },
+    { id: 2, question_text: "When plans change suddenly, how do you feel?", question_type: "single_choice", options_json: ["Stressed", "Annoyed", "Excited", "Neutral"], screen_number: 1, allow_other: false },
+    { id: 3, question_text: "How do you recharge after a long day?", question_type: "single_choice", options_json: ["Alone", "With close friends", "In a group", "Doing hobbies"], screen_number: 1, allow_other: false },
+    { id: 4, question_text: "In social situations, you usually:", question_type: "single_choice", options_json: ["Start conversations", "Wait for others", "Stick to familiar people", "Avoid socializing"], screen_number: 1, allow_other: false },
+    { id: 5, question_text: "Which describes your social energy?", question_type: "single_choice", options_json: ["High", "Medium", "Low", "Depends on mood"], screen_number: 1, allow_other: false },
+    { id: 6, question_text: "How organized are you day-to-day?", question_type: "single_choice", options_json: ["Very organized", "Somewhat organized", "Not organized", "Organized only under pressure"], screen_number: 1, allow_other: false },
+    { id: 7, question_text: "How often do you procrastinate?", question_type: "single_choice", options_json: ["Rarely", "Sometimes", "Often", "Almost always"], screen_number: 1, allow_other: false },
+
+    // Screen 2: Problem-Solving, Planning, Openness (Q8 - Q14)
+    { id: 8, question_text: "When solving problems, you prefer:", question_type: "single_choice", options_json: ["Logic and structure", "Creativity and ideas", "A mix of both", "Delegating to others"], screen_number: 2, allow_other: false },
+    { id: 9, question_text: "Do you plan everything or improvise?", question_type: "single_choice", options_json: ["Plan in detail", "Rough plan", "Improvise mostly", "Completely spontaneous"], screen_number: 2, allow_other: false },
+    { id: 10, question_text: "How important is perfection to you?", question_type: "single_choice", options_json: ["Very important", "Somewhat important", "Not important", "Depends on task"], screen_number: 2, allow_other: false },
+    { id: 11, question_text: "When working on a project, you:", question_type: "single_choice", options_json: ["Plan ahead fully", "Plan key steps", "Start and adjust", "Improvise entirely"], screen_number: 2, allow_other: false },
+    { id: 12, question_text: "Do you enjoy exploring new ideas, cultures, or perspectives?", question_type: "single_choice", options_json: ["Yes, very much", "Sometimes", "Rarely", "Not at all"], screen_number: 2, allow_other: false },
+    { id: 13, question_text: "Do you enjoy abstract thinking or philosophical discussions?", question_type: "single_choice", options_json: ["Yes", "Sometimes", "Rarely", "No"], screen_number: 2, allow_other: false },
+    { id: 14, question_text: "How often do you daydream?", question_type: "single_choice", options_json: ["Very often", "Sometimes", "Rarely", "Never"], screen_number: 2, allow_other: false },
+
+    // Screen 3: Emotional responses, Stress, Triggers (Q15 - Q21)
+    { id: 15, question_text: "When stressed, you usually:", question_type: "single_choice", options_json: ["Take action", "Withdraw", "Overthink", "Distract yourself", "Seek support"], screen_number: 3, allow_other: false },
+    { id: 16, question_text: "What hurts you the most?", question_type: "single_choice", options_json: ["Being ignored", "Being criticized", "Feeling unappreciated", "Feeling controlled", "Betrayal"], screen_number: 3, allow_other: false },
+    { id: 17, question_text: "How intense are your emotions?", question_type: "single_choice", options_json: ["Very intense", "Moderate", "Mild", "Hard to notice"], screen_number: 3, allow_other: false },
+    { id: 18, question_text: "When something goes wrong, you:", question_type: "single_choice", options_json: ["Expect the worst", "Stay optimistic", "Look for solutions", "Blame yourself"], screen_number: 3, allow_other: false },
+    { id: 19, question_text: "What instantly makes you angry or upset?", question_type: "single_choice", options_json: ["Disrespect", "Unfairness", "Betrayal", "Chaos/lack of control", "Being ignored"], screen_number: 3, allow_other: false },
+    { id: 20, question_text: "How often do you experience anxiety, anger, or sadness?", question_type: "single_choice", options_json: ["Very often", "Sometimes", "Rarely", "Almost never"], screen_number: 3, allow_other: false },
+    { id: 21, question_text: "When overwhelmed, what do you usually do?", question_type: "single_choice", options_json: ["Take action", "Shut down", "Distract myself", "Seek support", "Cry or release emotions"], screen_number: 3, allow_other: false },
+
+    // Screen 4: Decision-making & Motivation (Q22 - Q27)
+    { id: 22, question_text: "When making big decisions, you rely on:", question_type: "single_choice", options_json: ["Logic", "Intuition", "Emotions", "Advice from others"], screen_number: 4, allow_other: false },
+    { id: 23, question_text: "Do you decide quickly or slowly?", question_type: "single_choice", options_json: ["Quickly", "After thinking", "Very slowly", "Depends on situation"], screen_number: 4, allow_other: false },
+    { id: 24, question_text: "Are you comfortable deciding without full information?", question_type: "single_choice", options_json: ["Yes", "Sometimes", "No", "Depends on risk"], screen_number: 4, allow_other: false },
+    { id: 25, question_text: "What motivates you more?", question_type: "single_choice", options_json: ["Success", "Avoiding failure", "Recognition", "Freedom", "Stability"], screen_number: 4, allow_other: false },
+    { id: 26, question_text: "What matters most in life right now?", question_type: "single_choice", options_json: ["Achievement", "Relationships", "Freedom", "Security", "Creativity"], screen_number: 4, allow_other: false },
+    { id: 27, question_text: "What drives you more?", question_type: "single_choice", options_json: ["Achieving success", "Avoiding failure", "Helping others", "Proving yourself", "Finding meaning"], screen_number: 4, allow_other: false },
+
+    // Screen 5: Relationships, Trust, Fears & Vulnerabilities (Q28 - Q35)
+    { id: 28, question_text: "In relationships, you are:", question_type: "single_choice", options_json: ["Independent", "Emotionally connected", "Both", "Unsure"], screen_number: 5, allow_other: false },
+    { id: 29, question_text: "When someone hurts you, you:", question_type: "single_choice", options_json: ["Forgive quickly", "Take time", "Hold grudges", "Cut them off"], screen_number: 5, allow_other: false },
+    { id: 30, question_text: "Do you naturally trust people?", question_type: "single_choice", options_json: ["Yes", "Slowly", "Rarely", "No"], screen_number: 5, allow_other: false },
+    { id: 31, question_text: "What do you fear losing the most?", question_type: "single_choice", options_json: ["Loved ones", "Freedom", "Stability", "Respect", "Identity"], screen_number: 5, allow_other: false },
+    { id: 32, question_text: "What do people misunderstand about you the most?", question_type: "single_choice", options_json: ["My intentions", "My emotions", "My personality", "My goals", "My boundaries"], screen_number: 5, allow_other: false },
+    { id: 33, question_text: "What is a weakness you rarely talk about?", question_type: "text", options_json: null, screen_number: 5, allow_other: false },
+    { id: 34, question_text: "What behavior from others hurts you the most?", question_type: "single_choice", options_json: ["Criticism", "Ignoring", "Controlling behavior", "Lies", "Lack of appreciation"], screen_number: 5, allow_other: false },
+    { id: 35, question_text: "In relationships, do you fear:", question_type: "single_choice", options_json: ["Losing people", "Being controlled", "Both", "Neither"], screen_number: 5, allow_other: false }
 ]
 
 export default function OnboardingPage() {
@@ -87,12 +122,18 @@ export default function OnboardingPage() {
                 api.getQuestions(),
                 timeoutPromise
             ])
-            if (result?.questions && result.questions.length > 0) {
-                setQuestions(result.questions)
+            if (result?.questions && result.questions.length >= 20) {
+                // Guard against wiping in-flight user answers
+                setAnswers(currentAnswers => {
+                    if (Object.keys(currentAnswers).length === 0) {
+                        setQuestions(result.questions)
+                    }
+                    return currentAnswers
+                })
             }
         } catch (error) {
-            console.warn('Using embedded baseline questions:', error)
-            setQuestions(DEFAULT_FALLBACK_QUESTIONS)
+            console.warn('Using authentic embedded 35-question dataset:', error)
+            // DEFAULT_FALLBACK_QUESTIONS already in state
         }
     }
 

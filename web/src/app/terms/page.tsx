@@ -44,7 +44,7 @@ export default function TermsOfService() {
                 <section className="space-y-4">
                     <h2 className="text-xl font-bold text-white">1. Acceptance of Agreement</h2>
                     <p className="text-gray-300 leading-relaxed">
-                        By accessing or using the TwinGenie website (<span className="text-purple-300">https://twingenie.app</span>), web applications, or the TwinGenie mobile application on Google Play, you agree to be bound by these Terms of Service. If you do not agree to all terms, you may not access or use the service.
+                        By accessing or using the TwinGenie website (<span className="text-purple-300">https://twingenie.app</span>), web applications, or the TwinGenie mobile application on Google Play, operated by <strong className="text-white">Admitwave Education Services Pvt Ltd</strong>, you agree to be bound by these Terms of Service. If you do not agree to all terms, you may not access or use the service.
                     </p>
                 </section>
 
@@ -111,6 +111,8 @@ export default function TermsOfService() {
                         For questions regarding these Terms or legal notices:
                     </p>
                     <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-2 text-sm text-gray-300">
+                        <p><strong className="text-white">Operating Company:</strong> Admitwave Education Services Pvt Ltd</p>
+                        <p><strong className="text-white">Product / Brand:</strong> TwinGenie</p>
                         <p><strong className="text-white">Founder & CEO:</strong> Ashwani Kumar</p>
                         <p><strong className="text-white">Official Domain:</strong> <a href="https://twingenie.app" className="text-purple-400 hover:underline">https://twingenie.app</a></p>
                         <p><strong className="text-white">Direct Email:</strong> <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a></p>
@@ -121,7 +123,7 @@ export default function TermsOfService() {
 
             {/* Footer */}
             <footer className="border-t border-white/10 bg-slate-900/40 py-8 text-center text-sm text-gray-500">
-                <p>© {new Date().getFullYear()} TwinGenie Inc. All rights reserved.</p>
+                <p>© {new Date().getFullYear()} TwinGenie (Admitwave Education Services Pvt Ltd). All rights reserved.</p>
             </footer>
         </div>
     )

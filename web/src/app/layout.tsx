@@ -93,7 +93,8 @@ const jsonLd = {
         {
             '@type': 'Organization',
             '@id': 'https://twingenie.app/#organization',
-            name: 'TwinGenie',
+            name: 'Admitwave Education Services Pvt Ltd',
+            alternateName: 'TwinGenie',
             url: 'https://twingenie.app',
             logo: 'https://twingenie.app/icons/icon-192x192.png',
             founder: {

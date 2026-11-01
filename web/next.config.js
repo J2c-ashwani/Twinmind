@@ -1,6 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
+    rewrites: async () => {
+        return [
+            {
+                source: '/api/:path*',
+                destination: `${process.env.BACKEND_URL || 'https://twinmind-9l6x.onrender.com'}/api/:path*`
+            }
+        ]
+    },
     headers: async () => {
         return [
             {
