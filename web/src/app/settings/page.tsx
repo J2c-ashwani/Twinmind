@@ -190,7 +190,13 @@ export default function SettingsPage() {
                             <div className="font-medium text-red-400">Clear Chat History</div>
                         </button>
 
-                        <button className="w-full p-4 rounded-xl border border-red-500/30 bg-red-500/10 
+                        <button
+                            onClick={() => {
+                                if (confirm('Are you sure you want to request account deletion? All your personal reflections, personality scores, and memory vectors will be permanently deleted pursuant to our Privacy Policy.')) {
+                                    window.location.href = `mailto:support@twingenie.app?subject=Account%20Deletion%20Request%20-%20TwinGenie&body=Please%20delete%20my%20TwinGenie%20account%20and%20all%20associated%20data%20for%20email:%20${encodeURIComponent(user?.email || '')}`;
+                                }
+                            }}
+                            className="w-full p-4 rounded-xl border border-red-500/30 bg-red-500/10 
                                          hover:border-red-500/50 transition-all text-left">
                             <div className="font-medium text-red-400">Delete Account</div>
                         </button>
