@@ -42,33 +42,33 @@ interface ScenarioOption {
 
 const DEMO_SCENARIOS: ScenarioOption[] = [
     {
-        label: 'Delaying a Difficult Decision',
-        prompt: "I've been postponing letting go of an underperforming contractor because I feel guilty, even though it's hurting our milestone timeline.",
+        label: 'Setting Healthy Boundaries',
+        prompt: "A close friend asked me for another big favor that will drain my entire weekend, but I feel guilty saying no because I don't want to disappoint them.",
         responses: {
-            normal: "I know how much you value loyalty and personal harmony. But deep down, you already know that prolonging this is causing more silent friction for everyone on the team than a clean, respectful separation would.",
-            future: "Looking back from 5 years out, this is a textbook leadership threshold. Every month of avoidance costs three months of organizational momentum. Handle it with generosity and clarity tomorrow, not next quarter.",
-            honest: "Let's be direct: You're not being 'kind'; you're protecting your own comfort from an awkward 15-minute conversation. Avoiding this isn't empathy—it's fear masquerading as patience. Make the call.",
-            therapist: "Notice the discomfort beneath that guilt: where is the boundary between being empathetic and taking responsibility for someone else's performance? What would compassionate clarity look like here?"
+            normal: "It's natural to care deeply about friends, but true relationships aren't built on self-sacrifice. Saying yes when your battery is at zero only breeds quiet resentment over time.",
+            future: "Looking back five years from now, you will realize that people respect clear, calm boundaries far more than constant people-pleasing. Protect your peace and recharge with kind honesty.",
+            honest: "Let's be direct: You're not saying yes out of generosity—you're saying yes out of fear of conflict. Sacrificing your own mental health to avoid a moment of mild awkwardness cheats both of you.",
+            therapist: "Notice where that guilt is located in your body right now. Where did you first learn the belief that someone else's comfort is your personal responsibility? What would kind self-preservation look like here?"
         }
     },
     {
-        label: 'Burnout & Overcommitting',
-        prompt: "I worked 14 hours today and still feel like I didn't accomplish enough. I have trouble resting without guilt.",
+        label: 'Overcoming Self-Doubt & Fear',
+        prompt: "I've been holding back from pursuing a creative goal I deeply care about because I'm terrified that people will judge me or that I'll fail publicly.",
         responses: {
-            normal: "You hold yourself to unreasonable standards. Remember your core reason for building this: freedom and impact, not exhaustion. High output without recovery is just high-speed degradation.",
-            future: "In the long run, sustainability is your only real competitive moat. The burnout loops you indulge in today are habits you'll have to unlearn later. Turn off the laptop.",
-            honest: "You are conflating exhaustion with productivity. Grinding for 14 hours on low-leverage tasks is just an emotional shield to avoid facing the 1 or 2 hard, high-uncertainty decisions you skipped today.",
-            therapist: "When did you first internalize the belief that your worth is tied to perpetual exhaustion? Let's explore what resting without earning it would feel like for you tonight."
+            normal: "Starting something vulnerable is always intimidating. But the quiet ache of wondering 'what if' lasts much longer than the temporary sting of making mistakes while learning.",
+            future: "Decades from now, you won't remember the awkward early attempts—you'll only remember whether you gave yourself permission to try. Give yourself that grace today.",
+            honest: "You're waiting for complete confidence before taking a step, but confidence only comes after action. Stop hiding behind perfectionism—it's just fear in an intellectual mask. Put your work out there.",
+            therapist: "What does failure mean about your identity in your inner narrative? Let's separate the outcome of an experiment from your unconditional self-worth as a person."
         }
     },
     {
-        label: 'Startup Strategy Crossroads',
-        prompt: "A customer asked for a custom feature that's outside our roadmap, but they're offering to pay upfront for it.",
+        label: 'Breaking Evening Doomscrolling',
+        prompt: "Every night I intend to sleep early and take care of my health, but I end up scrolling social media for two hours and waking up exhausted and self-critical.",
         responses: {
-            normal: "It's tempting for short-term runway, but remember our product philosophy: we set out to build an intentional consumer product, not an ad-hoc custom software agency.",
-            future: "Ten years from now, great products are remembered for what they said NO to. Taking one-off client money to build custom divergence is the classic trap that kills early-stage focus.",
-            honest: "That upfront cash is a shiny distraction. If you take it, you're admitting you don't trust your core product roadmap enough to execute it. Stick to the mission or admit you're pivoting.",
-            therapist: "What does this dilemma reveal about your current anxiety around cash flow vs. your long-term creative vision? Let's unpack the fear behind the choice."
+            normal: "Late-night scrolling is often 'revenge bedtime procrastination'—your mind searching for autonomy after a demanding day. Be gentle with yourself, but put the phone in another room tonight.",
+            future: "Your daily vitality and mental clarity compound into the life you build. Trading tomorrow's focus and joy for cheap dopamine tonight is a cost you don't need to keep paying.",
+            honest: "You are escaping into an endless feed because sitting in quiet stillness with your own unedited thoughts feels uncomfortable. Put the phone down 30 minutes before sleep. No excuses.",
+            therapist: "What uncomfortable emotion or restlessness surfaces when the lights go out and the room goes quiet? Let's explore what true emotional rest and nourishment feel like for you tonight."
         }
     }
 ]
@@ -91,13 +91,13 @@ export default function Home() {
         setTimeout(() => {
             let res = ""
             if (activeTwinMode === 'honest') {
-                res = `[Demonstration Preview — Honest Mode]: Examining "${customPrompt}": You may be rationalizing an assumption here. Rather than seeking confirmation, examine what specific risk or constraint is preventing you from testing this hypothesis immediately.`
+                res = `[Demonstration Preview — Honest Mode]: Looking closely at "${customPrompt}": You might be overthinking this to avoid the emotional vulnerability of taking action. What is the one truthful step you already know you need to take?`
             } else if (activeTwinMode === 'future') {
-                res = `[Demonstration Preview — Future Mode]: Evaluating "${customPrompt}" over a 5-year arc: Prioritize compound returns and long-term leverage over temporary distractions.`
+                res = `[Demonstration Preview — Future Mode]: Looking at "${customPrompt}" five years from now: The temporary awkwardness or discomfort of today won't matter at all. What matters is choosing the path that helps you become the person you respect.`
             } else if (activeTwinMode === 'therapist') {
-                res = `[Demonstration Preview — Reflective Mode]: Reflecting on "${customPrompt}": What emotional tension surfaces first as you examine this? Exploring the root feeling can clarify your next action.`
+                res = `[Demonstration Preview — Reflective Mode]: Holding space for "${customPrompt}": What deeper feeling or fear is asking for your attention right beneath this thought? Acknowledge it gently before trying to fix it.`
             } else {
-                res = `[Demonstration Preview — Normal Mode]: Mirroring your baseline perspective on "${customPrompt}": This connects to your core growth drivers, but ensure your timeline matches your actual available bandwidth.`
+                res = `[Demonstration Preview — Normal Mode]: Exploring "${customPrompt}" with you: This speaks to your core desire for balance and meaning. Let's break it down into one small, peaceful step for today.`
             }
             setSimulatedCustomResponse(res)
             setIsSimulating(false)
@@ -285,7 +285,7 @@ export default function Home() {
                             Experience the 4 Perspectives in Action
                         </h2>
                         <p className="text-gray-400 mt-2 max-w-2xl mx-auto text-sm sm:text-base">
-                            This preview demonstrates how TwinGenie adapts cognitive framing across 4 perspectives using illustrative dilemma scenarios. For live AI inference calibrated to your unique 35-trait personality profile with persistent vector memory, launch the web app or install the Android app.
+                            This preview demonstrates how TwinGenie adapts cognitive framing across 4 perspectives using illustrative dilemma scenarios. For live AI reflection calibrated to your unique 35-trait personality profile with persistent vector memory, create your twin or get the Android app.
                         </p>
                     </div>
 
@@ -294,7 +294,7 @@ export default function Home() {
                         {/* Scenario Selector Header */}
                         <div className="p-4 sm:p-6 border-b border-white/10 bg-slate-950/60">
                             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                                1. Select a Real-Life Founder / Personal Dilemma:
+                                1. Select an Everyday Life Dilemma to Explore:
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 {DEMO_SCENARIOS.map((sc, idx) => (
@@ -421,7 +421,7 @@ export default function Home() {
                                     type="text"
                                     value={customPrompt}
                                     onChange={(e) => setCustomPrompt(e.target.value)}
-                                    placeholder="e.g., Should I launch my product now or wait for more beta feedback?"
+                                    placeholder="e.g., How do I stop procrastinating and start living with intention?"
                                     className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSimulateCustom()}
                                 />
@@ -561,17 +561,17 @@ export default function Home() {
                     </div>
                 </section>
 
-                {/* Section: Core Startup Features */}
+                {/* Section: Core Product Features */}
                 <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
                     <div className="text-center mb-16">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs font-semibold uppercase tracking-wider mb-3">
                             Product Capabilities
                         </div>
                         <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Engineered for High-Agency Thinkers
+                            Engineered for Real Human Growth
                         </h2>
                         <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
-                            More than a chatbot. A complete cognitive operating system built with vector memory and psychometric rigor.
+                            More than a chatbot. A personalized AI companion designed to understand who you truly are and help you grow every single day.
                         </p>
                     </div>
 
@@ -612,7 +612,7 @@ export default function Home() {
                             </div>
                             <h3 className="text-xl font-bold mb-3 text-white">Growth Circles</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                Connect with peer founders and high-agency creators. Share milestone reflections anonymously without social media peacocking.
+                                Connect with curious minds and self-reflective peers. Share milestone reflections anonymously in a safe, supportive space.
                             </p>
                         </div>
 
@@ -804,7 +804,7 @@ export default function Home() {
                                 <div className="text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Pro Companion</div>
                                 <div className="text-4xl font-extrabold text-white mb-4">$5.99 <span className="text-base text-gray-400 font-normal">/ month</span></div>
                                 <div className="text-xs text-purple-300 mb-4 font-medium">₹499 / month in India via Google Play</div>
-                                <p className="text-sm text-gray-300 mb-6">Complete cognitive suite for founders, leaders, and high-performance individuals.</p>
+                                <p className="text-sm text-gray-300 mb-6">Complete cognitive reflection suite for curious minds, lifelong learners, and anyone seeking daily clarity.</p>
                                 <ul className="space-y-3 text-sm text-gray-200 mb-8">
                                     <li className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
@@ -845,7 +845,7 @@ export default function Home() {
                                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Annual Pass</div>
                                 <div className="text-4xl font-extrabold text-white mb-4">$47.88 <span className="text-base text-gray-400 font-normal">/ year</span></div>
                                 <div className="text-xs text-emerald-400 mb-4 font-semibold">Save 33% • Equivalent to $3.99/mo ($47.88/yr, or ₹3,999/yr in India via Google Play)</div>
-                                <p className="text-sm text-gray-400 mb-6">For committed thinkers tracking full-year cognitive development.</p>
+                                <p className="text-sm text-gray-400 mb-6">For committed individuals tracking full-year personal growth and emotional well-being.</p>
                                 <ul className="space-y-3 text-sm text-gray-300 mb-8">
                                     <li className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
@@ -861,7 +861,7 @@ export default function Home() {
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Direct founder priority support</span>
+                                        <span>Priority VIP reflection support</span>
                                     </li>
                                 </ul>
                             </div>
