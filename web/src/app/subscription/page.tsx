@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Download, ExternalLink, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Check, Download, ExternalLink, ShieldCheck, Smartphone, Sparkles, ArrowLeft, Brain } from 'lucide-react';
 
 interface Pricing {
     country: string;
@@ -82,7 +83,22 @@ export default function GeoPricingPage() {
     };
 
     return (
-        <div className="min-h-screen px-4 py-10">
+        <div className="min-h-screen px-4 py-8">
+            <div className="mx-auto max-w-5xl mb-8 flex items-center justify-between">
+                <Link href="/" className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                        <Brain className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-bold text-lg text-white">TwinGenie</span>
+                </Link>
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-all"
+                >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back to Home
+                </Link>
+            </div>
             <div className="mx-auto max-w-5xl">
                 <div className="mb-10 grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
                     <div>

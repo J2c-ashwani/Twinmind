@@ -22,10 +22,23 @@ interface Answer {
     answer_text?: string
 }
 
+const DEFAULT_FALLBACK_QUESTIONS: Question[] = [
+    { id: 1, question_text: "What's your name?", question_type: "text", options_json: null, screen_number: 1, allow_other: false },
+    { id: 2, question_text: "How old are you?", question_type: "number", options_json: null, screen_number: 1, allow_other: false },
+    { id: 3, question_text: "What describes your energy best?", question_type: "multiple_choice", options_json: ["Deep Introvert", "Thoughtful Ambivert", "Dynamic Extrovert"], screen_number: 2, allow_other: true },
+    { id: 4, question_text: "What areas of your life are you actively growing in?", question_type: "multiple_select", options_json: ["Career & Leadership", "Emotional Wellness", "Deep Focus & Habits", "Relationships", "Creativity & Craft"], screen_number: 2, allow_other: true },
+    { id: 5, question_text: "When you face high-stakes stress, how do you typically react?", question_type: "multiple_choice", options_json: ["Overanalyze every variable", "Seek quick action to relieve tension", "Withdraw and process silently", "Seek sounding boards and counsel"], screen_number: 3, allow_other: true },
+    { id: 6, question_text: "What is your primary driver right now?", question_type: "text", options_json: null, screen_number: 3, allow_other: false },
+    { id: 7, question_text: "Describe what a truly meaningful, fulfilling day looks like for you:", question_type: "text", options_json: null, screen_number: 4, allow_other: false },
+    { id: 8, question_text: "What core values matter most in your decisions?", question_type: "multiple_select", options_json: ["Radical Honesty", "Intellectual Curiosity", "Empathy & Kindness", "Personal Autonomy", "Relentless Growth", "Family & Loyalty"], screen_number: 4, allow_other: true },
+    { id: 9, question_text: "How would you prefer your AI Twin to engage with you?", question_type: "multiple_choice", options_json: ["Brutally honest reality check", "Compassionate self-reflection guide", "Strategic 5-year future perspective", "Adaptive balance of all three"], screen_number: 5, allow_other: false },
+    { id: 10, question_text: "What is the single biggest question or challenge on your mind right now?", question_type: "text", options_json: null, screen_number: 5, allow_other: false }
+]
+
 export default function OnboardingPage() {
     const router = useRouter()
     const [currentScreen, setCurrentScreen] = useState(1)
-    const [questions, setQuestions] = useState<Question[]>([])
+    const [questions, setQuestions] = useState<Question[]>(DEFAULT_FALLBACK_QUESTIONS)
     const [answers, setAnswers] = useState<Record<number, Answer>>({})
     const [otherTextInputs, setOtherTextInputs] = useState<Record<number, string>>({})
     const [multiSelectAnswers, setMultiSelectAnswers] = useState<Record<number, Set<string>>>({})
@@ -59,7 +72,6 @@ export default function OnboardingPage() {
                 if (profile && profile.personality_json) {
                     router.push('/chat')
                 }
-                // If no profile, they need to complete onboarding but don't need signup form
             }
         } catch (error) {
             console.error('Error checking profile:', error)
@@ -68,10 +80,19 @@ export default function OnboardingPage() {
 
     async function loadQuestions() {
         try {
-            const { questions: qs } = await api.getQuestions()
-            setQuestions(qs)
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Question fetch timeout')), 2500)
+            )
+            const result: any = await Promise.race([
+                api.getQuestions(),
+                timeoutPromise
+            ])
+            if (result?.questions && result.questions.length > 0) {
+                setQuestions(result.questions)
+            }
         } catch (error) {
-            console.error('Failed to load questions:', error)
+            console.warn('Using embedded baseline questions:', error)
+            setQuestions(DEFAULT_FALLBACK_QUESTIONS)
         }
     }
 
@@ -308,8 +329,16 @@ export default function OnboardingPage() {
 
     if (questions.length === 0) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                <Brain className="w-12 h-12 text-purple-400 mb-4 animate-pulse" />
+                <h2 className="text-2xl font-bold mb-2">Preparing Reflection Assessment</h2>
+                <p className="text-gray-400 mb-6 max-w-sm">Initializing cognitive assessment module...</p>
+                <button
+                    onClick={() => setQuestions(DEFAULT_FALLBACK_QUESTIONS)}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-medium text-white transition-all shadow-lg"
+                >
+                    Start Reflection Now
+                </button>
             </div>
         )
     }

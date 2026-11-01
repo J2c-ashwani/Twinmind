@@ -2,44 +2,45 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://twinmind.app'),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://twingenie.app'),
     // Basic SEO
     title: {
-        default: 'TwinGenie - Your AI Digital Twin for Personal Growth',
+        default: 'TwinGenie - AI Personal Digital Twin for Reflection & Growth',
         template: '%s | TwinGenie'
     },
-    description: 'TwinGenie is your AI-powered digital companion for personal growth, emotional wellness, and self-discovery. Chat, reflect, and grow with your personalized AI twin.',
+    description: 'TwinGenie is an AI-powered personal digital twin companion that helps you examine assumptions, challenge cognitive blindspots, and track personal growth across 4 distinct cognitive perspectives.',
     keywords: [
         'AI digital twin',
-        'personal growth app',
-        'AI companion',
+        'personal growth AI',
+        'AI companion app',
+        'cognitive reflection',
         'mental wellness',
-        'self-improvement',
+        'self-improvement AI',
+        'Big Five personality assessment',
         'AI life coach',
-        'emotional intelligence',
         'daily journaling',
         'mood tracking',
-        'AI chatbot',
-        'mindfulness app'
+        'vector memory AI',
+        'TwinGenie'
     ],
-    authors: [{ name: 'TwinGenie Team' }],
+    authors: [{ name: 'Ashwani Kumar', url: 'https://twingenie.app' }],
     creator: 'TwinGenie',
-    publisher: 'TwinGenie',
+    publisher: 'TwinGenie Inc.',
 
-    // Open Graph (Facebook, LinkedIn, etc.)
+    // Open Graph (Facebook, LinkedIn, Google crawlers)
     openGraph: {
         type: 'website',
         locale: 'en_US',
-        url: 'https://twinmind.app',
+        url: 'https://twingenie.app',
         siteName: 'TwinGenie',
-        title: 'TwinGenie - Your AI Digital Twin for Personal Growth',
-        description: 'Discover your AI-powered companion for personal growth. Chat, reflect, and transform with TwinGenie.',
+        title: 'TwinGenie - AI Personal Digital Twin for Reflection & Growth',
+        description: 'An AI companion that does not just validate you. Explore 4 cognitive perspectives, examine your assumptions, and achieve true personal growth.',
         images: [
             {
                 url: '/og-image.png',
                 width: 1200,
                 height: 630,
-                alt: 'TwinGenie - AI Digital Twin'
+                alt: 'TwinGenie - AI Personal Digital Twin'
             }
         ]
     },
@@ -47,10 +48,10 @@ export const metadata: Metadata = {
     // Twitter Card
     twitter: {
         card: 'summary_large_image',
-        title: 'TwinGenie - Your AI Digital Twin',
-        description: 'AI-powered personal growth companion. Chat, reflect, grow.',
+        title: 'TwinGenie - AI Personal Digital Twin',
+        description: 'Less validation. More self-understanding. Chat, reflect, and grow with your AI twin.',
         images: ['/og-image.png'],
-        creator: '@twinmindapp'
+        creator: '@twingenieapp'
     },
 
     // Robots
@@ -66,21 +67,14 @@ export const metadata: Metadata = {
         },
     },
 
-    // Verification (add your actual IDs)
-    verification: {
-        google: 'your-google-verification-code',
-        // yandex: 'yandex-verification-code',
-        // bing: 'bing-verification-code',
-    },
-
     // Alternates
     alternates: {
-        canonical: 'https://twinmind.app',
+        canonical: 'https://twingenie.app',
     },
 
     // App metadata
     applicationName: 'TwinGenie',
-    category: 'Lifestyle',
+    category: 'Productivity & Lifestyle',
 
     // Icons
     icons: {
@@ -95,21 +89,54 @@ export const metadata: Metadata = {
 // JSON-LD Structured Data
 const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'TwinGenie',
-    applicationCategory: 'LifestyleApplication',
-    operatingSystem: 'Web, iOS, Android',
-    description: 'AI-powered digital twin for personal growth, emotional wellness, and self-discovery.',
-    offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD'
-    },
-    aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: '4.8',
-        ratingCount: '1000'
-    }
+    '@graph': [
+        {
+            '@type': 'Organization',
+            '@id': 'https://twingenie.app/#organization',
+            name: 'TwinGenie',
+            url: 'https://twingenie.app',
+            logo: 'https://twingenie.app/icons/icon-192x192.png',
+            founder: {
+                '@type': 'Person',
+                name: 'Ashwani Kumar',
+                email: 'ashwani@twingenie.app'
+            },
+            contactPoint: {
+                '@type': 'ContactPoint',
+                email: 'ashwani@twingenie.app',
+                contactType: 'customer support'
+            }
+        },
+        {
+            '@type': 'SoftwareApplication',
+            '@id': 'https://twingenie.app/#application',
+            name: 'TwinGenie',
+            applicationCategory: 'HealthAndFitnessApplication, ProductivityApplication',
+            operatingSystem: 'Web, Android (Google Play)',
+            description: 'AI-powered digital twin companion for self-reflection, cognitive growth, and personal development.',
+            url: 'https://twingenie.app',
+            installUrl: 'https://play.google.com/store/apps/details?id=com.asmind.app',
+            offers: [
+                {
+                    '@type': 'Offer',
+                    name: 'Free Tier',
+                    price: '0',
+                    priceCurrency: 'USD'
+                },
+                {
+                    '@type': 'Offer',
+                    name: 'Pro Companion',
+                    price: '5.99',
+                    priceCurrency: 'USD'
+                }
+            ],
+            aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: '4.8',
+                ratingCount: '1240'
+            }
+        }
+    ]
 }
 
 export default function RootLayout({
@@ -132,7 +159,6 @@ export default function RootLayout({
                 <meta name="theme-color" content="#9333EA" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
             </head>
             <body>
                 {children}

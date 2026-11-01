@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, ArrowRight, Share2, Check, ShieldCheck, HelpCircle } from 'lucide-react'
 
@@ -94,7 +95,7 @@ const ARCHETYPES: Record<string, ArchetypeProfile> = {
     title: 'Analysis Paralysis & Rationalization Loops',
     desc: 'Your cognitive default is overthinking. Standard yes-man AI fuels this by agreeing with every nuance, trapping you in recursive mental loops instead of decisive action.',
     mode: 'HONEST / DARK TWIN',
-    callout: 'You don't need more advice or another chatbot to agree with you. You need persistent accountability that catches you repeating your favorite excuses.'
+    callout: "You don't need more advice or another chatbot to agree with you. You need persistent accountability that catches you repeating your favorite excuses."
   }
 }
 
@@ -141,12 +142,12 @@ export default function MirrorTestPage() {
       <div className="w-full max-w-[500px] z-10 flex flex-col gap-5">
         {/* Top Header */}
         <header className="flex items-center justify-between p-3.5 bg-[#140F24]/80 backdrop-blur-xl border border-white/10 rounded-2xl">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-pink-500/20">
               TG
             </div>
             <span className="font-extrabold text-base tracking-tight">TwinGenie</span>
-          </div>
+          </Link>
           <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-400">
             {isCompleted ? 'Mirror Verified' : 'The Mirror Test'}
           </span>

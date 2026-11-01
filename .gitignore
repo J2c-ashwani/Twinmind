@@ -8,6 +8,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # Firebase credentials (NEVER commit!)
 firebase-service-account.json
