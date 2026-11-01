@@ -25,7 +25,8 @@ import {
     Send,
     ChevronDown,
     Eye,
-    Compass
+    Compass,
+    Heart
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -137,8 +138,9 @@ export default function Home() {
                     {/* Human-Friendly Navigation Links */}
                     <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-300">
                         <a href="#features" className="hover:text-white transition-colors">Features</a>
-                        <a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a>
+                        <a href="#coaching" className="hover:text-white transition-colors">Life Coach</a>
                         <a href="#modes" className="hover:text-white transition-colors">4 Twin Modes</a>
+                        <a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a>
                         <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
                         <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
                     </nav>
@@ -244,31 +246,31 @@ export default function Home() {
                             <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                             <div>
                                 <div className="text-xs font-semibold text-white">Private & Encrypted</div>
-                                <div className="text-[11px] text-gray-400">AES-256 Vector Vault</div>
+                                <div className="text-[11px] text-gray-400">Strict Data Confidentiality</div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
                             <Compass className="w-5 h-5 text-purple-400 flex-shrink-0" />
                             <div>
-                                <div className="text-xs font-semibold text-white">4 Twin Perspectives</div>
-                                <div className="text-[11px] text-gray-400">Normal, Future, Dark, Care</div>
+                                <div className="text-xs font-semibold text-white">4 Cognitive Angles</div>
+                                <div className="text-[11px] text-gray-400">Authentic, Future, Honest, Care</div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                            <Cpu className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                            <Zap className="w-5 h-5 text-yellow-400 flex-shrink-0" />
                             <div>
-                                <div className="text-xs font-semibold text-white">Google Cloud Stack</div>
-                                <div className="text-[11px] text-gray-400">Vertex AI & Cloud Run</div>
+                                <div className="text-xs font-semibold text-white">AI Life Coach</div>
+                                <div className="text-[11px] text-gray-400">Multi-Day Guided Tracks</div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
                             <Star className="w-5 h-5 text-amber-400 flex-shrink-0" />
                             <div>
-                                <div className="text-xs font-semibold text-white">Google Play Live</div>
-                                <div className="text-[11px] text-gray-400">com.asmind.app</div>
+                                <div className="text-xs font-semibold text-white">Google Play Verified</div>
+                                <div className="text-[11px] text-gray-400">Android & Web Synchronized</div>
                             </div>
                         </div>
                     </motion.div>
@@ -561,6 +563,141 @@ export default function Home() {
                     </div>
                 </section>
 
+                {/* Section: Flagship AI Life Coach Programs */}
+                <section id="coaching" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
+                    <div className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs font-semibold uppercase tracking-wider mb-3">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Flagship Coaching Programs
+                        </div>
+                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
+                            Personalized AI Life Coach Journeys
+                        </h2>
+                        <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
+                            Move beyond open-ended chats. Embark on structured, multi-day guided programs designed to break anxiety loops, overcome self-doubt, and cultivate lasting peace of mind.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Program 1 */}
+                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-pink-500/40 transition-all duration-300 flex flex-col justify-between group">
+                            <div>
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform">
+                                        <Heart className="w-6 h-6" />
+                                    </div>
+                                    <span className="text-xs px-3 py-1 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/20 font-medium">
+                                        7 Days • Guided
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl font-bold mb-3 text-white">7-Day Anxiety Reset</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                                    A gentle, compassionate journey to recognize anxiety triggers, practice somatic body scans, challenge worst-case scenarios, and build a lasting personal coping toolkit.
+                                </p>
+                                <ul className="space-y-2.5 text-xs text-gray-300 mb-6">
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                                        <span>5-4-3-2-1 Sensory Grounding Techniques</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                                        <span>Gentle Exposure & Self-Compassion Drills</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                                        <span>Personalized Emergency Coping Blueprint</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <Link
+                                href="/life-coach"
+                                className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-white font-medium text-xs text-center transition-all flex items-center justify-center gap-2"
+                            >
+                                <span>Explore Anxiety Reset</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+
+                        {/* Program 2 */}
+                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-yellow-500/40 transition-all duration-300 flex flex-col justify-between group">
+                            <div>
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400 group-hover:scale-110 transition-transform">
+                                        <Zap className="w-6 h-6" />
+                                    </div>
+                                    <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 font-medium">
+                                        5 Days • High Impact
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl font-bold mb-3 text-white">5-Day Confidence Boost</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                                    Quick, actionable psychological exercises to dismantle imposter syndrome, master assertive communication, reframe past mistakes, and visualize your most capable self.
+                                </p>
+                                <ul className="space-y-2.5 text-xs text-gray-300 mb-6">
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                                        <span>Core Strengths & Value Inventory</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                                        <span>Assertiveness Practice & Voice Anchoring</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                                        <span>Failure Reframing & Future Projection</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <Link
+                                href="/life-coach"
+                                className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-500/30 text-white font-medium text-xs text-center transition-all flex items-center justify-center gap-2"
+                            >
+                                <span>Explore Confidence Boost</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+
+                        {/* Program 3 */}
+                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group">
+                            <div>
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                                        <Brain className="w-6 h-6 text-emerald-400" />
+                                    </div>
+                                    <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 font-medium">
+                                        30 Days • Transformation
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl font-bold mb-3 text-white">Daily Gratitude Habit</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                                    Rewire your mental default from scarcity to abundance. Micro-prompts designed to deepen appreciation for everyday moments, strengthen key relationships, and find silver linings.
+                                </p>
+                                <ul className="space-y-2.5 text-xs text-gray-300 mb-6">
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                        <span>Daily Positivity Priming & Habit Stacking</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                        <span>Relationship Appreciation Micro-Actions</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                        <span>Challenge Transmutation & Resilience Practice</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <Link
+                                href="/life-coach"
+                                className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 text-white font-medium text-xs text-center transition-all flex items-center justify-center gap-2"
+                            >
+                                <span>Explore Gratitude Journey</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Section: Core Product Features */}
                 <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
                     <div className="text-center mb-16">
@@ -568,7 +705,7 @@ export default function Home() {
                             Product Capabilities
                         </div>
                         <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Engineered for Real Human Growth
+                            Designed for Deep Self-Discovery
                         </h2>
                         <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
                             More than a chatbot. A personalized AI companion designed to understand who you truly are and help you grow every single day.
@@ -580,59 +717,59 @@ export default function Home() {
                             <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6">
                                 <Brain className="w-6 h-6 text-purple-400" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">35-Trait Psychometric Engine</h3>
+                            <h3 className="text-xl font-bold mb-3 text-white">35-Trait Personality Blueprint</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                Analyzes decision patterns, communication style, emotional volatility, and core drivers to map your digital DNA before your first conversation.
+                                Analyzes your emotional patterns, communication style, decision values, and core strengths to calibrate your Twin before your first reflection.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all">
+                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-yellow-500/30 transition-all">
+                            <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-6">
+                                <Zap className="w-6 h-6 text-yellow-400" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-3 text-white">AI Life Coach Journeys</h3>
+                            <p className="text-gray-400 text-sm leading-relaxed">
+                                Structured, multi-day guided programs designed to break anxiety loops, overcome self-doubt, build assertiveness, and foster daily gratitude.
+                            </p>
+                        </div>
+
+                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-pink-500/30 transition-all">
                             <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center mb-6">
                                 <Layers className="w-6 h-6 text-pink-400" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Vector Semantic Memory</h3>
+                            <h3 className="text-xl font-bold mb-3 text-white">Deep Adaptive Memory</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                Remembers the themes, dilemmas, and breakthroughs from three weeks ago. Context is automatically synthesized into pgvector embeddings.
+                                Never forgets who you are. Seamlessly connects insights, breakthroughs, and reflections across weeks and months into an evolving story of your growth.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all">
+                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-emerald-500/30 transition-all">
                             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
                                 <Flame className="w-6 h-6 text-emerald-400" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Daily Mood & Streak Tracker</h3>
+                            <h3 className="text-xl font-bold mb-3 text-white">Daily Mood & Habit Streaks</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                Form a daily reflective habit. Track emotional oscillations over time and correlate stress peaks with actionable environmental causes.
+                                Form a grounding daily habit. Track emotional shifts over time, celebrate consistent streaks, and connect stress triggers to actionable lifestyle adjustments.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6">
-                                <Users className="w-6 h-6 text-blue-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Growth Circles</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Connect with curious minds and self-reflective peers. Share milestone reflections anonymously in a safe, supportive space.
-                            </p>
-                        </div>
-
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all">
+                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-amber-500/30 transition-all">
                             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6">
                                 <BarChart3 className="w-6 h-6 text-amber-400" />
                             </div>
                             <h3 className="text-xl font-bold mb-3 text-white">Cognitive Growth Insights</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                Weekly automated synthesis highlighting your recurring cognitive biases, decision velocity, and progress toward declared annual milestones.
+                                Weekly automated summaries uncovering recurring thought loops, celebrating personal wins, and illuminating blindspots with gentle clarity.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6">
-                                <Smartphone className="w-6 h-6 text-cyan-400" />
+                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-blue-500/30 transition-all">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6">
+                                <Users className="w-6 h-6 text-blue-400" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Real-Time Mobile & Web Sync</h3>
+                            <h3 className="text-xl font-bold mb-3 text-white">Private Growth Circles</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                Native Android mobile app published on Google Play with background notifications, paired with desktop web access for deep reflection sessions.
+                                Connect with thoughtful, self-reflective peers. Share milestone reflections anonymously in a safe, supportive space free from social media pressure.
                             </p>
                         </div>
                     </div>
@@ -661,7 +798,7 @@ export default function Home() {
                                     <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                                     Currently Running (Production)
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Core Application Engine</h3>
+                                <h3 className="text-xl font-bold text-white mb-3">Core Application Stack</h3>
                                 <p className="text-xs text-gray-400 leading-relaxed mb-6">
                                     Live services powering daily user reflections, psychometric profile generation, and mobile app sync:
                                 </p>
@@ -1002,17 +1139,15 @@ export default function Home() {
                             <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
                         </Link>
                         <p className="text-gray-400 text-xs leading-relaxed">
-                            AI-powered digital companion for personal reflection, cognitive clarity, and deliberate personal growth.
+                            Personalized AI companion for daily reflection, emotional clarity, and lifelong personal growth.
                         </p>
-                        <div className="text-xs text-gray-500">
-                            Domain: <span className="text-purple-300">https://twingenie.app</span>
-                        </div>
                     </div>
 
                     {/* Product */}
                     <div className="space-y-3">
                         <div className="text-xs font-bold uppercase tracking-wider text-white">Product</div>
                         <ul className="space-y-2 text-xs text-gray-400">
+                            <li><a href="#coaching" className="hover:text-white transition-colors">Life Coach Programs</a></li>
                             <li><a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a></li>
                             <li><a href="#modes" className="hover:text-white transition-colors">4 Cognitive Modes</a></li>
                             <li><a href="#features" className="hover:text-white transition-colors">Core Features</a></li>
@@ -1026,24 +1161,29 @@ export default function Home() {
                         <div className="text-xs font-bold uppercase tracking-wider text-white">Platforms</div>
                         <ul className="space-y-2 text-xs text-gray-400">
                             <li>
+                                <Link href="/onboarding" className="hover:text-purple-300 transition-colors">
+                                    Create Your Twin
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/login" className="hover:text-purple-300 transition-colors">
+                                    Sign In
+                                </Link>
+                            </li>
+                            <li>
                                 <a href={playStoreUrl} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
                                     <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
                                     <span>Android (Google Play)</span>
                                 </a>
                             </li>
                             <li>
-                                <Link href="/onboarding" className="hover:text-purple-400 transition-colors">
-                                    Desktop Web App
+                                <Link href="/life-coach" className="hover:text-purple-300 transition-colors">
+                                    Life Coach Programs
                                 </Link>
                             </li>
                             <li>
                                 <Link href="/subscription" className="hover:text-white transition-colors">
-                                    Google Play Subscriptions
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/login" className="hover:text-white transition-colors">
-                                    Sign In / Member Portal
+                                    Membership & Subscriptions
                                 </Link>
                             </li>
                         </ul>
@@ -1079,8 +1219,8 @@ export default function Home() {
 
                 <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
                     <p>© {new Date().getFullYear()} TwinGenie. All rights reserved.</p>
-                    <p className="flex items-center gap-2">
-                        <span>Powered by Node.js & Supabase • Migrating to Google Cloud Platform</span>
+                    <p className="text-xs text-gray-400">
+                        Empowering personal reflection, emotional clarity, and intentional growth worldwide.
                     </p>
                 </div>
             </footer>
