@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { apiClient } from '@/lib/api/client';
 import { motion } from 'framer-motion';
@@ -8,6 +9,7 @@ import { Sparkles, Lock, ArrowRight, Heart, Brain, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LifeCoachPage() {
+    const router = useRouter();
     const [programs, setPrograms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -20,7 +22,11 @@ export default function LifeCoachPage() {
         try {
             const supabase = createClientComponentClient();
             const { data: { session } } = await supabase.auth.getSession();
-            if (session) apiClient.setToken(session.access_token);
+            if (!session?.access_token) {
+                router.push('/login');
+                return;
+            }
+            apiClient.setToken(session.access_token);
 
             const data = await apiClient.getLifeCoachPrograms();
             setPrograms(Array.isArray(data) ? data : []);

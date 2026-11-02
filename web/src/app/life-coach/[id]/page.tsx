@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { apiClient } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, CheckCircle, ChevronLeft, BookOpen } from 'lucide-react';
@@ -36,6 +37,14 @@ export default function CoachingSessionPage() {
     const startSession = async () => {
         try {
             setError('');
+            const supabase = createClientComponentClient();
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (!authSession?.access_token) {
+                router.push('/login');
+                return;
+            }
+            apiClient.setToken(authSession.access_token);
+
             // Ensure program is started
             await apiClient.startProgram(params.id as string);
 
