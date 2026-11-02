@@ -46,6 +46,18 @@ services:
         value: "TwinGenie <notifications@mail.twingenie.app>"
       - key: RESEND_REPLY_TO
         value: "founder@twingenie.app"
+      - key: PR_FROM_EMAIL
+        value: "Ashwani Kumar <ashwani@mail.twingenie.app>"
+      - key: PR_REPLY_TO
+        value: "ashwani@twingenie.app"
+      - key: INVESTOR_FROM_EMAIL
+        value: "Ashwani Kumar <ashwani@mail.twingenie.app>"
+      - key: INVESTOR_REPLY_TO
+        value: "ashwani@twingenie.app"
+      - key: ACQUISITION_FROM_EMAIL
+        value: "Ashwani Kumar <ashwani@mail.twingenie.app>"
+      - key: ACQUISITION_REPLY_TO
+        value: "ashwani@twingenie.app"
       - key: CAMPAIGN_AUTORUN
         value: "true"
       - key: CAMPAIGN_DAILY_MAX
