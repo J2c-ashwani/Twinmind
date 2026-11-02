@@ -17,6 +17,14 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/chat', req.url))
     }
 
+    // Direct redirects for landing page sections
+    if (pathname === '/pricing') {
+        return NextResponse.redirect(new URL('/#pricing', req.url))
+    }
+    if (pathname === '/coaching') {
+        return NextResponse.redirect(new URL('/#coaching', req.url))
+    }
+
     // Public paths that don't require authentication
     const publicPaths = [
         '/',
