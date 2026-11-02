@@ -1487,7 +1487,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #SelfAwareness #CognitiveBiases`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #SelfAwareness #LateNightThoughts`,
             },
             honest_mode: {
                 title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie",
@@ -1584,7 +1584,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #PersonalGrowth #VectorDatabase #AITools #MachineLearning`
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #PersonalGrowth #ChatGPTAlternative #AILifeCoach #MentalHealth`
             }
         };
 
@@ -1634,7 +1634,7 @@ Drop A or B in the comments! 👇
 
 📲 Download free on Google Play: ${utm}
 
-#Shorts #AI #PersonalGrowth #SelfImprovement #DigitalTwin #TwinGenie`,
+#Shorts #AICompanion #DigitalTwin #TwinGenie #SelfImprovement #MentalClarity #Overthinking #AILifeCoach`,
             firstComment: `📲 Download TwinGenie on Google Play: ${utm}`
         };
     }

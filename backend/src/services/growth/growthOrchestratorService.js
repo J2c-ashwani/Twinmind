@@ -749,7 +749,9 @@ class GrowthOrchestratorService {
 
             logger.info(`[GROWTH ORCHESTRATOR] Instagram Scheduled: Topic="${dailyPackage.topic}", Format="${format}"`);
 
-            const igCaption = `${dailyPackage.hook || dailyPackage.topic} 🪞\n\n${dailyPackage.facebook?.caption || dailyPackage.linkedin?.caption || ''}\n\n📲 Experience your AI Digital Twin free on Google Play. Link in bio!\n\n#TwinGenie #SelfUnderstanding #PersonalGrowth #MentalHealth #Mindset`;
+            const igCaption = dailyPackage.facebook?.caption
+                ? dailyPackage.facebook.caption
+                : `${dailyPackage.hook || dailyPackage.topic} 🪞\n\n${dailyPackage.linkedin?.caption || ''}\n\n📲 Experience your AI Digital Twin free on Google Play. Link in bio!\n\n#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #SelfAwareness`;
 
             let renderedReel = null;
             let renderedCarousel = null;
