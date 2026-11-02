@@ -18,8 +18,35 @@ export async function middleware(req: NextRequest) {
     }
 
     // Public paths that don't require authentication
-    const publicPaths = ['/', '/login', '/signup', '/privacy', '/terms', '/onboarding', '/subscription', '/try']
-    const isPublicPath = publicPaths.some(path => pathname === path) || pathname.startsWith('/api/')
+    const publicPaths = [
+        '/',
+        '/login',
+        '/signup',
+        '/privacy',
+        '/terms',
+        '/onboarding',
+        '/subscription',
+        '/try',
+        '/pricing',
+        '/coaching',
+        '/robots.txt',
+        '/sitemap.xml',
+        '/manifest.json',
+        '/sw.js'
+    ]
+
+    const isPublicFile = pathname.endsWith('.txt') ||
+        pathname.endsWith('.xml') ||
+        pathname.endsWith('.json') ||
+        pathname.endsWith('.ico') ||
+        pathname.endsWith('.png') ||
+        pathname.endsWith('.jpg') ||
+        pathname.endsWith('.svg') ||
+        pathname.endsWith('.webp')
+
+    const isPublicPath = publicPaths.some(path => pathname === path) ||
+        pathname.startsWith('/api/') ||
+        isPublicFile
 
     if (isPublicPath) {
         return res
@@ -44,6 +71,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public (public files)
          */
-        '/((?!subscription$|subscription/|try$|try/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!subscription$|subscription/|try$|try/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).*)',
     ],
 }

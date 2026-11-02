@@ -8,7 +8,6 @@ Disallow: /secret-admin-x9k2p/
 Disallow: /chat
 Disallow: /profile
 Disallow: /settings
-Disallow: /subscription
 Disallow: /notifications
 
 # Sitemap location
