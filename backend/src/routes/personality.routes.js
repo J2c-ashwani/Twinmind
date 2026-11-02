@@ -61,6 +61,23 @@ router.post('/submit-answers', authenticateUser, async (req, res) => {
             return res.status(400).json({ error: 'Invalid answers format' });
         }
 
+        // Defensive check: Ensure user exists in public.users to prevent foreign key race conditions
+        const { data: userExists } = await supabaseAdmin
+            .from('users')
+            .select('id')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (!userExists) {
+            logger.info(`User ${userId} not yet in public.users, ensuring user record...`);
+            await supabaseAdmin.from('users').upsert({
+                id: userId,
+                email: req.user?.email || null,
+                full_name: req.user?.user_metadata?.full_name || req.user?.email?.split('@')[0] || 'TwinGenie Member',
+                created_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+        }
+
         // Store answers in database
         const answersToInsert = answers.map(a => ({
             user_id: userId,
@@ -117,11 +134,18 @@ router.post('/generate', authenticateUser, async (req, res) => {
         }
 
         // Get user data
-        const { data: user } = await supabaseAdmin
+        let { data: user } = await supabaseAdmin
             .from('users')
             .select('full_name, email')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
+
+        if (!user) {
+            user = {
+                full_name: req.user?.user_metadata?.full_name || req.user?.email?.split('@')[0] || 'TwinGenie Member',
+                email: req.user?.email || null
+            };
+        }
 
         // Format answers - combine selected_option and answer_text
         const formattedAnswers = answerData.map(a => ({

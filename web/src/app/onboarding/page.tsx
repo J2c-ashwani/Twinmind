@@ -243,11 +243,13 @@ export default function OnboardingPage() {
             window.scrollTo({ top: 0, behavior: 'smooth' })
         } else {
             // All questions answered
-            // First, sign out any existing session to ensure clean signup
-            await supabase.auth.signOut()
-
-            // Now show signup form for new account
-            setShowSignup(true)
+            // Check if user already has an active session
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                await handleSubmitForExistingUser()
+            } else {
+                setShowSignup(true)
+            }
         }
     }
 
@@ -281,16 +283,48 @@ export default function OnboardingPage() {
             }
 
             const token = session.access_token
+            const userId = session.user.id
+
+            // Defensive check: Ensure public.users profile exists before inserting answers
+            for (let attempt = 0; attempt < 5; attempt++) {
+                try {
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('id', userId)
+                        .maybeSingle()
+                    if (profile) break
+                } catch (e) {
+                    // ignore and retry
+                }
+                await new Promise(r => setTimeout(r, 200 * (attempt + 1)))
+            }
 
             // Format answers for API
             const formattedAnswers = Object.values(answers).map(answer => ({
                 question_id: answer.question_id,
-                selected_option: answer.selected_option,
-                answer_text: answer.answer_text
+                selected_option: answer.selected_option || null,
+                answer_text: answer.answer_text || null
             }))
 
-            // Submit answers
-            await api.submitAnswers(formattedAnswers, token)
+            // Submit answers with retry
+            let submitSuccess = false
+            let lastSubmitError = null
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    await api.submitAnswers(formattedAnswers, token)
+                    submitSuccess = true
+                    break
+                } catch (err: any) {
+                    lastSubmitError = err
+                    console.warn(`submitAnswers attempt ${attempt + 1} failed:`, err.message)
+                    await new Promise(r => setTimeout(r, 300 * (attempt + 1)))
+                }
+            }
+
+            if (!submitSuccess) {
+                throw lastSubmitError || new Error('Failed to save assessment answers')
+            }
 
             // Generate personality
             await api.generatePersonality(token)
@@ -313,7 +347,10 @@ export default function OnboardingPage() {
         setSignupError('')
 
         try {
-            // Create Supabase account
+            let token: string | null = null
+            let userId: string | null = null
+
+            // 1. Create or authenticate Supabase account
             const { data: authData, error: signUpError } = await supabase.auth.signUp({
                 email: signupData.email,
                 password: signupData.password,
@@ -325,38 +362,85 @@ export default function OnboardingPage() {
                 }
             })
 
-            if (signUpError) throw signUpError
-            if (!authData.user) throw new Error('Failed to create account')
+            if (signUpError) {
+                // If user is already registered, sign in with their password
+                if (signUpError.message?.toLowerCase().includes('already registered')) {
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email: signupData.email,
+                        password: signupData.password
+                    })
+                    if (signInError) {
+                        throw new Error('This account already exists. Please verify your password or sign in directly.')
+                    }
+                    token = signInData?.session?.access_token || null
+                    userId = signInData?.user?.id || null
+                } else {
+                    throw signUpError
+                }
+            } else {
+                if (!authData.user) throw new Error('Failed to create account')
 
-            // Check if we have a session (email confirmation might be required)
-            if (!authData.session) {
-                setSignupError('Account created! Please check your email to confirm your account before signing in.')
-                setLoading(false)
-                setGenerating(false)
-                // Redirect to login after 3 seconds
-                setTimeout(() => router.push('/login'), 3000)
-                return
+                if (!authData.session) {
+                    setSignupError('Account created! Please check your email to confirm your account before signing in.')
+                    setLoading(false)
+                    setGenerating(false)
+                    setTimeout(() => router.push('/login'), 3000)
+                    return
+                }
+
+                token = authData.session.access_token
+                userId = authData.user.id
             }
 
-            const token = authData.session.access_token
+            if (!token || !userId) {
+                throw new Error('Unable to establish an authenticated session.')
+            }
 
-            // Note: User profile in public.users table is created automatically 
-            // by the database trigger (handle_new_user function)
+            // 2. Defensive check: Ensure public.users profile exists (matching mobile app logic)
+            for (let attempt = 0; attempt < 5; attempt++) {
+                try {
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('id', userId)
+                        .maybeSingle()
+                    if (profile) break
+                } catch (e) {
+                    // ignore and retry
+                }
+                await new Promise(r => setTimeout(r, 200 * (attempt + 1)))
+            }
 
-            // Format answers for API
+            // 3. Format answers for API
             const formattedAnswers = Object.values(answers).map(answer => ({
                 question_id: answer.question_id,
-                selected_option: answer.selected_option,
-                answer_text: answer.answer_text
+                selected_option: answer.selected_option || null,
+                answer_text: answer.answer_text || null
             }))
 
-            // Submit answers
-            await api.submitAnswers(formattedAnswers, token)
+            // 4. Submit answers with retry
+            let submitSuccess = false
+            let lastSubmitError = null
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    await api.submitAnswers(formattedAnswers, token)
+                    submitSuccess = true
+                    break
+                } catch (err: any) {
+                    lastSubmitError = err
+                    console.warn(`submitAnswers attempt ${attempt + 1} failed:`, err.message)
+                    await new Promise(r => setTimeout(r, 300 * (attempt + 1)))
+                }
+            }
 
-            // Generate personality
+            if (!submitSuccess) {
+                throw lastSubmitError || new Error('Failed to save assessment answers')
+            }
+
+            // 5. Generate personality
             await api.generatePersonality(token)
 
-            // Redirect to chat
+            // 6. Redirect to chat
             router.push('/chat')
 
         } catch (error: any) {
