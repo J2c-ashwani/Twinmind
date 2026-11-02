@@ -48,8 +48,8 @@ class AcquisitionCampaignService {
     constructor() {
         this.dailyLimit = 8;
         this.minIntervalMinutes = 45;
-        this.senderEmail = process.env.ACQUISITION_FROM_EMAIL || 'Ashwani <founder@twingenie.app>';
-        this.replyTo = process.env.ACQUISITION_REPLY_TO || 'founder@twingenie.app';
+        this.senderEmail = process.env.ACQUISITION_FROM_EMAIL || 'Ashwani Kumar <ashwani@mail.twingenie.app>';
+        this.replyTo = process.env.ACQUISITION_REPLY_TO || 'ashwani@twingenie.app';
         this.state = this._loadState();
         leadDiscoveryService.replenishLocalQueue(this.state, 'acquisition', 15);
         this._saveState();

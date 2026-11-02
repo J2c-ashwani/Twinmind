@@ -48,8 +48,8 @@ class PROutreachService {
     constructor() {
         this.dailyLimit = 6;              // Max 6 journalists per day
         this.minIntervalMinutes = 45;      // 45-minute cooling between dispatches
-        this.senderEmail = process.env.PR_FROM_EMAIL || 'Ashwani <founder@twingenie.app>';
-        this.replyTo = process.env.PR_REPLY_TO || 'founder@twingenie.app';
+        this.senderEmail = process.env.PR_FROM_EMAIL || 'Ashwani Kumar <ashwani@mail.twingenie.app>';
+        this.replyTo = process.env.PR_REPLY_TO || 'ashwani@twingenie.app';
         this.state = this._loadState();
         leadDiscoveryService.replenishLocalQueue(this.state, 'pr', 15);
         this._saveState();

@@ -6,7 +6,7 @@ import logger from '../config/logger.js';
  */
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
-const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'TwinGenie <onboarding@resend.dev>';
+const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'TwinGenie <notifications@mail.twingenie.app>';
 
 /**
  * Send an email via Resend
@@ -24,7 +24,7 @@ export async function sendEmail({
     html,
     text,
     from = DEFAULT_FROM,
-    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app',
+    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'ashwani@twingenie.app',
     tags,
     headers
 }) {

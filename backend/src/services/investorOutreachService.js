@@ -48,8 +48,8 @@ class InvestorOutreachService {
     constructor() {
         this.dailyLimit = 3;              // Maximum 3 investor pitches per day
         this.minIntervalMinutes = 75;      // 75-minute minimum spacing
-        this.senderEmail = process.env.INVESTOR_FROM_EMAIL || 'Ashwani <founder@twingenie.app>';
-        this.replyTo = process.env.INVESTOR_REPLY_TO || 'founder@twingenie.app';
+        this.senderEmail = process.env.INVESTOR_FROM_EMAIL || 'Ashwani Kumar <ashwani@mail.twingenie.app>';
+        this.replyTo = process.env.INVESTOR_REPLY_TO || 'ashwani@twingenie.app';
         this.state = this._loadState();
         leadDiscoveryService.replenishLocalQueue(this.state, 'investor', 15);
         this._saveState();
