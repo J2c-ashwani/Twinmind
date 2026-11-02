@@ -24,7 +24,7 @@ export async function sendEmail({
     html,
     text,
     from = DEFAULT_FROM,
-    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'ashwani@twingenie.app',
+    reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app',
     tags,
     headers
 }) {

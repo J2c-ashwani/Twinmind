@@ -45,7 +45,7 @@ services:
       - key: RESEND_FROM_EMAIL
         value: "TwinGenie <notifications@mail.twingenie.app>"
       - key: RESEND_REPLY_TO
-        value: "ashwani@twingenie.app"
+        value: "founder@twingenie.app"
       - key: CAMPAIGN_AUTORUN
         value: "true"
       - key: CAMPAIGN_DAILY_MAX
