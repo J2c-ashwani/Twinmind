@@ -69,4 +69,22 @@ describe('Growth Engine Reliability & Synchronized Multi-Platform Publishing', (
             }
         });
     });
+
+    describe('Facebook Single-Artifact Publishing Integrity', () => {
+        it('should guarantee Facebook adapter exports publish and hasPublishedTodayIST methods', () => {
+            const fbAdapter = growthOrchestratorService.adapters.facebook;
+            assert.strictEqual(typeof fbAdapter.publish, 'function');
+            assert.strictEqual(typeof fbAdapter.hasPublishedTodayIST, 'function');
+        });
+
+        it('should verify US/UK/AU/India international growth hashtags are embedded in daily Facebook packages', async () => {
+            const pkg = await contentGeneratorService.getOrGenerateDailyContent(new Date());
+            const fbCaption = pkg.facebook?.caption || '';
+            assert.ok(fbCaption.includes('#TwinGenie'));
+            assert.ok(fbCaption.includes('#AICompanion'));
+            assert.ok(fbCaption.includes('#DigitalTwin'));
+            assert.ok(fbCaption.includes('#SelfReflection'));
+            assert.ok(fbCaption.includes('#MentalClarity'));
+        });
+    });
 });

@@ -199,7 +199,7 @@ OR
 
 Drop A or B below! 👇
 
-#TwinGenie #PersonalGrowth #LifeDecisions #SelfCare`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #LifeDecisions #SelfCare #MentalHealth`,
         binaryQuestion: {
             prompt: "When you realize a habit, project, or commitment is draining you, what is your instinct?",
             optionA: "🅰️ Step away immediately without guilt",
@@ -322,7 +322,7 @@ OR
 
 Drop A or B below! 👇
 
-#TwinGenie #Mindset #SelfGrowth #Clarity`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #ProductivityHacks #PersonalGrowth #Overthinking #SelfAwareness #Focus #MentalHealth`,
         binaryQuestion: {
             prompt: "When your day feels overwhelming, is it usually:",
             optionA: "🅰️ Too many genuinely urgent things happening",
@@ -632,7 +632,7 @@ Output strictly valid JSON with this exact schema:
   },
   "facebook": {
     "title": "Short Hook for Facebook",
-    "caption": "Facebook post caption ending with an engaging binary question (🅰️ Option A vs 🅱️ Option B) and #TwinGenie",
+    "caption": "Facebook post caption ending with an engaging binary question (🅰️ Option A vs 🅱️ Option B) and high-ranking US/UK/AU/India international hashtags: #TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #SelfAwareness",
     "firstComment": "📲 Experience your digital twin free on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app\\nTake your 35-question personality baseline today!",
     "binaryQuestion": {
       "prompt": "Binary question text",
@@ -1448,7 +1448,7 @@ Drop A or B in the comments! 👇
 
 🔗 Download free on Google Play — Link in bio!
 
-#personalgrowth #selfimprovement #ai #digitaltwin #mindsetshift #selfreflection #productivity #twingenie`
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #ProductivityHacks #SelfAwareness #MentalHealth`
         };
     }
 
@@ -1487,7 +1487,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #SelfAwareness #CognitiveBiases #PersonalGrowth #DigitalTwin #SelfReflection`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #SelfAwareness #CognitiveBiases`,
             },
             honest_mode: {
                 title: "Why Most AI Chatbots Are Flattering Yes-Men — And How We Built TwinGenie",
@@ -1512,7 +1512,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #SelfUnderstanding #DigitalTwin #MindsetShift #PersonalGrowth`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #PersonalGrowth #SelfUnderstanding #ChatGPTAlternative #AITools`,
             },
             decision_paralysis: {
                 title: "The Hidden Cognitive Pattern Behind Why We Stall on Tough Life Decisions",
@@ -1536,7 +1536,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #DecisionMaking #MentalClarity #SelfGrowth #AICompanion #Overthinking #Mindset`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #DecisionMaking #PersonalGrowth #ProductivityHacks`,
             },
             future_perspective: {
                 title: "What Your 5-Years-Wiser Self Would Say About Today's Anxiety",
@@ -1560,7 +1560,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #FutureSelf #MentalClarity #SelfGrowth #AICompanion #Resilience #Mindset`,
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #FutureSelf #MentalClarity #MindsetShift #PersonalGrowth #Overthinking #Resilience`,
             },
             persistent_memory: {
                 title: "Why Reset-Button AI Chatbots Fail Human Personal Growth",
@@ -1584,7 +1584,7 @@ ${bq.optionB}
 
 Drop A or B in the comments! 👇
 
-#TwinGenie #VectorDatabase #pgvector #AIArchitecture #MachineLearning #PersonalGrowth #ProductDesign`
+#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #PersonalGrowth #VectorDatabase #AITools #MachineLearning`
             }
         };
 

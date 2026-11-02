@@ -219,7 +219,7 @@ class FacebookAdapter {
             }
 
             // Case 1: Direct Local Image Binary Upload (High-Res 1080x1350 Rendered Slides / Carousel)
-            if (!postId && postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
+            else if (!postId && postData.mediaPaths && postData.mediaPaths.length > 0 && fs.existsSync(postData.mediaPaths[0])) {
                 if (postData.mediaPaths.length === 1) {
                     logger.info(`[FACEBOOK] Uploading single local high-res photo binary: ${postData.mediaPaths[0]}`);
                     const fileBuffer = fs.readFileSync(postData.mediaPaths[0]);
@@ -296,8 +296,8 @@ class FacebookAdapter {
                 postId = data.id || data.post_id;
             }
 
-            // Case 3: Text Post with Rich Link Card
-            else {
+            // Case 3: Text Post with Rich Link Card (Only if NO video or images were uploaded)
+            else if (!postId && postData.caption) {
                 let payload = {
                     message: postData.caption,
                     access_token: accessToken
