@@ -1,3 +1,4 @@
+import dns from 'dns/promises';
 import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
 
@@ -24,7 +25,17 @@ export const PERMANENT_SUPPRESSION_LIST = new Set([
     'aman@kalagato.co',
     'contactus@kalagato.co',
     '1@replika.com',
-    'ceo@replika.com'
+    'ceo@replika.com',
+    // Bounced / Invalid Domains & Malformed Aliases
+    'acquisitions@thehappyharbor.com',
+    'acquisitions@appspree.co',
+    'acquisitions@nalasoft.com',
+    'acquisitions@co-founderscapital.com',
+    'acquisitions@redwoodgrowth.com',
+    'acquisitions@vungle-apps.com',
+    'manda@tiny.com',
+    'rbahat@bloombergbeta.com',
+    'pete@theneuro.ai'
 ]);
 
 /**
@@ -173,7 +184,7 @@ const JOURNALIST_CATALOG = [
     },
     {
         recipientName: 'Pete Huang',
-        email: 'pete@theneuro.ai',
+        email: 'pete@theneurondaily.com',
         organization: 'The Neuron',
         roleOrFocus: 'Daily Generative AI Tools & Companion Tech',
         angle: 'product_teardown'
@@ -228,7 +239,7 @@ const INVESTOR_CATALOG = [
     },
     {
         recipientName: 'Roy Bahat',
-        email: 'rbahat@bloombergbeta.com',
+        email: 'roy@bloombergbeta.com',
         organization: 'Bloomberg Beta',
         roleOrFocus: 'Future of Work, Thinking & AI Tools',
         thesis: 'Cognitive Mirroring vs Flattery'
@@ -366,25 +377,25 @@ const ACQUISITION_CATALOG = [
         thesis: 'Turnkey mobile companion codebases & IP'
     },
     {
-        recipientName: 'Acquisitions Team',
-        email: 'acquisitions@thehappyharbor.com',
-        organization: 'The Happy Harbor',
-        roleOrFocus: 'App Portfolio Consolidator',
-        thesis: 'Android + iOS ready companion app asset sale'
+        recipientName: 'Partnerships & M&A Team',
+        email: 'partnerships@calm.com',
+        organization: 'Calm',
+        roleOrFocus: 'Mindfulness & Mental Wellness App',
+        thesis: 'Turnkey AI reflection companion & subscription tech'
     },
     {
-        recipientName: 'M&A Team',
-        email: 'acquisitions@appspree.co',
-        organization: 'Appspree',
-        roleOrFocus: 'Mobile Application Consolidator',
-        thesis: 'Clean IP transfer of Flutter & Next.js product'
+        recipientName: 'Strategic Partnerships Team',
+        email: 'partnerships@flo.health',
+        organization: 'Flo Health',
+        roleOrFocus: 'Global Health & Wellness Ecosystem',
+        thesis: 'Psychographic reflection engine & companion IP'
     },
     {
-        recipientName: 'Acquisitions Team',
-        email: 'acquisitions@nalasoft.com',
-        organization: 'Nalasoft Mobile Brands',
-        roleOrFocus: 'Consumer App Portfolio Operator',
-        thesis: 'Turnkey software asset purchase'
+        recipientName: 'Partnerships & Corporate Development',
+        email: 'partnerships@betterhelp.com',
+        organization: 'BetterHelp',
+        roleOrFocus: 'Mental Health & Self-Care Platforms',
+        thesis: 'Turnkey 4-mode cognitive mirror software'
     },
     {
         recipientName: 'Acquisitions Team',
@@ -415,8 +426,8 @@ const ACQUISITION_CATALOG = [
         thesis: 'Next-gen cognitive mirror technology & mobile codebase'
     },
     {
-        recipientName: 'Acquisitions Team',
-        email: 'manda@tiny.com',
+        recipientName: 'Andrew Wilkinson & Inbound Team',
+        email: 'hi@tiny.com',
         organization: 'Tiny Capital',
         roleOrFocus: 'Wonderful Internet Software Businesses',
         thesis: 'Clean 100% asset acquisition of software & IP'
@@ -464,11 +475,11 @@ const ACQUISITION_CATALOG = [
         thesis: 'Cognitive baseline & psychographic memory engine'
     },
     {
-        recipientName: 'Acquisitions Team',
-        email: 'acquisitions@co-founderscapital.com',
-        organization: 'Co-Founders Capital',
-        roleOrFocus: 'B2C Software & Mobile Portfolio',
-        thesis: 'Asset buyout of 100% software, trademark, and IP'
+        recipientName: 'M&A & Partnerships Team',
+        email: 'partnerships@bendingspoons.com',
+        organization: 'Bending Spoons',
+        roleOrFocus: 'Top Consumer App Consolidator',
+        thesis: 'Next-gen cognitive mirror technology & mobile codebase'
     },
     {
         recipientName: 'App Growth Team',
@@ -478,11 +489,11 @@ const ACQUISITION_CATALOG = [
         thesis: 'Complete IP and Android store transfer'
     },
     {
-        recipientName: 'Acquisitions Lead',
-        email: 'acquisitions@redwoodgrowth.com',
-        organization: 'Redwood Growth Partners',
-        roleOrFocus: 'Micro-PE Software Portfolio',
-        thesis: 'Full software stack divestment'
+        recipientName: 'Corporate Development Team',
+        email: 'acquisitions@applovin.com',
+        organization: 'AppLovin',
+        roleOrFocus: 'Global Mobile Application Portfolio & Studios',
+        thesis: 'Live Google Play Android app + store listing asset sale'
     },
     {
         recipientName: 'M&A Evaluation',
@@ -492,11 +503,11 @@ const ACQUISITION_CATALOG = [
         thesis: 'AI cognitive companion and reflection IP'
     },
     {
-        recipientName: 'Portfolio Acquisitions',
-        email: 'acquisitions@vungle-apps.com',
-        organization: 'Liftoff / Vungle App Studios',
-        roleOrFocus: 'Performance Mobile App Portfolio',
-        thesis: 'Live Google Play store listing & full Flutter code'
+        recipientName: 'Strategic Partnerships Team',
+        email: 'partnerships@simple.life',
+        organization: 'Simple Life Apps',
+        roleOrFocus: 'Mind & Body Digital Health Apps',
+        thesis: 'Turnkey Flutter & Next.js product transfer'
     }
 ];
 
@@ -636,6 +647,29 @@ founder@twingenie.app`;
     }
 
     /**
+     * Pre-flight DNS MX verification
+     * Verifies that the recipient domain has active mail exchange (MX) records.
+     * Prevents bounces before an email is ever dispatched.
+     */
+    async hasValidMxRecord(email) {
+        if (!this.isValidEmail(email)) return false;
+        const domain = email.trim().toLowerCase().split('@')[1];
+        try {
+            const records = await dns.resolveMx(domain);
+            return Array.isArray(records) && records.length > 0;
+        } catch (err) {
+            // Hard DNS errors indicate non-existent or misconfigured mail domains
+            if (['ENODATA', 'ENOTFOUND', 'ESERVFAIL'].includes(err.code)) {
+                logger.warn(`[LEAD DISCOVERY] Pre-flight MX check rejected ${email}: ${err.code}`);
+                return false;
+            }
+            // In isolated test/sandbox environments without network, allow valid-syntax fallback
+            logger.info(`[LEAD DISCOVERY] DNS lookup bypassed for ${domain} (${err.code || err.message})`);
+            return true;
+        }
+    }
+
+    /**
      * Fetches candidate catalog for a campaign type
      */
     getCatalog(campaignType) {
@@ -738,7 +772,7 @@ founder@twingenie.app`;
                 if (candidatesToInsert.length >= neededCount) break;
 
                 const email = item.email.toLowerCase().trim();
-                if (existingEmails.has(email) || !this.isValidEmail(email)) {
+                if (existingEmails.has(email) || !this.isValidEmail(email) || !(await this.hasValidMxRecord(email))) {
                     continue;
                 }
 

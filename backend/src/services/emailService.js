@@ -1,3 +1,4 @@
+import dns from 'dns/promises';
 import logger from '../config/logger.js';
 
 /**
@@ -44,6 +45,25 @@ export async function sendEmail({
 
     try {
         const recipients = Array.isArray(to) ? to : [to];
+
+        // Pre-flight MX verification: protect sender reputation by intercepting dead/non-existent domains
+        for (const recipient of recipients) {
+            const domain = (recipient.split('@')[1] || '').trim().toLowerCase();
+            if (domain) {
+                try {
+                    const mx = await dns.resolveMx(domain);
+                    if (!mx || mx.length === 0) {
+                        logger.error(`[EMAIL BOUNCE GUARD] Aborting dispatch: ${recipient} domain (${domain}) has no MX records.`);
+                        return { success: false, bounced: true, error: `Domain ${domain} has no valid MX records` };
+                    }
+                } catch (dnsErr) {
+                    if (['ENODATA', 'ENOTFOUND', 'ESERVFAIL'].includes(dnsErr.code)) {
+                        logger.error(`[EMAIL BOUNCE GUARD] Aborting dispatch: ${recipient} domain (${domain}) DNS failure: ${dnsErr.code}`);
+                        return { success: false, bounced: true, error: `Domain ${domain} DNS failure: ${dnsErr.code}` };
+                    }
+                }
+            }
+        }
         const payload = {
             from,
             to: recipients,

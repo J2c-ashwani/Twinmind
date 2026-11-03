@@ -31,6 +31,16 @@ describe('Autonomous Continuous Outreach Engine & Auto-Replenishment', () => {
             // Valid corporate email
             assert.strictEqual(leadDiscoveryService.isValidEmail('amanda@techcrunch.com'), true);
             assert.strictEqual(leadDiscoveryService.isValidEmail('omoore@a16z.com'), true);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('roy@bloombergbeta.com'), true);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('hi@tiny.com'), true);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('pete@theneurondaily.com'), true);
+
+            // Bounced & dead addresses must be blocked
+            assert.strictEqual(leadDiscoveryService.isValidEmail('rbahat@bloombergbeta.com'), false);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('manda@tiny.com'), false);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('acquisitions@thehappyharbor.com'), false);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('acquisitions@appspree.co'), false);
+            assert.strictEqual(leadDiscoveryService.isValidEmail('acquisitions@nalasoft.com'), false);
         });
 
         it('should synthesize tailored pitches with genuine value proposition and opt-out compliance', () => {
