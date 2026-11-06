@@ -38,7 +38,7 @@ export const PILLARS = {
         id: 'pillar_2_generic_ai',
         name: 'Generic AI Critique vs Personal Mirror',
         targetShare: 0.30,
-        description: 'Why agreeable yes-man AI chatbots flatter and reset, and what human growth actually requires.'
+        description: 'Why uncritical agreement in conversational tools does not lead to self-awareness, and what reflective inquiry actually requires.'
     },
     PILLAR_3: {
         id: 'pillar_3_product_demo',
@@ -1169,44 +1169,44 @@ export const CURATED_FALLBACK_THEMES = [
     {
         id: 'flattery_trap',
         pillarId: 'pillar_2_generic_ai',
-        topic: 'The Flattery Trap: Why Yes-Man AI Chatbots Stunt Personal Growth',
+        topic: 'The Comfort Trap: Why Constant Agreement Limits Personal Growth',
         category: 'AI & SELF-GROWTH',
-        hook: 'Most conversational AI is trained to be an agreeable yes-man. It strokes your ego, validates your excuses, and keeps you stuck.',
-        relatableScenario: 'You open a standard chatbot, rationalize why you delayed your main project, and it replies: "Rest is so important! You\'re doing amazing! Here are 10 positive affirmations!" It feels nice, but nothing changes.',
-        psychologyInsight: 'LLMs are fine-tuned via RLHF to maximize user satisfaction scores. That creates an inherent bias toward sycophancy—telling you what feels comfortable rather than what is true.',
+        hook: 'An AI that always agrees with you may feel comforting, but it won\'t necessarily help you examine your assumptions.',
+        relatableScenario: 'You open a conversational tool, explain why you delayed an important personal decision, and it responds with cheerful praise and affirmations. It feels reassuring in the moment, but it doesn\'t help you unpack what actually held you back.',
+        psychologyInsight: 'Conversational systems are typically trained to minimize dialogue friction and optimize for immediate user satisfaction. But authentic self-growth often requires constructive friction—asking difficult questions rather than defaulting to easy agreement.',
         practicalFramework: [
             'Do you want tools that validate your comfort zone, or tools that help you see your blind spots?',
-            'When was the last time advice that genuinely changed your life felt comfortable to hear in the first five seconds?',
-            'What would happen if your tools held up an honest mirror instead of a cheerleader pom-pom?'
+            'When was the last time advice that genuinely helped you make a change felt comfortable in the first five seconds?',
+            'What happens when a tool holds up an honest mirror instead of uncritical praise?'
         ],
-        productAlignment: 'That is why we engineered TwinGenie with Honest Twin Mode: an AI alter-ego that gently challenges rationalizations using your own stated values.',
+        productAlignment: 'That is why we engineered TwinGenie with Honest Twin Mode: an AI companion mode designed to gently challenge rationalizations using your own stated intentions.',
         discussionQuestion: 'Do you prefer an AI that gives you gentle validation or one that offers constructive friction? Where do you draw the line?',
         slides: buildSixSlides({
             tag: 'AI & SELF-GROWTH',
-            slide1Title: 'Sycophancy is not empathy.',
-            slide1Subtitle: 'Why standard chatbots act like flattering yes-men.\nTHE FLATTERY TRAP',
-            slide2Title: 'The Agreeable Bot Loop',
-            slide2Subtitle: 'What happens when you share a real rationalization with standard AI:',
+            slide1Title: 'Agreement is not inquiry.',
+            slide1Subtitle: 'Why an AI that always agrees with you cannot help you grow.\nTHE COMFORT TRAP',
+            slide2Title: 'The Reassurance Loop',
+            slide2Subtitle: 'What happens when dialogue avoids constructive pushback:',
             slide2Bullets: [
-                'You: "I scrolled for 4 hours and got nothing done today."',
-                'Standard Bot: "Be kind to yourself! Rest is productive! You deserve it!"',
-                'Result: Your procrastination is validated, and the loop repeats tomorrow'
+                'You: "I scrolled for 4 hours and delayed that project again."',
+                'Pleasant Chat: "Be kind to yourself! Rest is productive! You deserve it!"',
+                'Result: The immediate discomfort fades, but the underlying avoidance continues'
             ],
-            slide3Title: 'The Architecture of Sycophancy',
-            slide3Subtitle: 'Why mainstream LLMs are incentivized to flatter you:',
-            slide3Content: 'Standard models are tuned on human preference ratings. A response that challenges a user risks getting a lower thumbs-down rating. This creates an engineered bias toward artificial agreeableness.',
+            slide3Title: 'The Comfort Trap in Dialogue',
+            slide3Subtitle: 'Why uncritical validation limits personal insight:',
+            slide3Content: 'Standard chat models optimize for pleasant conversation and conversational ease. But human blind spots cannot be examined through agreement alone. Meaningful self-reflection requires the curiosity and courage to question our own assumptions.',
             slide4Title: 'The Cognitive Mirror Paradigm',
             slide4Subtitle: 'What an honest thinking companion requires:',
             slide4Steps: [
-                { step: 'PILLAR 01', title: 'Constructive Friction', desc: 'The courage to ask: "Is this exhaustion, or are you avoiding the fear of starting?"' },
-                { step: 'PILLAR 02', title: 'Value Alignment', desc: 'Checking current behavior against your own stated goals, not external rules.' },
-                { step: 'PILLAR 03', title: 'Compassionate Truth', desc: 'Direct, honest clarity delivered with deep psychological empathy.' }
+                { step: 'PILLAR 01', title: 'Constructive Friction', desc: 'The curiosity to ask: "Is this genuine rest, or are you avoiding the fear of starting?"' },
+                { step: 'PILLAR 02', title: 'Intention Alignment', desc: 'Checking current choices against your own stated long-term goals.' },
+                { step: 'PILLAR 03', title: 'Compassionate Truth', desc: 'Direct, thoughtful clarity delivered with genuine psychological empathy.' }
             ],
             slide5Title: 'The Cognitive Shift',
             slide5Subtitle: 'From comfort to transformation:',
             slide5Bullets: [
-                'Flattery reinforces your comfort zone; honest friction expands it',
-                'A true digital twin should act like your wisest alter-ego, not an obsequious assistant',
+                'Uncritical agreement reinforces your comfort zone; thoughtful friction expands it',
+                'A true digital twin acts like your wisest alter-ego, not an obsequious assistant',
                 'Self-awareness requires tools designed for insight, not ego protection'
             ],
             slide6Title: 'Discussion',
@@ -1377,11 +1377,11 @@ export const CURATED_FALLBACK_THEMES = [
     {
         id: 'echo_chamber_ai',
         pillarId: 'pillar_2_generic_ai',
-        topic: 'The Sycophancy Engine: How AI Optimizes for Agreeableness Over Truth',
+        topic: 'The Echo Chamber: Why Conversational AI Can Accidentally Validate Unhelpful Habits',
         category: 'AI & SOCIETY',
-        hook: 'When an AI tool agrees with everything you say, it is not being intelligent. It is reinforcing your confirmation bias.',
-        relatableScenario: 'You ask an AI for advice on whether to quit your job, break up with someone, or abandon a project. If you write with bias, the AI enthusiastically agrees with your premise and generates 10 reasons supporting your existing prejudice.',
-        psychologyInsight: 'Research in AI alignment shows that reinforcement learning with human feedback inadvertently trains models to echo user tone and bias. Instead of challenging errors, they act as high-speed echo chambers.',
+        hook: 'When a conversational tool uncritically agrees with your premise, it isn\'t providing depth. It is mirroring your confirmation bias.',
+        relatableScenario: 'You ask a tool for thoughts on whether to abandon a project, send an angry text, or make a sudden leap. If your prompt is emotionally slanted, the tool easily mirrors your premise and lists reasons backing your initial impulse.',
+        psychologyInsight: 'Conversational language models are typically optimized to minimize conversational friction. Unless given structured constraints to explore counter-perspectives, they often reflect the emotional slant of the prompt, mirroring rather than challenging user assumptions.',
         practicalFramework: [
             'When you prompt an AI, are you genuinely seeking truth, or searching for an authoritative voice to rubber-stamp your decision?',
             'What would the strongest counter-argument to your current dilemma sound like?',
@@ -1392,7 +1392,7 @@ export const CURATED_FALLBACK_THEMES = [
         slides: buildSixSlides({
             tag: 'AI & SOCIETY',
             slide1Title: 'Echo chambers on demand.',
-            slide1Subtitle: 'How agreeable AI algorithms amplify our worst rationalizations.\nTHE SYCOPHANCY ENGINE',
+            slide1Subtitle: 'Why uncritical validation in conversational tools can mirror our blind spots.\nTHE COGNITIVE MIRROR',
             slide2Title: 'The Rubber-Stamp Dilemma',
             slide2Subtitle: 'How biased prompts get enthusiastic artificial validation:',
             slide2Bullets: [
@@ -1400,9 +1400,9 @@ export const CURATED_FALLBACK_THEMES = [
                 'Prompt: "Tell me why I should keep this project" -> Generates 10 reasons to stay',
                 'Result: The user gets confirmation of whatever emotional state they were in'
             ],
-            slide3Title: 'The Reinforcement Mechanism',
-            slide3Subtitle: 'Why models mirror user assumptions:',
-            slide3Content: 'Language models minimize conversational friction. Unless specifically instructed with dialectical constraints, they naturally follow the emotional gradient of the prompt, reinforcing the user\'s blind spots.',
+            slide3Title: 'The Mirroring Tendency',
+            slide3Subtitle: 'Why conversational models tend to follow user assumptions:',
+            slide3Content: 'Conversational models naturally follow the tone and framing of the prompt. Without structured reflective guardrails, they amplify whatever bias is fed into them rather than challenging unexamined blind spots.',
             slide4Title: 'The Multi-Perspective Stress Test',
             slide4Subtitle: 'How to stress-test your thinking with multi-lens architecture:',
             slide4Steps: [
@@ -1695,20 +1695,20 @@ export const CURATED_FALLBACK_THEMES = [
         pillarId: 'pillar_3_product_demo',
         topic: 'The 35-Question Cognitive Baseline: Mapping Big Five Traits for Self-Discovery',
         category: 'PRODUCT ARCHITECTURE',
-        hook: 'Most personality quizzes give you a cute horoscope badge. A real psychological baseline shows you your operating system.',
+        hook: 'Most online personality quizzes give you a cute badge. A structured assessment helps you understand how you naturally respond to stress, decisions, and collaboration.',
         relatableScenario: 'Taking an online quiz, getting "The Creative Rebel," feeling validated for five minutes, and then realizing it offers zero actionable insight for dealing with your actual daily triggers.',
-        psychologyInsight: 'The Big Five (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism) is the gold standard of validated empirical psychology. It does not put you in a box; it maps your natural emotional tendencies and stress responses.',
+        psychologyInsight: 'The Big Five framework (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism) is a widely researched personality model. It does not put you in a box; it maps natural tendencies and stress responses along a continuous spectrum.',
         practicalFramework: [
             'Which of the Big Five traits do you feel influences your everyday decision-making the most?',
             'How does your level of Agreeableness affect your ability to set boundaries?',
             'How does your level of Neuroticism shape how you react to ambiguous feedback?'
         ],
-        productAlignment: 'In TwinGenie, onboarding begins with an empirical 35-question Big Five assessment that benchmarks your personality archetype and powers all 4 cognitive modes.',
+        productAlignment: 'In TwinGenie, onboarding features a 35-question personality assessment inspired by the Big Five framework, helping calibrate your 4 reflective companion modes.',
         discussionQuestion: 'What personality insight or self-discovery has helped you understand your own behavior the most?',
         slides: buildSixSlides({
             tag: 'PRODUCT ARCHITECTURE',
             slide1Title: 'Beyond cute quiz badges.',
-            slide1Subtitle: 'How a 35-question Big Five baseline maps your subconscious operating system.\nTHE COGNITIVE BASELINE',
+            slide1Subtitle: 'A 35-question personality assessment inspired by the Big Five framework.\nTHE COGNITIVE BASELINE',
             slide2Title: 'The Horoscope Trap',
             slide2Subtitle: 'Why commercial personality tests fail to create lasting self-awareness:',
             slide2Bullets: [
@@ -1716,11 +1716,11 @@ export const CURATED_FALLBACK_THEMES = [
                 'Zero connection between your test results and the tools you use daily',
                 'Treating human complexity as fixed labels rather than fluid spectrums'
             ],
-            slide3Title: 'The Empirical Five Dimensions',
-            slide3Subtitle: 'The validated science behind Big Five trait mapping:',
-            slide3Content: 'Backed by decades of empirical psychological research, the Big Five measures five continuous dimensions of personality. Knowing your baseline scores allows you to predict where you will naturally thrive and where you will stumble.',
+            slide3Title: 'The Five Dimensions',
+            slide3Subtitle: 'Understanding personality through a continuous spectrum:',
+            slide3Content: 'Developed through decades of academic psychological research, the Big Five measures five broad dimensions of personality. Understanding where you fall across these traits helps you anticipate how you react under pressure and communicate with others.',
             slide4Title: 'The 35-Question Calibration Engine',
-            slide4Subtitle: 'How TwinGenie translates baseline scores into personal reflection:',
+            slide4Subtitle: 'How TwinGenie translates baseline responses into personal reflection:',
             slide4Steps: [
                 { step: 'SCREEN 1-2', title: 'Openness & Conscientiousness', desc: 'Maps curiosity, planning habits, and perfectionism tendencies.' },
                 { step: 'SCREEN 3', title: 'Extraversion & Energy', desc: 'Evaluates social battery recharge methods and communicative instinct.' },
@@ -1861,7 +1861,7 @@ export const CURATED_FALLBACK_THEMES = [
             'What would someone who truly cares about your long-term success tell you right now?',
             'Can you welcome constructive truth as an act of self-care rather than an attack?'
         ],
-        productAlignment: 'TwinGenie\'s Honest Mode is specifically engineered to cut through sycophancy, using your own historical goals to challenge avoidance loops.',
+        productAlignment: 'TwinGenie\'s Honest Mode is designed to provide constructive friction, using your own recorded intentions to gently challenge avoidance patterns.',
         discussionQuestion: 'What is an excuse you frequently make to yourself that you wish someone would call you out on?',
         slides: buildSixSlides({
             tag: 'PRODUCT ARCHITECTURE',
@@ -1880,7 +1880,7 @@ export const CURATED_FALLBACK_THEMES = [
             slide4Title: 'The 3 Tenets of Honest Mode',
             slide4Subtitle: 'How direct clarity is maintained without cruelty:',
             slide4Steps: [
-                { step: 'TENET 01', title: 'Zero Sycophancy', desc: 'Never validates excuses that directly undermine your stated long-term goals.' },
+                { step: 'TENET 01', title: 'Constructive Friction', desc: 'Gently questions excuses that run counter to your own stated long-term goals.' },
                 { step: 'TENET 02', title: 'Uses Your Own Words', desc: 'Compares today\'s justification against your own past commitments.' },
                 { step: 'TENET 03', title: 'Action-Oriented Exit', desc: 'Always bridges the reality check into a concrete, low-stakes next step.' }
             ],

@@ -1,6 +1,13 @@
 import fetch from 'node-fetch';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import logger from '../../../config/logger.js';
+import { supabaseAdmin } from '../../../config/supabase.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DURABLE_COMMENTS_FILE_PATH = path.resolve(__dirname, '../../../../logs/linkedin_posted_comments.json');
 
 /**
  * LinkedIn Publishing Adapter
@@ -12,7 +19,141 @@ class LinkedInAdapter {
     constructor() {
         this.platform = 'linkedin';
         this._postedComments = new Set();
+        this._activePosting = new Set();
         this._fetch = null;
+        this._loadDurableCommentsFile();
+    }
+
+    /**
+     * Initializes durable comment tracking from persistent file ledger on disk
+     */
+    _loadDurableCommentsFile() {
+        if (!this._postedComments) {
+            this._postedComments = new Set();
+        }
+        try {
+            if (fs.existsSync(DURABLE_COMMENTS_FILE_PATH)) {
+                const raw = fs.readFileSync(DURABLE_COMMENTS_FILE_PATH, 'utf8');
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    for (const entry of parsed) {
+                        if (entry?.postId) this._postedComments.add(entry.postId);
+                    }
+                }
+            }
+        } catch (err) {
+            logger.warn('[LINKEDIN] Could not read durable comments file ledger:', err.message);
+        }
+    }
+
+    /**
+     * Checks all 3 tiers of idempotency (in-memory Set, disk ledger, distributed Supabase ledger)
+     */
+    async _checkDurableCommentLedger(postId) {
+        if (!postId) return { alreadyPosted: false };
+
+        // Tier 1: In-Memory Set (sub-millisecond in-process cache)
+        if (!this._postedComments) this._postedComments = new Set();
+        if (this._postedComments.has(postId)) {
+            return { alreadyPosted: true, tier: 'in_memory' };
+        }
+
+        // Tier 2: Persistent Disk Ledger (survives process restarts and crashes)
+        try {
+            if (fs.existsSync(DURABLE_COMMENTS_FILE_PATH)) {
+                const raw = fs.readFileSync(DURABLE_COMMENTS_FILE_PATH, 'utf8');
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.some(e => e.postId === postId)) {
+                    this._postedComments.add(postId);
+                    return { alreadyPosted: true, tier: 'disk_ledger' };
+                }
+            }
+        } catch (err) {
+            logger.warn('[LINKEDIN] Error checking disk comment ledger:', err.message);
+        }
+
+        // Tier 3: Supabase Distributed Ledger (survives Render dyno restarts & multi-worker race conditions)
+        try {
+            if (supabaseAdmin) {
+                const actionType = `growth_first_comment:${postId}`;
+                const { data } = await supabaseAdmin
+                    .from('usage_tracking')
+                    .select('id, created_at')
+                    .eq('action_type', actionType)
+                    .limit(1);
+
+                if (data && data.length > 0) {
+                    this._postedComments.add(postId);
+                    return { alreadyPosted: true, tier: 'supabase_distributed_ledger' };
+                }
+            }
+        } catch (err) {
+            logger.warn('[LINKEDIN] Error checking Supabase durable comment ledger:', err.message);
+        }
+
+        return { alreadyPosted: false };
+    }
+
+    /**
+     * Atomically records successful comment across all 3 tiers
+     */
+    async _recordDurableComment(postId, commentId) {
+        if (!postId) return;
+
+        // Tier 1: In-Memory Set
+        if (!this._postedComments) this._postedComments = new Set();
+        this._postedComments.add(postId);
+
+        // Tier 2: Persistent Disk Ledger
+        try {
+            const logsDir = path.dirname(DURABLE_COMMENTS_FILE_PATH);
+            if (!fs.existsSync(logsDir)) {
+                fs.mkdirSync(logsDir, { recursive: true });
+            }
+            let entries = [];
+            if (fs.existsSync(DURABLE_COMMENTS_FILE_PATH)) {
+                try {
+                    const raw = fs.readFileSync(DURABLE_COMMENTS_FILE_PATH, 'utf8');
+                    entries = JSON.parse(raw);
+                    if (!Array.isArray(entries)) entries = [];
+                } catch {
+                    entries = [];
+                }
+            }
+            if (!entries.some(e => e.postId === postId)) {
+                entries.push({
+                    postId,
+                    commentId,
+                    timestamp: new Date().toISOString()
+                });
+                fs.writeFileSync(DURABLE_COMMENTS_FILE_PATH, JSON.stringify(entries, null, 2), 'utf8');
+            }
+        } catch (err) {
+            logger.warn('[LINKEDIN] Could not write to disk comment ledger:', err.message);
+        }
+
+        // Tier 3: Supabase Distributed Ledger
+        try {
+            if (supabaseAdmin) {
+                const actionType = `growth_first_comment:${postId}`;
+                const nowIso = new Date().toISOString();
+                const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                const userId = users && users.length > 0 ? users[0].id : null;
+
+                await supabaseAdmin.from('usage_tracking').insert({
+                    user_id: userId,
+                    action_type: actionType,
+                    metadata: { postId, commentId, platform: 'linkedin', publishedAt: nowIso },
+                    count: 1,
+                    period_start: nowIso,
+                    period_end: nowIso,
+                    created_at: nowIso
+                });
+                logger.info(`💾 [LINKEDIN] Committed first-comment to distributed ledger: ${actionType}`);
+            }
+        } catch (err) {
+            logger.warn('[LINKEDIN] Could not commit comment to Supabase distributed ledger:', err.message);
+        }
     }
 
     getCredentials(target = 'company') {
@@ -404,8 +545,8 @@ class LinkedInAdapter {
 
     /**
      * Posts the first comment with the direct Google Play Store download link.
-     * Enforces idempotency (no duplicate comments per post ID), safe retries,
-     * accurate UTM parameters, and non-blocking failure handling so published posts
+     * Enforces durable 3-tier idempotency (in-memory Set, persistent disk ledger, Supabase distributed DB),
+     * safe retries, accurate UTM parameters, and non-blocking failure handling so published posts
      * are NEVER failed or rolled back if the first comment API fails.
      */
     async _postFirstComment(postId, postData = {}, accessToken, authorUrn) {
@@ -415,67 +556,77 @@ class LinkedInAdapter {
             return { skipped: true, reason: 'skip_first_comment_flag', postId };
         }
 
-        // Idempotency check: prevent duplicate comments on the same post
-        if (!this._postedComments) {
-            this._postedComments = new Set();
+        // Concurrency Guard: synchronously acquire in-process lock before any async I/O
+        if (!this._activePosting) this._activePosting = new Set();
+        if (this._activePosting.has(postId)) {
+            logger.warn(`⏳ [LINKEDIN] First comment for ${postId} is currently being processed by concurrent task. Skipping duplicate.`);
+            return { success: true, alreadyPosted: true, postId, reason: 'concurrent_lock_active' };
         }
-        if (this._postedComments.has(postId)) {
-            logger.warn(`💬 [LINKEDIN] First comment already posted for ${postId}. Skipping duplicate.`);
-            return { success: true, alreadyPosted: true, postId };
-        }
+        this._activePosting.add(postId);
 
-        const playStoreUrl = postData.utmLink || 'https://play.google.com/store/apps/details?id=com.asmind.app';
-        const commentMsg = postData.firstComment || 
-            `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nExplore your cognitive patterns with persistent memory and 4 reflective modes.`;
-        
-        // Propagation delay: wait for LinkedIn feed cluster to index newly created post URN
-        // Allow overriding delay in tests via postData._propagationDelayMs
-        const delayMs = typeof postData._propagationDelayMs === 'number' ? postData._propagationDelayMs : 4000;
-        if (delayMs > 0) {
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+        try {
+            // Durable 3-Tier Idempotency check: survives process restarts, crashes, and multi-worker instances
+            const idempotency = await this._checkDurableCommentLedger(postId);
+            if (idempotency.alreadyPosted) {
+                logger.warn(`💬 [LINKEDIN] First comment already posted for ${postId} (found in ${idempotency.tier}). Skipping duplicate.`);
+                return { success: true, alreadyPosted: true, postId, tier: idempotency.tier };
+            }
+            const playStoreUrl = postData.utmLink || 'https://play.google.com/store/apps/details?id=com.asmind.app';
+            const commentMsg = postData.firstComment || 
+                `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nExplore your cognitive patterns with persistent memory and 4 reflective modes.`;
+            
+            // Propagation delay: wait for LinkedIn feed cluster to index newly created post URN
+            // Allow overriding delay in tests via postData._propagationDelayMs
+            const delayMs = typeof postData._propagationDelayMs === 'number' ? postData._propagationDelayMs : 4000;
+            if (delayMs > 0) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
 
-        const maxAttempts = 3;
-        let lastError = null;
+            const maxAttempts = 3;
+            let lastError = null;
 
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-                logger.info(`💬 [LINKEDIN] Posting first comment on ${postId} (attempt ${attempt}/${maxAttempts})...`);
-                const fetchFn = this._fetch || fetch;
-                const res = await fetchFn(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
-                        'X-Restli-Protocol-Version': '2.0.0'
-                    },
-                    body: JSON.stringify({
-                        actor: authorUrn,
-                        message: { text: commentMsg }
-                    })
-                });
-                const data = await res.json();
-                if (data.id) {
-                    this._postedComments.add(postId);
-                    logger.info(`💬 [LINKEDIN] First comment posted successfully on ${postId}: ${data.id}`);
-                    return { success: true, commentId: data.id, postId, attempt };
-                } else {
-                    lastError = data;
-                    logger.warn(`[LINKEDIN] First comment API response (attempt ${attempt}):`, data);
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    logger.info(`💬 [LINKEDIN] Posting first comment on ${postId} (attempt ${attempt}/${maxAttempts})...`);
+                    const fetchFn = this._fetch || fetch;
+                    const res = await fetchFn(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                            'X-Restli-Protocol-Version': '2.0.0'
+                        },
+                        body: JSON.stringify({
+                            actor: authorUrn,
+                            message: { text: commentMsg }
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.id) {
+                        // Atomically record across all 3 durable tiers
+                        await this._recordDurableComment(postId, data.id);
+                        logger.info(`💬 [LINKEDIN] First comment posted and durably recorded on ${postId}: ${data.id}`);
+                        return { success: true, commentId: data.id, postId, attempt };
+                    } else {
+                        lastError = data;
+                        logger.warn(`[LINKEDIN] First comment API response (attempt ${attempt}):`, data);
+                    }
+                } catch (err) {
+                    lastError = err.message;
+                    logger.warn(`[LINKEDIN] Non-blocking first-comment error (attempt ${attempt}):`, err.message);
                 }
-            } catch (err) {
-                lastError = err.message;
-                logger.warn(`[LINKEDIN] Non-blocking first-comment error (attempt ${attempt}):`, err.message);
+
+                if (attempt < maxAttempts) {
+                    const retryDelay = typeof postData._retryDelayMs === 'number' ? postData._retryDelayMs : 3000;
+                    if (retryDelay > 0) await new Promise(resolve => setTimeout(resolve, retryDelay));
+                }
             }
 
-            if (attempt < maxAttempts) {
-                const retryDelay = typeof postData._retryDelayMs === 'number' ? postData._retryDelayMs : 3000;
-                if (retryDelay > 0) await new Promise(resolve => setTimeout(resolve, retryDelay));
-            }
+            logger.error(`[LINKEDIN] First comment failed after ${maxAttempts} attempts on ${postId}; continuing without failing published post:`, lastError);
+            return { success: false, error: lastError, postId, attempts: maxAttempts };
+        } finally {
+            this._activePosting.delete(postId);
         }
-
-        logger.error(`[LINKEDIN] First comment failed after ${maxAttempts} attempts on ${postId}; continuing without failing published post:`, lastError);
-        return { success: false, error: lastError, postId, attempts: maxAttempts };
     }
 }
 

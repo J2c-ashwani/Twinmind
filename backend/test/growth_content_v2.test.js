@@ -1,4 +1,4 @@
-import { describe, it, before, after, beforeEach } from 'node:test';
+import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
@@ -237,7 +237,7 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
                 };
             };
 
-            const testPostId = 'urn:li:ugcPost:12345';
+            const testPostId = `urn:li:ugcPost:utm_test_${Date.now()}`;
             const expectedUtm = 'https://play.google.com/store/apps/details?id=com.asmind.app&referrer=utm_source%3Dlinkedin%26utm_medium%3Dfirst_comment%26utm_campaign%3Dpillar_2_generic_ai';
             const testComment = `📲 Download TwinGenie free on Google Play:\n${expectedUtm}\n\nTake the 35-question cognitive baseline!`;
 
@@ -264,7 +264,7 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
                 };
             };
 
-            const testPostId = 'urn:li:ugcPost:55555';
+            const testPostId = `urn:li:ugcPost:idemp_${Date.now()}`;
 
             // First call -> posts successfully
             const res1 = await linkedinAdapter._postFirstComment(testPostId, { _propagationDelayMs: 0 }, 'tok', 'urn:li:person:author');
@@ -297,6 +297,59 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
             assert.strictEqual(attemptCount, 3, 'Must attempt exactly 3 retries');
             assert.ok(result.error.includes('ETIMEDOUT'));
             assert.strictEqual(result.postId, testPostId);
+        });
+
+        it('should enforce durable idempotency across process restarts via persistent disk ledger', async () => {
+            let apiCalls = 0;
+            linkedinAdapter._fetch = async () => {
+                apiCalls++;
+                return {
+                    ok: true,
+                    json: async () => ({ id: 'urn:li:comment:restart_success' })
+                };
+            };
+
+            const testPostId = `urn:li:ugcPost:restart_${Date.now()}`;
+
+            // Initial post: succeeds and writes to persistent disk ledger
+            const res1 = await linkedinAdapter._postFirstComment(testPostId, { _propagationDelayMs: 0 }, 'tok', 'urn:li:person:author');
+            assert.strictEqual(res1.success, true);
+            assert.strictEqual(apiCalls, 1);
+
+            // SIMULATE PROCESS RESTART: completely wipe in-memory Set
+            linkedinAdapter._postedComments = new Set();
+            assert.strictEqual(linkedinAdapter._postedComments.size, 0, 'In-memory Set must be completely cleared');
+
+            // Retry post: must be intercepted by persistent disk ledger (Tier 2)!
+            const res2 = await linkedinAdapter._postFirstComment(testPostId, { _propagationDelayMs: 0 }, 'tok', 'urn:li:person:author');
+            assert.strictEqual(res2.success, true);
+            assert.strictEqual(res2.alreadyPosted, true);
+            assert.strictEqual(res2.tier, 'disk_ledger', 'Must be detected by disk ledger after process restart');
+            assert.strictEqual(apiCalls, 1, 'API must NOT be called again after process restart');
+        });
+
+        it('should prevent concurrent race conditions from parallel publishing tasks', async () => {
+            let apiCalls = 0;
+            linkedinAdapter._fetch = async () => {
+                apiCalls++;
+                await new Promise(r => setTimeout(r, 20)); // Simulate in-flight HTTP request
+                return {
+                    ok: true,
+                    json: async () => ({ id: 'urn:li:comment:concurrent_success' })
+                };
+            };
+
+            const testPostId = `urn:li:ugcPost:concurrent_${Date.now()}`;
+
+            // Fire 2 concurrent posting promises simultaneously
+            const [p1, p2] = await Promise.all([
+                linkedinAdapter._postFirstComment(testPostId, { _propagationDelayMs: 0 }, 'tok', 'urn:li:person:author'),
+                linkedinAdapter._postFirstComment(testPostId, { _propagationDelayMs: 0 }, 'tok', 'urn:li:person:author')
+            ]);
+
+            assert.strictEqual(apiCalls, 1, 'Only exactly 1 API call must be dispatched across concurrent workers');
+            assert.ok(p1.success && p2.success, 'Both calls must resolve cleanly');
+            assert.ok(p1.alreadyPosted || p2.alreadyPosted, 'One of the concurrent workers must be blocked by concurrency guard');
         });
     });
 
@@ -410,6 +463,72 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
             const geminiCode = fs.readFileSync(geminiPath, 'utf8');
             assert.ok(geminiCode.includes('pgvector'));
             assert.ok(geminiCode.includes('1536'));
+        });
+    });
+
+    // =========================================================================
+    // 8. THREE LINKEDIN PUBLISHING PATHS (Pre-Production Checklist Item 3)
+    // =========================================================================
+    describe('8. Three LinkedIn Publishing Paths Integration Verification', () => {
+        let savedFetch;
+        beforeEach(() => {
+            savedFetch = linkedinAdapter._fetch;
+        });
+        afterEach(() => {
+            linkedinAdapter._fetch = savedFetch;
+        });
+
+        it('Path 1: Caption Link (Arm A) should skip first comment cleanly', async () => {
+            let commentApiCalled = false;
+            linkedinAdapter._fetch = async () => {
+                commentApiCalled = true;
+                return { ok: true, json: async () => ({ id: 'c1' }) };
+            };
+
+            const result = await linkedinAdapter._postFirstComment('urn:li:ugcPost:path1_test', {
+                skipFirstComment: true,
+                _propagationDelayMs: 0
+            }, 'tok', 'urn:li:person:auth');
+
+            assert.strictEqual(result.skipped, true);
+            assert.strictEqual(result.reason, 'skip_first_comment_flag');
+            assert.strictEqual(commentApiCalled, false, 'API must not be called when skipFirstComment is true');
+        });
+
+        it('Path 2: First-Comment Link (Arm B) should post comment with verified UTM params', async () => {
+            let capturedBody;
+            linkedinAdapter._fetch = async (url, opts) => {
+                capturedBody = JSON.parse(opts.body);
+                return { ok: true, json: async () => ({ id: 'urn:li:comment:path2_comment' }) };
+            };
+
+            const utm = 'https://play.google.com/store/apps/details?id=com.asmind.app&referrer=utm_source%3Dlinkedin%26utm_medium%3Dfirst_comment%26utm_campaign%3Dpillar_1_psychology';
+            const result = await linkedinAdapter._postFirstComment(`urn:li:ugcPost:path2_${Date.now()}`, {
+                skipFirstComment: false,
+                utmLink: utm,
+                _propagationDelayMs: 0
+            }, 'tok', 'urn:li:person:auth');
+
+            assert.strictEqual(result.success, true);
+            assert.strictEqual(result.commentId, 'urn:li:comment:path2_comment');
+            assert.ok(capturedBody.message.text.includes(utm), 'Comment text must contain verified UTM URL');
+        });
+
+        it('Path 3: Failed First-Comment Fallback should protect published parent post', async () => {
+            linkedinAdapter._fetch = async () => {
+                throw new Error('ECONNRESET: LinkedIn socialActions API timed out');
+            };
+
+            const result = await linkedinAdapter._postFirstComment(`urn:li:ugcPost:path3_${Date.now()}`, {
+                skipFirstComment: false,
+                _propagationDelayMs: 0,
+                _retryDelayMs: 2
+            }, 'tok', 'urn:li:person:auth');
+
+            // Must NOT throw; must return graceful failure object
+            assert.strictEqual(result.success, false);
+            assert.ok(result.error.includes('ECONNRESET'));
+            assert.strictEqual(result.attempts, 3);
         });
     });
 });
