@@ -11,6 +11,7 @@ import contentGeneratorService, {
 import linkedinAdapter from '../src/services/growth/adapters/linkedinAdapter.js';
 import growthOrchestratorService from '../src/services/growth/growthOrchestratorService.js';
 import mediaRendererService from '../src/services/growth/mediaRendererService.js';
+import approvedContentPackageService from '../src/services/growth/approvedContentPackageService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -450,6 +451,7 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
                 return { ok: true, json: async () => ({ elements: [] }) };
             };
 
+            let currentOwnerId = 'stale_owner_123';
             let deletedStaleLock = false;
             let relockedFresh = false;
             const originalSupabase = linkedinAdapter._supabaseAdmin;
@@ -461,13 +463,13 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
                         eq: () => ({
                             limit: async () => ({ data: [] }),
                             maybeSingle: async () => ({
-                                data: { created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString() },
+                                data: { id: currentOwnerId, created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString() },
                                 error: null
                             })
                         }),
                         limit: async () => ({ data: [{ id: 'mock_sys_user_id' }] })
                     }),
-                    insert: async () => {
+                    insert: async (payload) => {
                         if (!deletedStaleLock) {
                             return {
                                 data: null,
@@ -475,14 +477,19 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
                             };
                         }
                         relockedFresh = true;
+                        if (payload?.id) currentOwnerId = payload.id;
                         return { data: null, error: null };
                     },
-                    delete: () => ({
-                        eq: async () => {
-                            deletedStaleLock = true;
-                            return { data: null, error: null };
-                        }
-                    })
+                    delete: () => {
+                        const chain = {
+                            eq: () => chain,
+                            then: (resolve) => {
+                                deletedStaleLock = true;
+                                resolve({ data: null, error: null });
+                            }
+                        };
+                        return chain;
+                    }
                 })
             };
 
@@ -568,6 +575,36 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
             assert.strictEqual(assignment.includeCaptionLink, true);
             assert.strictEqual(assignment.skipFirstComment, false);
             assert.strictEqual(assignment.sampleStatus, 'legacy_production');
+        });
+
+        it('should enforce immutable approved package for Nov 7 with zero regeneration and verified hook', () => {
+            const pkgResult = approvedContentPackageService.getApprovedPackage('linkedin', '2026-11-07');
+            assert.strictEqual(pkgResult.valid, true, 'Approved package for 2026-11-07 must be valid');
+            assert.strictEqual(pkgResult.package.packageId, 'pkg_linkedin_20261107_v2');
+            assert.strictEqual(pkgResult.package.themeId, 'stateless_amnesia');
+            assert.strictEqual(pkgResult.package.pillarId, 'pillar_2_generic_ai');
+            assert.strictEqual(pkgResult.package.arm, 'arm_a_caption');
+
+            // Verify corrected hook without unsupported 90% statistic
+            assert.ok(!pkgResult.package.caption.includes('90% of people'), 'Must NOT contain unsupported 90% statistic');
+            assert.ok(pkgResult.package.caption.includes('Why do some people stop using AI companions? Because every conversation can feel like Day One all over again.'), 'Must contain exact CEO-approved hook');
+
+            // Verify assets exist on disk
+            assert.ok(fs.existsSync(pkgResult.package.pdfPath), 'Rendered carousel PDF must exist');
+            assert.strictEqual(pkgResult.package.pngPaths.length, 6, 'Must contain exactly 6 slide assets');
+        });
+
+        it('should halt publishing and raise alert when approved package is missing or corrupted', () => {
+            // Missing package test
+            const missing = approvedContentPackageService.getApprovedPackage('linkedin', '2099-01-01');
+            assert.strictEqual(missing.valid, false);
+            assert.ok(missing.reason.includes('package_file_not_found'));
+
+            // Tampering test: compute hash with modified caption
+            const tampered = { ...approvedContentPackageService.getApprovedPackage('linkedin', '2026-11-07').package };
+            tampered.caption = 'Tampered caption that does not match stored hash';
+            const expectedHash = approvedContentPackageService.computePackageHash(tampered);
+            assert.notStrictEqual(tampered.integrityHash, expectedHash, 'Tampered content must cause hash mismatch');
         });
     });
 

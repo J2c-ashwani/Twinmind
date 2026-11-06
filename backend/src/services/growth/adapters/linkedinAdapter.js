@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
 import logger from '../../../config/logger.js';
 import { supabaseAdmin } from '../../../config/supabase.js';
 
@@ -566,13 +567,13 @@ class LinkedInAdapter {
 
     /**
      * Lock Lifecycle Management for Supabase Distributed Mutex
-     * Handles existing locks:
+     * Handles existing locks with unique lock ownership & fencing tokens:
      * - SUCCESSFUL: Comment already confirmed in ledger or on LinkedIn -> skip duplicate.
      * - PENDING_ACTIVE: Lock was acquired recently (< 5m TTL) by an active worker -> skip duplicate.
      * - EXPIRED_RECOVERABLE: A worker crashed mid-operation without publishing (> 5m TTL).
-     *   Stale lock is safely evicted, and new worker acquires lease and proceeds!
+     *   Stale lock is safely evicted, and new worker acquires lease with its own unique owner token and proceeds!
      */
-    async _handleExistingCommentLock(postId, dbLockKey, sbClient, authorUrn, accessToken, lockTtlMs = 5 * 60 * 1000) {
+    async _handleExistingCommentLock(postId, dbLockKey, sbClient, authorUrn, accessToken, lockTtlMs = 5 * 60 * 1000, newOwnerToken = null) {
         try {
             // 1. Check if comment actually succeeded in durable ledger
             const idempotency = await this._checkDurableCommentLedger(postId);
@@ -589,10 +590,10 @@ class LinkedInAdapter {
                 return { status: 'SUCCESSFUL', alreadyPosted: true, tier: 'linkedin_reconciled' };
             }
 
-            // 3. Inspect lock row created_at timestamp to determine lease validity
+            // 3. Inspect lock row created_at timestamp and id to determine lease validity
             const { data: lockRow, error: selectErr } = await sbClient
                 .from('referral_codes')
-                .select('created_at')
+                .select('id, created_at')
                 .eq('code', dbLockKey)
                 .maybeSingle();
 
@@ -600,25 +601,28 @@ class LinkedInAdapter {
                 const lockAgeMs = Date.now() - new Date(lockRow.created_at).getTime();
                 if (lockAgeMs < lockTtlMs) {
                     // Another worker is actively publishing right now
-                    logger.warn(`⏳ [LINKEDIN] Lock ${dbLockKey} is actively held (age: ${Math.round(lockAgeMs/1000)}s < ${Math.round(lockTtlMs/1000)}s). Skipping duplicate.`);
-                    return { status: 'PENDING_ACTIVE', alreadyPosted: true, tier: 'supabase_active_lease' };
+                    logger.warn(`⏳ [LINKEDIN] Lock ${dbLockKey} is actively held (age: ${Math.round(lockAgeMs/1000)}s < ${Math.round(lockTtlMs/1000)}s, owner: ${lockRow.id}). Skipping duplicate.`);
+                    return { status: 'PENDING_ACTIVE', alreadyPosted: true, tier: 'supabase_active_lease', ownerToken: lockRow.id };
                 }
 
                 // Lock is stale: Worker crashed mid-operation without publishing!
-                logger.warn(`⚠️ [LINKEDIN] Lock ${dbLockKey} is EXPIRED (age: ${Math.round(lockAgeMs/1000)}s >= ${Math.round(lockTtlMs/1000)}s) and comment not found. Recovering lock from crashed worker...`);
+                logger.warn(`⚠️ [LINKEDIN] Lock ${dbLockKey} is EXPIRED (age: ${Math.round(lockAgeMs/1000)}s >= ${Math.round(lockTtlMs/1000)}s, stale owner: ${lockRow.id}) and comment not found. Recovering lock from crashed worker...`);
                 
-                // Evict the stale lock
-                await sbClient.from('referral_codes').delete().eq('code', dbLockKey);
+                // Evict the stale lock specifically matching its stale owner token
+                await sbClient.from('referral_codes').delete().eq('code', dbLockKey).eq('id', lockRow.id);
 
-                // Re-acquire fresh lock
+                // Re-acquire fresh lock with our own newOwnerToken
+                const recoveryToken = newOwnerToken || randomUUID();
                 const sysUserId = await this._getSystemUserId(sbClient);
                 const { error: relockErr } = await sbClient
                     .from('referral_codes')
-                    .insert({ user_id: sysUserId, code: dbLockKey });
+                    .insert({ id: recoveryToken, user_id: sysUserId, code: dbLockKey });
 
                 if (!relockErr) {
-                    logger.info(`🔑 [LINKEDIN] Successfully recovered lock ${dbLockKey} from crashed worker! Proceeding to publish.`);
-                    return { status: 'RECOVERED', acquired: true };
+                    logger.info(`🔑 [LINKEDIN] Successfully recovered lock ${dbLockKey} from crashed worker (new owner: ${recoveryToken})! Proceeding to publish.`);
+                    return { status: 'RECOVERED', acquired: true, ownerToken: recoveryToken };
+                } else {
+                    logger.warn(`[LINKEDIN] Relock insert failed: ${relockErr.code} - ${relockErr.message}`);
                 }
             }
         } catch (e) {
@@ -682,6 +686,7 @@ class LinkedInAdapter {
         this._activePosting.add(postId);
 
         let acquiredDbLock = false;
+        let ownerToken = randomUUID();
         const dbLockKey = `LOCK-COMM-${postId}`;
 
         try {
@@ -692,7 +697,7 @@ class LinkedInAdapter {
                 return { success: true, alreadyPosted: true, postId, tier: idempotency.tier };
             }
 
-            // Tier 4: Atomic Distributed Database Mutex across concurrent workers with Lock Lifecycle Management
+            // Tier 4: Atomic Distributed Database Mutex with Unique Owner Token & Fencing
             // Uses PostgreSQL UNIQUE constraint on referral_codes.code (SQLSTATE 23505)
             // Lifecycle states handled: PENDING_ACTIVE, SUCCESSFUL, FAILED, EXPIRED_RECOVERABLE
             const sbClient = this._supabaseAdmin || supabaseAdmin;
@@ -702,6 +707,7 @@ class LinkedInAdapter {
                     const { error: lockErr } = await sbClient
                         .from('referral_codes')
                         .insert({
+                            id: ownerToken,
                             user_id: sysUserId,
                             code: dbLockKey
                         });
@@ -709,9 +715,10 @@ class LinkedInAdapter {
                     if (lockErr) {
                         if (lockErr.code === '23505') {
                             const lockTtlMs = typeof postData._lockTtlMs === 'number' ? postData._lockTtlMs : 5 * 60 * 1000;
-                            const lifecycle = await this._handleExistingCommentLock(postId, dbLockKey, sbClient, authorUrn, accessToken, lockTtlMs);
+                            const lifecycle = await this._handleExistingCommentLock(postId, dbLockKey, sbClient, authorUrn, accessToken, lockTtlMs, ownerToken);
                             if (lifecycle.acquired) {
                                 acquiredDbLock = true;
+                                if (lifecycle.ownerToken) ownerToken = lifecycle.ownerToken;
                             } else {
                                 return { success: true, alreadyPosted: true, postId, tier: lifecycle.tier || 'supabase_atomic_23505', lockStatus: lifecycle.status };
                             }
@@ -741,6 +748,20 @@ class LinkedInAdapter {
             let lastError = null;
 
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                // Fencing Check: verify our lease token is still current and has not been evicted/stolen by a newer worker
+                if (acquiredDbLock && sbClient && postData._skipDbLock !== true) {
+                    const { data: currentLock } = await sbClient
+                        .from('referral_codes')
+                        .select('id')
+                        .eq('code', dbLockKey)
+                        .maybeSingle();
+
+                    if (!currentLock || currentLock.id !== ownerToken) {
+                        logger.error(`🚫 [LINKEDIN] Fencing violation! Lock ${dbLockKey} is no longer owned by ${ownerToken} (current owner: ${currentLock?.id}). A newer worker claimed the lease. Aborting comment dispatch.`);
+                        return { success: false, reason: 'fencing_token_lost', postId, ownerToken };
+                    }
+                }
+
                 try {
                     logger.info(`💬 [LINKEDIN] Posting first comment on ${postId} (attempt ${attempt}/${maxAttempts})...`);
                     const fetchFn = this._fetch || fetch;
@@ -791,12 +812,17 @@ class LinkedInAdapter {
             return { success: false, error: lastError, postId, attempts: maxAttempts };
         } finally {
             this._activePosting.delete(postId);
-            // If failed after all retries and comment was not posted, release temporary atomic lock so safe retries are permitted
+            // Strict fencing cleanup: ONLY delete if the lock still belongs to OUR ownerToken!
+            // A delayed worker whose lease was recovered CANNOT delete a replacement worker's lock!
             const sbClient = this._supabaseAdmin || supabaseAdmin;
             if (acquiredDbLock && !this._postedComments.has(postId) && sbClient && postData._skipDbLock !== true) {
                 try {
-                    await sbClient.from('referral_codes').delete().eq('code', dbLockKey);
-                    logger.info(`🔓 [LINKEDIN] Released atomic comment lock ${dbLockKey} on failed/aborted attempt.`);
+                    await sbClient
+                        .from('referral_codes')
+                        .delete()
+                        .eq('code', dbLockKey)
+                        .eq('id', ownerToken);
+                    logger.info(`🔓 [LINKEDIN] Released atomic comment lock ${dbLockKey} (owner: ${ownerToken}).`);
                 } catch (e) {
                     logger.warn(`[LINKEDIN] Lock release warning: ${e.message}`);
                 }

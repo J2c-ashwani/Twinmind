@@ -1223,7 +1223,7 @@ export const CURATED_FALLBACK_THEMES = [
         pillarId: 'pillar_2_generic_ai',
         topic: 'The Reset-Button Problem: Why Stateless Chatbots Fail Long-Term Growth',
         category: 'AI ARCHITECTURE',
-        hook: 'Why do 90% of people abandon AI companions after two weeks? Because every chat is Day One all over again.',
+        hook: 'Why do some people stop using AI companions? Because every conversation can feel like Day One all over again.',
         relatableScenario: 'You poured your heart out on Monday, worked through an emotional dilemma, and found clarity. On Thursday you open the app, and it greets you with: "Hello! How can I help you today?" It forgot everything.',
         psychologyInsight: 'Human self-awareness is longitudinal. Real growth happens when someone notices patterns across weeks: "You felt this same hesitation three weeks ago before that other decision." A stateless chatbot cannot do that.',
         practicalFramework: [

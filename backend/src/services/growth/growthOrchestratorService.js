@@ -10,6 +10,7 @@ import facebookAdapter from './adapters/facebookAdapter.js';
 import youtubeAdapter from './adapters/youtubeAdapter.js';
 import threadsAdapter from './adapters/threadsAdapter.js';
 import publicationSlotService, { SlotStatus } from './publicationSlotService.js';
+import approvedContentPackageService from './approvedContentPackageService.js';
 import { supabaseAdmin } from '../../config/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -658,49 +659,90 @@ class GrowthOrchestratorService {
         await this.acquireDurableLock('linkedin', todayIST);
 
         try {
-            // Determine calendar day number and schedule
-            const schedule = contentGeneratorService.getDailySchedule(now);
-            const dayNumber = schedule.dayNumber;
+            let dailyPackage;
+            let rendered;
+            let armInfo;
 
-            // 50/30/20 Pillar rotation cycle
-            const pillarCycle = [
-                'pillar_1_psychology', 'pillar_1_psychology', 'pillar_2_generic_ai',
-                'pillar_1_psychology', 'pillar_3_product_demo', 'pillar_1_psychology',
-                'pillar_2_generic_ai', 'pillar_3_product_demo', 'pillar_1_psychology',
-                'pillar_2_generic_ai'
-            ];
-            const assignedPillar = pillarCycle[dayNumber % 10];
+            // Strict Immutable Approved Content Package Enforcement for Experiment V2:
+            // The 4 PM cron must publish the pre-approved package. It must NOT regenerate content without approval.
+            // Missing or invalid packages trigger an alert and STOP publishing.
+            if (process.env.LINKEDIN_CONTENT_EXPERIMENT_V2 === 'true') {
+                const pkgResult = approvedContentPackageService.getApprovedPackage('linkedin', todayIST);
+                if (!pkgResult.valid) {
+                    const alertMsg = `🚨 [GROWTH ORCHESTRATOR] HALT: No valid approved content package found for ${todayIST} (${pkgResult.reason})! Experiment v2 strictly forbids publishing unapproved or auto-regenerated content.`;
+                    logger.error(alertMsg);
+                    return { action: 'halted', reason: 'missing_approved_package', error: pkgResult.reason, date: todayIST };
+                }
 
-            // Pair-matched A/B experiment assignment
-            const armInfo = this.getExperimentAssignment({
-                pillarId: assignedPillar,
-                format: 'carousel_pdf',
-                dayNumber,
-                themeId: specificThemeId || schedule.theme?.id || 'daily'
-            });
+                const approvedPkg = pkgResult.package;
+                logger.info(`🛡️ [GROWTH ORCHESTRATOR] Publishing IMMUTABLE APPROVED PACKAGE: ${approvedPkg.packageId} (Pillar: ${approvedPkg.pillarId}, Arm: ${approvedPkg.arm}). Zero regeneration.`);
 
-            logger.info(`🔬 [GROWTH ORCHESTRATOR] LinkedIn A/B Assignment: Arm "${armInfo.arm}" in bucket "${armInfo.bucketKey}" (Caption link: ${armInfo.includeCaptionLink}, Skip comment: ${armInfo.skipFirstComment})`);
+                dailyPackage = {
+                    themeId: approvedPkg.themeId,
+                    topic: approvedPkg.topic || approvedPkg.themeId,
+                    category: approvedPkg.category || 'AI & SELF-AWARENESS',
+                    linkedin: {
+                        title: approvedPkg.title || approvedPkg.themeId,
+                        caption: approvedPkg.caption,
+                        slides: approvedPkg.slides
+                    }
+                };
+                armInfo = {
+                    arm: approvedPkg.arm,
+                    includeCaptionLink: approvedPkg.includeCaptionLink,
+                    skipFirstComment: approvedPkg.skipFirstComment,
+                    utmLink: approvedPkg.utmLink,
+                    firstComment: approvedPkg.firstComment
+                };
+                rendered = {
+                    pdfPath: approvedPkg.pdfPath,
+                    pngPaths: approvedPkg.pngPaths
+                };
+            } else {
+                // Determine calendar day number and schedule
+                const schedule = contentGeneratorService.getDailySchedule(now);
+                const dayNumber = schedule.dayNumber;
 
-            // 4. Fetch or dynamically generate today's content with experiment options
-            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now, {
-                includeCaptionLink: armInfo.includeCaptionLink,
-                experimentArm: armInfo.arm,
-                pillarId: assignedPillar,
-                utmLink: armInfo.utmLink,
-                specificThemeId
-            });
-            const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
-            const postId = `post_linkedin_personal_${Date.now()}`;
+                // 50/30/20 Pillar rotation cycle
+                const pillarCycle = [
+                    'pillar_1_psychology', 'pillar_1_psychology', 'pillar_2_generic_ai',
+                    'pillar_1_psychology', 'pillar_3_product_demo', 'pillar_1_psychology',
+                    'pillar_2_generic_ai', 'pillar_3_product_demo', 'pillar_1_psychology',
+                    'pillar_2_generic_ai'
+                ];
+                const assignedPillar = pillarCycle[dayNumber % 10];
 
-            logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
+                // Pair-matched A/B experiment assignment
+                armInfo = this.getExperimentAssignment({
+                    pillarId: assignedPillar,
+                    format: 'carousel_pdf',
+                    dayNumber,
+                    themeId: specificThemeId || schedule.theme?.id || 'daily'
+                });
 
-            // 5. Render 1080x1350 Multi-Page PDF Carousel
-            logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${dailyPackage.topic}"...`);
-            const rendered = await mediaRendererService.renderCarousel({
-                campaignId,
-                postId,
-                slides: dailyPackage.linkedin.slides
-            });
+                logger.info(`🔬 [GROWTH ORCHESTRATOR] LinkedIn A/B Assignment: Arm "${armInfo.arm}" in bucket "${armInfo.bucketKey}" (Caption link: ${armInfo.includeCaptionLink}, Skip comment: ${armInfo.skipFirstComment})`);
+
+                // 4. Fetch or dynamically generate today's content with experiment options
+                dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now, {
+                    includeCaptionLink: armInfo.includeCaptionLink,
+                    experimentArm: armInfo.arm,
+                    pillarId: assignedPillar,
+                    utmLink: armInfo.utmLink,
+                    specificThemeId
+                });
+                const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+                const postId = `post_linkedin_personal_${Date.now()}`;
+
+                logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
+
+                // 5. Render 1080x1350 Multi-Page PDF Carousel
+                logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${dailyPackage.topic}"...`);
+                rendered = await mediaRendererService.renderCarousel({
+                    campaignId,
+                    postId,
+                    slides: dailyPackage.linkedin.slides
+                });
+            }
 
             // 6. Publish to LinkedIn via official API (using dedicated postToPersonalProfile method)
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);

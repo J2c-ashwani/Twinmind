@@ -104,6 +104,85 @@ async function runRealSupabaseConcurrencyAudit() {
         }
         console.log('  ✅ SCENARIO 4 PASSED: Published comment permanently protected from future duplication.\n');
 
+        // Clean up Scenario 1-4 lock before Scenario 5
+        await supabaseAdmin.from('referral_codes').delete().eq('code', dbLockKey);
+
+        // -------------------------------------------------------------
+        // SCENARIO 5: Fencing Protection (Delayed Worker A vs Recovered Worker B)
+        // Tests that:
+        // 1. Worker A's lease expires.
+        // 2. Worker B evicts Worker A's lock and acquires fresh lease with ownerTokenB.
+        // 3. Delayed Worker A wakes up and attempts to publish -> Fencing check detects token mismatch and ABORTS.
+        // 4. Delayed Worker A runs finally cleanup -> Attempting to delete matching ownerTokenA affects 0 rows.
+        // 5. Worker B's lock remains safely held in database!
+        // -------------------------------------------------------------
+        console.log('▶ [SCENARIO 5] Testing Fencing Token Protection & finally Cleanup Isolation...');
+        const testPostIdFencing = `urn:li:ugcPost:fencing_${Date.now()}`;
+        const dbLockKeyFencing = `LOCK-COMM-${testPostIdFencing}`;
+        const ownerTokenA = '00000000-0000-0000-0000-00000000000a';
+        const ownerTokenB = '00000000-0000-0000-0000-00000000000b';
+
+        // 1. Worker A claims lock with ownerTokenA
+        await supabaseAdmin.from('referral_codes').insert({
+            id: ownerTokenA,
+            user_id: testUserId,
+            code: dbLockKeyFencing
+        });
+        console.log(`  • Worker A claimed initial lock: token=${ownerTokenA}`);
+
+        // 2. Worker B detects expired lock (using 10ms TTL) and recovers lease with ownerTokenB
+        await new Promise(r => setTimeout(r, 30));
+        const recoveryB = await linkedinAdapter._handleExistingCommentLock(
+            testPostIdFencing,
+            dbLockKeyFencing,
+            supabaseAdmin,
+            'urn:li:person:author',
+            'token',
+            10, // 10ms TTL
+            ownerTokenB
+        );
+        console.log(`  • Worker B recovery result: status=${recoveryB.status}, acquired=${recoveryB.acquired}, token=${recoveryB.ownerToken}`);
+        if (recoveryB.ownerToken !== ownerTokenB) {
+            throw new Error(`Worker B failed to acquire with its own token: ${recoveryB.ownerToken}`);
+        }
+
+        // 3. Delayed Worker A wakes up and verifies lock ownership (Fencing Check)
+        const { data: currentLockCheck } = await supabaseAdmin
+            .from('referral_codes')
+            .select('id')
+            .eq('code', dbLockKeyFencing)
+            .maybeSingle();
+
+        const fencingViolation = (!currentLockCheck || currentLockCheck.id !== ownerTokenA);
+        console.log(`  • Worker A Fencing Check: current_owner=${currentLockCheck?.id}, worker_A=${ownerTokenA}, violation_detected=${fencingViolation}`);
+        if (!fencingViolation) {
+            throw new Error('Worker A failed to detect fencing violation!');
+        }
+
+        // 4. Delayed Worker A runs finally cleanup with its token (ownerTokenA)
+        console.log('  • Worker A executing finally cleanup (.eq(id, ownerTokenA))...');
+        await supabaseAdmin
+            .from('referral_codes')
+            .delete()
+            .eq('code', dbLockKeyFencing)
+            .eq('id', ownerTokenA);
+
+        // 5. Verify Worker B's lock is STILL in the database intact!
+        const { data: lockAfterWorkerACleanup } = await supabaseAdmin
+            .from('referral_codes')
+            .select('id')
+            .eq('code', dbLockKeyFencing)
+            .maybeSingle();
+
+        console.log(`  • Lock state in DB after Worker A cleanup: owner=${lockAfterWorkerACleanup?.id}`);
+        if (!lockAfterWorkerACleanup || lockAfterWorkerACleanup.id !== ownerTokenB) {
+            throw new Error(`Worker B's lock was improperly deleted by Worker A! Lock state: ${JSON.stringify(lockAfterWorkerACleanup)}`);
+        }
+        console.log('  ✅ SCENARIO 5 PASSED: Worker A fenced out from publishing; Worker A finally cleanup could NOT delete Worker B lock!\n');
+
+        // Clean up scenario 5 lock
+        await supabaseAdmin.from('referral_codes').delete().eq('code', dbLockKeyFencing);
+
     } finally {
         // Cleanup live database
         console.log('🧹 [CLEANUP] Cleaning up temporary audit records from live Supabase...');
