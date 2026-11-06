@@ -464,6 +464,7 @@ def render_cta_slide(draw, slide_data, cur_y):
 def render_dynamic_slide(draw, slide_data, cur_y):
     w, h = 1080, 1350
     title = slide_data.get('title', 'Cognitive Reflection')
+    subtitle = slide_data.get('subtitle', '')
     content = slide_data.get('content', '')
     highlight = slide_data.get('highlight')
     bullets = slide_data.get('bullets', [])
@@ -471,25 +472,83 @@ def render_dynamic_slide(draw, slide_data, cur_y):
     font_title = get_font(56, bold=True)
     cur_y = draw_wrapped_text(draw, title, font_title, TEXT_WHITE, 70, cur_y, max_width=940, line_spacing=1.18)
 
-    cur_y = max(cur_y + 25, 360)
+    if subtitle:
+        cur_y += 14
+        font_sub = get_font(28, bold=False)
+        cur_y = draw_wrapped_text(draw, subtitle, font_sub, TEXT_MUTED, 70, cur_y, max_width=940, line_spacing=1.2)
+
+    cur_y = max(cur_y + 20, 350)
     card_top = cur_y
-    card_h = 820
+    card_h = min(770, h - card_top - 140)
     draw.rounded_rectangle([70, card_top, w - 70, card_top + card_h], radius=24, fill=SURFACE_DARK, outline=CARD_BORDER, width=2)
 
-    inner_y = card_top + 45
     if highlight:
+        inner_y = card_top + 45
         draw.rounded_rectangle([105, inner_y, w - 105, inner_y + 60], radius=14, fill=(45, 30, 95))
         draw.text((125, inner_y + 16), highlight, font=get_font(24, bold=True), fill=PURPLE_GLOW)
-        inner_y += 90
+        top_base = inner_y + 90
+    else:
+        top_base = card_top
 
-    inner_y = draw_wrapped_text(draw, content, get_font(32, bold=False), TEXT_MUTED, 105, inner_y, max_width=870, line_spacing=1.35)
+    # Case A: Paragraph content only (e.g. Slide 3)
+    if content and not bullets:
+        words = content.split()
+        if len(words) < 35:
+            font_size = 50
+            line_spacing = 1.52
+        elif len(words) < 55:
+            font_size = 48
+            line_spacing = 1.48
+        else:
+            font_size = 42
+            line_spacing = 1.42
 
-    if bullets:
-        inner_y += 40
+        font_cnt = get_font(font_size, bold=False)
+        inner_y = top_base + 100
+        draw_wrapped_text(draw, content, font_cnt, TEXT_WHITE, 115, inner_y, max_width=850, line_spacing=line_spacing)
+
+    # Case B: Bullets only (e.g. Slide 2 and Slide 5)
+    elif bullets and not content:
+        num_b = len(bullets)
+        if num_b <= 3:
+            font_size = 42
+            line_spacing = 1.40
+            bullet_gap = 80
+            dot_size = 50
+            inner_y = top_base + 95
+        elif num_b == 4:
+            font_size = 36
+            line_spacing = 1.34
+            bullet_gap = 48
+            dot_size = 42
+            inner_y = top_base + 70
+        else:
+            font_size = 32
+            line_spacing = 1.26
+            bullet_gap = 28
+            dot_size = 36
+            inner_y = top_base + 50
+
+        font_b = get_font(font_size, bold=False)
+        font_dot = get_font(dot_size, bold=True)
+
         for b in bullets:
-            draw.text((105, inner_y), "•", font=get_font(30, bold=True), fill=CYAN_ACCENT)
-            inner_y = draw_wrapped_text(draw, b, get_font(28, bold=False), TEXT_WHITE, 140, inner_y, max_width=830, line_spacing=1.25)
-            inner_y += 20
+            draw.text((115, inner_y - 4), '•', font=font_dot, fill=CYAN_ACCENT)
+            inner_y = draw_wrapped_text(draw, b, font_b, TEXT_WHITE, 165, inner_y, max_width=800, line_spacing=line_spacing)
+            inner_y += bullet_gap
+
+    # Case C: Both content and bullets
+    elif content and bullets:
+        font_cnt = get_font(38, bold=False)
+        inner_y = top_base + 70
+        inner_y = draw_wrapped_text(draw, content, font_cnt, TEXT_WHITE, 115, inner_y, max_width=850, line_spacing=1.38)
+        inner_y += 45
+        font_b = get_font(34, bold=False)
+        font_dot = get_font(40, bold=True)
+        for b in bullets:
+            draw.text((115, inner_y - 2), '•', font=font_dot, fill=CYAN_ACCENT)
+            inner_y = draw_wrapped_text(draw, b, font_b, TEXT_WHITE, 160, inner_y, max_width=805, line_spacing=1.32)
+            inner_y += 35
 
 # ----------------- SLIDE LAYOUT 6: DISCUSSION / REFLECTION -----------------
 def render_discussion_slide(draw, slide_data, cur_y):
