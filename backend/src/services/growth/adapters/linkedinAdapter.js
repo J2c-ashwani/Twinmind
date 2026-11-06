@@ -11,6 +11,8 @@ import logger from '../../../config/logger.js';
 class LinkedInAdapter {
     constructor() {
         this.platform = 'linkedin';
+        this._postedComments = new Set();
+        this._fetch = null;
     }
 
     getCredentials(target = 'company') {
@@ -213,14 +215,15 @@ class LinkedInAdapter {
                 const postUrl = `https://www.linkedin.com/feed/update/${postId}`;
                 logger.info(`🎉 [LINKEDIN] Published native PDF document carousel successfully! Post ID: ${postId}`);
 
-                // Automatically post first comment with Google Play Store link
-                await this._postFirstComment(postId, postData, accessToken, authorUrn);
+                // Automatically post first comment with Google Play Store link (if configured)
+                const commentResult = await this._postFirstComment(postId, postData, accessToken, authorUrn);
 
                 return {
                     success: true,
                     platform: this.platform,
                     postId,
-                    url: postUrl
+                    url: postUrl,
+                    firstCommentResult: commentResult
                 };
             }
 
@@ -288,14 +291,15 @@ class LinkedInAdapter {
             const postUrl = `https://www.linkedin.com/feed/update/${postId}`;
             logger.info(`🎉 [LINKEDIN] Published successfully! Post ID: ${postId}`);
 
-            // Automatically post first comment with Google Play Store link
-            await this._postFirstComment(postId, postData, accessToken, authorUrn);
+            // Automatically post first comment with Google Play Store link (if configured)
+            const commentResult = await this._postFirstComment(postId, postData, accessToken, authorUrn);
 
             return {
                 success: true,
                 platform: this.platform,
                 postId,
-                url: postUrl
+                url: postUrl,
+                firstCommentResult: commentResult
             };
         } catch (err) {
             logger.error('[LINKEDIN] Exception during publish:', err);
@@ -399,21 +403,46 @@ class LinkedInAdapter {
     }
 
     /**
-     * Posts the first comment with the direct Google Play Store download link
+     * Posts the first comment with the direct Google Play Store download link.
+     * Enforces idempotency (no duplicate comments per post ID), safe retries,
+     * accurate UTM parameters, and non-blocking failure handling so published posts
+     * are NEVER failed or rolled back if the first comment API fails.
      */
-    async _postFirstComment(postId, postData, accessToken, authorUrn) {
-        if (!postId) return;
-        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.asmind.app';
-        const commentMsg = postData.firstComment || 
-            `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nTake the 35-question cognitive baseline & test Honest Twin Mode against your own excuses!`;
-        
-        // Allow LinkedIn feed cluster to propagate the newly published post URN across domain endpoints
-        await new Promise(resolve => setTimeout(resolve, 4000));
+    async _postFirstComment(postId, postData = {}, accessToken, authorUrn) {
+        if (!postId) return { skipped: true, reason: 'missing_post_id' };
+        if (postData.skipFirstComment === true) {
+            logger.info(`💬 [LINKEDIN] First comment skipped by postData configuration (e.g. Arm A caption link).`);
+            return { skipped: true, reason: 'skip_first_comment_flag', postId };
+        }
 
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        // Idempotency check: prevent duplicate comments on the same post
+        if (!this._postedComments) {
+            this._postedComments = new Set();
+        }
+        if (this._postedComments.has(postId)) {
+            logger.warn(`💬 [LINKEDIN] First comment already posted for ${postId}. Skipping duplicate.`);
+            return { success: true, alreadyPosted: true, postId };
+        }
+
+        const playStoreUrl = postData.utmLink || 'https://play.google.com/store/apps/details?id=com.asmind.app';
+        const commentMsg = postData.firstComment || 
+            `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nExplore your cognitive patterns with persistent memory and 4 reflective modes.`;
+        
+        // Propagation delay: wait for LinkedIn feed cluster to index newly created post URN
+        // Allow overriding delay in tests via postData._propagationDelayMs
+        const delayMs = typeof postData._propagationDelayMs === 'number' ? postData._propagationDelayMs : 4000;
+        if (delayMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+
+        const maxAttempts = 3;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                logger.info(`💬 [LINKEDIN] Posting first comment with Play Store link on ${postId} (attempt ${attempt}/3)...`);
-                const res = await fetch(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
+                logger.info(`💬 [LINKEDIN] Posting first comment on ${postId} (attempt ${attempt}/${maxAttempts})...`);
+                const fetchFn = this._fetch || fetch;
+                const res = await fetchFn(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
@@ -427,16 +456,26 @@ class LinkedInAdapter {
                 });
                 const data = await res.json();
                 if (data.id) {
+                    this._postedComments.add(postId);
                     logger.info(`💬 [LINKEDIN] First comment posted successfully on ${postId}: ${data.id}`);
-                    return;
+                    return { success: true, commentId: data.id, postId, attempt };
                 } else {
+                    lastError = data;
                     logger.warn(`[LINKEDIN] First comment API response (attempt ${attempt}):`, data);
                 }
             } catch (err) {
+                lastError = err.message;
                 logger.warn(`[LINKEDIN] Non-blocking first-comment error (attempt ${attempt}):`, err.message);
             }
-            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 3000));
+
+            if (attempt < maxAttempts) {
+                const retryDelay = typeof postData._retryDelayMs === 'number' ? postData._retryDelayMs : 3000;
+                if (retryDelay > 0) await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
         }
+
+        logger.error(`[LINKEDIN] First comment failed after ${maxAttempts} attempts on ${postId}; continuing without failing published post:`, lastError);
+        return { success: false, error: lastError, postId, attempts: maxAttempts };
     }
 }
 

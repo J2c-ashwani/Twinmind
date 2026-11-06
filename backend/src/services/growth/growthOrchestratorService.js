@@ -40,6 +40,8 @@ class GrowthOrchestratorService {
             instagram: 0,
             threads: 0
         };
+        // A/B pair-matched experiment buckets
+        this._matchedPairBuckets = {};
     }
 
     _loadState() {
@@ -69,6 +71,77 @@ class GrowthOrchestratorService {
         } catch (e) {
             logger.error('[GROWTH ORCHESTRATOR] Error writing state file:', e);
         }
+    }
+
+    /**
+     * Pair-matched A/B experiment assignment for LinkedIn link placement.
+     * Confounding factors controlled:
+     * 1. Topic Category / Pillar (Psychology vs Generic AI vs Product Demo)
+     * 2. Format (Carousel PDF)
+     * 
+     * Eliminates naive odd/even day-of-week bias by alternating arms
+     * strictly within each (pillar, format) matched pair.
+     * 
+     * Sample size reality: At 1 post/day for 30 days = 15 Arm A, 15 Arm B (n=30).
+     * Explicitly labeled as an exploratory directional experiment.
+     */
+    getExperimentAssignment({ pillarId = 'pillar_1_psychology', format = 'carousel_pdf', themeId = 'daily', dayNumber = 0 } = {}) {
+        // Rollback check: if experiment v2 is disabled, revert to legacy behavior
+        if (process.env.LINKEDIN_CONTENT_EXPERIMENT_V2 === 'false') {
+            const legacyUtm = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+            return {
+                arm: 'legacy',
+                includeCaptionLink: true,
+                skipFirstComment: false,
+                utmLink: legacyUtm,
+                firstComment: null,
+                bucketKey: 'legacy',
+                sampleStatus: 'legacy_production'
+            };
+        }
+
+        const bucketKey = `${pillarId}:${format}`;
+        if (!this._matchedPairBuckets) {
+            this._matchedPairBuckets = {};
+        }
+
+        // Check historical count in this bucket from state
+        let bucketCount = this._matchedPairBuckets[bucketKey];
+        if (typeof bucketCount !== 'number') {
+            const historicalInBucket = (this.state?.posts || []).filter(p => 
+                p.platform === 'linkedin' && 
+                p.experiment?.matchedPairBucket === bucketKey
+            ).length;
+            bucketCount = historicalInBucket;
+            this._matchedPairBuckets[bucketKey] = bucketCount;
+        }
+
+        // Pair-matched alternation within this bucket: Even count -> Arm A (Caption Link), Odd count -> Arm B (First Comment Link)
+        const isArmA = (bucketCount % 2 === 0);
+        const arm = isArmA ? 'arm_a_caption' : 'arm_b_comment';
+
+        // Increment count for this bucket
+        this._matchedPairBuckets[bucketKey] = bucketCount + 1;
+
+        // Build accurate Play Store Install Referrer UTM URLs
+        const basePlayStore = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+        const medium = isArmA ? 'post_caption' : 'first_comment';
+        const referrerParams = `utm_source=linkedin&utm_medium=${medium}&utm_campaign=${pillarId}&utm_content=${themeId}`;
+        const utmLink = `${basePlayStore}&referrer=${encodeURIComponent(referrerParams)}`;
+
+        const firstComment = isArmA ? null : 
+            `📲 Download TwinGenie free on Google Play:\n${utmLink}\n\nTake the 35-question cognitive baseline & explore your thoughts with 4 reflective modes.`;
+
+        return {
+            arm,
+            bucketKey,
+            bucketCount,
+            includeCaptionLink: isArmA,
+            skipFirstComment: isArmA, // Arm A skips first comment; Arm B posts first comment
+            utmLink,
+            firstComment,
+            sampleStatus: 'exploratory_directional (target n=30 over 30 days)'
+        };
     }
 
     async getSystemStatus() {
@@ -585,8 +658,37 @@ class GrowthOrchestratorService {
         await this.acquireDurableLock('linkedin', todayIST);
 
         try {
-            // 4. Fetch or dynamically generate today's 100% fresh content
-            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            // Determine calendar day number and schedule
+            const schedule = contentGeneratorService.getDailySchedule(now);
+            const dayNumber = schedule.dayNumber;
+
+            // 50/30/20 Pillar rotation cycle
+            const pillarCycle = [
+                'pillar_1_psychology', 'pillar_1_psychology', 'pillar_2_generic_ai',
+                'pillar_1_psychology', 'pillar_3_product_demo', 'pillar_1_psychology',
+                'pillar_2_generic_ai', 'pillar_3_product_demo', 'pillar_1_psychology',
+                'pillar_2_generic_ai'
+            ];
+            const assignedPillar = pillarCycle[dayNumber % 10];
+
+            // Pair-matched A/B experiment assignment
+            const armInfo = this.getExperimentAssignment({
+                pillarId: assignedPillar,
+                format: 'carousel_pdf',
+                dayNumber,
+                themeId: specificThemeId || schedule.theme?.id || 'daily'
+            });
+
+            logger.info(`🔬 [GROWTH ORCHESTRATOR] LinkedIn A/B Assignment: Arm "${armInfo.arm}" in bucket "${armInfo.bucketKey}" (Caption link: ${armInfo.includeCaptionLink}, Skip comment: ${armInfo.skipFirstComment})`);
+
+            // 4. Fetch or dynamically generate today's content with experiment options
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now, {
+                includeCaptionLink: armInfo.includeCaptionLink,
+                experimentArm: armInfo.arm,
+                pillarId: assignedPillar,
+                utmLink: armInfo.utmLink,
+                specificThemeId
+            });
             const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
             const postId = `post_linkedin_personal_${Date.now()}`;
 
@@ -610,7 +712,9 @@ class GrowthOrchestratorService {
                     caption: dailyPackage.linkedin.caption,
                     pdfPath: rendered.pdfPath,
                     pngPaths: rendered.pngPaths,
-                    utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app'
+                    utmLink: armInfo.utmLink,
+                    skipFirstComment: armInfo.skipFirstComment,
+                    firstComment: armInfo.firstComment
                 });
             } catch (netErr) {
                 logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during LinkedIn publish: ${netErr.message}. Triggering reconciliation...`);
@@ -658,7 +762,21 @@ class GrowthOrchestratorService {
                 platformPostId: publishResult.postId,
                 platformPostUrl: publishResult.url,
                 error: publishResult.error || null,
-                retries: 0
+                retries: 0,
+                experiment: {
+                    name: 'linkedin_link_placement_v2',
+                    arm: armInfo.arm,
+                    matchedPairBucket: armInfo.bucketKey,
+                    sampleStatus: armInfo.sampleStatus,
+                    attribution: {
+                        channel: 'linkedin',
+                        medium: armInfo.arm === 'arm_a_caption' ? 'post_caption' : 'first_comment',
+                        campaign: dailyPackage.pillarId || assignedPillar,
+                        content: dailyPackage.themeId,
+                        destination: 'google_play_store',
+                        attributionLimitation: 'Play Install Referrer broadcast tracking; iOS organic search installs recorded as unknown_organic.'
+                    }
+                }
             };
 
             this.state.posts.push(postRecord);

@@ -157,252 +157,13 @@ export const CAMPAIGN_THEMES = [
     }
 ];
 
-export const CURATED_FALLBACK_THEMES = [
-    {
-        id: 'sunk_cost_fallacy',
-        topic: 'The Sunk Cost Fallacy: Why We Cling to What Drains Us',
-        category: 'SELF-AWARENESS',
-        hook: 'The hardest sentence for any human being to utter is: "I was wrong, and I need to let this go."',
-        title: 'The Sunk Cost Trap in Life & Decisions',
-        linkedinCaption: `The hardest sentence for any human being to utter is: "I was wrong, and I need to let this go."
+import { 
+    CURATED_FALLBACK_THEMES, 
+    PILLARS, 
+    getCuratedTheme 
+} from './curriculum/fallbackCurriculum.js';
 
-When you've poured months of energy, emotion, or personal pride into a path, project, or habit, your brain refuses to cut losses.
-
-Instead, you rationalize:
-• "I just need to give it a little more time."
-• "If I stop now, all the effort was wasted."
-• "Maybe tomorrow things will magically shift."
-
-In cognitive psychology, this is the Sunk Cost Trap—and standard AI chatbots make it worse. When you ask them for advice, they enthusiastically generate 10 reasons why you should keep enduring. They validate your comfort zone instead of helping you see clearly.
-
-At TwinGenie, we engineered an AI Digital Twin that functions as an honest, private cognitive mirror for your life:
-1. Normal Twin — your daily reflective sounding board
-2. Reflective Twin — compassionate decompression when you feel overwhelmed
-3. Honest Twin — unfiltered clarity that challenges your rationalizations using your own words
-4. Future Twin — the 5-years-wiser perspective asking: "Will this dilemma matter in 2031?"
-
-👉 Meet your personal digital twin on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
-
-#TwinGenie #SelfAwareness #DecisionMaking #PersonalGrowth #MentalClarity`,
-        facebookCaption: `The hardest sentence for anyone to utter is: "I was wrong, and I need to let this go." 🛑
-
-When you've poured months into a path or habit that isn't serving you, standard chatbots act like flattering cheerleaders—encouraging you to stay stuck in a loop.
-
-TwinGenie is engineered differently: with persistent memory and Honest Mode, it gently reflects your own stated values back to you so you can make decisions with clarity.
-
-Quick question for you:
-When you realize a habit, project, or commitment is draining you, what is your instinct?
-
-🅰️ Step away immediately without guilt
-OR
-🅱️ Keep trying because you've already invested so much?
-
-Drop A or B below! 👇
-
-#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #Overthinking #PersonalGrowth #LifeDecisions #SelfCare #MentalHealth`,
-        binaryQuestion: {
-            prompt: "When you realize a habit, project, or commitment is draining you, what is your instinct?",
-            optionA: "🅰️ Step away immediately without guilt",
-            optionB: "🅱️ Keep trying because you've already invested so much?"
-        },
-        voiceScript: {
-            voiceHook: "Why do we keep clinging to things that drain us instead of letting go?",
-            voiceProblem: "When you invest months into something unfulfilling, standard chatbots flatter your excuses and keep you stuck.",
-            voiceSolution: "TwinGenie uses persistent memory and honest reflection to help you see through self-deception.",
-            voiceCta: "Meet your personal digital twin today. Download TwinGenie free on Google Play."
-        },
-        slides: [
-            {
-                type: 'cover',
-                tag: 'SELF-AWARENESS',
-                title: 'The Sunk Cost Trap',
-                subtitle: 'Why letting go feels harder than holding on',
-                takeaways: [
-                    'How pride disguises self-sabotage as perseverance',
-                    'Why agreeable chatbots fuel toxic confirmation bias',
-                    'How honest self-reflection gives you permission to reset'
-                ]
-            },
-            {
-                type: 'dynamic',
-                tag: 'THE COGNITIVE TRAP',
-                title: 'The Commitment Loop',
-                subtitle: 'Why walking away feels like admitting defeat',
-                bullets: [
-                    'Identity entanglement: Confusing what you do with who you are',
-                    'Justification creep: Making excuses to avoid the pain of change',
-                    'Echo chamber trap: Asking agreeable yes-man AI for validation'
-                ]
-            },
-            {
-                type: 'comparison',
-                tag: 'THE FLATTERY TRAP',
-                title: 'Yes-Man AI vs Honest Twin',
-                subtitle: 'Two contrasting responses to the exact same hesitation',
-                left: {
-                    badge: '[ STANDARD AI (THE YES-MAN) ]',
-                    user: "I feel completely exhausted by this path, but I've already put so much time into it. Should I keep going?",
-                    ai: "Absolutely! Consistency is key! Keep pushing and you will reach your breakthrough!",
-                    outcome: "Enables months of continued burnout and denial"
-                },
-                right: {
-                    badge: '[ TWINGENIE (HONEST TWIN) ]',
-                    user: "I feel completely exhausted by this path, but I've already put so much time into it. Should I keep going?",
-                    ai: "You're not persisting because you believe in it; you're persisting because quitting feels like admitting the last six months were wasted. What are you actually holding onto?",
-                    outcome: "Cuts through the guilt and restores clarity"
-                }
-            },
-            {
-                type: 'timeline',
-                tag: 'COGNITIVE ARCHITECTURE',
-                title: 'The Reset Pipeline',
-                subtitle: 'How TwinGenie helps you find honest clarity',
-                steps: [
-                    { step: 'STAGE 01', title: 'Self Benchmark', desc: '35-question baseline identifies your emotional style and triggers.' },
-                    { step: 'STAGE 02', title: 'Pattern Reflection', desc: 'Persistent memory catches repeating cycles of overthinking.' },
-                    { step: 'STAGE 03', title: 'Future Perspective', desc: 'The 5-years-wiser Future Twin brings perspective to today’s stress.' }
-                ]
-            },
-            {
-                type: 'cta',
-                tag: 'AVAILABLE NOW',
-                title: 'Meet Your Digital Twin Today',
-                subtitle: 'Stop talking to AI that forgets you. Start building real self-awareness.',
-                points: [
-                    '35-Question Big Five personality baseline',
-                    '4 perspectives: Normal, Reflective, Honest, Future',
-                    'Persistent pgvector memory across all conversations',
-                    '100% private, self-guided personal reflection'
-                ],
-                button: 'Download TwinGenie on Google Play',
-                link: 'play.google.com/store/apps/details?id=com.asmind.app'
-            }
-        ]
-    },
-    {
-        id: 'false_urgency',
-        topic: 'The Avoidance Trap: Why Frantic Busyness Disguises Fear',
-        category: 'HABITS & CLARITY',
-        hook: 'Running around putting out self-created fires feels like hard work. Most of the time, it is just disguised fear.',
-        title: 'Motion vs Progress',
-        linkedinCaption: `Running around doing busywork feels productive. 
-
-Most of the time, it's just sophisticated avoidance.
-
-When we are afraid of a hard choice—whether it's having an honest conversation, making a career shift, or facing a creative challenge—we manufacture micro-crises to distract ourselves:
-• Cleaning the entire room or reorganizing apps
-• Rearranging to-do lists for the fourth time
-• Answering trivial messages instantly while ignoring our real priorities
-
-This creates a dopamine loop of "busyness" without an inch of meaningful life progress.
-
-Standard chatbots only amplify this: they happily generate 10 more checklists and schedule reminders, never asking: "What are you actually avoiding right now?"
-
-At TwinGenie, we engineered a personal AI Digital Twin with long-term memory:
-• Normal Twin: your grounded daily sounding board
-• Reflective Twin: uncovers the underlying anxiety driving the rush
-• Honest Twin: gently challenges avoidance using your own stated goals
-• Future Twin: brings the 5-years-wiser perspective to focus only on what matters
-
-👉 Download TwinGenie on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app
-
-#TwinGenie #SelfUnderstanding #Productivity #MentalHealth #Focus`,
-        facebookCaption: `Putting out small fires feels like hard work. Most of the time, it's just avoiding the one conversation or task that actually matters. 🚨
-
-When we dread something uncomfortable, we reorganize files and scroll—mistaking motion for progress.
-
-TwinGenie's Honest Mode flags this gently by reflecting your true priorities back to you.
-
-Quick question for you:
-When your day feels overwhelming, is it usually:
-
-🅰️ Too many genuinely urgent things happening
-OR
-🅱️ Feeling stuck and avoiding the hardest task?
-
-Drop A or B below! 👇
-
-#TwinGenie #AICompanion #DigitalTwin #SelfReflection #MentalClarity #MindsetShift #ProductivityHacks #PersonalGrowth #Overthinking #SelfAwareness #Focus #MentalHealth`,
-        binaryQuestion: {
-            prompt: "When your day feels overwhelming, is it usually:",
-            optionA: "🅰️ Too many genuinely urgent things happening",
-            optionB: "🅱️ Feeling stuck and avoiding the hardest task?"
-        },
-        voiceScript: {
-            voiceHook: "Why do we mistake frantic busyness for actual peace and progress?",
-            voiceProblem: "When you dread an uncomfortable task, standard chatbots help you organize trivial details instead of facing it.",
-            voiceSolution: "TwinGenie uses thoughtful memory to detect avoidance loops and refocus you on what truly matters.",
-            voiceCta: "Meet your personal digital twin today. Download TwinGenie free on Google Play."
-        },
-        slides: [
-            {
-                type: 'cover',
-                tag: 'HABITS & CLARITY',
-                title: 'The Avoidance Trap',
-                subtitle: 'Why frantic busyness is often disguised anxiety',
-                takeaways: [
-                    'How fake emergencies protect your comfort zone',
-                    'Why agreeable chatbots amplify low-value busywork',
-                    'How honest self-reflection restores real peace'
-                ]
-            },
-            {
-                type: 'dynamic',
-                tag: 'THE AVOIDANCE LOOP',
-                title: 'Motion vs Progress',
-                subtitle: 'The 3 signs you are running from the real work',
-                bullets: [
-                    'Tinkering with minor details while delaying the important step',
-                    'Treating every small notification as an emergency',
-                    'Ending the day exhausted but feeling like nothing real got done'
-                ]
-            },
-            {
-                type: 'comparison',
-                tag: 'THE FLATTERY TRAP',
-                title: 'Yes-Man AI vs Honest Twin',
-                subtitle: 'Contrasting responses to task avoidance',
-                left: {
-                    badge: '[ STANDARD AI (THE YES-MAN) ]',
-                    user: "I spent three hours organizing my desk and tweaking my notes instead of studying. Feeling productive though!",
-                    ai: "A tidy workspace leads to a tidy mind! You are setting yourself up for great success!",
-                    outcome: "Validates procrastination and wastes another day"
-                },
-                right: {
-                    badge: '[ TWINGENIE (HONEST TWIN) ]',
-                    user: "I spent three hours organizing my desk and tweaking my notes instead of studying. Feeling productive though!",
-                    ai: "You didn't organize for three hours because your desk needed it. You did it to avoid the anxiety of starting. What part of the work feels intimidating?",
-                    outcome: "Cuts through the defense and sparks honest action"
-                }
-            },
-            {
-                type: 'timeline',
-                tag: 'MINDFUL ARCHITECTURE',
-                title: 'Restoring True Focus',
-                subtitle: 'The 3-stage clarity reset',
-                steps: [
-                    { step: 'STAGE 01', title: 'Honest Baseline', desc: 'Identify your natural tendencies and procrastination triggers.' },
-                    { step: 'STAGE 02', title: 'Avoidance Detection', desc: 'Notice when busywork is masking underlying apprehension.' },
-                    { step: 'STAGE 03', title: 'Future Alignment', desc: 'Future Twin reframes short-term discomfort as long-term growth.' }
-                ]
-            },
-            {
-                type: 'cta',
-                tag: 'AVAILABLE NOW',
-                title: 'Meet Your Digital Twin Today',
-                subtitle: 'Stop talking to AI that forgets you. Start building real self-awareness.',
-                points: [
-                    '35-Question Big Five personality baseline',
-                    '4 perspectives: Normal, Reflective, Honest, Future',
-                    'Persistent pgvector memory across all conversations',
-                    '100% private, self-guided personal reflection'
-                ],
-                button: 'Download TwinGenie on Google Play',
-                link: 'play.google.com/store/apps/details?id=com.asmind.app'
-            }
-        ]
-    }
-];
+export { CURATED_FALLBACK_THEMES, PILLARS, getCuratedTheme };
 
 class ContentGeneratorService {
     constructor() {
@@ -486,22 +247,23 @@ class ContentGeneratorService {
      * high-value executive thought-leadership content daily.
      * Checks Supabase to ensure no topic from the last 60 days is ever repeated.
      */
-    async getOrGenerateDailyContent(date = new Date()) {
+    async getOrGenerateDailyContent(date = new Date(), options = {}) {
         const schedule = this.getDailySchedule(date);
         const istDateStr = schedule.istDateStr;
+        const cacheKey = `${istDateStr}:${options.experimentArm || (options.includeCaptionLink ? 'arm_a' : 'arm_b')}`;
 
-        if (this._dailyCache[istDateStr]) {
-            logger.info(`[CONTENT GENERATOR] Returning cached dynamic daily content for ${istDateStr}: "${this._dailyCache[istDateStr].topic}"`);
-            return this._dailyCache[istDateStr];
+        if (this._dailyCache[cacheKey]) {
+            logger.info(`[CONTENT GENERATOR] Returning cached dynamic daily content for ${cacheKey}: "${this._dailyCache[cacheKey].topic}"`);
+            return this._dailyCache[cacheKey];
         }
 
         logger.info(`🧠 [CONTENT GENERATOR] Generating 100% fresh, bespoke daily content for ${istDateStr}...`);
-        const generated = await this.generateDynamicDailyContent(date);
-        this._dailyCache[istDateStr] = generated;
+        const generated = await this.generateDynamicDailyContent(date, options);
+        this._dailyCache[cacheKey] = generated;
         return generated;
     }
 
-    async generateDynamicDailyContent(date = new Date()) {
+    async generateDynamicDailyContent(date = new Date(), options = {}) {
         const schedule = this.getDailySchedule(date);
         const istDateStr = schedule.istDateStr;
         const dayNumber = schedule.dayNumber;
@@ -690,7 +452,7 @@ Output strictly valid JSON with this exact schema:
         // Curated 35-topic curriculum fallback if both LLMs are unreachable
         if (!parsed || !parsed.topic || !parsed.linkedin?.slides) {
             logger.warn('[CONTENT GENERATOR] LLM generation unavailable. Using 35-topic rotational curriculum.');
-            parsed = this._getCuratedFallbackTheme(dayNumber);
+            parsed = this._getCuratedFallbackTheme(dayNumber, options.specificThemeId, options);
         }
 
         // Ensure Facebook slides are populated from LinkedIn slides if not explicit
@@ -726,11 +488,10 @@ Output strictly valid JSON with this exact schema:
         return parsed;
     }
 
-    _getCuratedFallbackTheme(dayNumber) {
+    _getCuratedFallbackTheme(dayNumber, specificThemeId = null, options = {}) {
         const schedule = this.getDailySchedule();
         const activeMode = schedule.activeMode || { id: 'dark', name: 'Honest / Dark Twin' };
-        const index = dayNumber % CURATED_FALLBACK_THEMES.length;
-        const cur = CURATED_FALLBACK_THEMES[index];
+        const cur = getCuratedTheme(dayNumber, specificThemeId, options);
 
         const slides = JSON.parse(JSON.stringify(cur.slides || []));
         if (slides[2] && slides[2].type === 'comparison') {
@@ -751,7 +512,13 @@ Output strictly valid JSON with this exact schema:
             themeId: cur.id,
             topic: cur.topic,
             category: cur.category,
+            pillarId: cur.pillarId,
+            pillarName: cur.pillarName,
             hook: cur.hook,
+            discussionQuestion: cur.discussionQuestion,
+            experimentArm: cur.experimentArm,
+            includeCaptionLink: cur.includeCaptionLink,
+            utmLink: cur.utmLink,
             mode: activeMode.id,
             modeName: activeMode.name,
             formatType: schedule.formatType,
@@ -762,13 +529,13 @@ Output strictly valid JSON with this exact schema:
                 shift: `Exposes the avoidance loop and grounds you through ${activeMode.name}.`
             },
             linkedin: {
-                title: cur.title,
-                caption: cur.linkedinCaption,
+                title: cur.title || cur.topic,
+                caption: cur.caption || cur.linkedinCaption,
                 slides: slides
             },
             facebook: {
-                title: cur.title,
-                caption: cur.facebookCaption,
+                title: cur.title || cur.topic,
+                caption: cur.facebookCaption || cur.caption,
                 firstComment: '📲 Experience your digital twin free on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app\nTake your 35-question personality baseline today!',
                 binaryQuestion: cur.binaryQuestion,
                 voiceScript: cur.voiceScript,

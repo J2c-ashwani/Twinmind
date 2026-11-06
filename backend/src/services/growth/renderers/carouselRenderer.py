@@ -491,6 +491,55 @@ def render_dynamic_slide(draw, slide_data, cur_y):
             inner_y = draw_wrapped_text(draw, b, get_font(28, bold=False), TEXT_WHITE, 140, inner_y, max_width=830, line_spacing=1.25)
             inner_y += 20
 
+# ----------------- SLIDE LAYOUT 6: DISCUSSION / REFLECTION -----------------
+def render_discussion_slide(draw, slide_data, cur_y):
+    w, h = 1080, 1350
+    title = slide_data.get('title', 'Where Do You Draw the Line?')
+    question = slide_data.get('question') or slide_data.get('prompt') or slide_data.get('content', '')
+    subtext = slide_data.get('subtitle') or slide_data.get('subtext', 'Honest self-awareness starts with open reflection:')
+    prompts = slide_data.get('prompts') or slide_data.get('bullets', [])
+    branding = slide_data.get('branding', 'TwinGenie  •  Reflective Life Companion')
+
+    font_title = get_font(56, bold=True)
+    cur_y = draw_wrapped_text(draw, title, font_title, TEXT_WHITE, 70, cur_y, max_width=940, line_spacing=1.18)
+
+    cur_y += 16
+    font_sub = get_font(28, bold=False)
+    cur_y = draw_wrapped_text(draw, subtext, font_sub, TEXT_MUTED, 70, cur_y, max_width=940, line_spacing=1.2)
+
+    cur_y = max(cur_y + 25, 360)
+
+    # Hero Question Card
+    card_top = cur_y
+    card_h = 360
+    draw.rounded_rectangle([70, card_top, w - 70, card_top + card_h], radius=24, fill=SURFACE_DARK, outline=BORDER_PURPLE, width=2)
+
+    # Mini badge
+    draw.rounded_rectangle([105, card_top + 28, 380, card_top + 70], radius=10, fill=(45, 30, 95))
+    draw.text((125, card_top + 38), "HONEST INQUIRY", font=get_font(20, bold=True), fill=CYAN_ACCENT)
+
+    # Question text
+    font_q = get_font(34, bold=True)
+    draw_wrapped_text(draw, f'"{question}"', font_q, TEXT_WHITE, 105, card_top + 100, max_width=870, line_spacing=1.3)
+
+    # Prompts / Sub-questions section
+    prompt_top = card_top + card_h + 30
+    if prompts:
+        draw.text((70, prompt_top), "THREE QUESTIONS TO ASK YOURSELF TODAY:", font=get_font(22, bold=True), fill=TEXT_DIM)
+        p_y = prompt_top + 40
+        for p in prompts[:3]:
+            draw.rounded_rectangle([70, p_y, w - 70, p_y + 95], radius=16, fill=SURFACE_LIGHT, outline=CARD_BORDER, width=1)
+            draw.ellipse([95, p_y + 36, 115, p_y + 56], fill=PURPLE_GLOW)
+            draw_wrapped_text(draw, p, get_font(24, bold=False), TEXT_WHITE, 135, p_y + 24, max_width=840, line_spacing=1.22)
+            p_y += 112
+        banner_top = p_y + 10
+    else:
+        banner_top = prompt_top + 30
+
+    # Subtle footer banner
+    draw.rounded_rectangle([70, banner_top, w - 70, min(banner_top + 75, h - 100)], radius=18, fill=(24, 18, 52), outline=CARD_BORDER, width=1)
+    draw.text((105, banner_top + 24), branding, font=get_font(23, bold=True), fill=PURPLE_GLOW)
+
 # ----------------- MAIN DISPATCHER -----------------
 def render_slide(slide_data, slide_index, total_slides, output_path):
     img, draw, cur_y = draw_header_and_bg(slide_data, slide_index, total_slides)
@@ -498,13 +547,19 @@ def render_slide(slide_data, slide_index, total_slides, output_path):
     stype = slide_data.get('type')
     if stype == 'cover' or (not stype and slide_index == 1):
         render_cover_slide(draw, slide_data, cur_y)
-    elif stype == 'comparison' or 'left' in slide_data or (not stype and slide_index == 2):
+    elif stype in ('discussion', 'question'):
+        render_discussion_slide(draw, slide_data, cur_y)
+    elif stype == 'comparison' or 'left' in slide_data:
         render_comparison_slide(draw, slide_data, cur_y)
-    elif stype == 'modes' or 'modes' in slide_data or (not stype and slide_index == 3):
+    elif stype == 'modes' or 'modes' in slide_data:
         render_modes_slide(draw, slide_data, cur_y)
-    elif stype == 'timeline' or 'steps' in slide_data or (not stype and slide_index == 4):
+    elif stype in ('timeline', 'framework') or 'steps' in slide_data:
         render_timeline_slide(draw, slide_data, cur_y)
-    elif stype == 'cta' or (not stype and slide_index == total_slides):
+    elif stype == 'cta':
+        render_cta_slide(draw, slide_data, cur_y)
+    elif slide_index == total_slides and total_slides >= 6:
+        render_discussion_slide(draw, slide_data, cur_y)
+    elif slide_index == total_slides:
         render_cta_slide(draw, slide_data, cur_y)
     else:
         render_dynamic_slide(draw, slide_data, cur_y)
