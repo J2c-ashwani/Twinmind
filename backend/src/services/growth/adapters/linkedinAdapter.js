@@ -546,6 +546,89 @@ class LinkedInAdapter {
     }
 
     /**
+     * Resolves valid system user ID for foreign key in referral_codes table
+     */
+    async _getSystemUserId(sbClient) {
+        if (this._systemUserId) return this._systemUserId;
+        try {
+            if (sbClient) {
+                const { data } = await sbClient.from('users').select('id').limit(1);
+                if (data && data.length > 0) {
+                    this._systemUserId = data[0].id;
+                    return this._systemUserId;
+                }
+            }
+        } catch (e) {
+            logger.warn(`[LINKEDIN] System user ID fetch warning: ${e.message}`);
+        }
+        return '5e149458-628a-426c-9469-c6f0fcf9fca6'; // twingenie.app@gmail.com
+    }
+
+    /**
+     * Lock Lifecycle Management for Supabase Distributed Mutex
+     * Handles existing locks:
+     * - SUCCESSFUL: Comment already confirmed in ledger or on LinkedIn -> skip duplicate.
+     * - PENDING_ACTIVE: Lock was acquired recently (< 5m TTL) by an active worker -> skip duplicate.
+     * - EXPIRED_RECOVERABLE: A worker crashed mid-operation without publishing (> 5m TTL).
+     *   Stale lock is safely evicted, and new worker acquires lease and proceeds!
+     */
+    async _handleExistingCommentLock(postId, dbLockKey, sbClient, authorUrn, accessToken, lockTtlMs = 5 * 60 * 1000) {
+        try {
+            // 1. Check if comment actually succeeded in durable ledger
+            const idempotency = await this._checkDurableCommentLedger(postId);
+            if (idempotency.alreadyPosted) {
+                logger.info(`💬 [LINKEDIN] Lock ${dbLockKey} belongs to already published comment (found in ${idempotency.tier}).`);
+                return { status: 'SUCCESSFUL', alreadyPosted: true, tier: idempotency.tier };
+            }
+
+            // 2. Check LinkedIn socialActions reconciliation (did it land despite missing DB ledger entry?)
+            const rec = await this._reconcileAmbiguousCommentTimeout(postId, authorUrn, accessToken);
+            if (rec.reconciled) {
+                await this._recordDurableComment(postId, rec.commentId);
+                logger.info(`✅ [LINKEDIN] Lock ${dbLockKey} reconciled: comment exists on LinkedIn (${rec.commentId}).`);
+                return { status: 'SUCCESSFUL', alreadyPosted: true, tier: 'linkedin_reconciled' };
+            }
+
+            // 3. Inspect lock row created_at timestamp to determine lease validity
+            const { data: lockRow, error: selectErr } = await sbClient
+                .from('referral_codes')
+                .select('created_at')
+                .eq('code', dbLockKey)
+                .maybeSingle();
+
+            if (!selectErr && lockRow?.created_at) {
+                const lockAgeMs = Date.now() - new Date(lockRow.created_at).getTime();
+                if (lockAgeMs < lockTtlMs) {
+                    // Another worker is actively publishing right now
+                    logger.warn(`⏳ [LINKEDIN] Lock ${dbLockKey} is actively held (age: ${Math.round(lockAgeMs/1000)}s < ${Math.round(lockTtlMs/1000)}s). Skipping duplicate.`);
+                    return { status: 'PENDING_ACTIVE', alreadyPosted: true, tier: 'supabase_active_lease' };
+                }
+
+                // Lock is stale: Worker crashed mid-operation without publishing!
+                logger.warn(`⚠️ [LINKEDIN] Lock ${dbLockKey} is EXPIRED (age: ${Math.round(lockAgeMs/1000)}s >= ${Math.round(lockTtlMs/1000)}s) and comment not found. Recovering lock from crashed worker...`);
+                
+                // Evict the stale lock
+                await sbClient.from('referral_codes').delete().eq('code', dbLockKey);
+
+                // Re-acquire fresh lock
+                const sysUserId = await this._getSystemUserId(sbClient);
+                const { error: relockErr } = await sbClient
+                    .from('referral_codes')
+                    .insert({ user_id: sysUserId, code: dbLockKey });
+
+                if (!relockErr) {
+                    logger.info(`🔑 [LINKEDIN] Successfully recovered lock ${dbLockKey} from crashed worker! Proceeding to publish.`);
+                    return { status: 'RECOVERED', acquired: true };
+                }
+            }
+        } catch (e) {
+            logger.warn(`[LINKEDIN] Lock lifecycle evaluation warning: ${e.message}`);
+        }
+
+        return { status: 'PENDING_ACTIVE', alreadyPosted: true, tier: 'supabase_atomic_23505' };
+    }
+
+    /**
      * Reconciles ambiguous API timeouts (504 Gateway Timeout, ETIMEDOUT, ECONNRESET).
      * Queries LinkedIn socialActions API to check if our comment actually landed before retrying or failing.
      */
@@ -609,24 +692,32 @@ class LinkedInAdapter {
                 return { success: true, alreadyPosted: true, postId, tier: idempotency.tier };
             }
 
-            // Tier 4: Atomic Distributed Database Mutex across concurrent workers
+            // Tier 4: Atomic Distributed Database Mutex across concurrent workers with Lock Lifecycle Management
             // Uses PostgreSQL UNIQUE constraint on referral_codes.code (SQLSTATE 23505)
+            // Lifecycle states handled: PENDING_ACTIVE, SUCCESSFUL, FAILED, EXPIRED_RECOVERABLE
             const sbClient = this._supabaseAdmin || supabaseAdmin;
             if (sbClient && postData._skipDbLock !== true) {
                 try {
+                    const sysUserId = await this._getSystemUserId(sbClient);
                     const { error: lockErr } = await sbClient
                         .from('referral_codes')
                         .insert({
-                            user_id: '00000000-0000-0000-0000-000000000002',
+                            user_id: sysUserId,
                             code: dbLockKey
                         });
 
                     if (lockErr) {
                         if (lockErr.code === '23505') {
-                            logger.warn(`🔒 [LINKEDIN] Atomic DB unique violation (23505): another worker holds comment lock for ${postId}. Skipping duplicate.`);
-                            return { success: true, alreadyPosted: true, postId, tier: 'supabase_atomic_23505' };
+                            const lockTtlMs = typeof postData._lockTtlMs === 'number' ? postData._lockTtlMs : 5 * 60 * 1000;
+                            const lifecycle = await this._handleExistingCommentLock(postId, dbLockKey, sbClient, authorUrn, accessToken, lockTtlMs);
+                            if (lifecycle.acquired) {
+                                acquiredDbLock = true;
+                            } else {
+                                return { success: true, alreadyPosted: true, postId, tier: lifecycle.tier || 'supabase_atomic_23505', lockStatus: lifecycle.status };
+                            }
+                        } else {
+                            logger.warn(`[LINKEDIN] Atomic lock insert warning: ${lockErr.message}`);
                         }
-                        logger.warn(`[LINKEDIN] Atomic lock insert warning: ${lockErr.message}`);
                     } else {
                         acquiredDbLock = true;
                     }
@@ -701,10 +792,14 @@ class LinkedInAdapter {
         } finally {
             this._activePosting.delete(postId);
             // If failed after all retries and comment was not posted, release temporary atomic lock so safe retries are permitted
-            if (acquiredDbLock && !this._postedComments.has(postId) && supabaseAdmin) {
+            const sbClient = this._supabaseAdmin || supabaseAdmin;
+            if (acquiredDbLock && !this._postedComments.has(postId) && sbClient && postData._skipDbLock !== true) {
                 try {
-                    await supabaseAdmin.from('referral_codes').delete().eq('code', dbLockKey);
-                } catch {}
+                    await sbClient.from('referral_codes').delete().eq('code', dbLockKey);
+                    logger.info(`🔓 [LINKEDIN] Released atomic comment lock ${dbLockKey} on failed/aborted attempt.`);
+                } catch (e) {
+                    logger.warn(`[LINKEDIN] Lock release warning: ${e.message}`);
+                }
             }
         }
     }

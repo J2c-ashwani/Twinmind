@@ -396,18 +396,28 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
             assert.ok(getCalls >= 1, 'Must have queried LinkedIn socialActions to verify comment state');
         });
 
-        it('should enforce atomic database mutex (SQLSTATE 23505) across concurrent workers without network calls', async () => {
-            let apiCalls = 0;
-            linkedinAdapter._fetch = async () => {
-                apiCalls++;
-                return { ok: true, json: async () => ({ id: 'urn:li:comment:unreachable' }) };
+        it('should enforce atomic database mutex (SQLSTATE 23505) across concurrent workers without duplicate post calls', async () => {
+            let postCalls = 0;
+            linkedinAdapter._fetch = async (url, options) => {
+                if (options?.method === 'POST') {
+                    postCalls++;
+                    return { ok: true, json: async () => ({ id: 'urn:li:comment:unreachable' }) };
+                }
+                // GET reconciliation calls return empty elements
+                return { ok: true, json: async () => ({ elements: [] }) };
             };
 
-            // Mock Supabase to simulate PostgreSQL unique_violation (23505)
+            // Mock Supabase to simulate PostgreSQL unique_violation (23505) with active lease (< 5 min)
             const originalSupabase = linkedinAdapter._supabaseAdmin;
             linkedinAdapter._supabaseAdmin = {
                 from: (table) => ({
-                    select: () => ({ eq: () => ({ limit: async () => ({ data: [] }) }) }),
+                    select: () => ({
+                        eq: () => ({
+                            limit: async () => ({ data: [] }),
+                            maybeSingle: async () => ({ data: { created_at: new Date().toISOString() }, error: null })
+                        }),
+                        limit: async () => ({ data: [{ id: 'mock_sys_user_id' }] })
+                    }),
                     insert: async () => ({
                         data: null,
                         error: { code: '23505', message: 'duplicate key value violates unique constraint "referral_codes_code_key"' }
@@ -425,8 +435,70 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
 
             assert.strictEqual(result.success, true);
             assert.strictEqual(result.alreadyPosted, true);
-            assert.strictEqual(result.tier, 'supabase_atomic_23505', 'Must intercept atomic unique violation code 23505');
-            assert.strictEqual(apiCalls, 0, 'Zero network API calls must be made when atomic DB lock is already held');
+            assert.strictEqual(result.tier, 'supabase_active_lease', 'Must intercept active lease via lock lifecycle');
+            assert.strictEqual(postCalls, 0, 'Zero POST comment calls must be made when atomic DB lock is active');
+        });
+
+        it('should safely recover expired lock when previous worker crashed mid-operation without publishing', async () => {
+            let postCalls = 0;
+            linkedinAdapter._fetch = async (url, options) => {
+                if (options?.method === 'POST') {
+                    postCalls++;
+                    return { ok: true, json: async () => ({ id: 'urn:li:comment:recovered_success' }) };
+                }
+                // GET reconciliation calls return empty elements (proves crashed worker never posted)
+                return { ok: true, json: async () => ({ elements: [] }) };
+            };
+
+            let deletedStaleLock = false;
+            let relockedFresh = false;
+            const originalSupabase = linkedinAdapter._supabaseAdmin;
+
+            // Mock Supabase: initial insert gives 23505; select shows created_at 15 minutes ago (> 5m TTL)
+            linkedinAdapter._supabaseAdmin = {
+                from: (table) => ({
+                    select: () => ({
+                        eq: () => ({
+                            limit: async () => ({ data: [] }),
+                            maybeSingle: async () => ({
+                                data: { created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString() },
+                                error: null
+                            })
+                        }),
+                        limit: async () => ({ data: [{ id: 'mock_sys_user_id' }] })
+                    }),
+                    insert: async () => {
+                        if (!deletedStaleLock) {
+                            return {
+                                data: null,
+                                error: { code: '23505', message: 'duplicate key' }
+                            };
+                        }
+                        relockedFresh = true;
+                        return { data: null, error: null };
+                    },
+                    delete: () => ({
+                        eq: async () => {
+                            deletedStaleLock = true;
+                            return { data: null, error: null };
+                        }
+                    })
+                })
+            };
+
+            const testPostId = `urn:li:ugcPost:crash_recovery_${Date.now()}`;
+            const result = await linkedinAdapter._postFirstComment(testPostId, {
+                _propagationDelayMs: 0
+            }, 'tok', 'urn:li:person:author');
+
+            // Restore
+            linkedinAdapter._supabaseAdmin = originalSupabase;
+
+            assert.strictEqual(result.success, true, 'Recovery must succeed');
+            assert.strictEqual(deletedStaleLock, true, 'Must evict stale lock row from crashed worker');
+            assert.strictEqual(relockedFresh, true, 'Must re-acquire fresh lease');
+            assert.strictEqual(postCalls, 1, 'Must proceed to publish comment after recovering lock');
+            assert.strictEqual(result.commentId, 'urn:li:comment:recovered_success');
         });
     });
 
