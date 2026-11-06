@@ -74,9 +74,10 @@ class LinkedInAdapter {
 
         // Tier 3: Supabase Distributed Ledger (survives Render dyno restarts & multi-worker race conditions)
         try {
-            if (supabaseAdmin) {
+            const sbClient = this._supabaseAdmin || supabaseAdmin;
+            if (sbClient) {
                 const actionType = `growth_first_comment:${postId}`;
-                const { data } = await supabaseAdmin
+                const { data } = await sbClient
                     .from('usage_tracking')
                     .select('id, created_at')
                     .eq('action_type', actionType)
@@ -134,13 +135,14 @@ class LinkedInAdapter {
 
         // Tier 3: Supabase Distributed Ledger
         try {
-            if (supabaseAdmin) {
+            const sbClient = this._supabaseAdmin || supabaseAdmin;
+            if (sbClient) {
                 const actionType = `growth_first_comment:${postId}`;
                 const nowIso = new Date().toISOString();
-                const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
+                const { data: users } = await sbClient.from('users').select('id').limit(1);
                 const userId = users && users.length > 0 ? users[0].id : null;
 
-                await supabaseAdmin.from('usage_tracking').insert({
+                await sbClient.from('usage_tracking').insert({
                     user_id: userId,
                     action_type: actionType,
                     metadata: { postId, commentId, platform: 'linkedin', publishedAt: nowIso },
@@ -544,8 +546,40 @@ class LinkedInAdapter {
     }
 
     /**
+     * Reconciles ambiguous API timeouts (504 Gateway Timeout, ETIMEDOUT, ECONNRESET).
+     * Queries LinkedIn socialActions API to check if our comment actually landed before retrying or failing.
+     */
+    async _reconcileAmbiguousCommentTimeout(postId, authorUrn, accessToken) {
+        if (!postId || !accessToken) return { reconciled: false };
+        try {
+            logger.info(`🔍 [LINKEDIN] Reconciling ambiguous timeout for ${postId}: checking if comment already exists on LinkedIn...`);
+            const fetchFn = this._fetch || fetch;
+            const res = await fetchFn(`https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postId)}/comments`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'X-Restli-Protocol-Version': '2.0.0'
+                }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const elements = data.elements || [];
+                const match = elements.find(el => el.actor === authorUrn);
+                if (match) {
+                    logger.info(`✅ [LINKEDIN] Ambiguous timeout reconciled! Comment found on LinkedIn: ${match.id}`);
+                    return { reconciled: true, commentId: match.id };
+                }
+            }
+        } catch (recErr) {
+            logger.warn(`[LINKEDIN] Ambiguous comment reconciliation query warning: ${recErr.message}`);
+        }
+        return { reconciled: false };
+    }
+
+    /**
      * Posts the first comment with the direct Google Play Store download link.
      * Enforces durable 3-tier idempotency (in-memory Set, persistent disk ledger, Supabase distributed DB),
+     * atomic DB-level unique constraint mutex (SQLSTATE 23505), ambiguous timeout reconciliation,
      * safe retries, accurate UTM parameters, and non-blocking failure handling so published posts
      * are NEVER failed or rolled back if the first comment API fails.
      */
@@ -556,7 +590,7 @@ class LinkedInAdapter {
             return { skipped: true, reason: 'skip_first_comment_flag', postId };
         }
 
-        // Concurrency Guard: synchronously acquire in-process lock before any async I/O
+        // Tier 1 Concurrency Guard: synchronously acquire in-process lock before any async I/O
         if (!this._activePosting) this._activePosting = new Set();
         if (this._activePosting.has(postId)) {
             logger.warn(`⏳ [LINKEDIN] First comment for ${postId} is currently being processed by concurrent task. Skipping duplicate.`);
@@ -564,13 +598,43 @@ class LinkedInAdapter {
         }
         this._activePosting.add(postId);
 
+        let acquiredDbLock = false;
+        const dbLockKey = `LOCK-COMM-${postId}`;
+
         try {
-            // Durable 3-Tier Idempotency check: survives process restarts, crashes, and multi-worker instances
+            // Tier 2 & 3: Durable Idempotency check (disk ledger + Supabase usage_tracking)
             const idempotency = await this._checkDurableCommentLedger(postId);
             if (idempotency.alreadyPosted) {
                 logger.warn(`💬 [LINKEDIN] First comment already posted for ${postId} (found in ${idempotency.tier}). Skipping duplicate.`);
                 return { success: true, alreadyPosted: true, postId, tier: idempotency.tier };
             }
+
+            // Tier 4: Atomic Distributed Database Mutex across concurrent workers
+            // Uses PostgreSQL UNIQUE constraint on referral_codes.code (SQLSTATE 23505)
+            const sbClient = this._supabaseAdmin || supabaseAdmin;
+            if (sbClient && postData._skipDbLock !== true) {
+                try {
+                    const { error: lockErr } = await sbClient
+                        .from('referral_codes')
+                        .insert({
+                            user_id: '00000000-0000-0000-0000-000000000002',
+                            code: dbLockKey
+                        });
+
+                    if (lockErr) {
+                        if (lockErr.code === '23505') {
+                            logger.warn(`🔒 [LINKEDIN] Atomic DB unique violation (23505): another worker holds comment lock for ${postId}. Skipping duplicate.`);
+                            return { success: true, alreadyPosted: true, postId, tier: 'supabase_atomic_23505' };
+                        }
+                        logger.warn(`[LINKEDIN] Atomic lock insert warning: ${lockErr.message}`);
+                    } else {
+                        acquiredDbLock = true;
+                    }
+                } catch (dbErr) {
+                    logger.warn(`[LINKEDIN] DB mutex error: ${dbErr.message}`);
+                }
+            }
+
             const playStoreUrl = postData.utmLink || 'https://play.google.com/store/apps/details?id=com.asmind.app';
             const commentMsg = postData.firstComment || 
                 `📲 Download TwinGenie free on Google Play Store:\n${playStoreUrl}\n\nExplore your cognitive patterns with persistent memory and 4 reflective modes.`;
@@ -603,7 +667,7 @@ class LinkedInAdapter {
                     });
                     const data = await res.json();
                     if (data.id) {
-                        // Atomically record across all 3 durable tiers
+                        // Atomically record across all durable tiers
                         await this._recordDurableComment(postId, data.id);
                         logger.info(`💬 [LINKEDIN] First comment posted and durably recorded on ${postId}: ${data.id}`);
                         return { success: true, commentId: data.id, postId, attempt };
@@ -614,6 +678,16 @@ class LinkedInAdapter {
                 } catch (err) {
                     lastError = err.message;
                     logger.warn(`[LINKEDIN] Non-blocking first-comment error (attempt ${attempt}):`, err.message);
+
+                    // Ambiguous Timeout Detection: if network dropped or timed out, query LinkedIn to verify if comment landed
+                    if (err.message?.includes('ETIMEDOUT') || err.message?.includes('ECONNRESET') || err.message?.includes('504')) {
+                        const reconciled = await this._reconcileAmbiguousCommentTimeout(postId, authorUrn, accessToken);
+                        if (reconciled.reconciled) {
+                            await this._recordDurableComment(postId, reconciled.commentId);
+                            logger.info(`🎉 [LINKEDIN] Ambiguous timeout successfully reconciled as published: ${reconciled.commentId}`);
+                            return { success: true, commentId: reconciled.commentId, postId, attempt, reconciled: true };
+                        }
+                    }
                 }
 
                 if (attempt < maxAttempts) {
@@ -626,6 +700,12 @@ class LinkedInAdapter {
             return { success: false, error: lastError, postId, attempts: maxAttempts };
         } finally {
             this._activePosting.delete(postId);
+            // If failed after all retries and comment was not posted, release temporary atomic lock so safe retries are permitted
+            if (acquiredDbLock && !this._postedComments.has(postId) && supabaseAdmin) {
+                try {
+                    await supabaseAdmin.from('referral_codes').delete().eq('code', dbLockKey);
+                } catch {}
+            }
         }
     }
 }

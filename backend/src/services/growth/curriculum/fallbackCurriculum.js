@@ -1173,7 +1173,7 @@ export const CURATED_FALLBACK_THEMES = [
         category: 'AI & SELF-GROWTH',
         hook: 'An AI that always agrees with you may feel comforting, but it won\'t necessarily help you examine your assumptions.',
         relatableScenario: 'You open a conversational tool, explain why you delayed an important personal decision, and it responds with cheerful praise and affirmations. It feels reassuring in the moment, but it doesn\'t help you unpack what actually held you back.',
-        psychologyInsight: 'Conversational systems are typically trained to minimize dialogue friction and optimize for immediate user satisfaction. But authentic self-growth often requires constructive friction—asking difficult questions rather than defaulting to easy agreement.',
+        psychologyInsight: 'Some AI interactions can become overly agreeable, prioritising reassurance over helping people examine their assumptions. But authentic self-growth often requires constructive friction—asking difficult questions rather than defaulting to easy agreement.',
         practicalFramework: [
             'Do you want tools that validate your comfort zone, or tools that help you see your blind spots?',
             'When was the last time advice that genuinely helped you make a change felt comfortable in the first five seconds?',
@@ -1381,7 +1381,7 @@ export const CURATED_FALLBACK_THEMES = [
         category: 'AI & SOCIETY',
         hook: 'When a conversational tool uncritically agrees with your premise, it isn\'t providing depth. It is mirroring your confirmation bias.',
         relatableScenario: 'You ask a tool for thoughts on whether to abandon a project, send an angry text, or make a sudden leap. If your prompt is emotionally slanted, the tool easily mirrors your premise and lists reasons backing your initial impulse.',
-        psychologyInsight: 'Conversational language models are typically optimized to minimize conversational friction. Unless given structured constraints to explore counter-perspectives, they often reflect the emotional slant of the prompt, mirroring rather than challenging user assumptions.',
+        psychologyInsight: 'Without intentional reflective guardrails, some AI interactions can mirror rather than challenge user assumptions, acting as echo chambers instead of thoughtful mirrors.',
         practicalFramework: [
             'When you prompt an AI, are you genuinely seeking truth, or searching for an authoritative voice to rubber-stamp your decision?',
             'What would the strongest counter-argument to your current dilemma sound like?',

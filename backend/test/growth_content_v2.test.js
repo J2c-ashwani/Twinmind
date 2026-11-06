@@ -280,9 +280,16 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
 
         it('should retry up to 3 times on transient network error and handle failure without throwing', async () => {
             let attemptCount = 0;
-            linkedinAdapter._fetch = async () => {
-                attemptCount++;
-                throw new Error('ETIMEDOUT: Connection dropped by LinkedIn peer');
+            linkedinAdapter._fetch = async (url, options) => {
+                if (options?.method === 'POST') {
+                    attemptCount++;
+                    throw new Error('ETIMEDOUT: Connection dropped by LinkedIn peer');
+                }
+                // GET reconciliation calls return empty elements so reconciliation fails and retry continues
+                return {
+                    ok: true,
+                    json: async () => ({ elements: [] })
+                };
             };
 
             const testPostId = 'urn:li:ugcPost:77777';
@@ -350,6 +357,76 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
             assert.strictEqual(apiCalls, 1, 'Only exactly 1 API call must be dispatched across concurrent workers');
             assert.ok(p1.success && p2.success, 'Both calls must resolve cleanly');
             assert.ok(p1.alreadyPosted || p2.alreadyPosted, 'One of the concurrent workers must be blocked by concurrency guard');
+        });
+
+        it('should reconcile ambiguous API timeouts without duplicate comment publishing', async () => {
+            let postCalls = 0;
+            let getCalls = 0;
+            const authorUrn = 'urn:li:person:test_reconcile_author';
+            const testPostId = `urn:li:ugcPost:ambig_${Date.now()}`;
+
+            linkedinAdapter._fetch = async (url, options) => {
+                if (options?.method === 'POST') {
+                    postCalls++;
+                    // Simulate ambiguous drop: HTTP connection timed out, but LinkedIn created the comment
+                    throw new Error('ETIMEDOUT: Connection dropped by LinkedIn peer');
+                } else if (!options || options.method === 'GET') {
+                    getCalls++;
+                    // Reconcile query returns the comment that landed on LinkedIn!
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            elements: [
+                                { id: 'urn:li:comment:reconciled_999', actor: authorUrn }
+                            ]
+                        })
+                    };
+                }
+            };
+
+            const result = await linkedinAdapter._postFirstComment(testPostId, {
+                _propagationDelayMs: 0,
+                _retryDelayMs: 2
+            }, 'mock_token', authorUrn);
+
+            assert.strictEqual(result.success, true);
+            assert.strictEqual(result.reconciled, true, 'Must flag timeout as reconciled');
+            assert.strictEqual(result.commentId, 'urn:li:comment:reconciled_999');
+            assert.strictEqual(postCalls, 1, 'Must not continue blindly posting duplicate comments after reconciliation');
+            assert.ok(getCalls >= 1, 'Must have queried LinkedIn socialActions to verify comment state');
+        });
+
+        it('should enforce atomic database mutex (SQLSTATE 23505) across concurrent workers without network calls', async () => {
+            let apiCalls = 0;
+            linkedinAdapter._fetch = async () => {
+                apiCalls++;
+                return { ok: true, json: async () => ({ id: 'urn:li:comment:unreachable' }) };
+            };
+
+            // Mock Supabase to simulate PostgreSQL unique_violation (23505)
+            const originalSupabase = linkedinAdapter._supabaseAdmin;
+            linkedinAdapter._supabaseAdmin = {
+                from: (table) => ({
+                    select: () => ({ eq: () => ({ limit: async () => ({ data: [] }) }) }),
+                    insert: async () => ({
+                        data: null,
+                        error: { code: '23505', message: 'duplicate key value violates unique constraint "referral_codes_code_key"' }
+                    })
+                })
+            };
+
+            const testPostId = `urn:li:ugcPost:mutex_test_${Date.now()}`;
+            const result = await linkedinAdapter._postFirstComment(testPostId, {
+                _propagationDelayMs: 0
+            }, 'tok', 'urn:li:person:author');
+
+            // Restore
+            linkedinAdapter._supabaseAdmin = originalSupabase;
+
+            assert.strictEqual(result.success, true);
+            assert.strictEqual(result.alreadyPosted, true);
+            assert.strictEqual(result.tier, 'supabase_atomic_23505', 'Must intercept atomic unique violation code 23505');
+            assert.strictEqual(apiCalls, 0, 'Zero network API calls must be made when atomic DB lock is already held');
         });
     });
 
