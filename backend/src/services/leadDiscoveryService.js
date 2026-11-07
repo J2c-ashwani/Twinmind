@@ -216,6 +216,118 @@ const JOURNALIST_CATALOG = [
         organization: 'Fast Company',
         roleOrFocus: 'Emerging Tech & Human Interface',
         angle: 'loneliness_economy'
+    },
+    {
+        recipientName: 'Matt Wolfe',
+        email: 'matt@futuretools.io',
+        organization: 'Future Tools',
+        roleOrFocus: 'AI Tools & Weekly Video Teardowns',
+        angle: 'product_teardown'
+    },
+    {
+        recipientName: 'Martin Crowley',
+        email: 'martin@aitoolreport.com',
+        organization: 'AI Tool Report',
+        roleOrFocus: 'Daily AI Tools & App Spotlight',
+        angle: 'product_teardown'
+    },
+    {
+        recipientName: 'Rowan Cheung',
+        email: 'rowan@therundown.ai',
+        organization: 'The Rundown AI',
+        roleOrFocus: 'AI Tech & Consumer App Spotlights',
+        angle: 'product_teardown'
+    },
+    {
+        recipientName: 'Greg Isenberg',
+        email: 'greg@latecheckout.studio',
+        organization: 'You Probably Need a Robot / Late Checkout',
+        roleOrFocus: 'AI Communities, UX & Consumer Bots',
+        angle: 'reddit_backlash'
+    },
+    {
+        recipientName: 'Alexandre Valaitis',
+        email: 'alex@wrotetech.com',
+        organization: 'WROTE AI',
+        roleOrFocus: 'Practical AI Products & Cognitive Tech',
+        angle: 'cognitive_architecture'
+    },
+    {
+        recipientName: 'Nathan Lands',
+        email: 'nathan@lore.com',
+        organization: 'Lore AI',
+        roleOrFocus: 'AI Culture, Companions & Digital Identity',
+        angle: 'cognitive_architecture'
+    },
+    {
+        recipientName: 'Ben Parr',
+        email: 'ben@octaneai.com',
+        organization: 'AI Insights & Solopreneurship',
+        roleOrFocus: 'Conversational UX & AI Psychology',
+        angle: 'loneliness_economy'
+    },
+    {
+        recipientName: 'Swyx',
+        email: 'swyx@latent.space',
+        organization: 'Latent Space',
+        roleOrFocus: 'AI Engineering, Memory & Thinking Tools',
+        angle: 'cognitive_architecture'
+    },
+    {
+        recipientName: 'Heather Cooper',
+        email: 'heather@visuallyai.com',
+        organization: 'Visually AI',
+        roleOrFocus: 'Indie AI Tools & Multi-Modal Interfaces',
+        angle: 'product_teardown'
+    },
+    {
+        recipientName: 'Charlie Guo',
+        email: 'charlie@artificialignorance.net',
+        organization: 'Artificial Ignorance',
+        roleOrFocus: 'AI Critique, Reasoning & App Analysis',
+        angle: 'reddit_backlash'
+    },
+    {
+        recipientName: 'Bram Adams',
+        email: 'bram@bramadams.dev',
+        organization: "Bramses' Newsletter",
+        roleOrFocus: 'Digital Memory, pgvector & Self-Reflection AI',
+        angle: 'cognitive_architecture'
+    },
+    {
+        recipientName: 'Michael Nuñez',
+        email: 'michael@venturebeat.com',
+        organization: 'VentureBeat AI',
+        roleOrFocus: 'Consumer AI Apps & Editorial Features',
+        angle: 'product_teardown'
+    },
+    {
+        recipientName: 'Carl Franzen',
+        email: 'carl@venturebeat.com',
+        organization: 'VentureBeat AI',
+        roleOrFocus: 'Generative AI & Companion Tech',
+        angle: 'reddit_backlash'
+    },
+    {
+        recipientName: 'Sharon Goldman',
+        email: 'sharon@venturebeat.com',
+        organization: 'VentureBeat AI',
+        roleOrFocus: 'Enterprise & Consumer AI Ethics',
+        angle: 'cognitive_architecture'
+    },
+    {
+        recipientName: 'Nathan Benaich',
+        email: 'nathan@air-street.com',
+        organization: 'State of AI Report',
+        roleOrFocus: 'AI Industry Trends & Consumer Software',
+        angle: 'cognitive_architecture'
+    },
+    {
+        recipientName: 'Aditya Ramesh',
+        email: 'aditya@creatoreconomy.so',
+        organization: 'Creator Economy AI',
+        roleOrFocus: 'AI Tools for Creators & Indie Founders',
+        angle: 'product_teardown'
     }
 ];
 
