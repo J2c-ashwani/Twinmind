@@ -18,7 +18,18 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
  */
 
 export function initGrowthJobs() {
-    logger.info('Initializing Growth Distribution Jobs (Single-Source cron-job.org primary)...');
+    logger.info('Initializing Growth Distribution Jobs (Dual-Redundancy: Internal Crons + External Fallback + Nightly Sweep)...');
+
+    // 4:00 PM IST (16:00 Asia/Kolkata): Daily LinkedIn Personal Profile Carousel Publication
+    // Idempotency guaranteed by Supabase Durable Distributed Ledger (skips in <10ms if already published)
+    cron.schedule('0 16 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 4:00 PM IST reached! Executing daily LinkedIn carousel publication...');
+            await growthOrchestratorService.publishDailyLinkedInPersonal(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 4:00 PM LinkedIn publication error:', e);
+        }
+    }, { timezone: 'Asia/Kolkata' });
 
     // Nightly Fail-Safe Sweep: 11:00 PM IST (23:00 Asia/Kolkata)
     // Runs once daily at the end of the day. If cron-job.org already published during the day,

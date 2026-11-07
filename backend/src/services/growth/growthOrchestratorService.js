@@ -662,6 +662,8 @@ class GrowthOrchestratorService {
             let dailyPackage;
             let rendered;
             let armInfo;
+            let campaignId;
+            let postId;
 
             // Strict Immutable Approved Content Package Enforcement for Experiment V2:
             // The 4 PM cron must publish the pre-approved package. It must NOT regenerate content without approval.
@@ -694,10 +696,24 @@ class GrowthOrchestratorService {
                     utmLink: approvedPkg.utmLink,
                     firstComment: approvedPkg.firstComment
                 };
-                rendered = {
-                    pdfPath: approvedPkg.pdfPath,
-                    pngPaths: approvedPkg.pngPaths
-                };
+
+                campaignId = `camp_${approvedPkg.themeId || 'daily'}_${Date.now()}`;
+                postId = `post_linkedin_personal_${Date.now()}`;
+
+                const pdfExists = approvedPkg.pdfPath && fs.existsSync(approvedPkg.pdfPath);
+                if (pdfExists) {
+                    rendered = {
+                        pdfPath: approvedPkg.pdfPath,
+                        pngPaths: approvedPkg.pngPaths
+                    };
+                } else {
+                    logger.info(`[GROWTH ORCHESTRATOR] Approved package PDF not at ${approvedPkg.pdfPath}. Rendering directly on container from approved slides...`);
+                    rendered = await mediaRendererService.renderCarousel({
+                        campaignId,
+                        postId,
+                        slides: approvedPkg.slides
+                    });
+                }
             } else {
                 // Determine calendar day number and schedule
                 const schedule = contentGeneratorService.getDailySchedule(now);
@@ -730,8 +746,8 @@ class GrowthOrchestratorService {
                     utmLink: armInfo.utmLink,
                     specificThemeId
                 });
-                const campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
-                const postId = `post_linkedin_personal_${Date.now()}`;
+                campaignId = `camp_${dailyPackage.themeId || 'daily'}_${Date.now()}`;
+                postId = `post_linkedin_personal_${Date.now()}`;
 
                 logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
 
