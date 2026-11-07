@@ -294,12 +294,16 @@ TwinGenie (https://twingenie.app) • Self-funded software • If you prefer not
                 };
             } else {
                 logger.error(`❌ [PR OUTREACH] Failed to send to ${candidate.email}:`, result.error);
+                const nextAttempts = (candidate.attempts || 0) + 1;
+                const newStatus = nextAttempts >= 3 ? 'failed' : 'pending';
+
                 if (isDbCandidate) {
                     try {
                         await supabaseAdmin
                             .from('outreach_campaign_leads')
                             .update({
-                                attempts: (candidate.attempts || 0) + 1,
+                                status: newStatus,
+                                attempts: nextAttempts,
                                 last_attempt_at: nowIso,
                                 error: JSON.stringify(result.error),
                                 updated_at: nowIso
@@ -311,15 +315,37 @@ TwinGenie (https://twingenie.app) • Self-funded software • If you prefer not
                 }
 
                 if (candidateIndex !== -1) {
-                    candidate.attempts = (candidate.attempts || 0) + 1;
+                    candidate.status = newStatus;
+                    candidate.attempts = nextAttempts;
                     candidate.lastAttemptAt = nowIso;
                     candidate.error = JSON.stringify(result.error);
                 }
                 this._saveState();
-                return { action: 'error', candidate: candidate.email, error: result.error };
+                return { action: 'error', candidate: candidate.email, error: result.error, status: newStatus };
             }
         } catch (err) {
             logger.error(`🚨 [PR OUTREACH] Exception sending to ${candidate.email}:`, err);
+            const nextAttempts = (candidate?.attempts || 0) + 1;
+            const newStatus = nextAttempts >= 3 ? 'failed' : 'pending';
+            if (isDbCandidate && candidate?.id) {
+                try {
+                    await supabaseAdmin
+                        .from('outreach_campaign_leads')
+                        .update({
+                            status: newStatus,
+                            attempts: nextAttempts,
+                            last_attempt_at: nowIso,
+                            error: err.message,
+                            updated_at: nowIso
+                        })
+                        .eq('id', candidate.id);
+                } catch (e) {}
+            }
+            if (candidateIndex !== -1 && this.state.queue[candidateIndex]) {
+                this.state.queue[candidateIndex].status = newStatus;
+                this.state.queue[candidateIndex].attempts = nextAttempts;
+            }
+            this._saveState();
             return { action: 'exception', error: err.message };
         }
     }
