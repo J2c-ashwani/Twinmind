@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
@@ -71,6 +72,22 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
     }
   }
 
+  void _shareGrowthStory() {
+    final year = _yearData?['year'] ?? DateTime.now().year;
+    final totalDays = _yearData?['totalDays'] ?? 0;
+    final insightsList = _insights?['insights'] as List?;
+    final topInsight = (insightsList != null && insightsList.isNotEmpty)
+        ? insightsList[0]
+        : 'Consistent self-reflection builds emotional resilience.';
+
+    Share.share(
+      '🧠 My $year Self-Awareness Pulse on TwinGenie:\n'
+      '✨ $totalDays days of mindful reflection tracked\n'
+      '💡 Key Insight: "$topInsight"\n\n'
+      'Explore your mind with TwinGenie: https://twingenie.com',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,6 +95,13 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
         title: const Text('Your Growth Story'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            tooltip: 'Share Growth Story',
+            onPressed: _shareGrowthStory,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -188,6 +212,26 @@ class _GrowthStoryScreenState extends State<GrowthStoryScreen> {
               const SizedBox(width: 8),
               Text('More', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.5))),
             ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Share Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _shareGrowthStory,
+              icon: const Icon(Icons.share, size: 16, color: Colors.white),
+              label: const Text(
+                'Share Your Reflection Pulse',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
           ),
         ],
       ),

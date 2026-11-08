@@ -5,7 +5,7 @@
 
 export const PRICING_TIERS = {
     // India & South Asia (Low purchasing power)
-    IN: { currency: 'INR', symbol: '₹', monthly: 299, yearly: 2999, usd: 3.60 },
+    IN: { currency: 'INR', symbol: '₹', monthly: 199, yearly: 1999, usd: 2.40 },
     PK: { currency: 'PKR', symbol: 'Rs', monthly: 999, yearly: 9999, usd: 3.50 },
     BD: { currency: 'BDT', symbol: '৳', monthly: 399, yearly: 3999, usd: 3.60 },
     LK: { currency: 'LKR', symbol: 'Rs', monthly: 1199, yearly: 11999, usd: 3.70 },
