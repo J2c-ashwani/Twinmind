@@ -33,15 +33,15 @@ export default function GeoPricingPage() {
         currency: 'INR',
         symbol: '₹',
         monthly: {
-            amount: 499,
-            display: '₹499',
-            usd: 5.99
+            amount: 199,
+            display: '₹199',
+            usd: 2.40
         },
         yearly: {
-            amount: 3999,
-            display: '₹3,999',
-            usd: 47.88,
-            savings: '33%'
+            amount: 1999,
+            display: '₹1,999',
+            usd: 24.00,
+            savings: '16%'
         }
     };
 
