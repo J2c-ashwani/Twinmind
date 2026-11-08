@@ -18,10 +18,9 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
  */
 
 export function initGrowthJobs() {
-    logger.info('Initializing Growth Distribution Jobs (Dual-Redundancy: Internal Crons + External Fallback + Nightly Sweep)...');
+    logger.info('Initializing Growth Distribution Jobs (Quad-Platform Dedicated Crons + Startup Boot Check + Nightly Sweep)...');
 
-    // 4:00 PM IST (16:00 Asia/Kolkata): Daily LinkedIn Personal Profile Carousel Publication
-    // Idempotency guaranteed by Supabase Durable Distributed Ledger (skips in <10ms if already published)
+    // 1. 4:00 PM IST (16:00 Asia/Kolkata): Daily LinkedIn Personal Profile Carousel
     cron.schedule('0 16 * * *', async () => {
         try {
             logger.info('⏰ [GROWTH JOB] 4:00 PM IST reached! Executing daily LinkedIn carousel publication...');
@@ -31,10 +30,39 @@ export function initGrowthJobs() {
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // Nightly Fail-Safe Sweep: 11:00 PM IST (23:00 Asia/Kolkata)
-    // Runs once daily at the end of the day. If cron-job.org already published during the day,
-    // the Durable Distributed Ledger in Supabase skips in <10ms.
-    // If an external cron failed or timed out, this provides an automated safety net.
+    // 2. 4:30 PM IST (16:30 Asia/Kolkata): Daily Facebook Page Reel Broadcast
+    cron.schedule('30 16 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 4:30 PM IST reached! Executing daily Facebook Reel publication...');
+            await growthOrchestratorService.publishDailyFacebookReel(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 4:30 PM Facebook publication error:', e);
+        }
+    }, { timezone: 'Asia/Kolkata' });
+
+    // 3. 7:00 PM IST (19:00 Asia/Kolkata): Daily Instagram Reel Broadcast
+    cron.schedule('0 19 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 7:00 PM IST reached! Executing daily Instagram Reel publication...');
+            await growthOrchestratorService.publishDailyInstagram(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 7:00 PM Instagram publication error:', e);
+        }
+    }, { timezone: 'Asia/Kolkata' });
+
+    // 4. 7:30 PM IST (19:30 Asia/Kolkata): Daily Threads Micro-Essay Broadcast
+    cron.schedule('30 19 * * *', async () => {
+        try {
+            logger.info('⏰ [GROWTH JOB] 7:30 PM IST reached! Executing daily Threads micro-essay publication...');
+            await growthOrchestratorService.publishDailyThreads(false);
+        } catch (e) {
+            logger.error('[GROWTH JOB] 7:30 PM Threads publication error:', e);
+        }
+    }, { timezone: 'Asia/Kolkata' });
+
+    // 5. Nightly Fail-Safe Sweep: 11:00 PM IST (23:00 Asia/Kolkata)
+    // Runs once daily at the end of the day. If already published, the Durable Distributed Ledger
+    // skips in <10ms. If any platform was missed, this guarantees publication before midnight!
     cron.schedule('0 23 * * *', async () => {
         try {
             logger.info('⏰ [GROWTH JOB] 11:00 PM IST reached! Executing nightly fail-safe sweep for all platforms...');
