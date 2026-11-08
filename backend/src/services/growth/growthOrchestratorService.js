@@ -664,6 +664,7 @@ class GrowthOrchestratorService {
             let armInfo;
             let campaignId;
             let postId;
+            let assignedPillar = 'pillar_1_psychology';
 
             // Strict Immutable Approved Content Package Enforcement for Experiment V2:
             // The 4 PM cron must publish the pre-approved package. It must NOT regenerate content without approval.
@@ -673,13 +674,16 @@ class GrowthOrchestratorService {
                 if (!pkgResult.valid) {
                     const alertMsg = `🚨 [GROWTH ORCHESTRATOR] HALT: No valid approved content package found for ${todayIST} (${pkgResult.reason})! Experiment v2 strictly forbids publishing unapproved or auto-regenerated content.`;
                     logger.error(alertMsg);
+                    await this.releaseDurableLock('linkedin', todayIST);
                     return { action: 'halted', reason: 'missing_approved_package', error: pkgResult.reason, date: todayIST };
                 }
 
                 const approvedPkg = pkgResult.package;
-                logger.info(`🛡️ [GROWTH ORCHESTRATOR] Publishing IMMUTABLE APPROVED PACKAGE: ${approvedPkg.packageId} (Pillar: ${approvedPkg.pillarId}, Arm: ${approvedPkg.arm}). Zero regeneration.`);
+                assignedPillar = approvedPkg.pillarId || 'pillar_1_psychology';
+                logger.info(`🛡️ [GROWTH ORCHESTRATOR] Publishing IMMUTABLE APPROVED PACKAGE: ${approvedPkg.packageId} (Pillar: ${assignedPillar}, Arm: ${approvedPkg.arm}). Zero regeneration.`);
 
                 dailyPackage = {
+                    pillarId: assignedPillar,
                     themeId: approvedPkg.themeId,
                     topic: approvedPkg.topic || approvedPkg.themeId,
                     category: approvedPkg.category || 'AI & SELF-AWARENESS',
