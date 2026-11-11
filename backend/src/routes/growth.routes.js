@@ -150,6 +150,8 @@ router.all('/publish/linkedin', requireAdminSecret, async (req, res) => {
             pdfPath: rendered.pdfPath,
             pngPaths: rendered.pngPaths,
             utmLink: content.utmLink,
+            skipFirstComment: true,
+            firstComment: null,
             accessToken,
             authorUrn,
             target

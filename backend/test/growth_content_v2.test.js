@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 import contentGeneratorService, { 
     CURATED_FALLBACK_THEMES, 
     PILLARS, 
-    getCuratedTheme 
+    getCuratedTheme,
+    cleanLinkedInHumanCaption
 } from '../src/services/growth/contentGeneratorService.js';
 import linkedinAdapter from '../src/services/growth/adapters/linkedinAdapter.js';
 import growthOrchestratorService from '../src/services/growth/growthOrchestratorService.js';
@@ -90,51 +91,34 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
     });
 
     // =========================================================================
-    // 2. A/B EXPERIMENT & PAIR-MATCHED METHODOLOGY (Issue 1 & Issue 2)
+    // 2. ZERO FIRST-COMMENT REACH POLICY (LinkedIn Distribution Directive)
     // =========================================================================
-    describe('2. A/B Experiment & Pair-Matched Randomization (Controlling Confounders)', () => {
+    describe('2. LinkedIn Reach Protection (Zero Self-Comment Auto-Posting)', () => {
         beforeEach(() => {
             growthOrchestratorService._matchedPairBuckets = {};
             growthOrchestratorService._globalArmCounts = { arm_a: 0, arm_b: 0 };
         });
 
-        it('should alternate arms strictly within each (pillar, format) matched pair', () => {
-            // Bucket 1: Psychology Carousel
-            const post1 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_1_psychology', format: 'carousel_pdf', themeId: 'sunk_cost_fallacy' });
-            assert.strictEqual(post1.arm, 'arm_a_caption');
-            assert.strictEqual(post1.includeCaptionLink, true);
-            assert.strictEqual(post1.skipFirstComment, true);
+        it('should ALWAYS skip first comment across repeated calls and pillars', () => {
+            const p1 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_1_psychology', format: 'carousel_pdf', themeId: 'sunk_cost_fallacy' });
+            const p2 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_1_psychology', format: 'carousel_pdf', themeId: 'avoidance_trap' });
+            const p3 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_2_generic_ai', format: 'carousel_pdf', themeId: 'stateless_amnesia' });
 
-            // Bucket 2: Generic AI Carousel (first time in this bucket -> Arm A)
-            const post2 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_2_generic_ai', format: 'carousel_pdf', themeId: 'flattery_trap' });
-            assert.strictEqual(post2.arm, 'arm_a_caption');
-
-            // Bucket 1 second time -> Pair match triggers Arm B!
-            const post3 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_1_psychology', format: 'carousel_pdf', themeId: 'avoidance_trap' });
-            assert.strictEqual(post3.arm, 'arm_b_comment');
-            assert.strictEqual(post3.includeCaptionLink, false);
-            assert.strictEqual(post3.skipFirstComment, false);
-            assert.ok(post3.firstComment.includes('play.google.com'));
-
-            // Bucket 2 second time -> Pair match triggers Arm B!
-            const post4 = growthOrchestratorService.getExperimentAssignment({ pillarId: 'pillar_2_generic_ai', format: 'carousel_pdf', themeId: 'stateless_amnesia' });
-            assert.strictEqual(post4.arm, 'arm_b_comment');
+            for (const post of [p1, p2, p3]) {
+                assert.strictEqual(post.arm, 'arm_a_caption');
+                assert.strictEqual(post.includeCaptionLink, true);
+                assert.strictEqual(post.skipFirstComment, true);
+                assert.strictEqual(post.firstComment, null);
+            }
         });
 
-        it('should guarantee exactly 50% Arm A and 50% Arm B across 30 pair-matched posts', () => {
+        it('should enforce 100% no-comment arm across a full 30-day cycle', () => {
             const pillarCycle = [
                 'pillar_1_psychology', 'pillar_1_psychology', 'pillar_2_generic_ai',
                 'pillar_1_psychology', 'pillar_3_product_demo', 'pillar_1_psychology',
                 'pillar_2_generic_ai', 'pillar_3_product_demo', 'pillar_1_psychology',
                 'pillar_2_generic_ai'
             ];
-
-            const armCounts = { arm_a_caption: 0, arm_b_comment: 0 };
-            const pillarArmDistribution = {
-                pillar_1_psychology: { arm_a: 0, arm_b: 0 },
-                pillar_2_generic_ai: { arm_a: 0, arm_b: 0 },
-                pillar_3_product_demo: { arm_a: 0, arm_b: 0 }
-            };
 
             for (let day = 0; day < 30; day++) {
                 const assignedPillar = pillarCycle[day % 10];
@@ -145,60 +129,51 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
                     themeId: `theme_${day}`
                 });
 
-                armCounts[assignment.arm]++;
-                const armKey = assignment.arm === 'arm_a_caption' ? 'arm_a' : 'arm_b';
-                pillarArmDistribution[assignedPillar][armKey]++;
+                assert.strictEqual(assignment.arm, 'arm_a_caption', `Day ${day} must not use comment arm`);
+                assert.strictEqual(assignment.skipFirstComment, true, `Day ${day} must skip first comment`);
+                assert.strictEqual(assignment.firstComment, null, `Day ${day} firstComment must be null`);
             }
-
-            // High-level ~50/50 balance (approx. 15 per arm across odd partition counts 15/9/6)
-            assert.ok(Math.abs(armCounts.arm_a_caption - 15) <= 1, 'Arm A should receive approximately 15 of 30 posts (~50%)');
-            assert.ok(Math.abs(armCounts.arm_b_comment - 15) <= 1, 'Arm B should receive approximately 15 of 30 posts (~50%)');
-            assert.strictEqual(armCounts.arm_a_caption + armCounts.arm_b_comment, 30, 'Total posts must equal 30');
-
-            // Confounder control: Each pillar has equal or near-equal distribution (difference <= 1)
-            assert.ok(Math.abs(pillarArmDistribution.pillar_1_psychology.arm_a - pillarArmDistribution.pillar_1_psychology.arm_b) <= 1);
-            assert.ok(Math.abs(pillarArmDistribution.pillar_2_generic_ai.arm_a - pillarArmDistribution.pillar_2_generic_ai.arm_b) <= 1);
-            assert.strictEqual(pillarArmDistribution.pillar_3_product_demo.arm_a, pillarArmDistribution.pillar_3_product_demo.arm_b);
         });
 
-        it('should explicitly document sample size status as exploratory directional', () => {
+        it('should explicitly document sample size status as reach_optimized_no_comment', () => {
             const assignment = growthOrchestratorService.getExperimentAssignment({
                 pillarId: 'pillar_1_psychology',
                 format: 'carousel_pdf',
                 themeId: 'sunk_cost_fallacy'
             });
-            assert.ok(assignment.sampleStatus.includes('exploratory_directional'));
-            assert.ok(assignment.sampleStatus.includes('n=30'));
+            assert.strictEqual(assignment.sampleStatus, 'reach_optimized_no_comment');
         });
     });
 
     // =========================================================================
-    // 3. CAPTION LINK INCLUSION & EXCLUSION (Issue 1)
+    // 3. CAPTION LINK INCLUSION & EXCLUSION
     // =========================================================================
-    describe('3. Caption Link Toggle (Arm A vs Arm B)', () => {
-        it('should include Google Play Store link in Arm A caption', async () => {
+    describe('3. Caption Link Toggle (Deterministic Offline Check)', () => {
+        it('should include Google Play Store link in caption when enabled', async () => {
             const contentArmA = await contentGeneratorService.getOrGenerateDailyContent(new Date('2026-11-06T10:00:00+05:30'), {
+                _skipExternalLlm: true,
                 includeCaptionLink: true,
                 experimentArm: 'arm_a_caption',
                 utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app&referrer=utm_source%3Dlinkedin%26utm_medium%3Dpost_caption%26utm_campaign%3Dpillar_1_psychology'
             });
 
             assert.strictEqual(contentArmA.includeCaptionLink, true);
-            assert.ok(contentArmA.linkedin.caption.includes('play.google.com'), 'Arm A caption must include Play Store URL');
-            assert.ok(contentArmA.linkedin.caption.includes('utm_medium%3Dpost_caption'), 'Arm A caption must have post_caption UTM medium');
+            assert.ok(contentArmA.linkedin.caption.includes('play.google.com'), 'Caption must include Play Store URL');
+            assert.ok(contentArmA.linkedin.caption.includes('utm_medium%3Dpost_caption'), 'Caption must have post_caption UTM medium');
         });
 
-        it('should strictly exclude all external links from Arm B caption', async () => {
+        it('should strictly exclude all external links when includeCaptionLink is false', async () => {
             const contentArmB = await contentGeneratorService.getOrGenerateDailyContent(new Date('2026-11-06T10:00:00+05:30'), {
+                _skipExternalLlm: true,
                 includeCaptionLink: false,
                 experimentArm: 'arm_b_comment',
                 utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app&referrer=utm_source%3Dlinkedin%26utm_medium%3Dfirst_comment%26utm_campaign%3Dpillar_1_psychology'
             });
 
             assert.strictEqual(contentArmB.includeCaptionLink, false);
-            assert.strictEqual(contentArmB.linkedin.caption.includes('play.google.com'), false, 'Arm B caption must NEVER contain Play Store link');
-            assert.strictEqual(contentArmB.linkedin.caption.includes('https://'), false, 'Arm B caption must NEVER contain any external URL');
-            assert.strictEqual(contentArmB.linkedin.caption.includes('http://'), false, 'Arm B caption must NEVER contain any external URL');
+            assert.strictEqual(contentArmB.linkedin.caption.includes('play.google.com'), false, 'No-link caption must NEVER contain Play Store link');
+            assert.strictEqual(contentArmB.linkedin.caption.includes('https://'), false, 'No-link caption must NEVER contain any external URL');
+            assert.strictEqual(contentArmB.linkedin.caption.includes('http://'), false, 'No-link caption must NEVER contain any external URL');
         });
     });
 
@@ -573,7 +548,8 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
 
             assert.strictEqual(assignment.arm, 'legacy');
             assert.strictEqual(assignment.includeCaptionLink, true);
-            assert.strictEqual(assignment.skipFirstComment, false);
+            assert.strictEqual(assignment.skipFirstComment, true);
+            assert.strictEqual(assignment.firstComment, null);
             assert.strictEqual(assignment.sampleStatus, 'legacy_production');
         });
 
@@ -715,6 +691,87 @@ describe('TwinGenie Growth Content & LinkedIn Pipeline v2 Verification', () => {
             assert.strictEqual(result.success, false);
             assert.ok(result.error.includes('ECONNRESET'));
             assert.strictEqual(result.attempts, 3);
+        });
+    });
+
+    // =========================================================================
+    // 9. LINKEDIN HUMAN PROSE SANITIZER & ZERO SELF-COMMENT FIREWALL
+    // =========================================================================
+    describe('9. LinkedIn Human Prose & Zero Self-Comment Firewall', () => {
+        let savedFetch;
+        beforeEach(() => {
+            savedFetch = linkedinAdapter._fetch;
+        });
+        afterEach(() => {
+            linkedinAdapter._fetch = savedFetch;
+        });
+
+        it('should strip **Hook:**, **The Blind Spot:**, - **Symptom:**, **bold**, and \\(2031\\) escapes cleanly', () => {
+            const rawAiTemplate = `🔋 **Hook:** Ever feel drained even after a "productive" day? The hidden culprit is unfinished projects.
+
+💡 **The Blind Spot:**
+- **Symptom:** You juggle ideas and leave tasks hanging, yet feel "busy."
+- **Subconscious Trigger:** Fear of commitment and novelty dopamine keep you chasing sparks.
+- **Why Advice Fails:** Traditional lists ignore open loops.
+
+🧠 **TwinGenie's 4 Perspectives:**
+- **Normal:** Shows daily mood impact.
+- **Future You \\(2031\\):** Projects how unfinished projects look in five years.
+
+🔁 **Persistent Semantic Memory** captures every moment.
+
+🚀 Download TwinGenie (link in first comment): https://play.google.com/store/apps/details?id=com.asmind.app
+
+#TwinGenie #SelfAwareness`;
+
+            const cleaned = cleanLinkedInHumanCaption(rawAiTemplate, {
+                includeCaptionLink: true,
+                utmLink: 'https://play.google.com/store/apps/details?id=com.asmind.app&referrer=utm_source%3Dlinkedin'
+            });
+
+            assert.strictEqual(cleaned.includes('**'), false, 'Must strip all Markdown double-asterisks');
+            assert.strictEqual(cleaned.includes('Hook:'), false, 'Must strip Hook: prompt label');
+            assert.strictEqual(cleaned.includes('The Blind Spot:'), false, 'Must strip standalone The Blind Spot header');
+            assert.strictEqual(cleaned.includes('Symptom:'), false, 'Must strip Symptom: label');
+            assert.strictEqual(cleaned.includes('Subconscious Trigger:'), false, 'Must strip Subconscious Trigger: label');
+            assert.strictEqual(cleaned.includes('Why Advice Fails:'), false, 'Must strip Why Advice Fails: label');
+            assert.strictEqual(cleaned.includes('\\('), false, 'Must never contain literal backslash parenthesis');
+            assert.strictEqual(cleaned.includes('('), false, 'Must normalize parentheses so LinkedIn Little Text never truncates');
+            assert.strictEqual(cleaned.includes('first comment'), false, 'Must strip stale first comment text');
+            assert.ok(cleaned.includes('Ever feel drained even after a "productive" day?'), 'Must preserve human opener');
+            assert.ok(cleaned.includes('Future You — 2031:'), 'Must convert parenthetical year to clean em-dash');
+            assert.ok(cleaned.includes('utm_source%3Dlinkedin'), 'Must apply tracked UTM link');
+            assert.ok(cleaned.includes('#TwinGenie #SelfAwareness'), 'Must preserve hashtags');
+        });
+
+        it('should sanitize payload and block auto-comments when publishing via linkedinAdapter.publish', async () => {
+            const calls = [];
+            linkedinAdapter._fetch = async (url, opts) => {
+                calls.push({ url, body: opts?.body ? JSON.parse(opts.body) : null });
+                return {
+                    ok: true,
+                    json: async () => ({ id: 'urn:li:ugcPost:999888777' })
+                };
+            };
+
+            const res = await linkedinAdapter.publish({
+                target: 'personal',
+                accessToken: 'mock_token',
+                authorUrn: 'urn:li:person:BYRlCNzcPR',
+                caption: '🔋 **Hook:** Stop waiting to feel ready (2026 guide).\n\n- **Symptom:** Overthinking everything.\n\n#TwinGenie'
+            });
+
+            assert.strictEqual(res.success, true);
+            assert.strictEqual(calls.length, 1, 'Only post API should be called — NEVER /comments API');
+            assert.ok(calls[0].url.includes('/v2/ugcPosts'));
+            const sentText = calls[0].body.specificContent['com.linkedin.ugc.ShareContent'].shareCommentary.text;
+            assert.strictEqual(sentText.includes('**'), false, 'Published text must have zero asterisks');
+            assert.strictEqual(sentText.includes('Hook:'), false, 'Published text must have zero Hook: label');
+            assert.strictEqual(sentText.includes('Symptom:'), false, 'Published text must have zero Symptom: label');
+            assert.strictEqual(sentText.includes('\\('), false, 'Published text must have zero escaped backslashes');
+            assert.ok(sentText.includes('— 2026 guide'), 'Parenthetical converted to clean em-dash');
+            assert.strictEqual(res.firstCommentResult?.skipped, true);
+            assert.strictEqual(res.firstCommentResult?.reason, 'self_comment_disabled_for_reach');
         });
     });
 });

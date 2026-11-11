@@ -3,6 +3,7 @@ import aiService from '../aiService.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import supabaseAdmin from '../../config/supabase.js';
+import { cleanLinkedInHumanCaption } from './linkedinTextSanitizer.js';
 
 /**
  * TwinGenie Content Generator Engine
@@ -163,7 +164,7 @@ import {
     getCuratedTheme 
 } from './curriculum/fallbackCurriculum.js';
 
-export { CURATED_FALLBACK_THEMES, PILLARS, getCuratedTheme };
+export { CURATED_FALLBACK_THEMES, PILLARS, getCuratedTheme, cleanLinkedInHumanCaption };
 
 class ContentGeneratorService {
     constructor() {
@@ -295,14 +296,21 @@ class ContentGeneratorService {
             ? `PREVIOUSLY USED TOPICS (DO NOT REPEAT OR CLOSELY PARAPHRASE ANY OF THESE):\n- ${previousTopics.slice(0, 30).join('\n- ')}`
             : 'No previous topics recorded yet.';
 
-        const prompt = `You are the Chief Storyteller and Cognitive Psychologist writing for Ashwani Kumar, Creator of TwinGenie.
-TwinGenie is an AI Digital Twin mobile app (on Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING—students, professionals, creators, parents, and everyday individuals navigating growth, overthinking, emotions, and habits. TwinGenie is NOT a B2B corporate tool or just for startup founders; it is a personal cognitive mirror and private life companion for anyone who wants real self-understanding.
+        const includeCaptionLink = options.includeCaptionLink !== undefined ? options.includeCaptionLink : true;
+        const utmLink = options.utmLink || 'https://play.google.com/store/apps/details?id=com.asmind.app';
+
+        const linkRule = includeCaptionLink
+            ? `Include a natural download CTA near the bottom before hashtags using this exact URL: ${utmLink} (never mention comments or "link in first comment").`
+            : `Do NOT include any URLs, external links, or "link in first comment" references anywhere in the LinkedIn caption.`;
+
+        const prompt = `You are writing a personal LinkedIn post in the authentic, natural human voice of Ashwani Kumar, Creator of TwinGenie.
+TwinGenie is an AI Digital Twin mobile app (Google Play: https://play.google.com/store/apps/details?id=com.asmind.app) built for EVERY HUMAN BEING — students, creators, parents, and everyday individuals navigating growth, overthinking, emotions, and habits. TwinGenie is a private cognitive mirror and life companion, NOT a corporate B2B tool.
 Its core verified capabilities:
-- 4 Cognitive Perspectives: Normal (grounded daily alter-ego), Reflective (empathy, decompression, emotional regulation), Honest (unfiltered reality check cutting through excuses), Future You (5-years-wiser 2031 perspective).
-- Guided 7-Day Life Coach Programs: Structured daily micro-exercises (7-Day Anxiety Reset, 5-Day Confidence Boost).
-- 35-Question Big Five Assessment (twingenie.app/test): Benchmarks personal cognitive archetypes and blind spots.
+- 4 Cognitive Perspectives: Normal (grounded daily alter-ego), Reflective (empathy and decompression), Honest (unfiltered reality check cutting through excuses), Future You (5-years-wiser 2031 perspective).
+- Guided 7-Day Life Coach Programs: Structured daily micro-exercises like 7-Day Anxiety Reset and 5-Day Confidence Boost.
+- 35-Question Big Five Assessment: Benchmarks personal cognitive archetypes and blind spots.
 - Year-in-Pixels 365-Day Mood Matrix: Discovers subconscious emotional rhythms and recurring trigger patterns.
-- Persistent pgvector Semantic Memory: Retrieves past logs and receipts across conversations (ChatGPT resets every chat).
+- Persistent pgvector Semantic Memory: Retrieves past logs across conversations instead of resetting to zero.
 
 TODAY'S MASTER OMNICHANNEL CALENDAR:
 - Daily Format: ${schedule.formatType.toUpperCase()} (${schedule.calendarTitle})
@@ -311,9 +319,16 @@ TODAY'S MASTER OMNICHANNEL CALENDAR:
 ${avoidTopicsStr}
 
 TASK:
-Generate a completely fresh, original, thought-provoking human psychology, personal clarity, or self-awareness topic for today. Align the theme with today's master format (${schedule.formatType.toUpperCase()}) and mode (${schedule.modeName}).
-Target audience: EVERY HUMAN BEING—anyone navigating personal dilemmas, overthinking, people-pleasing, daily habits, emotional balance, self-doubt, and relationships.
-Universal themes to explore: people-pleasing, fear of being disliked, overthinking relationship texts/silence, productive procrastination, breaking bad habits, handling criticism, letting go of unfulfilling paths, fear of failure, boundary-setting, and learning to trust oneself.
+Generate a fresh, original, human-relatable personal clarity or self-awareness topic for today aligned with today's mode (${schedule.modeName}).
+Universal themes: people-pleasing, fear of being disliked, overthinking text silence, productive procrastination, breaking bad habits, handling criticism, boundary-setting, and self-trust.
+
+CRITICAL LINKEDIN WRITING & FORMATTING RULES (VIOLATIONS REJECTED):
+1. Write like a real human founder sharing an insight in conversational paragraphs — NEVER like a ChatGPT outline.
+2. PLAIN TEXT ONLY: NEVER use Markdown syntax (**bold**, *italic*, __underline__, backticks, dash lists "- ", or ### headings). LinkedIn displays "**" literally as ugly asterisks.
+3. NEVER print template labels or section headers such as "Hook:", "The Blind Spot:", "Symptom:", "Subconscious Trigger:", "Why Advice Fails:", "Fix:", or "CTA:". Open directly with a relatable story, question, or human observation.
+4. For lists, use at most 3 clean Unicode bullets starting with "• " with natural conversational sentences (never "• Label: explanation").
+5. NEVER use parentheses "(...)" in the LinkedIn caption body — use commas or em-dashes " — " instead (e.g. "Future You — 2031" instead of "Future You (2031)") so LinkedIn text parsing never truncates or escapes characters.
+6. ${linkRule}
 
 Output strictly valid JSON with this exact schema:
 {
@@ -323,7 +338,7 @@ Output strictly valid JSON with this exact schema:
   "hook": "Provocative 1-sentence hook relatable to any human being",
   "linkedin": {
     "title": "Carousel Document Title (max 45 chars)",
-    "caption": "Full viral-format LinkedIn post (250-350 words). Include scroll-stopping hook, body with bullet points analyzing the psychological blind spot in everyday human life, explain how TwinGenie's 4 perspectives and persistent memory solve it, include download CTA with https://play.google.com/store/apps/details?id=com.asmind.app, and include #TwinGenie and relevant hashtags (e.g. #SelfAwareness, #MentalHealth, #PersonalGrowth, #Mindset).",
+    "caption": "200-300 word natural, human LinkedIn post written in clean plain-text paragraphs with at most one short • bullet list, an authentic reflection question, CTA rule above, and 4-5 hashtags (#TwinGenie #SelfAwareness #MentalClarity #PersonalGrowth #Mindset). ZERO ** asterisks, ZERO labels like Hook:/Symptom:, ZERO parentheses ().",
     "slides": [
       {
         "type": "cover",
@@ -412,10 +427,10 @@ Output strictly valid JSON with this exact schema:
 
         let parsed = null;
 
-        // Try Gemini 3.5 Flash Lite first
-        if (process.env.GEMINI_API_KEY) {
+        // Try Gemini 2.5 Flash first (unless tests disable external LLM network calls or key absent)
+        if (process.env.GEMINI_API_KEY && options._skipExternalLlm !== true) {
             try {
-                const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+                const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
                 logger.info(`[CONTENT GENERATOR] Prompting Gemini (${modelName}) for fresh daily topic...`);
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const model = genAI.getGenerativeModel({
@@ -432,7 +447,7 @@ Output strictly valid JSON with this exact schema:
         }
 
         // Try Groq as fallback
-        if (!parsed && process.env.GROQ_API_KEY) {
+        if (!parsed && process.env.GROQ_API_KEY && options._skipExternalLlm !== true) {
             try {
                 logger.info('[CONTENT GENERATOR] Prompting Groq (openai/gpt-oss-120b) for fresh daily topic...');
                 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -452,7 +467,21 @@ Output strictly valid JSON with this exact schema:
         // Curated 35-topic curriculum fallback if both LLMs are unreachable
         if (!parsed || !parsed.topic || !parsed.linkedin?.slides) {
             logger.warn('[CONTENT GENERATOR] LLM generation unavailable. Using 35-topic rotational curriculum.');
-            parsed = this._getCuratedFallbackTheme(dayNumber, options.specificThemeId, options);
+            parsed = this._getCuratedFallbackTheme(dayNumber, options.specificThemeId, {
+                ...options,
+                includeCaptionLink,
+                utmLink
+            });
+        }
+
+        // Always normalize LinkedIn caption to pure human prose (strips **, Hook:/Symptom: labels, \( \), and enforces link rule)
+        parsed.includeCaptionLink = includeCaptionLink;
+        parsed.utmLink = utmLink;
+        if (parsed.linkedin?.caption) {
+            parsed.linkedin.caption = cleanLinkedInHumanCaption(parsed.linkedin.caption, {
+                includeCaptionLink,
+                utmLink
+            });
         }
 
         // Ensure Facebook slides are populated from LinkedIn slides if not explicit
@@ -786,7 +815,7 @@ Swipe through the memory progression pipeline below. 👇
             title: postData.title,
             utmLink: utm,
             slides: this._buildFounderSlides(theme),
-            caption: postData.caption
+            caption: cleanLinkedInHumanCaption(postData.caption, { includeCaptionLink: true, utmLink: utm })
         };
     }
 

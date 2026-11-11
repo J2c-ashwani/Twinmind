@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../../config/logger.js';
-import contentGeneratorService from './contentGeneratorService.js';
+import contentGeneratorService, { cleanLinkedInHumanCaption } from './contentGeneratorService.js';
 import mediaRendererService from './mediaRendererService.js';
 import linkedinAdapter from './adapters/linkedinAdapter.js';
 import instagramAdapter from './adapters/instagramAdapter.js';
@@ -75,26 +75,20 @@ class GrowthOrchestratorService {
     }
 
     /**
-     * Pair-matched A/B experiment assignment for LinkedIn link placement.
-     * Confounding factors controlled:
-     * 1. Topic Category / Pillar (Psychology vs Generic AI vs Product Demo)
-     * 2. Format (Carousel PDF)
-     * 
-     * Eliminates naive odd/even day-of-week bias by alternating arms
-     * strictly within each (pillar, format) matched pair.
-     * 
-     * Sample size reality: At 1 post/day for 30 days = 15 Arm A, 15 Arm B (n=30).
-     * Explicitly labeled as an exploratory directional experiment.
+     * LinkedIn distribution policy: ZERO automated first-comment self-replies.
+     * Per founder directive to maximize organic reach, LinkedIn posts always publish
+     * with clean human-style copy and skip self-commenting (skipFirstComment: true).
      */
     getExperimentAssignment({ pillarId = 'pillar_1_psychology', format = 'carousel_pdf', themeId = 'daily', dayNumber = 0 } = {}) {
-        // Rollback check: if experiment v2 is disabled, revert to legacy behavior
+        const basePlayStore = 'https://play.google.com/store/apps/details?id=com.asmind.app';
+
+        // Rollback check: if experiment v2 is explicitly disabled, revert to legacy UTM while STILL forbidding self-comments
         if (process.env.LINKEDIN_CONTENT_EXPERIMENT_V2 === 'false') {
-            const legacyUtm = 'https://play.google.com/store/apps/details?id=com.asmind.app';
             return {
                 arm: 'legacy',
                 includeCaptionLink: true,
-                skipFirstComment: false,
-                utmLink: legacyUtm,
+                skipFirstComment: true,
+                utmLink: basePlayStore,
                 firstComment: null,
                 bucketKey: 'legacy',
                 sampleStatus: 'legacy_production'
@@ -106,42 +100,30 @@ class GrowthOrchestratorService {
             this._matchedPairBuckets = {};
         }
 
-        // Check historical count in this bucket from state
         let bucketCount = this._matchedPairBuckets[bucketKey];
         if (typeof bucketCount !== 'number') {
-            const historicalInBucket = (this.state?.posts || []).filter(p => 
-                p.platform === 'linkedin' && 
+            const historicalInBucket = (this.state?.posts || []).filter(p =>
+                p.platform === 'linkedin' &&
                 p.experiment?.matchedPairBucket === bucketKey
             ).length;
             bucketCount = historicalInBucket;
-            this._matchedPairBuckets[bucketKey] = bucketCount;
         }
-
-        // Pair-matched alternation within this bucket: Even count -> Arm A (Caption Link), Odd count -> Arm B (First Comment Link)
-        const isArmA = (bucketCount % 2 === 0);
-        const arm = isArmA ? 'arm_a_caption' : 'arm_b_comment';
-
-        // Increment count for this bucket
         this._matchedPairBuckets[bucketKey] = bucketCount + 1;
 
-        // Build accurate Play Store Install Referrer UTM URLs
-        const basePlayStore = 'https://play.google.com/store/apps/details?id=com.asmind.app';
-        const medium = isArmA ? 'post_caption' : 'first_comment';
+        const arm = 'arm_a_caption';
+        const medium = 'post_caption';
         const referrerParams = `utm_source=linkedin&utm_medium=${medium}&utm_campaign=${pillarId}&utm_content=${themeId}`;
         const utmLink = `${basePlayStore}&referrer=${encodeURIComponent(referrerParams)}`;
-
-        const firstComment = isArmA ? null : 
-            `📲 Download TwinGenie free on Google Play:\n${utmLink}\n\nTake the 35-question cognitive baseline & explore your thoughts with 4 reflective modes.`;
 
         return {
             arm,
             bucketKey,
             bucketCount,
-            includeCaptionLink: isArmA,
-            skipFirstComment: isArmA, // Arm A skips first comment; Arm B posts first comment
+            includeCaptionLink: true,
+            skipFirstComment: true,
             utmLink,
-            firstComment,
-            sampleStatus: 'exploratory_directional (target n=30 over 30 days)'
+            firstComment: null,
+            sampleStatus: 'reach_optimized_no_comment'
         };
     }
 
@@ -795,19 +777,23 @@ class GrowthOrchestratorService {
                 }
             }
 
-            // 6. Publish to LinkedIn via official API (using dedicated postToPersonalProfile method)
+            // 6. Publish to LinkedIn via official API (strictly no self-comments & clean human typography)
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
             await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            const cleanCaption = cleanLinkedInHumanCaption(dailyPackage.linkedin.caption, {
+                includeCaptionLink: true,
+                utmLink: armInfo.utmLink
+            });
             let publishResult;
             try {
                 publishResult = await this.adapters.linkedin.postToPersonalProfile({
                     title: dailyPackage.linkedin.title,
-                    caption: dailyPackage.linkedin.caption,
+                    caption: cleanCaption,
                     pdfPath: rendered.pdfPath,
                     pngPaths: rendered.pngPaths,
                     utmLink: armInfo.utmLink,
-                    skipFirstComment: armInfo.skipFirstComment,
-                    firstComment: armInfo.firstComment
+                    skipFirstComment: true,
+                    firstComment: null
                 });
             } catch (netErr) {
                 logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during LinkedIn publish: ${netErr.message}. Triggering reconciliation...`);

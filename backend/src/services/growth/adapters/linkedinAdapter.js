@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import logger from '../../../config/logger.js';
 import { supabaseAdmin } from '../../../config/supabase.js';
+import { cleanLinkedInHumanCaption } from '../linkedinTextSanitizer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -243,13 +244,13 @@ class LinkedInAdapter {
     }
 
     /**
-     * Sanitizes commentary string for LinkedIn's "Little Text" format.
-     * Escapes reserved characters (( ) [ ] { } < > | ~ \) that otherwise cause
-     * LinkedIn's Little Text parser to silently truncate the post from the unescaped character onward.
+     * Strips AI Markdown formatting / prompt headings and sanitizes remaining Little Text
+     * control tokens so LinkedIn posts look human-written and never print '\(' or truncate on '('.
      */
     _sanitizeLittleText(text) {
         if (!text) return text;
-        return text
+        const humanClean = cleanLinkedInHumanCaption(text);
+        return humanClean
             .replace(/\\/g, '\\\\')
             .replace(/\(/g, '\\(')
             .replace(/\)/g, '\\)')
@@ -338,7 +339,8 @@ class LinkedInAdapter {
                     lifecycleState: 'PUBLISHED'
                 };
 
-                const response = await fetch('https://api.linkedin.com/rest/posts', {
+                const fetchFn = this._fetch || fetch;
+                const response = await fetchFn('https://api.linkedin.com/rest/posts', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
@@ -359,8 +361,8 @@ class LinkedInAdapter {
                 const postUrl = `https://www.linkedin.com/feed/update/${postId}`;
                 logger.info(`🎉 [LINKEDIN] Published native PDF document carousel successfully! Post ID: ${postId}`);
 
-                // Automatically post first comment with Google Play Store link (if configured)
-                const commentResult = await this._postFirstComment(postId, postData, accessToken, authorUrn);
+                // LinkedIn reach policy: skip self-commenting unless explicitly opted in
+                const commentResult = await this._maybePostFirstComment(postId, postData, accessToken, authorUrn);
 
                 return {
                     success: true,
@@ -414,7 +416,8 @@ class LinkedInAdapter {
                 }
             };
 
-            const response = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+            const fetchFn = this._fetch || fetch;
+            const response = await fetchFn('https://api.linkedin.com/v2/ugcPosts', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -435,8 +438,8 @@ class LinkedInAdapter {
             const postUrl = `https://www.linkedin.com/feed/update/${postId}`;
             logger.info(`🎉 [LINKEDIN] Published successfully! Post ID: ${postId}`);
 
-            // Automatically post first comment with Google Play Store link (if configured)
-            const commentResult = await this._postFirstComment(postId, postData, accessToken, authorUrn);
+            // LinkedIn reach policy: skip self-commenting unless explicitly opted in
+            const commentResult = await this._maybePostFirstComment(postId, postData, accessToken, authorUrn);
 
             return {
                 success: true,
@@ -661,6 +664,16 @@ class LinkedInAdapter {
             logger.warn(`[LINKEDIN] Ambiguous comment reconciliation query warning: ${recErr.message}`);
         }
         return { reconciled: false };
+    }
+
+    /**
+     * Enforces the global LinkedIn reach policy (self-commenting disabled unless explicitly opted in).
+     */
+    async _maybePostFirstComment(postId, postData = {}, accessToken, authorUrn) {
+        if (postData.allowFirstComment === true && postData.skipFirstComment === false) {
+            return this._postFirstComment(postId, postData, accessToken, authorUrn);
+        }
+        return { skipped: true, reason: 'self_comment_disabled_for_reach', postId };
     }
 
     /**
