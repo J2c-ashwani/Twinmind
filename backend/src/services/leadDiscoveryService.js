@@ -35,7 +35,13 @@ export const PERMANENT_SUPPRESSION_LIST = new Set([
     'acquisitions@vungle-apps.com',
     'manda@tiny.com',
     'rbahat@bloombergbeta.com',
-    'pete@theneuro.ai'
+    'pete@theneuro.ai',
+    // Unsubscribe Requests & Permanent Suppression
+    'steve@appmasters.com',
+    'steve@appmasters.co',
+    'steve.young@appmasters.com',
+    'contact@appmasters.com',
+    'info@appmasters.com'
 ]);
 
 /**
@@ -524,11 +530,11 @@ const ACQUISITION_CATALOG = [
         thesis: 'Live Google Play Android app + store listing'
     },
     {
-        recipientName: 'Steve P. Young',
-        email: 'steve@appmasters.com',
-        organization: 'App Masters Portfolio',
-        roleOrFocus: 'Mobile Growth & App Portfolio Operator',
-        thesis: 'Turnkey Flutter companion asset transfer'
+        recipientName: 'Acquisitions Team',
+        email: 'acquisitions@voodoo.io',
+        organization: 'Voodoo Apps',
+        roleOrFocus: 'Global Consumer & Mobile App Publisher',
+        thesis: 'Live Google Play Android app + turnkey companion codebase'
     },
     {
         recipientName: 'Corporate Development',
@@ -747,6 +753,7 @@ founder@twingenie.app`;
         if (!email || typeof email !== 'string') return false;
         const norm = email.trim().toLowerCase();
         if (PERMANENT_SUPPRESSION_LIST.has(norm)) return false;
+        if (norm.endsWith('@appmasters.com') || norm.endsWith('@appmasters.co')) return false;
 
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(norm)) return false;
