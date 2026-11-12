@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, ArrowRight, Share2, Check, ShieldCheck, HelpCircle } from 'lucide-react'
+import { Sparkles, ArrowRight, Share2, Check } from 'lucide-react'
+import { captureAttributionFromLocation } from '@/lib/attribution'
 
 interface Option {
   text: string
@@ -87,8 +88,15 @@ const ARCHETYPES: Record<string, ArchetypeProfile> = {
     badge: 'ARCHETYPE: THE BURDEN MINIMIZER',
     title: 'People-Pleasing Disguised as Kindness',
     desc: 'You volunteer your time even when empty because saying no makes you feel like an inconvenient burden. You sacrifice personal boundaries for temporary approval.',
-    mode: 'REFLECTIVE TWIN',
+    mode: 'THERAPIST / REFLECTIVE TWIN',
     callout: 'Where did you learn that your rest has to be earned? Saying no to others is the only way to say yes to your own life.'
+  },
+  overthinker: {
+    badge: 'ARCHETYPE: THE RECURSIVE ANALYZER',
+    title: 'Analysis Loops Replacing Real Clarity',
+    desc: 'Under uncertainty, your mind replays conversations and weighs dozens of contingencies instead of testing one direct step in reality.',
+    mode: 'FUTURE TWIN',
+    callout: 'Thinking in circles feels responsible, but clarity only arrives after you make a real move.'
   },
   default: {
     badge: 'ARCHETYPE: THE CIRCULAR OVERTHINKER',
@@ -99,12 +107,70 @@ const ARCHETYPES: Record<string, ArchetypeProfile> = {
   }
 }
 
+const SECONDARY_WEIGHTS: Record<string, string> = {
+  intellectual: 'intellectual',
+  exhaustion: 'exhaustion',
+  productive_proc: 'productive_proc',
+  adrenaline: 'exhaustion',
+  overthinker: 'overthinker',
+  control: 'productive_proc',
+  avoidant: 'exhaustion',
+  defensive: 'people_pleaser',
+  starter: 'productive_proc',
+  paralysis: 'overthinker',
+  people_pleaser: 'people_pleaser',
+  loop: 'intellectual',
+}
+
+function scoreMirrorAnswers(selected: Option[]): {
+  key: string
+  interpersonalPattern: string
+  blindSpotNote: string
+} {
+  const tally: Record<string, number> = {}
+  selected.forEach((opt, idx) => {
+    const mapped = SECONDARY_WEIGHTS[opt.archetype] || 'default'
+    // Step 3 carries higher self-reflection weight, while all 3 steps contribute
+    const weight = idx === 2 ? 1.5 : idx === 1 ? 1.25 : 1.0
+    tally[mapped] = (tally[mapped] || 0) + weight
+  })
+
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1])
+  const winningKey = ranked[0]?.[0] || 'default'
+
+  const interpersonalMap: Record<string, string> = {
+    overthinker: 'Internalizing silence & replaying micro-signals',
+    control: 'Seeking quick reassurance to close uncertainty',
+    avoidant: 'Detaching externally while ruminating privately',
+    defensive: 'Protecting ego through preemptive withdrawal',
+  }
+
+  const blindSpotMap: Record<string, string> = {
+    starter: 'Novelty chases over follow-through',
+    paralysis: 'Waiting for 100% certainty before acting',
+    people_pleaser: 'Over-giving followed by quiet resentment',
+    loop: 'Mistaking articulation of goals for execution',
+  }
+
+  return {
+    key: ARCHETYPES[winningKey] ? winningKey : 'default',
+    interpersonalPattern: interpersonalMap[selected[1]?.archetype] || 'Quiet internal stress-testing',
+    blindSpotNote: blindSpotMap[selected[2]?.archetype] || 'Repeating familiar hesitation loops',
+  }
+}
+
 export default function MirrorTestPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Option[]>([])
   const [isScanning, setIsScanning] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [referralCode, setReferralCode] = useState<string>('')
+
+  useEffect(() => {
+    const captured = captureAttributionFromLocation()
+    if (captured.referralCode) setReferralCode(captured.referralCode)
+  }, [])
 
   const handleSelect = (option: Option) => {
     const updated = [...answers, option]
@@ -117,16 +183,22 @@ export default function MirrorTestPage() {
       setTimeout(() => {
         setIsScanning(false)
         setIsCompleted(true)
-      }, 2400)
+      }, 1800)
     }
   }
 
-  const firstKey = answers[0]?.archetype || 'intellectual'
-  const profile = ARCHETYPES[firstKey] || ARCHETYPES.default
+  const scored = scoreMirrorAnswers(answers)
+  const profile = ARCHETYPES[scored.key] || ARCHETYPES.default
 
   const copyShareLink = () => {
     if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}/test`
+      const params = new URLSearchParams({
+        utm_source: 'mirror_test',
+        utm_medium: 'share',
+        preview: scored.key,
+      })
+      if (referralCode) params.set('ref', referralCode)
+      const url = `${window.location.origin}/test?${params.toString()}`
       navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
@@ -241,7 +313,7 @@ export default function MirrorTestPage() {
 
               <div className="bg-[#2A0E1A]/60 border border-pink-500/40 rounded-2xl p-5">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-pink-400">
-                  Your Core Blind Spot
+                  Illustrative 3-Answer Preview • Core Pattern
                 </span>
                 <h2 className="text-xl font-black text-white mt-1 leading-snug">
                   {profile.title}
@@ -249,13 +321,20 @@ export default function MirrorTestPage() {
                 <p className="text-sm text-gray-300 mt-2 leading-relaxed">
                   {profile.desc}
                 </p>
+                <div className="mt-3 pt-3 border-t border-white/10 text-xs text-gray-300 space-y-1">
+                  <div><strong className="text-white">Interpersonal reflex:</strong> {scored.interpersonalPattern}</div>
+                  <div><strong className="text-white">Recurring friction:</strong> {scored.blindSpotNote}</div>
+                </div>
               </div>
 
               {/* Chatbot Contrast Box */}
               <div className="bg-[#18122A]/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 text-xs leading-relaxed">
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
+                  Illustrative Mode Contrast Example
+                </div>
                 <div className="flex gap-2.5">
                   <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded font-black shrink-0 h-fit">
-                    ChatGPT / Yes-Man
+                    Generic AI Style
                   </span>
                   <span className="text-gray-300">
                     &quot;Rest is productive! Take your time to plan perfectly before doing anything!&quot;
@@ -271,19 +350,24 @@ export default function MirrorTestPage() {
                 </div>
               </div>
 
-              {/* App Store CTA Gate */}
+              {/* App Store & Web Signup CTA */}
               <div className="flex flex-col gap-3 mt-1">
-                <a
-                  href={`/download?ref=mirror_test&archetype=${firstKey}&utm_source=mirror_quiz`}
+                <Link
+                  href={`/signup?utm_source=mirror_test&archetype=${scored.key}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ''}`}
                   className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 text-white font-black text-base flex items-center justify-center gap-2.5 shadow-xl shadow-pink-500/25 hover:shadow-pink-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
-                  <span>Unlock Your AI Twin on Google Play</span>
+                  <span>Take Full 35-Question Twin Assessment</span>
                   <ArrowRight className="w-5 h-5" />
+                </Link>
+                <a
+                  href={`/download?ref=${encodeURIComponent(referralCode || 'mirror_test')}&archetype=${scored.key}&utm_source=mirror_quiz`}
+                  className="w-full py-3 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                >
+                  <span>Or Open Android App on Google Play</span>
                 </a>
 
                 <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400">
-                  <span className="text-amber-400 tracking-widest text-sm">★★★★★</span>
-                  <span>5.0 Rating • 100% Free Baseline Assessment</span>
+                  <span>Illustrative Preview • Free 35-Trait Assessment in App</span>
                 </div>
 
                 <button

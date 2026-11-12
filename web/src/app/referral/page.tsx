@@ -160,11 +160,11 @@ export default function ReferralPage() {
 
                     <div className="flex items-center gap-4 p-4 bg-yellow-50 rounded-xl">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center text-white font-bold">
-                            🎁
+                            ⭐
                         </div>
                         <div className="flex-1">
-                            <div className="font-semibold">Unlock Premium Features</div>
-                            <div className="text-sm text-gray-600">Refer 5 friends to unlock exclusive features</div>
+                            <div className="font-semibold">Level Up & Earn Freeze Tokens</div>
+                            <div className="text-sm text-gray-600">Referral XP helps advance your Twin Companion level and unlock Streak Freezes (500 XP)</div>
                         </div>
                     </div>
                 </div>

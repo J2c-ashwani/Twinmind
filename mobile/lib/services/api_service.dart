@@ -704,7 +704,57 @@ class ApiService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to compare');
+    final err = json.decode(response.body);
+    throw HttpException(
+      err['error'] ?? 'Failed to compare',
+      response.statusCode,
+    );
+  }
+
+  Future<Map<String, dynamic>> inviteTwinMatch(String identifier) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/twin-match/invite'),
+      headers: _headers,
+      body: json.encode({'identifier': identifier}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    final err = json.decode(response.body);
+    throw HttpException(err['error'] ?? 'Failed to send invitation', response.statusCode);
+  }
+
+  Future<List<dynamic>> getTwinMatchInvitations() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/twin-match/invitations'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['invitations'] as List<dynamic>? ?? [];
+    }
+    throw Exception('Failed to load Twin Match invitations');
+  }
+
+  Future<Map<String, dynamic>> acceptTwinMatchInvitation(String id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/twin-match/invitations/$id/accept'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to accept invitation');
+  }
+
+  Future<void> declineTwinMatchInvitation(String id) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/twin-match/invitations/$id/decline'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to decline invitation');
+    }
   }
 
   // Life Coach endpoints
@@ -864,19 +914,39 @@ class ApiService {
     }
   }
 
+  Future<void> deleteNotification(String id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/notifications/$id'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete notification');
+    }
+  }
+
   Future<void> updateFcmToken(String token) async {
     final url = '$baseUrl/api/notifications/device-token';
-    print('HTTP POST: $url');
     final response = await http.post(
       Uri.parse(url),
       headers: _headers,
       body: json.encode({'token': token}),
     );
-    print('HTTP STATUS: ${response.statusCode}');
-    print('HTTP RESPONSE BODY: ${response.body}');
 
     if (response.statusCode != 200) {
-      throw HttpException('Failed to update FCM token (Status ${response.statusCode}: ${response.body})', response.statusCode);
+      throw HttpException('Failed to update FCM token (Status ${response.statusCode})', response.statusCode);
+    }
+  }
+
+  Future<void> deregisterFcmToken({String? token}) async {
+    final url = '$baseUrl/api/notifications/device-token';
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: _headers,
+      body: json.encode(token != null ? {'token': token} : {}),
+    );
+
+    if (response.statusCode != 200) {
+      throw HttpException('Failed to deregister FCM token (Status ${response.statusCode})', response.statusCode);
     }
   }
 }

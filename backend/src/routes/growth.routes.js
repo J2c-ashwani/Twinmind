@@ -759,12 +759,28 @@ router.all('/cron/acquisition-outreach', requireAdminSecret, async (req, res) =>
 });
 
 /**
+ * GET & POST /api/admin/growth/cron/daily-youtube
+ * Automated daily YouTube Shorts publisher
+ */
+router.all('/cron/daily-youtube', requireAdminSecret, async (req, res) => {
+    try {
+        const force = req.query.force === 'true' || req.body?.force === true;
+        const result = await growthOrchestratorService.publishDailyYouTube(force);
+        res.json({ success: true, result });
+    } catch (error) {
+        logger.error('[GROWTH CRON] Daily YouTube webhook failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * GET /api/admin/growth/dashboard
- * Aggregates weekly KPIs across Organic Growth, Activation, Retention, PR, Fundraising, and M&A
+ * Aggregates verified operational KPIs strictly read-only
  */
 router.get('/dashboard', requireAdminSecret, async (req, res) => {
     try {
-        const metrics = await growthDashboardService.getWeeklyMetrics();
+        const saveSnapshot = req.query.snapshot === 'true';
+        const metrics = await growthDashboardService.getWeeklyMetrics({ saveSnapshot });
         res.json({ success: true, dashboard: metrics });
     } catch (error) {
         logger.error('[GROWTH ROUTE] Dashboard retrieval failed:', error);
@@ -774,11 +790,11 @@ router.get('/dashboard', requireAdminSecret, async (req, res) => {
 
 /**
  * GET /api/admin/growth/analytics/clicks
- * Returns real-time smart router click metrics & attribution by platform/device
+ * Returns durable + live smart router click metrics & attribution
  */
-router.get('/analytics/clicks', requireAdminSecret, (req, res) => {
+router.get('/analytics/clicks', requireAdminSecret, async (req, res) => {
     try {
-        const analytics = smartRouterService.getAnalytics();
+        const analytics = await smartRouterService.getAnalyticsAsync();
         res.json({ success: true, analytics });
     } catch (error) {
         logger.error('[GROWTH ROUTE] Click analytics failed:', error);

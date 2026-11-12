@@ -209,18 +209,90 @@ export async function getUserNotifications(userId) {
 }
 
 /**
- * Mark notification as read
+ * Mark notification as read (owner-scoped)
  */
-export async function markAsRead(notificationId) {
+export async function markAsRead(notificationId, userId) {
     try {
-        const { error } = await supabaseAdmin
+        if (!userId) throw new Error('userId is required');
+
+        const { data, error } = await supabaseAdmin
             .from('notifications')
             .update({ is_read: true })
-            .eq('id', notificationId);
+            .eq('id', notificationId)
+            .eq('user_id', userId)
+            .select('id')
+            .maybeSingle();
 
         if (error) throw error;
+        return Boolean(data);
     } catch (error) {
         logger.error('Error marking notification read:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete notification (owner-scoped)
+ */
+export async function deleteNotification(notificationId, userId) {
+    try {
+        if (!userId) throw new Error('userId is required');
+
+        const { data, error } = await supabaseAdmin
+            .from('notifications')
+            .delete()
+            .eq('id', notificationId)
+            .eq('user_id', userId)
+            .select('id')
+            .maybeSingle();
+
+        if (error) throw error;
+        return Boolean(data);
+    } catch (error) {
+        logger.error('Error deleting notification:', error);
+        throw error;
+    }
+}
+
+/**
+ * Deregister push device token(s) on sign-out
+ */
+export async function deregisterDeviceToken(userId, token = null) {
+    try {
+        if (!userId) throw new Error('userId is required');
+
+        let tokenQuery = supabaseAdmin
+            .from('push_device_tokens')
+            .update({
+                enabled: false,
+                disabled_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+
+        if (token) {
+            tokenQuery = tokenQuery.eq('token', token);
+        }
+
+        const { error: deviceError } = await tokenQuery;
+        if (deviceError) {
+            logger.warn('Could not update push_device_tokens on signout:', deviceError.message);
+        }
+
+        let userQuery = supabaseAdmin
+            .from('users')
+            .update({ fcm_token: null })
+            .eq('id', userId);
+
+        if (token) {
+            userQuery = userQuery.eq('fcm_token', token);
+        }
+
+        const { error: userError } = await userQuery;
+        if (userError) throw userError;
+
+        logger.info(`Deregistered push device token for user ${userId}`);
+    } catch (error) {
+        logger.error('Error deregistering device token:', error);
         throw error;
     }
 }
@@ -283,6 +355,8 @@ export default {
     generateSmartReminders,
     getUserNotifications,
     markAsRead,
+    deleteNotification,
     updateDeviceToken,
+    deregisterDeviceToken,
     updateWebPushSubscription,
 };

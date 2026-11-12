@@ -233,9 +233,26 @@ export async function joinCircle(userId, invitationCode) {
 }
 
 /**
+ * Check whether a user is an active member of the given circle
+ */
+export async function isCircleMember(circleId, userId) {
+    if (!circleId || !userId) return false;
+    const { data, error } = await supabaseAdmin
+        .from('circle_members')
+        .select('id')
+        .eq('circle_id', circleId)
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (error) throw error;
+    return Boolean(data);
+}
+
+/**
  * Calculate collective streak
  */
-export async function calculateCollectiveStreak(circleId) {
+export async function calculateCollectiveStreak(circleId, { persist = true } = {}) {
     try {
         // Get all active members
         const { data: members } = await supabaseAdmin
@@ -274,11 +291,13 @@ export async function calculateCollectiveStreak(circleId) {
             streaks.reduce((sum, s) => sum + s, 0) / streaks.length
         );
 
-        // Update circle
-        await supabaseAdmin
-            .from('growth_circles')
-            .update({ collective_streak: collectiveStreak })
-            .eq('id', circleId);
+        // Only persist when explicitly requested (avoid writes during GET requests)
+        if (persist) {
+            await supabaseAdmin
+                .from('growth_circles')
+                .update({ collective_streak: collectiveStreak })
+                .eq('id', circleId);
+        }
 
         return collectiveStreak;
     } catch (error) {
@@ -347,7 +366,7 @@ export async function getCircleProgress(circleId) {
             supabaseAdmin.from('circle_milestones').select('*').eq('circle_id', circleId),
         ]);
 
-        const collectiveStreak = await calculateCollectiveStreak(circleId);
+        const collectiveStreak = await calculateCollectiveStreak(circleId, { persist: false });
 
         return {
             circle: circle.data,

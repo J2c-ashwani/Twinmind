@@ -120,23 +120,27 @@ class SmartRouterService {
 
             logger.info(`📲 [SMART ROUTER] App download click from ${platform} [${device}] (Campaign: ${campaign}, Total Clicks: ${this.metrics.totalClicks})`);
 
-            // Non-blocking asynchronous logging to Supabase
+            // Non-blocking persistent attribution logging to acquisition_click_events (with metric_events fallback)
             if (supabaseAdmin) {
-                supabaseAdmin.from('usage_tracking').insert({
-                    action_type: `growth_click:${platform}`,
-                    metadata: {
+                supabaseAdmin
+                    .from('acquisition_click_events')
+                    .insert({
+                        click_id: clickEvent.id,
                         platform,
-                        device,
-                        campaign,
                         medium,
-                        ipHash,
-                        timestamp: clickEvent.timestamp
-                    }
-                }).then(({ error }) => {
-                    if (error) {
-                        logger.warn('[SMART ROUTER] Non-blocking Supabase click log warning:', error.message);
-                    }
-                }).catch(() => {});
+                        campaign,
+                        content: clickEvent.content || null,
+                        device,
+                        ip_hash: ipHash,
+                        user_agent: clickEvent.userAgent,
+                        created_at: clickEvent.timestamp,
+                    })
+                    .then(async ({ error }) => {
+                        if (error) {
+                            logger.warn('[SMART ROUTER] acquisition_click_events insert warning:', error.message);
+                        }
+                    })
+                    .catch(() => {});
             }
         } catch (err) {
             logger.warn('[SMART ROUTER] Non-blocking click tracking error:', err.message);
@@ -210,7 +214,7 @@ class SmartRouterService {
     }
 
     /**
-     * Returns full click analytics for admin reporting
+     * Returns synchronous in-memory snapshot (backwards compatibility)
      */
     getAnalytics() {
         return {
@@ -223,6 +227,48 @@ class SmartRouterService {
             byCampaign: this.metrics.byCampaign,
             recentClicks: this.recentClicks.slice(0, 50)
         };
+    }
+
+    /**
+     * Queries durable Supabase click events when available so restarts do not lose click history
+     */
+    async getAnalyticsAsync() {
+        try {
+            const { data, error } = await supabaseAdmin
+                .from('acquisition_click_events')
+                .select('click_id, platform, medium, campaign, content, device, ip_hash, created_at')
+                .order('created_at', { ascending: false })
+                .limit(1000);
+
+            if (error || !Array.isArray(data)) {
+                return { ...this.getAnalytics(), persistenceStatus: error ? error.message : 'in_memory_only' };
+            }
+
+            const byPlatform = { instagram: 0, facebook: 0, linkedin: 0, threads: 0, direct: 0, other: 0 };
+            const byDevice = { android: 0, ios: 0, desktop: 0 };
+            const byCampaign = {};
+
+            for (const row of data) {
+                const platKey = byPlatform[row.platform] !== undefined ? row.platform : 'other';
+                byPlatform[platKey] += 1;
+                if (row.device && byDevice[row.device] !== undefined) byDevice[row.device] += 1;
+                if (row.campaign) byCampaign[row.campaign] = (byCampaign[row.campaign] || 0) + 1;
+            }
+
+            return {
+                persistenceStatus: 'durable_postgres',
+                summary: {
+                    totalClicks: data.length,
+                    lastClickAt: data[0]?.created_at || null,
+                },
+                byPlatform,
+                byDevice,
+                byCampaign,
+                recentClicks: data.slice(0, 50),
+            };
+        } catch {
+            return { ...this.getAnalytics(), persistenceStatus: 'in_memory_fallback' };
+        }
     }
 }
 

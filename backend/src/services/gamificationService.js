@@ -1,5 +1,6 @@
 import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import { isEffectivePro } from '../middleware/subscriptionMiddleware.js';
 
 /**
  * Gamification Service
@@ -264,36 +265,53 @@ export async function checkAndAwardAchievements(userId) {
  */
 export async function getUserStats(userId) {
     try {
-        const { data: pattern } = await supabaseAdmin
-            .from('user_activity_patterns')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
+        const [patternRes, streaksRes, eventsRes, convCountRes, userChatsRes, goalsRes] = await Promise.all([
+            supabaseAdmin.from('user_activity_patterns').select('*').eq('user_id', userId).maybeSingle(),
+            supabaseAdmin.from('user_streaks').select('*').eq('user_id', userId),
+            supabaseAdmin.from('metric_events').select('event_type').eq('user_id', userId),
+            supabaseAdmin.from('conversations').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+            supabaseAdmin
+                .from('chat_history')
+                .select('created_at')
+                .eq('user_id', userId)
+                .eq('sender', 'user')
+                .limit(500),
+            supabaseAdmin
+                .from('life_context')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('context_type', 'goal')
+                .eq('status', 'completed'),
+        ]);
 
-        const { data: streaks } = await supabaseAdmin
-            .from('user_streaks')
-            .select('*')
-            .eq('user_id', userId);
+        const pattern = patternRes.data;
+        const streaks = streaksRes.data || [];
+        const events = eventsRes.data || [];
+        const userChats = userChatsRes.data || [];
 
-        const { data: events } = await supabaseAdmin
-            .from('metric_events')
-            .select('event_type')
-            .eq('user_id', userId);
+        const dailyStreak = streaks.find((s) => s.streak_type === 'daily_checkin')?.current_streak || 0;
+        const vulnerabilityCount = events.filter((e) => e.event_type === 'vulnerability_shared').length;
 
-        const dailyStreak = streaks?.find(s => s.streak_type === 'daily_checkin')?.current_streak || 0;
-        const vulnerabilityCount = events?.filter(e => e.event_type === 'vulnerability_shared').length || 0;
+        let lateNightChats = 0;
+        let morningChats = 0;
+        for (const msg of userChats) {
+            const hour = new Date(msg.created_at).getHours();
+            if (hour >= 23 || hour < 4) lateNightChats += 1;
+            if (hour >= 5 && hour < 10) morningChats += 1;
+        }
+
+        const distinctDays = new Set(userChats.map((m) => String(m.created_at).slice(0, 10))).size;
 
         return {
-            days_active: pattern?.total_days_active || 0,
+            days_active: Math.max(pattern?.total_days_active || 0, distinctDays),
             daily_streak: dailyStreak,
             vulnerability_count: vulnerabilityCount,
-            goals_achieved: 0, // TODO: Implement goal tracking
-            late_night_chats: 0, // TODO: Track time-based stats
-            morning_chats: 0,
-            long_conversations: 0,
-            total_conversations: 0
+            goals_achieved: goalsRes.count || 0,
+            late_night_chats: lateNightChats,
+            morning_chats: morningChats,
+            long_conversations: userChats.length >= 20 ? 1 : 0,
+            total_conversations: convCountRes.count || 0,
         };
-
     } catch (error) {
         logger.error('Error getting user stats:', error);
         return {};
@@ -305,34 +323,36 @@ export async function getUserStats(userId) {
  */
 export async function addExperiencePoints(userId, points) {
     try {
+        const numericPoints = Number(points);
+        if (!Number.isFinite(numericPoints) || numericPoints <= 0) {
+            return { leveled_up: false, new_level: 1, experience_points: 0 };
+        }
+
         const { data: level } = await supabaseAdmin
             .from('user_levels')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (!level) {
-            // Create initial level
             await supabaseAdmin
                 .from('user_levels')
                 .insert({
                     user_id: userId,
                     current_level: 'stranger',
                     level_number: 1,
-                    experience_points: points
+                    experience_points: numericPoints,
                 });
-            return { leveled_up: false, new_level: 1, experience_points: points };
+            return { leveled_up: false, new_level: 1, experience_points: numericPoints };
         }
 
-        const newXP = (level.experience_points || 0) + points;
-        const currentLevelDef = LEVELS[level.level_number || 1] || LEVELS[1];
-
+        const newXP = (level.experience_points || 0) + numericPoints;
         let newLevelNumber = level.level_number || 1;
         let newLevelName = level.current_level || 'stranger';
         let leveledUp = false;
 
-        // Check for level up
-        if (currentLevelDef && newXP >= currentLevelDef.max_xp && LEVELS[newLevelNumber + 1]) {
+        // Advance sequentially across multiple levels if XP crosses multiple thresholds
+        while (LEVELS[newLevelNumber] && newXP >= LEVELS[newLevelNumber].max_xp && LEVELS[newLevelNumber + 1]) {
             newLevelNumber += 1;
             newLevelName = LEVELS[newLevelNumber].name;
             leveledUp = true;
@@ -344,7 +364,7 @@ export async function addExperiencePoints(userId, points) {
                 experience_points: newXP,
                 level_number: newLevelNumber,
                 current_level: newLevelName,
-                level_up_at: leveledUp ? new Date() : level.level_up_at
+                level_up_at: leveledUp ? new Date().toISOString() : level.level_up_at,
             })
             .eq('user_id', userId);
 
@@ -357,29 +377,53 @@ export async function addExperiencePoints(userId, points) {
 }
 
 /**
- * Purchase streak freeze with XP
+ * Purchase streak freeze with allowlisted payment type and atomic XP / Pro verification
  */
 export async function purchaseStreakFreeze(userId, purchaseType = 'xp') {
     try {
         const xpCost = 500;
+        const normalizedType = String(purchaseType || '').trim().toLowerCase();
 
-        if (purchaseType === 'xp') {
-            // Check user has enough XP
+        if (normalizedType !== 'xp' && normalizedType !== 'premium') {
+            throw new Error('Invalid purchaseType. Must be "xp" or "premium".');
+        }
+
+        if (normalizedType === 'premium') {
+            const { data: subscription } = await supabaseAdmin
+                .from('subscriptions')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (!isEffectivePro(subscription)) {
+                throw new Error('Active Pro subscription required for premium streak freeze');
+            }
+        }
+
+        if (normalizedType === 'xp') {
             const { data: level } = await supabaseAdmin
                 .from('user_levels')
                 .select('experience_points')
                 .eq('user_id', userId)
-                .single();
+                .maybeSingle();
 
             if (!level || level.experience_points < xpCost) {
                 throw new Error('Not enough XP');
             }
 
-            // Deduct XP
-            await supabaseAdmin
+            // Conditional update ensures concurrent calls cannot double-spend XP
+            const { data: deducted, error: deductError } = await supabaseAdmin
                 .from('user_levels')
                 .update({ experience_points: level.experience_points - xpCost })
-                .eq('user_id', userId);
+                .eq('user_id', userId)
+                .eq('experience_points', level.experience_points)
+                .gte('experience_points', xpCost)
+                .select('experience_points')
+                .maybeSingle();
+
+            if (deductError || !deducted) {
+                throw new Error('Could not process XP deduction safely; please retry');
+            }
         }
 
         // Add freeze token
@@ -388,28 +432,32 @@ export async function purchaseStreakFreeze(userId, purchaseType = 'xp') {
             .select('freeze_tokens')
             .eq('user_id', userId)
             .eq('streak_type', 'daily_checkin')
-            .single();
+            .maybeSingle();
 
+        const nextTokens = (streak?.freeze_tokens || 0) + 1;
         await supabaseAdmin
             .from('user_streaks')
-            .update({
-                freeze_tokens: (streak?.freeze_tokens || 0) + 1,
-                last_freeze_earned: new Date().toISOString()
-            })
-            .eq('user_id', userId)
-            .eq('streak_type', 'daily_checkin');
+            .upsert(
+                {
+                    user_id: userId,
+                    streak_type: 'daily_checkin',
+                    freeze_tokens: nextTokens,
+                    last_freeze_earned: new Date().toISOString(),
+                },
+                { onConflict: 'user_id,streak_type' }
+            );
 
         // Log purchase
         await supabaseAdmin
             .from('streak_freeze_purchases')
             .insert({
                 user_id: userId,
-                purchase_type: purchaseType,
+                purchase_type: normalizedType,
                 tokens_earned: 1,
-                xp_cost: purchaseType === 'xp' ? xpCost : null
+                xp_cost: normalizedType === 'xp' ? xpCost : null,
             });
 
-        return { success: true, tokensRemaining: (streak?.freeze_tokens || 0) + 1 };
+        return { success: true, tokensRemaining: nextTokens };
     } catch (error) {
         logger.error('Error purchasing streak freeze:', error);
         throw error;

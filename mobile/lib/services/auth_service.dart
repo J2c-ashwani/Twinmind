@@ -116,6 +116,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       if (!profileExists) {
         // Profile creation failed - clean up auth account
         print('❌ Profile creation timeout - cleaning up auth account');
+        await NotificationService().deregisterDeviceToken(getAccessToken());
         await _supabase.auth.signOut();
         throw 'Profile creation failed. This may be a temporary issue. Please try again or contact support if the problem persists.';
       }
@@ -147,6 +148,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> signOut() async {
+    await NotificationService().deregisterDeviceToken(getAccessToken());
     await _supabase.auth.signOut();
   }
 

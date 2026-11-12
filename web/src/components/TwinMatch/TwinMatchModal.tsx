@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Share2, X } from 'lucide-react';
+import { Users, Share2, X, Check, UserPlus } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
 interface TwinMatchModalProps {
@@ -9,6 +9,7 @@ interface TwinMatchModalProps {
 }
 
 interface Comparison {
+    comparison_id?: string;
     compatibility: number;
     user1: { twin_name: string };
     user2: { twin_name: string };
@@ -16,20 +17,76 @@ interface Comparison {
     insights: string[];
 }
 
+interface MatchInvitation {
+    id: string;
+    direction: 'incoming' | 'outgoing';
+    partner_twin_name: string;
+    status: 'pending' | 'accepted' | 'declined' | 'revoked';
+}
+
 export default function TwinMatchModal({ isOpen, onClose }: TwinMatchModalProps) {
     const [identifier, setIdentifier] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
     const [comparison, setComparison] = useState<Comparison | null>(null);
+    const [invitations, setInvitations] = useState<MatchInvitation[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            loadInvitations();
+        }
+    }, [isOpen]);
+
+    const loadInvitations = async () => {
+        try {
+            const res = (await apiClient.getTwinMatchInvitations()) as any;
+            setInvitations(res?.invitations || []);
+        } catch {
+            // Non-blocking when opening modal
+        }
+    };
 
     const handleCompare = async () => {
         if (!identifier.trim()) return;
 
         setIsLoading(true);
+        setStatusMessage('');
         try {
-            const result = await apiClient.compareTwins(identifier) as any;
+            const result = (await apiClient.compareTwins(identifier)) as any;
             setComparison(result || {});
         } catch (error: any) {
-            alert(error.message || 'Failed to compare. Make sure your friend has completed their personality profile!');
+            // Mutual consent required: send invitation cleanly instead of forcing unauthorized compare
+            try {
+                const inviteRes = (await apiClient.inviteTwinMatch(identifier)) as any;
+                setStatusMessage(
+                    inviteRes?.message ||
+                        'Consent invitation sent. You can view compatibility once your friend accepts.'
+                );
+                await loadInvitations();
+            } catch (inviteErr: any) {
+                alert(
+                    inviteErr?.message ||
+                        error?.message ||
+                        'Failed to send Twin Match invitation.'
+                );
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRespondInvite = async (invitationId: string, accept: boolean) => {
+        setIsLoading(true);
+        try {
+            const res = accept
+                ? ((await apiClient.acceptTwinMatchInvitation(invitationId)) as any)
+                : ((await apiClient.declineTwinMatchInvitation(invitationId)) as any);
+            if (accept && res?.comparison) {
+                setComparison(res.comparison);
+            }
+            await loadInvitations();
+        } catch (error: any) {
+            alert(error.message || 'Failed to update invitation');
         } finally {
             setIsLoading(false);
         }
@@ -97,10 +154,46 @@ export default function TwinMatchModal({ isOpen, onClose }: TwinMatchModalProps)
                             <button
                                 onClick={handleCompare}
                                 disabled={isLoading || !identifier.trim()}
-                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
                             >
-                                {isLoading ? 'Comparing...' : 'Compare Twins'}
+                                <UserPlus className="w-4 h-4" />
+                                {isLoading ? 'Checking consent...' : 'Invite / Compare Twins'}
                             </button>
+
+                            {statusMessage && (
+                                <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+                                    {statusMessage}
+                                </p>
+                            )}
+
+                            {invitations.filter(i => i.direction === 'incoming' && i.status === 'pending').length > 0 && (
+                                <div className="pt-4 border-t border-white/10 space-y-2">
+                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-300">
+                                        Pending Match Invitations
+                                    </div>
+                                    {invitations
+                                        .filter(i => i.direction === 'incoming' && i.status === 'pending')
+                                        .map((inv) => (
+                                            <div key={inv.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                                                <span className="text-sm text-white">{inv.partner_twin_name} wants to match</span>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleRespondInvite(inv.id, true)}
+                                                        className="px-3 py-1 rounded bg-emerald-600 text-white text-xs font-medium flex items-center gap-1"
+                                                    >
+                                                        <Check className="w-3 h-3" /> Accept
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRespondInvite(inv.id, false)}
+                                                        className="px-3 py-1 rounded bg-white/10 text-white/70 text-xs"
+                                                    >
+                                                        Decline
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (

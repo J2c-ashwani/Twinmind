@@ -1,8 +1,12 @@
 import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+import { addExperiencePoints } from './gamificationService.js';
+
+export const REFERRER_XP_REWARD = 50;
+export const REFERRED_XP_REWARD = 25;
 
 function buildReferralUrl(code) {
-    const webAppUrl = process.env.WEB_APP_URL || 'http://localhost:3000';
+    const webAppUrl = process.env.WEB_APP_URL || 'https://www.twingenie.app';
     return `${webAppUrl}/signup?ref=${encodeURIComponent(code)}`;
 }
 
@@ -33,10 +37,14 @@ export async function getOrCreateReferralCode(userId) {
     return { code: data.code, url: buildReferralUrl(data.code) };
 }
 
+/**
+ * Attribute a referred signup idempotently and grant XP rewards to both accounts.
+ * Policy: 50 XP inviter, 25 XP referred user (XP-only policy).
+ */
 export async function recordReferral({ code, referredUserId }) {
     if (!code || !referredUserId) return null;
 
-    const normalizedCode = code.trim().toUpperCase();
+    const normalizedCode = String(code).trim().toUpperCase();
     const { data: referralCode, error: codeError } = await supabaseAdmin
         .from('referral_codes')
         .select('user_id, code')
@@ -46,45 +54,141 @@ export async function recordReferral({ code, referredUserId }) {
     if (codeError) throw codeError;
     if (!referralCode || referralCode.user_id === referredUserId) return null;
 
-    const { data, error } = await supabaseAdmin
+    // Check if referred user already has a referral event
+    const { data: existingEvent, error: existingErr } = await supabaseAdmin
         .from('referral_events')
-        .upsert({
-            referrer_user_id: referralCode.user_id,
-            referred_user_id: referredUserId,
-            referral_code: referralCode.code,
-            status: 'joined',
-        }, { onConflict: 'referred_user_id' })
-        .select()
-        .single();
+        .select('*')
+        .eq('referred_user_id', referredUserId)
+        .maybeSingle();
 
-    if (error) {
-        logger.error('Failed to record referral:', error);
-        throw error;
+    if (existingErr && existingErr.code !== 'PGRST116') {
+        throw existingErr;
     }
 
-    return data;
+    let eventRow = existingEvent;
+
+    if (!eventRow) {
+        const { data: inserted, error: insertError } = await supabaseAdmin
+            .from('referral_events')
+            .insert({
+                referrer_user_id: referralCode.user_id,
+                referred_user_id: referredUserId,
+                referral_code: referralCode.code,
+                status: 'joined',
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            if (insertError.code === '23505') {
+                const { data: fetched } = await supabaseAdmin
+                    .from('referral_events')
+                    .select('*')
+                    .eq('referred_user_id', referredUserId)
+                    .maybeSingle();
+                eventRow = fetched;
+            } else {
+                logger.error('Failed to record referral:', insertError);
+                throw insertError;
+            }
+        } else {
+            eventRow = inserted;
+        }
+    }
+
+    if (!eventRow || eventRow.status === 'rewarded') {
+        return eventRow;
+    }
+
+    // Atomically transition status from 'joined' -> 'rewarded' so XP is granted exactly once
+    const { data: claimed, error: claimErr } = await supabaseAdmin
+        .from('referral_events')
+        .update({ status: 'rewarded' })
+        .eq('id', eventRow.id)
+        .eq('status', 'joined')
+        .select()
+        .maybeSingle();
+
+    if (claimErr) throw claimErr;
+    if (!claimed) {
+        return eventRow;
+    }
+
+    await Promise.all([
+        addExperiencePoints(referralCode.user_id, REFERRER_XP_REWARD),
+        addExperiencePoints(referredUserId, REFERRED_XP_REWARD),
+        supabaseAdmin.from('metric_events').insert([
+            {
+                user_id: referralCode.user_id,
+                event_type: 'referral_reward',
+                event_value: REFERRER_XP_REWARD,
+                metric_type: 'referral',
+                metadata: {
+                    role: 'referrer',
+                    referral_event_id: claimed.id,
+                    referral_code: referralCode.code,
+                    referred_user_id: referredUserId,
+                },
+            },
+            {
+                user_id: referredUserId,
+                event_type: 'referral_reward',
+                event_value: REFERRED_XP_REWARD,
+                metric_type: 'referral',
+                metadata: {
+                    role: 'referred',
+                    referral_event_id: claimed.id,
+                    referral_code: referralCode.code,
+                    referrer_user_id: referralCode.user_id,
+                },
+            },
+        ]),
+    ]);
+
+    return claimed;
 }
 
 export async function getReferralStats(userId) {
-    const { count, error } = await supabaseAdmin
-        .from('referral_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('referrer_user_id', userId);
+    const [eventsRes, rewardLedgerRes] = await Promise.all([
+        supabaseAdmin
+            .from('referral_events')
+            .select('status')
+            .eq('referrer_user_id', userId),
+        supabaseAdmin
+            .from('metric_events')
+            .select('event_value')
+            .eq('user_id', userId)
+            .eq('event_type', 'referral_reward'),
+    ]);
 
-    if (error) throw error;
+    if (eventsRes.error) throw eventsRes.error;
 
-    const joined = count || 0;
+    const events = eventsRes.data || [];
+    const joined = events.length;
+    const rewardedCount = events.filter((e) => e.status === 'rewarded').length;
+    const pendingRewards = joined - rewardedCount;
+
+    const ledgerXp = (rewardLedgerRes.data || []).reduce(
+        (sum, row) => sum + (Number(row.event_value) || 0),
+        0
+    );
+
+    const rewardsEarned = rewardLedgerRes.data ? ledgerXp : rewardedCount * REFERRER_XP_REWARD;
+
     return {
         invited: joined,
         joined,
-        rewards_earned: joined * 50,
+        rewarded: rewardedCount,
+        pending_rewards: pendingRewards,
+        rewards_earned: rewardsEarned,
         total_referrals: joined,
-        pending_rewards: 0,
-        total_earned: joined * 50,
+        total_earned: rewardsEarned,
     };
 }
 
 export default {
+    REFERRER_XP_REWARD,
+    REFERRED_XP_REWARD,
     getOrCreateReferralCode,
     recordReferral,
     getReferralStats,

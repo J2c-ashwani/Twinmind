@@ -17,10 +17,26 @@ router.get('/', verifyToken, async (req, res) => {
 // Mark as read
 router.post('/:id/read', verifyToken, async (req, res) => {
     try {
-        await reminderService.markAsRead(req.params.id);
+        const updated = await reminderService.markAsRead(req.params.id, req.user.userId);
+        if (!updated) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to update notification' });
+    }
+});
+
+// Delete notification
+router.delete('/:id', verifyToken, async (req, res) => {
+    try {
+        const deleted = await reminderService.deleteNotification(req.params.id, req.user.userId);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete notification' });
     }
 });
 
@@ -36,6 +52,18 @@ router.post('/device-token', verifyToken, async (req, res) => {
     } catch (error) {
         console.error('Failed to update device token:', error);
         res.status(500).json({ error: 'Failed to update device token' });
+    }
+});
+
+// Deregister device token on sign-out
+router.delete('/device-token', verifyToken, async (req, res) => {
+    try {
+        const token = req.body?.token || req.query?.token || null;
+        await reminderService.deregisterDeviceToken(req.user.userId, token);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Failed to deregister device token:', error);
+        res.status(500).json({ error: 'Failed to deregister device token' });
     }
 });
 

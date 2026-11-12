@@ -32,14 +32,16 @@ class GrowthOrchestratorService {
             facebook: false,
             linkedin: false,
             instagram: false,
-            threads: false
+            threads: false,
+            youtube: false
         };
         // Short-term execution timestamps for debounce protection
         this._lastPublishedTimestamps = {
             facebook: 0,
             linkedin: 0,
             instagram: 0,
-            threads: 0
+            threads: 0,
+            youtube: 0
         };
         // A/B pair-matched experiment buckets
         this._matchedPairBuckets = {};
@@ -127,6 +129,14 @@ class GrowthOrchestratorService {
         };
     }
 
+    isSystemPaused() {
+        return (
+            Boolean(this.state?.isPaused) ||
+            process.env.GROWTH_AUTORUN === 'false' ||
+            process.env.GROWTH_SYSTEM_PAUSED === 'true'
+        );
+    }
+
     async getSystemStatus() {
         const adapterHealth = {};
         for (const [name, adapter] of Object.entries(this.adapters)) {
@@ -138,7 +148,7 @@ class GrowthOrchestratorService {
         const failedCount = this.state.posts.filter(p => p.status === 'failed').length;
 
         return {
-            isPaused: this.state.isPaused || process.env.GROWTH_AUTORUN === 'false',
+            isPaused: this.isSystemPaused(),
             adapters: adapterHealth,
             queueSummary: {
                 totalCampaigns: this.state.campaigns.length,
@@ -177,7 +187,10 @@ class GrowthOrchestratorService {
     /**
      * Publishes a single post immediately
      */
-    async publishPostNow(postId) {
+    async publishPostNow(postId, force = false) {
+        if (!force && this.isSystemPaused()) {
+            return { postId, status: 'paused', reason: 'system_paused' };
+        }
         const post = this.state.posts.find(p => p.id === postId);
         if (!post) {
             throw new Error(`Post with ID ${postId} not found`);
@@ -392,6 +405,10 @@ class GrowthOrchestratorService {
      * Generates 100% fresh, AI-powered non-repeating daily content.
      */
     async publishDailyFacebookReel(force = false, specificThemeId = null, specificFormat = null) {
+        if (!force && this.isSystemPaused()) {
+            logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping Facebook.');
+            return { action: 'skipped', reason: 'system_paused' };
+        }
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily Facebook publication flow for ${todayIST}...`);
@@ -584,6 +601,10 @@ class GrowthOrchestratorService {
      * @param {boolean} force - If true, bypasses the duplicate post throttle
      */
     async publishDailyLinkedInPersonal(force = false, specificThemeId = null) {
+        if (!force && this.isSystemPaused()) {
+            logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping LinkedIn.');
+            return { action: 'skipped', reason: 'system_paused' };
+        }
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow...`);
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
@@ -890,6 +911,10 @@ class GrowthOrchestratorService {
      * @param {string|null} specificFormat - Optional manual override ('carousel' | 'reel')
      */
     async publishDailyInstagram(force = false, specificFormat = null) {
+        if (!force && this.isSystemPaused()) {
+            logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping Instagram.');
+            return { action: 'skipped', reason: 'system_paused' };
+        }
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily Instagram publishing flow...`);
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
@@ -1083,6 +1108,10 @@ class GrowthOrchestratorService {
      * @param {boolean} force - If true, bypasses the duplicate post throttle
      */
     async publishDailyThreads(force = false) {
+        if (!force && this.isSystemPaused()) {
+            logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping Threads.');
+            return { action: 'skipped', reason: 'system_paused' };
+        }
         logger.info(`[GROWTH ORCHESTRATOR] Starting daily Threads publishing flow...`);
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
@@ -1221,17 +1250,109 @@ class GrowthOrchestratorService {
     }
 
     /**
-     * Unified Daily Broadcast: Dispatches Facebook Reel, LinkedIn Carousel, Instagram Carousel & Threads.
+     * Publishes today's daily YouTube Short when YouTube OAuth credentials are configured.
+     */
+    async publishDailyYouTube(force = false) {
+        if (!force && this.isSystemPaused()) {
+            logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping YouTube.');
+            return { action: 'skipped', reason: 'system_paused' };
+        }
+
+        if (!this.adapters.youtube.isConfigured()) {
+            return { action: 'skipped', reason: 'youtube_credentials_not_configured' };
+        }
+
+        const now = new Date();
+        const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+
+        if (this._publishingLocks.youtube) {
+            return { action: 'skipped', reason: 'publish_in_progress' };
+        }
+
+        if (!force && this._lastPublishedTimestamps.youtube && Date.now() - this._lastPublishedTimestamps.youtube < 15 * 60 * 1000) {
+            return { action: 'skipped', reason: 'recently_published' };
+        }
+
+        if (!force) {
+            const ledgerCheck = await this.checkDurableLedger('youtube', todayIST);
+            if (ledgerCheck.isBlocked) {
+                return { action: 'skipped', reason: ledgerCheck.reason };
+            }
+        }
+
+        const slotClaim = await publicationSlotService.claimSlot({
+            platform: 'youtube',
+            slotDate: todayIST,
+            slotIndex: 1,
+            force,
+        });
+        if (!slotClaim.granted && !force) {
+            return { action: 'skipped', reason: slotClaim.reason };
+        }
+
+        this._publishingLocks.youtube = true;
+        await this.acquireDurableLock('youtube', todayIST);
+
+        try {
+            const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
+            const reelPkg = dailyPackage.facebook || dailyPackage.instagram || {};
+            const renderResult = await mediaRendererService.renderReel({
+                campaignId: `yt_${todayIST}`,
+                postId: Date.now(),
+                mode: reelPkg.mode || 'dark',
+                hook: reelPkg.hook || dailyPackage.topic,
+                tag: 'TWINGENIE',
+                caption: reelPkg.caption || dailyPackage.topic,
+            });
+
+            const publishResult = await this.adapters.youtube.publish({
+                title: (dailyPackage.topic || 'TwinGenie Reflection').slice(0, 95),
+                description: `${reelPkg.caption || dailyPackage.topic}\n\nhttps://twingenie.app/download?utm_source=youtube&utm_medium=shorts`,
+                videoPath: renderResult?.videoPath || renderResult?.localPath,
+            });
+
+            if (publishResult.success && !publishResult.simulated) {
+                this._lastPublishedTimestamps.youtube = Date.now();
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                    postId: publishResult.postId,
+                    postUrl: publishResult.url,
+                });
+                await this.commitDurableLedger('youtube', todayIST, publishResult);
+            } else {
+                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                    errorMessage: publishResult.error || 'YouTube upload failed',
+                });
+            }
+
+            return publishResult;
+        } catch (ytErr) {
+            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                errorMessage: ytErr.message,
+            });
+            await this.releaseDurableLock('youtube', todayIST);
+            throw ytErr;
+        } finally {
+            await publicationSlotService.releaseSlot(slotClaim.slotKey);
+            this._publishingLocks.youtube = false;
+        }
+    }
+
+    /**
+     * Unified Daily Broadcast: Dispatches Facebook Reel, LinkedIn Carousel, Instagram Carousel, Threads & YouTube.
      * @param {boolean} force - Force publish even if already published today
      */
     async publishDailyBroadcast(force = false) {
-        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook + LinkedIn + Instagram + Threads, force=${force})...`);
+        if (!force && this.isSystemPaused()) {
+            return { action: 'skipped', reason: 'system_paused' };
+        }
+        logger.info(`🚀 [GROWTH ORCHESTRATOR] Initiating Unified Daily Broadcast (Facebook + LinkedIn + Instagram + Threads + YouTube, force=${force})...`);
         const results = {
             timestamp: new Date().toISOString(),
             facebook: null,
             linkedin: null,
             instagram: null,
-            threads: null
+            threads: null,
+            youtube: null
         };
 
         try {
@@ -1262,7 +1383,14 @@ class GrowthOrchestratorService {
             results.threads = { success: false, error: thErr.message };
         }
 
-        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB success=${results.facebook?.success}, LI success=${results.linkedin?.success}, IG success=${results.instagram?.success}, Threads success=${results.threads?.success}`);
+        try {
+            results.youtube = await this.publishDailyYouTube(force);
+        } catch (ytErr) {
+            logger.error('[GROWTH ORCHESTRATOR] Daily YouTube publish failed:', ytErr);
+            results.youtube = { success: false, error: ytErr.message };
+        }
+
+        logger.info(`✅ [GROWTH ORCHESTRATOR] Unified Daily Broadcast finished: FB=${results.facebook?.success || results.facebook?.action}, LI=${results.linkedin?.success || results.linkedin?.action}, IG=${results.instagram?.success || results.instagram?.action}, Threads=${results.threads?.success || results.threads?.action}, YouTube=${results.youtube?.success || results.youtube?.action}`);
         return results;
     }
 }

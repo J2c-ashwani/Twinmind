@@ -2,9 +2,53 @@ import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
-import { updateStreak, addExperiencePoints } from '../services/gamificationService.js';
+import {
+    updateStreak,
+    addExperiencePoints,
+    checkAndAwardAchievements,
+} from '../services/gamificationService.js';
 
 const router = express.Router();
+
+export const DAILY_CHALLENGES = {
+    '1': {
+        id: '1',
+        type: 'morning_reflection',
+        task: 'Morning Reflection',
+        description: 'Take 5 minutes to reflect on your goals.',
+        reward: 10,
+        time_window: '6AM - 10AM',
+    },
+    '2': {
+        id: '2',
+        type: 'gratitude_moment',
+        task: 'Gratitude Log',
+        description: 'Write down 3 things you are grateful for.',
+        reward: 15,
+        time_window: null,
+    },
+    '3': {
+        id: '3',
+        type: 'mindful_breathing',
+        task: 'Mindful Breathing',
+        description: 'Practice deep breathing for 2 minutes.',
+        reward: 10,
+        time_window: null,
+    },
+};
+
+const challengeCompletionLocks = new Map();
+function withChallengeLock(key, fn) {
+    const prev = challengeCompletionLocks.get(key) || Promise.resolve();
+    const next = prev.then(fn, fn);
+    const settled = next.finally(() => {
+        if (challengeCompletionLocks.get(key) === settled) {
+            challengeCompletionLocks.delete(key);
+        }
+    });
+    challengeCompletionLocks.set(key, settled);
+    return next;
+}
 
 /**
  * POST /api/daily/mood
@@ -108,11 +152,10 @@ router.get('/challenges', authenticateUser, async (req, res) => {
                 .filter(Boolean)
         );
 
-        const challenges = [
-            { id: '1', type: 'morning_reflection', task: 'Morning Reflection', description: 'Take 5 minutes to reflect on your goals.', completed: completedIds.has('1'), reward: 10, time_window: '6AM - 10AM' },
-            { id: '2', type: 'gratitude_moment', task: 'Gratitude Log', description: 'Write down 3 things you are grateful for.', completed: completedIds.has('2'), reward: 15, time_window: null },
-            { id: '3', type: 'mindful_breathing', task: 'Mindful Breathing', description: 'Practice deep breathing for 2 minutes.', completed: completedIds.has('3'), reward: 10, time_window: null }
-        ];
+        const challenges = Object.values(DAILY_CHALLENGES).map((c) => ({
+            ...c,
+            completed: completedIds.has(c.id),
+        }));
 
         res.json(challenges);
     } catch (error) {
@@ -123,86 +166,101 @@ router.get('/challenges', authenticateUser, async (req, res) => {
 
 /**
  * POST /api/daily/challenges/:id/complete
- * Complete a challenge idempotently & award canonical XP/streak
+ * Complete an allowlisted challenge idempotently & award canonical XP/streak
  */
 router.post('/challenges/:id/complete', authenticateUser, async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.userId;
+        const challenge = DAILY_CHALLENGES[String(id)];
+
+        if (!challenge) {
+            return res.status(400).json({ error: 'Invalid or unsupported challenge ID' });
+        }
+
         const inputs = req.body || {};
         const todayStr = new Date().toISOString().split('T')[0];
+        const completionKey = `challenge:${userId}:${challenge.id}:${todayStr}`;
 
-        // Challenge definitions mapping
-        const challengeRewards = { '1': 10, '2': 15, '3': 10 };
-        const challengeTypes = { '1': 'morning_reflection', '2': 'gratitude_moment', '3': 'mindful_breathing' };
+        const result = await withChallengeLock(completionKey, async () => {
+            const { data: existingEvents, error: fetchErr } = await supabaseAdmin
+                .from('metric_events')
+                .select('metadata')
+                .eq('user_id', userId)
+                .eq('event_type', 'challenge_completed')
+                .gte('created_at', `${todayStr}T00:00:00.000Z`);
 
-        const reward = challengeRewards[id] || 10;
-        const type = challengeTypes[id] || 'custom_challenge';
+            if (fetchErr) throw fetchErr;
 
-        // 1. Server-side Idempotency Check: Check if already completed today
-        const { data: existingEvents } = await supabaseAdmin
-            .from('metric_events')
-            .select('metadata')
-            .eq('user_id', userId)
-            .eq('event_type', 'challenge_completed')
-            .gte('created_at', todayStr);
+            const alreadyCompleted = (existingEvents || []).some(
+                (e) =>
+                    e.metadata?.completion_key === completionKey ||
+                    e.metadata?.challenge_id?.toString() === challenge.id
+            );
 
-        const alreadyCompleted = (existingEvents || []).some(
-            e => e.metadata?.challenge_id?.toString() === id.toString()
-        );
+            if (alreadyCompleted) {
+                return {
+                    success: true,
+                    already_completed: true,
+                    xp_earned: 0,
+                    message: 'Challenge already completed today!',
+                };
+            }
 
-        if (alreadyCompleted) {
-            return res.json({
-                success: true,
-                already_completed: true,
-                xp_earned: 0,
-                message: 'Challenge already completed today!'
-            });
-        }
+            const { error: insertError } = await supabaseAdmin
+                .from('metric_events')
+                .insert({
+                    user_id: userId,
+                    event_type: 'challenge_completed',
+                    event_value: challenge.reward,
+                    metric_type: 'challenge',
+                    metadata: {
+                        challenge_id: challenge.id,
+                        challenge_type: challenge.type,
+                        completion_key: completionKey,
+                        inputs,
+                    },
+                });
 
-        // 2. Persist completion to metric_events
-        const { error: insertError } = await supabaseAdmin
-            .from('metric_events')
-            .insert({
-                user_id: userId,
-                event_type: 'challenge_completed',
-                event_value: reward,
-                metric_type: 'challenge',
-                metadata: {
-                    challenge_id: id,
-                    challenge_type: type,
-                    inputs: inputs
+            if (insertError) {
+                if (insertError.code === '23505') {
+                    return {
+                        success: true,
+                        already_completed: true,
+                        xp_earned: 0,
+                        message: 'Challenge already completed today!',
+                    };
                 }
-            });
+                throw insertError;
+            }
 
-        if (insertError) {
-            logger.error('Error inserting challenge_completed metric event:', insertError);
-            return res.status(500).json({ error: 'Failed to record challenge completion' });
-        }
+            let xpResult = { leveled_up: false };
+            try {
+                xpResult = await addExperiencePoints(userId, challenge.reward);
+            } catch (err) {
+                logger.warn('Failed to add XP for challenge completion:', err);
+            }
 
-        // 3. Award XP & update streak using canonical services
-        let xpResult = { leveled_up: false };
-        try {
-            xpResult = await addExperiencePoints(userId, reward);
-        } catch (err) {
-            logger.warn('Failed to add XP for challenge completion:', err);
-        }
+            let streakResult = {};
+            try {
+                streakResult = await updateStreak(userId, 'daily_checkin');
+            } catch (err) {
+                logger.warn('Failed to update streak for challenge completion:', err);
+            }
 
-        let streakResult = {};
-        try {
-            streakResult = await updateStreak(userId, 'daily_checkin');
-        } catch (err) {
-            logger.warn('Failed to update streak for challenge completion:', err);
-        }
+            checkAndAwardAchievements(userId).catch(() => {});
 
-        res.json({
-            success: true,
-            already_completed: false,
-            xp_earned: reward,
-            leveled_up: xpResult.leveled_up || false,
-            current_streak: streakResult.current || 1,
-            message: 'Challenge completed successfully!'
+            return {
+                success: true,
+                already_completed: false,
+                xp_earned: challenge.reward,
+                leveled_up: xpResult.leveled_up || false,
+                current_streak: streakResult.current || 1,
+                message: 'Challenge completed successfully!',
+            };
         });
+
+        res.json(result);
     } catch (error) {
         logger.error('Error completing challenge:', error);
         res.status(500).json({ error: 'Failed to complete challenge' });

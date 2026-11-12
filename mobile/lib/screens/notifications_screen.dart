@@ -50,11 +50,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAsRead(String id, int index) async {
     try {
       await _apiService.markNotificationRead(id);
-      setState(() {
-        _notifications[index]['is_read'] = true;
-      });
+      if (mounted && index < _notifications.length) {
+        setState(() {
+          _notifications[index]['is_read'] = true;
+        });
+      }
     } catch (e) {
       print('Error marking read: $e');
+    }
+  }
+
+  Future<void> _deleteNotification(String id, int index, dynamic deletedItem) async {
+    setState(() {
+      _notifications.removeAt(index);
+    });
+    try {
+      await _apiService.deleteNotification(id);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _notifications.insert(index.clamp(0, _notifications.length), deletedItem);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete notification')),
+        );
+      }
     }
   }
 
@@ -117,7 +137,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         onDismissed: (direction) {
-                          // TODO: Implement delete
+                          _deleteNotification(notification['id'].toString(), index, notification);
                         },
                         child: Card(
                           margin: const EdgeInsets.only(bottom: 12),

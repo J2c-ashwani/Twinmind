@@ -3,17 +3,18 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
-import rateLimit from 'express-rate-limit';
 import { verifyToken } from '../middleware/authMiddleware.js';
-import { checkSubscription, trackUsage } from '../middleware/subscriptionMiddleware.js';
+import { checkSubscription, checkVoiceLimits, releaseDailyQuota } from '../middleware/subscriptionMiddleware.js';
+import { resolveConversationForUser } from '../services/conversationAccess.js';
 import { transcribeAudio } from '../services/whisperService.js';
 import { textToSpeech } from '../services/ttsService.js';
 import { generateChatResponse } from '../services/chatEngine.js';
-import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
 const unlink = promisify(fs.unlink);
+const VOICE_SIGNED_URL_TTL_SECONDS = 3600; // 1 hour
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -26,258 +27,221 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => {
         const uniqueName = `voice_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`;
         cb(null, uniqueName);
-    }
+    },
 });
 
 const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        logger.info(`Incoming voice upload check: name=${file.originalname}, type=${file.mimetype}`);
+        logger.info(`Incoming voice upload check: type=${file.mimetype}`);
 
         const allowedTypes = /mp3|wav|m4a|aac|ogg|webm/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
 
-        // Allow if EITHER extension OR mimetype is valid to handle generic binary uploads
         if (extname || mimetype) {
             cb(null, true);
         } else {
-            logger.error(`Voice upload rejected: name=${file.originalname}, mime=${file.mimetype}`);
+            logger.error(`Voice upload rejected: mime=${file.mimetype}`);
             cb(new Error(`Only audio files are allowed. Got: ${file.mimetype}`));
         }
-    }
-});
-
-// Voice Limit: 3 per day for Free users
-const voiceLimiter = rateLimit({
-    windowMs: 24 * 60 * 60 * 1000, // 24 Hours
-    max: 3,
-    message: {
-        error: 'Free limit reached (3 voice messages/day). Upgrade to Pro for unlimited.',
-        upgrade: true
     },
-    keyGenerator: (req) => req.user?.userId || req.ip,
-    skip: (req) => req.isPro === true, // Skip for Pro users
-    standardHeaders: true,
-    legacyHeaders: false,
 });
 
-router.post('/message', verifyToken, checkSubscription, voiceLimiter, upload.single('audio'), async (req, res) => {
-    let audioFilePath = null;
-    let responseAudioPath = null;
+async function createOwnerSignedUrl(objectPath) {
+    const { data, error } = await supabaseAdmin.storage
+        .from('voice-responses')
+        .createSignedUrl(objectPath, VOICE_SIGNED_URL_TTL_SECONDS);
 
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No audio file provided' });
-        }
+    if (error || !data?.signedUrl) {
+        throw new Error(error?.message || 'Failed to generate signed audio URL');
+    }
 
-        audioFilePath = req.file.path;
-        const { mode = 'normal', conversationId } = req.body;
-        const userId = req.user.userId;
+    return data.signedUrl;
+}
 
-        logger.info(`Processing voice message from user ${userId}, file: ${audioFilePath}`);
+router.post(
+    '/message',
+    verifyToken,
+    checkSubscription,
+    upload.single('audio'),
+    checkVoiceLimits,
+    async (req, res) => {
+        let audioFilePath = null;
+        let responseAudioPath = null;
+        let responseCompleted = false;
 
-        // 1. Resolve Conversation ID
-        let targetConversationId = conversationId;
-        if (!targetConversationId || targetConversationId === 'null' || targetConversationId === 'undefined') {
+        try {
+            if (!req.file) {
+                if (req.reservedQuota) {
+                    await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+                }
+                return res.status(400).json({ error: 'No audio file provided' });
+            }
+
+            audioFilePath = req.file.path;
+            const { mode = 'normal', conversationId } = req.body;
+            const userId = req.user.userId;
+
+            logger.info(`Processing voice message for user ${userId}`);
+
+            // 1. Validate conversation ownership / resolve today's conversation
+            let targetConversationId;
             try {
-                // Try to find recent conversation
-                const { data: recent } = await supabaseAdmin
-                    .from('conversations')
-                    .select('id, created_at')
-                    .eq('user_id', userId)
-                    .order('updated_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+                targetConversationId = await resolveConversationForUser(userId, conversationId);
+            } catch (convErr) {
+                if (req.reservedQuota) {
+                    await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+                }
+                if (audioFilePath) await unlink(audioFilePath).catch(() => {});
+                return res.status(convErr.statusCode || 500).json({ error: convErr.message });
+            }
 
-                // Check if the recent conversation is from today
-                const isToday = (date) => {
-                    const today = new Date();
-                    const compare = new Date(date);
-                    return today.getFullYear() === compare.getFullYear() &&
-                        today.getMonth() === compare.getMonth() &&
-                        today.getDate() === compare.getDate();
-                };
-
-                // Only reuse if it's from today, otherwise create a new one
-                if (recent && isToday(recent.created_at)) {
-                    targetConversationId = recent.id;
-                } else {
-                    // Create new conversation with today's date as title
-                    const today = new Date();
-                    const dateTitle = today.toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
+            // 2. Upload User Audio under owner-scoped folder with short-lived signed URL
+            let userAudioUrl = null;
+            try {
+                const userObjectPath = `${userId}/user_${Date.now()}_${path.basename(audioFilePath)}`;
+                const userAudioBuffer = fs.readFileSync(audioFilePath);
+                const { error: userUploadError } = await supabaseAdmin.storage
+                    .from('voice-responses')
+                    .upload(userObjectPath, userAudioBuffer, {
+                        contentType: req.file.mimetype || 'audio/webm',
+                        cacheControl: '3600',
                     });
 
-                    const { data: newConv, error: convCreateError } = await supabaseAdmin
-                        .from('conversations')
-                        .insert([{
-                            user_id: userId,
-                            title: dateTitle,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        }])
-                        .select()
-                        .single();
-                    if (!newConv || convCreateError) throw new Error('Failed to create conversation for voice message');
-                    targetConversationId = newConv.id;
+                if (!userUploadError) {
+                    userAudioUrl = await createOwnerSignedUrl(userObjectPath);
+                } else {
+                    logger.warn('Failed to upload user audio:', userUploadError.message);
                 }
             } catch (err) {
-                logger.error("Error determining conversation:", err);
+                logger.warn('Failed to upload user audio (non-critical):', err.message);
             }
-        }
 
-        // 2. Upload User Audio (Optional, for replay)
-        let userAudioUrl = null;
-        try {
-            const userAudioName = `user_${Date.now()}_${path.basename(audioFilePath)}`;
-            const userAudioBuffer = fs.readFileSync(audioFilePath);
-            const { error: userUploadError } = await supabaseAdmin.storage
-                .from('voice-responses')
-                .upload(userAudioName, userAudioBuffer, { contentType: 'audio/webm', cacheControl: '3600' });
-
-            if (!userUploadError) {
-                const { data: { publicUrl } } = supabaseAdmin.storage
-                    .from('voice-responses')
-                    .getPublicUrl(userAudioName);
-                userAudioUrl = publicUrl;
+            // 3. Transcribe Audio (never log transcript contents)
+            let transcription;
+            try {
+                transcription = await transcribeAudio(audioFilePath);
+                if (!transcription || transcription.trim() === '') {
+                    throw new Error('Transcription service returned empty result');
+                }
+                logger.info(`Transcription complete (${transcription.length} chars)`);
+            } catch (err) {
+                logger.error('Transcription failed:', err.message);
+                throw new Error(`Transcription failed: ${err.message}`);
             }
-        } catch (err) {
-            logger.warn("Failed to upload user audio (non-critical):", err.message);
-        }
 
-        // 3. Transcribe Audio (Gemini/Whisper)
-        let transcription;
-        try {
-            transcription = await transcribeAudio(audioFilePath);
-            if (!transcription || transcription.trim() === '') {
-                throw new Error('Transcription service returned empty result');
+            // 4. Generate AI Response
+            let aiMessageText;
+            try {
+                const aiResponse = await generateChatResponse(
+                    userId,
+                    transcription,
+                    mode,
+                    '',
+                    targetConversationId
+                );
+                aiMessageText =
+                    typeof aiResponse === 'string'
+                        ? aiResponse
+                        : aiResponse?.message || aiResponse?.text || String(aiResponse);
+                logger.info(`AI voice response generated (${aiMessageText.length} chars)`);
+            } catch (err) {
+                logger.error('AI Generation failed:', err.message);
+                throw new Error(`AI Generation failed: ${err.message}`);
             }
-            logger.info(`Transcription complete: "${transcription.substring(0, 30)}..."`);
-        } catch (err) {
-            logger.error('Transcription failed:', err);
-            throw new Error(`Transcription failed: ${err.message}`);
-        }
 
-        // 4. Generate AI Response
-        let aiMessageText;
-        try {
-            const aiResponse = await generateChatResponse(
-                userId,
-                transcription,
-                mode,
-                '',
-                targetConversationId
-            );
-            aiMessageText = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.message || aiResponse?.text || String(aiResponse));
-            logger.info(`AI Response generated: "${aiMessageText.substring(0, 30)}..."`);
-        } catch (err) {
-            logger.error('AI Generation failed:', err);
-            throw new Error(`AI Generation failed: ${err.message}`);
-        }
-
-        // 5. Save to Database
-        try {
+            // 5. Durably save turn BEFORE responding
             const userTime = new Date();
             const aiTime = new Date(userTime.getTime() + 100);
 
-            await supabaseAdmin.from('chat_history').insert([
+            const { error: historyInsertError } = await supabaseAdmin.from('chat_history').insert([
                 {
                     user_id: userId,
                     conversation_id: targetConversationId,
                     message: transcription,
                     sender: 'user',
-                    mode: mode,
-                    created_at: userTime.toISOString()
+                    mode,
+                    created_at: userTime.toISOString(),
                 },
                 {
                     user_id: userId,
                     conversation_id: targetConversationId,
                     message: aiMessageText,
                     sender: 'ai',
-                    mode: mode,
-                    created_at: aiTime.toISOString()
-                }
+                    mode,
+                    created_at: aiTime.toISOString(),
+                },
             ]);
 
-            if (targetConversationId) {
-                await supabaseAdmin
-                    .from('conversations')
-                    .update({ updated_at: new Date().toISOString() })
-                    .eq('id', targetConversationId);
+            if (historyInsertError) {
+                throw new Error(`Failed to persist voice conversation: ${historyInsertError.message}`);
             }
-        } catch (dbError) {
-            logger.error("DB Save failed (non-critical):", dbError.message);
-        }
 
-        // 6. TTS & AI Audio Upload
-        let aiAudioUrl = null;
-        try {
-            responseAudioPath = `uploads/voice/response_${Date.now()}.mp3`;
-            await textToSpeech(aiMessageText, responseAudioPath);
+            await supabaseAdmin
+                .from('conversations')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', targetConversationId)
+                .eq('user_id', userId);
 
-            const aiAudioName = path.basename(responseAudioPath);
-            const aiAudioBuffer = fs.readFileSync(responseAudioPath);
+            // 6. TTS & AI Audio Upload (owner-scoped signed URL)
+            let aiAudioUrl = null;
+            try {
+                responseAudioPath = `uploads/voice/response_${Date.now()}.mp3`;
+                await textToSpeech(aiMessageText, responseAudioPath);
 
-            const { error: uploadError } = await supabaseAdmin.storage
-                .from('voice-responses')
-                .upload(aiAudioName, aiAudioBuffer, {
-                    contentType: 'audio/mpeg',
-                    cacheControl: '3600'
-                });
+                const aiObjectPath = `${userId}/${path.basename(responseAudioPath)}`;
+                const aiAudioBuffer = fs.readFileSync(responseAudioPath);
 
-            if (uploadError) {
-                logger.warn('AI audio upload to Supabase failed:', uploadError.message);
-            } else {
-                const { data: { publicUrl } } = supabaseAdmin.storage
+                const { error: uploadError } = await supabaseAdmin.storage
                     .from('voice-responses')
-                    .getPublicUrl(aiAudioName);
-                aiAudioUrl = publicUrl;
+                    .upload(aiObjectPath, aiAudioBuffer, {
+                        contentType: 'audio/mpeg',
+                        cacheControl: '3600',
+                    });
+
+                if (uploadError) {
+                    logger.warn('AI audio upload to Supabase failed:', uploadError.message);
+                } else {
+                    aiAudioUrl = await createOwnerSignedUrl(aiObjectPath);
+                }
+            } catch (ttsError) {
+                logger.error('TTS/Upload failed:', ttsError.message);
+                throw new Error(`TTS generation failed: ${ttsError.message}`);
             }
-        } catch (ttsError) {
-            logger.error('TTS/Upload failed:', ttsError);
-            throw new Error(`TTS generation failed: ${ttsError.message}`);
+
+            await Promise.all([
+                unlink(audioFilePath).catch(() => {}),
+                responseAudioPath ? unlink(responseAudioPath).catch(() => {}) : Promise.resolve(),
+            ]);
+
+            responseCompleted = true;
+            res.json({
+                success: true,
+                conversationId: targetConversationId,
+                userMessage: transcription,
+                userAudioUrl,
+                aiResponse: aiMessageText,
+                audioUrl: aiAudioUrl,
+            });
+        } catch (error) {
+            logger.error('Voice processing error:', error.message);
+
+            if (!responseCompleted && req.reservedQuota) {
+                await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+            }
+
+            if (audioFilePath) await unlink(audioFilePath).catch(() => {});
+            if (responseAudioPath) await unlink(responseAudioPath).catch(() => {});
+
+            res.status(500).json({
+                error: 'Failed to process voice message',
+                details: error.message,
+            });
         }
-
-        // Cleanup
-        await Promise.all([
-            unlink(audioFilePath).catch(() => { }),
-            responseAudioPath ? unlink(responseAudioPath).catch(() => { }) : Promise.resolve()
-        ]);
-
-        // Success Response
-        res.json({
-            success: true,
-            conversationId: targetConversationId,
-            userMessage: transcription,
-            userAudioUrl,
-            aiResponse: aiMessageText,
-            audioUrl: aiAudioUrl
-        });
-
-        // Track voice usage in background (non-blocking)
-        trackUsage(userId, 'voice_message').catch(e =>
-            logger.warn('trackUsage voice bg error:', e.message)
-        );
-
-
-    } catch (error) {
-        logger.error('Voice processing error:', error);
-
-        // Cleanup on error
-        if (audioFilePath) await unlink(audioFilePath).catch(() => { });
-        if (responseAudioPath) await unlink(responseAudioPath).catch(() => { });
-
-        res.status(500).json({
-            error: 'Failed to process voice message',
-            details: error.message // Expose details for debugging
-        });
     }
-});
+);
 
 router.get('/test', verifyToken, async (req, res) => {
     try {

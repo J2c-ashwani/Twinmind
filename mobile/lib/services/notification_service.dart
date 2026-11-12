@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 
 void _notificationLog(String message) {
@@ -30,6 +32,7 @@ class NotificationService {
 
   bool _isInitialized = false;
   String? _fcmToken;
+  String? _pendingRoute;
 
   /// Get the FCM token for this device
   String? get fcmToken => _fcmToken;
@@ -96,8 +99,14 @@ class NotificationService {
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-      // Handle when app is opened from notification
+      // Handle when app is opened from notification (background -> foreground)
       FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
+
+      // Handle cold-start notification launch (terminated -> opened)
+      final initialMessage = await _firebaseMessaging.getInitialMessage();
+      if (initialMessage != null) {
+        _handleNotificationNavigation(initialMessage.data);
+      }
 
       // Get FCM token
       _fcmToken = await _firebaseMessaging.getToken();
@@ -125,23 +134,32 @@ class NotificationService {
   Future<void> syncTokenToBackend() async {
     try {
       final token = await _firebaseMessaging.getToken();
-      print('FCM TOKEN: $token');
-
       if (token == null) {
-        print('❌ FCM TOKEN IS NULL');
+        _notificationLog('❌ FCM token is null');
         return;
       }
       _fcmToken = token;
       await _sendTokenToBackend(token);
     } catch (e) {
-      print('❌ FCM TOKEN ACQUISITION ERROR: $e');
+      _notificationLog('❌ FCM token acquisition error: $e');
+    }
+  }
+
+  Future<void> deregisterDeviceToken(String? accessToken) async {
+    try {
+      if (accessToken == null || accessToken.isEmpty) return;
+      final api = ApiService();
+      api.setToken(accessToken);
+      await api.deregisterFcmToken(token: _fcmToken);
+      _notificationLog('✅ Push device token deregistered on sign out');
+    } catch (e) {
+      _notificationLog('⚠️ Push device token deregistration warning: $e');
     }
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     _notificationLog('📩 Foreground message: ${message.notification?.title}');
 
-    // Show local notification when app is in foreground
     await _showLocalNotification(
       message.notification?.title ?? 'TwinGenie',
       message.notification?.body ?? '',
@@ -153,34 +171,76 @@ class NotificationService {
     _notificationLog(
       '📩 App opened from notification: ${message.notification?.title}',
     );
-    // Navigate to appropriate screen based on message data
     _handleNotificationNavigation(message.data);
   }
 
-  void _handleNotificationNavigation(Map<String, dynamic> data) {
-    final type = data['type'];
+  String _resolveRoute(Map<String, dynamic> data) {
+    final action = data['action']?.toString();
+    final type = data['type']?.toString();
+    if (action == 'chat') return '/chat';
     switch (type) {
+      case 'proactive_message':
       case 'smart_reminder':
-        // Navigate to notifications screen
-        break;
+      case 'twin_ready_reminder':
+      case 'drip_reengagement':
+      case 'streak_reminder':
+        return '/chat';
       case 'achievement':
-        // Navigate to achievements screen
-        break;
+        return '/achievements';
       case 'daily_challenge':
-        // Navigate to challenges screen
-        break;
+        return '/daily-challenges';
       case 'coaching_session':
-        // Navigate to life coach screen
-        break;
+        return '/life-coach';
+      case 'weekly_insight':
+        return '/insights';
       default:
-        // Navigate to home
-        break;
+        return '/notifications';
     }
   }
 
+  void _navigateOrQueue(String route) {
+    final nav = rootNavigatorKey.currentState;
+    final session = Supabase.instance.client.auth.currentSession;
+    if (nav != null && session != null) {
+      nav.pushNamed(route);
+    } else {
+      _pendingRoute = route;
+    }
+  }
+
+  void consumePendingNavigation() {
+    final route = _pendingRoute;
+    if (route == null) return;
+    final nav = rootNavigatorKey.currentState;
+    final session = Supabase.instance.client.auth.currentSession;
+    if (nav != null && session != null) {
+      _pendingRoute = null;
+      nav.pushNamed(route);
+    }
+  }
+
+  void _handleNotificationNavigation(Map<String, dynamic> data) {
+    final route = _resolveRoute(data);
+    _navigateOrQueue(route);
+  }
+
   void _onNotificationTap(NotificationResponse response) {
-    _notificationLog('🔔 Notification tapped: ${response.payload}');
-    // Handle navigation based on payload
+    _notificationLog('🔔 Notification tapped');
+    final rawPayload = response.payload;
+    if (rawPayload == null || rawPayload.isEmpty) {
+      _navigateOrQueue('/notifications');
+      return;
+    }
+    try {
+      final decoded = jsonDecode(rawPayload);
+      if (decoded is Map<String, dynamic>) {
+        _handleNotificationNavigation(decoded);
+        return;
+      }
+    } catch (_) {
+      // Fallback for non-JSON payload strings
+    }
+    _navigateOrQueue('/notifications');
   }
 
   Future<void> _showLocalNotification(
@@ -216,7 +276,7 @@ class NotificationService {
       title,
       body,
       details,
-      payload: data.toString(),
+      payload: jsonEncode(data),
     );
   }
 
@@ -302,14 +362,14 @@ class NotificationService {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
-        print('ℹ️ Skipping FCM token sync until user signs in (session is null)');
+        _notificationLog('ℹ️ Skipping FCM token sync until user signs in');
         return;
       }
-      print('Uploading token to backend: $token');
+      _notificationLog('Uploading device token to backend...');
       await ApiService().updateFcmToken(token);
-      print('✅ TOKEN UPLOAD HTTP SUCCESS');
+      _notificationLog('✅ Device token synced successfully');
     } catch (e) {
-      print('❌ TOKEN UPLOAD HTTP ERROR: $e');
+      _notificationLog('❌ Device token sync error: $e');
     }
   }
 }

@@ -126,9 +126,30 @@ function getExpiryTime(subscription) {
     return expiryTimes.length > 0 ? expiryTimes[expiryTimes.length - 1] : null;
 }
 
+/**
+ * Pure helper evaluating whether a verified Google Play subscription grants Pro access now.
+ * Cancelled subscriptions retain entitlement until their paid period expiryTime.
+ */
+export function evaluatePlayEntitlement(verified, now = new Date()) {
+    if (!verified) return false;
+    const status = String(verified.status || '').toLowerCase();
+    const expiry = verified.expiryTime ? new Date(verified.expiryTime) : null;
+    const hasFutureExpiry = Boolean(expiry && !Number.isNaN(expiry.getTime()) && expiry > now);
+
+    if (status === 'active') {
+        return !expiry || expiry > now;
+    }
+
+    if ((status === 'cancelled' || status === 'canceled') && hasFutureExpiry) {
+        return true;
+    }
+
+    return false;
+}
+
 export async function verifySubscriptionPurchase({ productId, purchaseToken }) {
-    if (!productId || !purchaseToken) {
-        throw new Error('productId and purchaseToken are required');
+    if (!purchaseToken) {
+        throw new Error('purchaseToken is required');
     }
 
     const accessToken = await getAccessToken();
@@ -154,18 +175,26 @@ export async function verifySubscriptionPurchase({ productId, purchaseToken }) {
     }
 
     const lineItems = subscription.lineItems || [];
-    const matchingLineItem = lineItems.find((item) => item.productId === productId);
-    if (lineItems.length > 0 && !matchingLineItem) {
+    const resolvedProductId = productId || lineItems[0]?.productId || null;
+    if (productId && lineItems.length > 0 && !lineItems.find((item) => item.productId === productId)) {
         throw new Error('Purchase token does not match the requested product');
     }
 
+    const status = normalizeState(subscription);
+    const expiryTime = getExpiryTime(subscription);
+    const obfuscatedExternalAccountId =
+        subscription.externalAccountIdentifiers?.obfuscatedExternalAccountId || null;
+
     return {
         raw: subscription,
-        status: normalizeState(subscription),
+        productId: resolvedProductId,
+        status,
+        hasActiveAccess: evaluatePlayEntitlement({ status, expiryTime }),
         orderId: subscription.latestOrderId || null,
-        expiryTime: getExpiryTime(subscription),
+        expiryTime,
         linkedPurchaseToken: subscription.linkedPurchaseToken || null,
         acknowledgementState: subscription.acknowledgementState || null,
+        obfuscatedExternalAccountId,
     };
 }
 

@@ -244,11 +244,12 @@ export function calculateDeterministicPersonality(answers, userData = {}) {
     return {
         summary,
         big_five: {
-            openness: String(openness),
-            extraversion: String(extraversion),
-            agreeableness: String(agreeableness),
-            conscientiousness: String(conscientiousness),
-            emotional_stability: String(emotionalStability)
+            openness: Number(openness),
+            extraversion: Number(extraversion),
+            agreeableness: Number(agreeableness),
+            conscientiousness: Number(conscientiousness),
+            emotional_stability: Number(emotionalStability),
+            neuroticism: Number(100 - emotionalStability),
         },
         strengths,
         weaknesses,

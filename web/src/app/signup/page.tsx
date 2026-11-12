@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion } from 'framer-motion';
+import {
+    captureAttributionFromLocation,
+    clearPendingAttribution,
+    getPendingAttribution,
+} from '@/lib/attribution';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -12,61 +17,70 @@ export default function SignupPage() {
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [infoMessage, setInfoMessage] = useState('');
     const [referralCode, setReferralCode] = useState('');
     const router = useRouter();
     const supabase = createClientComponentClient();
 
     useEffect(() => {
-        const code = new URLSearchParams(window.location.search).get('ref');
-        if (code) setReferralCode(code.toUpperCase());
+        const captured = captureAttributionFromLocation();
+        if (captured.referralCode) {
+            setReferralCode(captured.referralCode);
+        }
     }, []);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setInfoMessage('');
+
+        const attribution = getPendingAttribution();
+        const activeRef = (referralCode || attribution.referralCode || '').trim().toUpperCase() || undefined;
 
         try {
-            // Sign up with Supabase
+            // Sign up with Supabase and store referral/UTM metadata for confirmation flows
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
                         full_name: fullName,
+                        ...(activeRef ? { referral_code: activeRef } : {}),
+                        ...(Object.keys(attribution).length > 0 ? { attribution } : {}),
                     }
                 }
             });
 
             if (signUpError) throw signUpError;
 
-            if (data.user) {
-                // Create user profile in backend
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/signup`, {
+            if (data.user && data.session?.access_token) {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/signup`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        ...(data.session?.access_token
-                            ? { Authorization: `Bearer ${data.session.access_token}` }
-                            : {}),
+                        Authorization: `Bearer ${data.session.access_token}`,
                     },
                     body: JSON.stringify({
                         userId: data.user.id,
                         email: data.user.email,
                         fullName: fullName,
-                        referralCode: referralCode || undefined,
+                        referralCode: activeRef,
+                        attribution,
                     })
                 });
 
-                if (!response.ok) {
-                    console.warn('Profile creation failed, but user was created');
+                if (response.ok) {
+                    clearPendingAttribution();
+                } else {
+                    console.warn('Backend signup setup returned non-200; deferred attribution preserved for next login');
                 }
 
-                // Refresh router to ensure middleware sees the new cookie
                 router.refresh();
-
-                // Redirect to onboarding
                 router.push('/onboarding');
+            } else if (data.user) {
+                // Email confirmation is enabled; keep pending attribution in localStorage + auth user_metadata
+                setInfoMessage('Check your email to confirm your account, then sign in. Your invite code and progress will be linked automatically.');
             }
         } catch (err: any) {
             setError(err.message || 'Failed to sign up');
@@ -143,6 +157,12 @@ export default function SignupPage() {
                         {error && (
                             <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl text-sm">
                                 {error}
+                            </div>
+                        )}
+
+                        {infoMessage && (
+                            <div className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl text-sm">
+                                {infoMessage}
                             </div>
                         )}
 

@@ -9,6 +9,7 @@ import {
     getCircleProgress,
     leaveCircle,
     checkAndUnlockMilestones,
+    isCircleMember,
 } from '../services/circleService.js';
 import logger from '../config/logger.js';
 
@@ -58,6 +59,11 @@ router.get('/my', authenticateUser, async (req, res) => {
 router.get('/:id/progress', authenticateUser, async (req, res) => {
     try {
         const { id } = req.params;
+        const member = await isCircleMember(id, req.userId);
+        if (!member) {
+            return res.status(403).json({ error: 'Not a member of this circle' });
+        }
+
         const progress = await getCircleProgress(id);
 
         res.json(progress);
@@ -76,6 +82,11 @@ router.post('/:id/invite', authenticateUser, async (req, res) => {
         const userId = req.userId;
         const { id } = req.params;
         const { email } = req.body;
+
+        const member = await isCircleMember(id, userId);
+        if (!member) {
+            return res.status(403).json({ error: 'Not a member of this circle' });
+        }
 
         const invitation = await createInvitation(id, userId, email);
 
@@ -188,6 +199,10 @@ router.post('/:id/leave', authenticateUser, async (req, res) => {
 router.get('/:id/milestones', authenticateUser, async (req, res) => {
     try {
         const { id } = req.params;
+        const member = await isCircleMember(id, req.userId);
+        if (!member) {
+            return res.status(403).json({ error: 'Not a member of this circle' });
+        }
 
         const { data: milestones } = await supabaseAdmin
             .from('circle_milestones')

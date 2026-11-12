@@ -43,23 +43,23 @@ describe('Autonomous Continuous Outreach Engine & Auto-Replenishment', () => {
             assert.strictEqual(leadDiscoveryService.isValidEmail('acquisitions@nalasoft.com'), false);
         });
 
-        it('should synthesize tailored pitches with genuine value proposition and opt-out compliance', () => {
+        it('should synthesize tailored pitches with truthful positioning and opt-out compliance', () => {
             const prPitch = leadDiscoveryService.generatePitch('pr', {
                 recipientName: 'Amanda Silberling',
                 organization: 'TechCrunch',
                 angle: 'reddit_backlash'
             });
-            assert.ok(prPitch.subject.includes('Reddit’s backlash'));
+            assert.ok(prPitch.subject.includes('anti-sycophancy'));
             assert.ok(prPitch.bodyText.includes('TwinGenie'));
-            assert.ok(prPitch.bodyText.includes('uncompromising cognitive mirror'));
+            assert.ok(!prPitch.bodyText.includes('Clinical Therapist'));
 
             const invPitch = leadDiscoveryService.generatePitch('investor', {
                 recipientName: 'Olivia Moore',
                 organization: 'a16z'
             });
-            assert.ok(invPitch.subject.includes('Zero-Party Cognitive Graph'));
-            assert.ok(invPitch.bodyText.includes('78.8% completion rate'));
-            assert.ok(invPitch.bodyText.toLowerCase().includes('pre-seed'));
+            assert.ok(invPitch.subject.includes('Big Five'));
+            assert.ok(!invPitch.bodyText.includes('78.8% completion rate'));
+            assert.ok(!invPitch.bodyText.includes('Clinical Therapist'));
 
             const acqPitch = leadDiscoveryService.generatePitch('acquisition', {
                 recipientName: 'Divestments Team',
@@ -67,7 +67,7 @@ describe('Autonomous Continuous Outreach Engine & Auto-Replenishment', () => {
             });
             assert.ok(acqPitch.subject.includes('acquisition opportunity'));
             assert.ok(acqPitch.bodyText.includes('Google Play'));
-            assert.ok(acqPitch.bodyText.includes('Flutter iOS codebase'));
+            assert.ok(!acqPitch.bodyText.includes('ready for App Store submission'));
         });
     });
 

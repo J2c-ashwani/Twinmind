@@ -1,6 +1,12 @@
 import { supabaseAdmin } from '../config/supabase.js';
 import aiService from './aiService.js';
 import logger from '../config/logger.js';
+import {
+    CRISIS_RESPONSE,
+    crisisCheck,
+    logCrisisEvent,
+    applyOutputSafetyGuard,
+} from './conversationSafety.js';
 
 /**
  * Life Coach Service - Manages structured coaching programs and sessions
@@ -86,14 +92,24 @@ export async function getSession(userId, programId) {
 
         if (!dayContent) throw new Error('Day content not found');
 
-        // Get chat history for this session (if any)
-        // We might store session chat in a separate table or filter main chat
-        // For simplicity, we'll assume session chat is transient or stored in metadata for now
-        // OR we can use the main chat_history table with a specific context/metadata
+        // Load server-owned session history from chat_history for this program and day
+        const { data: sessionMessages } = await supabaseAdmin
+            .from('chat_history')
+            .select('sender, message, created_at')
+            .eq('user_id', userId)
+            .eq('mode', 'coaching')
+            .contains('metadata', { program_id: programId, day_number: progress.current_day })
+            .order('created_at', { ascending: true })
+            .limit(30);
 
         return {
             progress,
-            content: dayContent
+            content: dayContent,
+            session_history: (sessionMessages || []).map((m) => ({
+                sender_type: m.sender,
+                content: m.message,
+                created_at: m.created_at,
+            })),
         };
     } catch (error) {
         logger.error('Error getting session:', error);
@@ -102,14 +118,22 @@ export async function getSession(userId, programId) {
 }
 
 /**
- * Process a message in a coaching session
+ * Process a message in a coaching session using shared safety guardrails and server-owned history
  */
-export async function processSessionMessage(userId, programId, userMessage, history = []) {
+export async function processSessionMessage(userId, programId, userMessage) {
     try {
-        // Get context
-        const { progress, content } = await getSession(userId, programId);
+        const { progress, content, session_history } = await getSession(userId, programId);
+        const sessionMeta = { program_id: programId, day_number: progress.current_day };
 
-        // Build System Prompt
+        if (crisisCheck(userMessage)) {
+            await logCrisisEvent(userId, userMessage, 'life_coach');
+            await supabaseAdmin.from('chat_history').insert([
+                { user_id: userId, message: userMessage, sender: 'user', mode: 'coaching', metadata: sessionMeta },
+                { user_id: userId, message: CRISIS_RESPONSE, sender: 'ai', mode: 'coaching', metadata: sessionMeta },
+            ]);
+            return CRISIS_RESPONSE;
+        }
+
         const systemPrompt = `
 You are a compassionate and wise AI Life Coach guiding the user through Day ${content.day_number} of their program.
 Title: "${content.title}"
@@ -121,28 +145,57 @@ Your role is to:
 3. Listen deeply and validate their feelings.
 4. Provide specific, actionable advice related to the topic.
 5. Keep responses concise (2-3 sentences) and conversational.
+Do not claim clinical licensure or diagnose medical conditions.
 
 Current Exercise Instructions: "${content.exercise_instructions}"
 
 If the user seems ready to move on, suggest completing the daily exercise.
 `;
 
-        // Generate Response using correct method name
         const response = await aiService.generateChatResponse(
             userMessage,
-            history,
+            session_history,
             systemPrompt,
-            'coaching' // Task type for routing
+            'coaching'
         );
 
-        // Extract message string from response object
-        // generateChatResponse returns { text: "...", ... } or { message: "...", ... }
-        if (typeof response === 'string') {
-            return response;
+        let replyText =
+            typeof response === 'string'
+                ? response
+                : response?.text ||
+                  response?.message ||
+                  response?.content ||
+                  (response?.choices && response.choices[0]?.message?.content) ||
+                  'Take a steady breath and share what feels most important about today’s step.';
+
+        replyText = applyOutputSafetyGuard(String(replyText), userId);
+
+        const now = new Date();
+        const aiTime = new Date(now.getTime() + 100);
+        const { error: persistErr } = await supabaseAdmin.from('chat_history').insert([
+            {
+                user_id: userId,
+                message: userMessage,
+                sender: 'user',
+                mode: 'coaching',
+                metadata: sessionMeta,
+                created_at: now.toISOString(),
+            },
+            {
+                user_id: userId,
+                message: replyText,
+                sender: 'ai',
+                mode: 'coaching',
+                metadata: sessionMeta,
+                created_at: aiTime.toISOString(),
+            },
+        ]);
+
+        if (persistErr) {
+            throw new Error(`Failed to persist coaching turn: ${persistErr.message}`);
         }
 
-        // Check all common field names for the message content
-        return response?.text || response?.message || response?.content || (response?.choices && response.choices[0]?.message?.content) || JSON.stringify(response);
+        return replyText;
     } catch (error) {
         logger.error('Error processing session message:', error);
         throw error;

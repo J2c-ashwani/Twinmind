@@ -48,76 +48,81 @@ const MESSAGE_TEMPLATES = {
 };
 
 /**
- * Detect if user should receive a proactive message
+ * Pure trigger evaluation helper (unit-testable with synthetic timestamps/patterns)
  */
-async function detectProactiveTriggers(userId) {
+export function evaluateProactiveTriggers({
+    now = new Date(),
+    pattern = null,
+    lastActivityAt = null,
+    contexts = [],
+    streak = null,
+} = {}) {
     const triggers = [];
+    const currentNow = now instanceof Date ? now : new Date(now);
+    const effectiveLastActivity = pattern?.last_activity || lastActivityAt;
 
-    try {
-        // Get user activity pattern
-        const { data: pattern } = await supabaseAdmin
-            .from('user_activity_patterns')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
+    if (!effectiveLastActivity) {
+        return triggers;
+    }
 
-        if (!pattern) {
-            // For unengaged or new users without activity patterns, send a friendly re-engagement trigger
+    const hoursSinceActivity = Math.max(
+        0,
+        (currentNow.getTime() - new Date(effectiveLastActivity).getTime()) / (1000 * 60 * 60)
+    );
+
+    if (!pattern) {
+        if (hoursSinceActivity >= 48) {
             triggers.push({
                 type: 'missed_you',
-                condition: { hours_since_activity: 48 },
-                priority: 'medium'
-            });
-            return triggers;
-        }
-
-        // Trigger: Missed you (no activity for 24+ hours)
-        if (hoursSinceActivity >= 24) {
-            triggers.push({
-                type: 'missed_you',
-                condition: { hours_since_activity: hoursSinceActivity },
-                priority: 'high'
+                condition: { hours_since_activity: Math.round(hoursSinceActivity) },
+                priority: 'medium',
             });
         }
+        return triggers;
+    }
 
-        // Trigger: Morning check-in
-        const currentHour = now.getHours();
-        const wakeupHour = pattern.typical_wakeup_time ?
-            parseInt(pattern.typical_wakeup_time.split(':')[0]) : 8;
+    // Trigger: Missed you (no activity for 24+ hours)
+    if (hoursSinceActivity >= 24) {
+        triggers.push({
+            type: 'missed_you',
+            condition: { hours_since_activity: Math.round(hoursSinceActivity) },
+            priority: 'high',
+        });
+    }
 
-        if (currentHour === wakeupHour + 1 && hoursSinceActivity > 12) {
-            triggers.push({
-                type: 'morning_checkin',
-                condition: { current_hour: currentHour },
-                priority: 'medium'
-            });
-        }
+    // Trigger: Morning check-in
+    const currentHour = currentNow.getHours();
+    const wakeupHour = pattern.typical_wakeup_time
+        ? parseInt(String(pattern.typical_wakeup_time).split(':')[0], 10)
+        : 8;
 
-        // Trigger: Evening reflection
-        const bedtimeHour = pattern.typical_bedtime ?
-            parseInt(pattern.typical_bedtime.split(':')[0]) : 22;
+    if (!Number.isNaN(wakeupHour) && currentHour === (wakeupHour + 1) % 24 && hoursSinceActivity > 12) {
+        triggers.push({
+            type: 'morning_checkin',
+            condition: { current_hour: currentHour },
+            priority: 'medium',
+        });
+    }
 
-        if (currentHour === bedtimeHour - 1 && hoursSinceActivity < 6) {
-            triggers.push({
-                type: 'evening_reflection',
-                condition: { current_hour: currentHour },
-                priority: 'medium'
-            });
-        }
+    // Trigger: Evening reflection
+    const bedtimeHour = pattern.typical_bedtime
+        ? parseInt(String(pattern.typical_bedtime).split(':')[0], 10)
+        : 22;
 
-        // Trigger: Follow-up on life context
-        const { data: contexts } = await supabaseAdmin
-            .from('life_context')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .gte('importance', 7)
-            .order('last_mentioned', { ascending: true })
-            .limit(1);
+    if (!Number.isNaN(bedtimeHour) && currentHour === (bedtimeHour - 1 + 24) % 24 && hoursSinceActivity < 6) {
+        triggers.push({
+            type: 'evening_reflection',
+            condition: { current_hour: currentHour },
+            priority: 'medium',
+        });
+    }
 
-        if (contexts && contexts.length > 0) {
-            const context = contexts[0];
-            const daysSinceMentioned = (now - new Date(context.last_mentioned)) / (1000 * 60 * 60 * 24);
+    // Trigger: Follow-up on life context
+    if (Array.isArray(contexts) && contexts.length > 0) {
+        const context = contexts[0];
+        if (context?.last_mentioned) {
+            const daysSinceMentioned =
+                (currentNow.getTime() - new Date(context.last_mentioned).getTime()) / (1000 * 60 * 60 * 24);
 
             if (daysSinceMentioned >= 3) {
                 triggers.push({
@@ -125,35 +130,82 @@ async function detectProactiveTriggers(userId) {
                     condition: {
                         context_name: context.name,
                         context_type: context.context_type,
-                        days_since_mentioned: daysSinceMentioned
+                        days_since_mentioned: Math.floor(daysSinceMentioned),
                     },
                     priority: 'high',
-                    context_data: context
+                    context_data: context,
                 });
             }
         }
+    }
 
-        // Trigger: Milestone celebration
-        const { data: streaks } = await supabaseAdmin
-            .from('user_streaks')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('streak_type', 'daily_checkin')
-            .single();
+    // Trigger: Milestone celebration
+    if (streak && [7, 14, 30, 60, 90].includes(streak.current_streak)) {
+        triggers.push({
+            type: 'milestone',
+            condition: { streak_days: streak.current_streak },
+            priority: 'high',
+        });
+    }
 
-        if (streaks && [7, 14, 30, 60, 90].includes(streaks.current_streak)) {
-            triggers.push({
-                type: 'milestone',
-                condition: { streak_days: streaks.current_streak },
-                priority: 'high'
-            });
+    return triggers;
+}
+
+/**
+ * Detect if user should receive a proactive message
+ */
+async function detectProactiveTriggers(userId, now = new Date()) {
+    try {
+        const [patternRes, latestChatRes, contextsRes, streakRes] = await Promise.all([
+            supabaseAdmin
+                .from('user_activity_patterns')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle(),
+            supabaseAdmin
+                .from('chat_history')
+                .select('created_at')
+                .eq('user_id', userId)
+                .eq('sender', 'user')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            supabaseAdmin
+                .from('life_context')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('status', 'active')
+                .gte('importance', 7)
+                .order('last_mentioned', { ascending: true })
+                .limit(1),
+            supabaseAdmin
+                .from('user_streaks')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('streak_type', 'daily_checkin')
+                .maybeSingle(),
+        ]);
+
+        let lastActivityAt = patternRes.data?.last_activity || latestChatRes.data?.created_at || null;
+        if (!lastActivityAt) {
+            const { data: userRow } = await supabaseAdmin
+                .from('users')
+                .select('created_at')
+                .eq('id', userId)
+                .maybeSingle();
+            lastActivityAt = userRow?.created_at || null;
         }
 
-        return triggers;
-
+        return evaluateProactiveTriggers({
+            now,
+            pattern: patternRes.data || null,
+            lastActivityAt,
+            contexts: contextsRes.data || [],
+            streak: streakRes.data || null,
+        });
     } catch (error) {
         logger.error('Error detecting proactive triggers:', error);
-        return triggers;
+        return [];
     }
 }
 
@@ -177,6 +229,28 @@ function generateProactiveMessage(trigger, userContext = {}) {
 }
 
 /**
+ * Check per-user cooldown to avoid repeated proactive spam
+ */
+async function isUserInProactiveCooldown(userId, triggerType) {
+    const cooldownHours = triggerType === 'missed_you' ? 48 : 24;
+    const cutoffIso = new Date(Date.now() - cooldownHours * 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabaseAdmin
+        .from('proactive_messages')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('created_at', cutoffIso)
+        .limit(1);
+
+    if (error) {
+        logger.warn(`Proactive cooldown check warning for ${userId}: ${error.message}`);
+        return true; // Fail safe: do not spam on DB errors
+    }
+
+    return Array.isArray(data) && data.length > 0;
+}
+
+/**
  * Schedule proactive message
  */
 async function scheduleProactiveMessage(userId, trigger) {
@@ -190,8 +264,8 @@ async function scheduleProactiveMessage(userId, trigger) {
                 trigger_type: trigger.type,
                 trigger_condition: trigger.condition,
                 message_content: message,
-                scheduled_for: new Date(),
-                sent_at: new Date() // Send immediately for now
+                scheduled_for: new Date().toISOString(),
+                sent_at: null,
             })
             .select()
             .single();
@@ -200,16 +274,14 @@ async function scheduleProactiveMessage(userId, trigger) {
 
         logger.info(`Scheduled proactive message for user ${userId}: ${trigger.type}`);
 
-        // ---------------------------------------------------------
-        // REVIVAL FIX: Also push to Notifications Table so user sees it
-        // ---------------------------------------------------------
+        // Sync to Notifications Table
         try {
             await supabaseAdmin
                 .from('notifications')
                 .insert({
                     user_id: userId,
                     title: 'TwinGenie Check-in',
-                    body: message.replace(/"/g, ''), // Clean quotes
+                    body: message.replace(/"/g, ''),
                     type: 'proactive_message',
                     data: {
                         action: 'chat',
@@ -217,15 +289,12 @@ async function scheduleProactiveMessage(userId, trigger) {
                         trigger_type: trigger.type
                     }
                 });
-            logger.info(`✅ Synced proactive message to Notifications for user ${userId}`);
         } catch (notifError) {
             logger.warn('Failed to sync proactive message to notifications:', notifError);
         }
 
-        // ---------------------------------------------------------
-        // SEND PUSH NOTIFICATION
-        // ---------------------------------------------------------
-        await pushNotificationService.sendPushNotification(
+        // Dispatch push and mark sent_at only when push delivery succeeds
+        const pushDelivered = await pushNotificationService.sendPushNotification(
             userId,
             'TwinGenie Check-in',
             message.replace(/"/g, ''),
@@ -236,7 +305,13 @@ async function scheduleProactiveMessage(userId, trigger) {
                 trigger_type: trigger.type
             }
         );
-        // ---------------------------------------------------------
+
+        if (pushDelivered) {
+            await supabaseAdmin
+                .from('proactive_messages')
+                .update({ sent_at: new Date().toISOString() })
+                .eq('id', data.id);
+        }
 
         return data;
 
@@ -268,19 +343,29 @@ async function getPendingProactiveMessages(userId) {
 }
 
 /**
- * Mark proactive message as sent
+ * Mark proactive message as sent/read (owner-scoped)
  */
-async function markMessageSent(messageId) {
+async function markMessageSent(messageId, userId) {
     try {
-        const { error } = await supabaseAdmin
+        if (!userId) throw new Error('userId is required');
+
+        const { data, error } = await supabaseAdmin
             .from('proactive_messages')
-            .update({ sent_at: new Date() })
-            .eq('id', messageId);
+            .update({
+                sent_at: new Date().toISOString(),
+                user_responded: true,
+            })
+            .eq('id', messageId)
+            .eq('user_id', userId)
+            .select('id')
+            .maybeSingle();
 
         if (error) throw error;
+        return Boolean(data);
 
     } catch (error) {
         logger.error('Error marking message as sent:', error);
+        throw error;
     }
 }
 
@@ -328,14 +413,17 @@ async function runProactiveMessageCheck() {
         for (const userId of allUserIds) {
             const triggers = await detectProactiveTriggers(userId);
 
-            // Schedule highest priority trigger
+            // Schedule highest priority trigger if not in cooldown
             if (triggers.length > 0) {
                 const highestPriority = triggers.sort((a, b) => {
                     const priority = { high: 3, medium: 2, low: 1 };
                     return priority[b.priority] - priority[a.priority];
                 })[0];
 
-                await scheduleProactiveMessage(userId, highestPriority);
+                const inCooldown = await isUserInProactiveCooldown(userId, highestPriority.type);
+                if (!inCooldown) {
+                    await scheduleProactiveMessage(userId, highestPriority);
+                }
             }
         }
 

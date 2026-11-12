@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    output: 'standalone',
     reactStrictMode: true,
     env: {
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lhwtfjgtripwikxwookp.supabase.co',
@@ -30,6 +31,19 @@ const nextConfig = {
     },
     headers: async () => {
         return [
+            {
+                source: '/.well-known/assetlinks.json',
+                headers: [
+                    {
+                        key: 'Content-Type',
+                        value: 'application/json; charset=utf-8'
+                    },
+                    {
+                        key: 'Cache-Control',
+                        value: 'public, max-age=3600'
+                    }
+                ]
+            },
             {
                 source: '/:path*',
                 headers: [

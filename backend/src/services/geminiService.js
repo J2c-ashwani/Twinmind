@@ -260,15 +260,17 @@ Return only the JSON object.`;
         try {
             const result = await this.embeddingModel.embedContent(text);
             const embedding = result.embedding.values;
-            // Gemini text-embedding-004 returns 768 dims; pad to 1536 for pgvector compat
+            if (!Array.isArray(embedding) || embedding.length === 0) {
+                throw new Error('Gemini returned empty embedding vector');
+            }
+            // Gemini text-embedding-004 returns 768 dims; zero-pad to 1536 for pgvector compat with explicit provider tagging
             if (embedding.length === 768) {
-                return [...embedding, ...embedding];
+                return [...embedding, ...Array(768).fill(0)];
             }
             return embedding;
         } catch (error) {
-            // Log concisely — this is fire-and-forget memory storage, not user-blocking
             logger.warn(`Embedding failed (${error.status ?? error.code ?? 'unknown'}): ${error.message?.slice(0, 80)}`);
-            return Array(1536).fill(0); // zero vector — memory row still saved, just not searchable
+            throw error;
         }
     }
 }

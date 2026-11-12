@@ -912,11 +912,15 @@ export default function Home() {
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>50 AI reflection messages / month</span>
+                                        <span>10 AI reflection messages / day</span>
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Normal & Reflective Modes</span>
+                                        <span>3 voice messages / day</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                        <span>All 4 Cognitive Twin Modes</span>
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />

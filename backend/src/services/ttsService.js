@@ -1,37 +1,49 @@
 import ttsClient from '@google-cloud/text-to-speech';
 import fs from 'fs';
 import { promisify } from 'util';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import logger from '../config/logger.js';
 
 const writeFile = promisify(fs.writeFile);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Text-to-Speech Service using Google Cloud TTS
  */
 
-// Initialize Google Cloud TTS client with credentials
-const credentialsPath = path.join(__dirname, '../../google-tts-service-account.json');
-const encodedPath = path.join(__dirname, '../../tts-credentials.b64');
+let cachedClient = null;
 
-// RESTORE CREDENTIALS IF MISSING (Render Fix)
-// We ship tts-credentials.b64 to bypass GitHub Secret Scanning
-if (!fs.existsSync(credentialsPath) && fs.existsSync(encodedPath)) {
-    try {
-        console.log('Restoring TTS credentials from encoded backup...');
-        const b64 = fs.readFileSync(encodedPath, 'utf-8');
-        const json = Buffer.from(b64, 'base64').toString('utf-8');
-        fs.writeFileSync(credentialsPath, json);
-        console.log('✅ TTS credentials restored successfully.');
-    } catch (e) {
-        console.error('❌ Failed to restore TTS credentials:', e);
+function parseServiceAccountFromEnv() {
+    const rawJson = process.env.GOOGLE_TTS_SERVICE_ACCOUNT_JSON;
+    if (rawJson) {
+        return JSON.parse(rawJson);
     }
+
+    const rawBase64 = process.env.GOOGLE_TTS_SERVICE_ACCOUNT_BASE64;
+    if (rawBase64) {
+        return JSON.parse(Buffer.from(rawBase64, 'base64').toString('utf8'));
+    }
+
+    return null;
 }
-const client = new ttsClient.TextToSpeechClient({
-    keyFilename: credentialsPath
-});
+
+function getTtsClient() {
+    if (cachedClient) return cachedClient;
+
+    const credentials = parseServiceAccountFromEnv();
+    if (credentials) {
+        cachedClient = new ttsClient.TextToSpeechClient({ credentials });
+        return cachedClient;
+    }
+
+    const keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (keyFilename && fs.existsSync(keyFilename)) {
+        cachedClient = new ttsClient.TextToSpeechClient({ keyFilename });
+        return cachedClient;
+    }
+
+    throw new Error(
+        'Google Cloud TTS credentials are not configured. Set GOOGLE_TTS_SERVICE_ACCOUNT_JSON, GOOGLE_TTS_SERVICE_ACCOUNT_BASE64, or GOOGLE_APPLICATION_CREDENTIALS.'
+    );
+}
 
 /**
  * Convert text to speech using Google Cloud TTS
@@ -55,8 +67,9 @@ export async function textToSpeech(text, outputPath, options = {}) {
             throw new Error('No text provided for TTS');
         }
 
-        logger.info(`Converting text to speech: ${text.substring(0, 50)}...`);
+        logger.info(`Converting text to speech (${text.length} chars)`);
 
+        const client = getTtsClient();
         const request = {
             input: { text },
             voice: {
@@ -92,6 +105,7 @@ export async function textToSpeech(text, outputPath, options = {}) {
  */
 export async function getAvailableVoices(languageCode = 'en-US') {
     try {
+        const client = getTtsClient();
         const [result] = await client.listVoices({ languageCode });
         return result.voices;
     } catch (error) {

@@ -18,7 +18,10 @@ router.get('/messages', authenticateUser, async (req, res) => {
 
 router.post('/messages/:id/read', authenticateUser, async (req, res) => {
     try {
-        await markMessageSent(req.params.id);
+        const updated = await markMessageSent(req.params.id, req.userId);
+        if (!updated) {
+            return res.status(404).json({ error: 'Proactive message not found' });
+        }
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to update proactive message' });

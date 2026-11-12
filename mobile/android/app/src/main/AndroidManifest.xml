@@ -34,6 +34,20 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="twingenie"/>
             </intent-filter>
+            <!-- Verified HTTPS App Links for web referral / mirror / download attribution -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="www.twingenie.app" android:pathPrefix="/signup"/>
+                <data android:scheme="https" android:host="www.twingenie.app" android:pathPrefix="/referral"/>
+                <data android:scheme="https" android:host="www.twingenie.app" android:pathPrefix="/download"/>
+                <data android:scheme="https" android:host="www.twingenie.app" android:pathPrefix="/test"/>
+                <data android:scheme="https" android:host="twingenie.app" android:pathPrefix="/signup"/>
+                <data android:scheme="https" android:host="twingenie.app" android:pathPrefix="/referral"/>
+                <data android:scheme="https" android:host="twingenie.app" android:pathPrefix="/download"/>
+                <data android:scheme="https" android:host="twingenie.app" android:pathPrefix="/test"/>
+            </intent-filter>
         </activity>
         
         <!-- Firebase Messaging Default Notification Icon & Brand Accent Color -->

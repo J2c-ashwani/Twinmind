@@ -190,8 +190,8 @@ export const DRIP_TEMPLATES = [
         minHoursAfterSignup: 96,
         subject: "Your Twin noticed your biggest strength... and your blind spot 👀",
         pushTitle: "Your Twin analyzed your stress triggers",
-        pushBody: "Want to see what your 35 answers revealed about how you handle pressure?",
-        getHtml: (name, twinName, twinSummary) => `
+        pushBody: "Want to see what your Twin noticed about how you handle pressure?",
+        getHtml: (name, twinName, twinSummary, hasCompletedProfile = true) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -219,11 +219,19 @@ export const DRIP_TEMPLATES = [
       <p>Hey ${name},</p>
       <p>Everyone has cognitive patterns they don't notice themselves: the reasons we procrastinate, how we react when someone criticizes us, and where our natural resilience lies.</p>
       
-      <p>Your questionnaire answers highlighted both your greatest assets and the patterns that tend to hold you back.</p>
+      <p>${
+        hasCompletedProfile
+          ? 'Your questionnaire answers highlighted both your greatest assets and the patterns that tend to hold you back.'
+          : 'Once you complete your 35-question onboarding baseline, your Twin maps both your strengths and the patterns that tend to hold you back.'
+      }</p>
       
       <div class="card">
         <h4 style="color:#fbbf24; margin-top:0;">Ask ${twinName}:</h4>
-        <p style="color:#e5e7eb; margin-bottom:0;"><em>"Based on my questionnaire, what is my biggest blind spot under stress?"</em></p>
+        <p style="color:#e5e7eb; margin-bottom:0;"><em>"${
+          hasCompletedProfile
+            ? 'Based on my questionnaire, what is my biggest blind spot under stress?'
+            : 'What pattern do I usually fall into when I feel overwhelmed?'
+        }"</em></p>
       </div>
 
       <p>You might be surprised by how accurate the reflection is.</p>
@@ -471,11 +479,17 @@ export async function executeDripCampaignCheck(options = {}) {
                 continue;
             }
 
-            // Retrieve drip state from user_metadata
+            // Retrieve drip state & marketing preferences from user_metadata
             const meta = user.user_metadata || {};
+            if (meta.marketing_opt_out === true || meta.unsubscribed === true || meta.email_opt_out === true) {
+                summary.skippedTiming++;
+                continue;
+            }
+
             const dripState = meta.drip_campaign || {
                 last_sent_day: 0,
                 last_sent_at: null,
+                step_outcomes: {},
                 history: []
             };
 
@@ -487,12 +501,25 @@ export async function executeDripCampaignCheck(options = {}) {
             const nextDayNumber = lastSentDay + 1;
 
             if (nextDayNumber > 7) {
-                // Completed full 7-day sequence
                 continue;
             }
 
             // Must have at least 20 hours between drip messages
             if (lastSentAt && hoursSinceLastSent < 20) {
+                summary.skippedTiming++;
+                continue;
+            }
+
+            // Shared contact frequency check: skip if any recent reminder/proactive notification was created in last 18h
+            const cooldownIso = new Date(now.getTime() - 18 * 60 * 60 * 1000).toISOString();
+            const { data: recentNotifs } = await supabaseAdmin
+                .from('notifications')
+                .select('id')
+                .eq('user_id', user.id)
+                .gte('created_at', cooldownIso)
+                .limit(1);
+
+            if (recentNotifs && recentNotifs.length > 0) {
                 summary.skippedTiming++;
                 continue;
             }
@@ -505,11 +532,15 @@ export async function executeDripCampaignCheck(options = {}) {
             const rawName = meta.name || meta.full_name || '';
             const displayName = rawName.trim() || user.email.split('@')[0];
             const profile = profileMap.get(user.id);
+            const hasCompletedProfile = Boolean(profile);
             const twinName = profile?.twin_name || `${displayName}'s AI Twin`;
             const twinSummary = profile?.twin_summary || "Tuned to reflect your thinking style, help make decisions, and support your daily personal growth.";
 
-            const htmlContent = template.getHtml(displayName, twinName, twinSummary);
+            const htmlContent = template.getHtml(displayName, twinName, twinSummary, hasCompletedProfile);
             const emailSubject = template.subject.replace('[Name]', displayName);
+            const pushBody = !hasCompletedProfile && nextDayNumber === 4
+                ? 'Complete your 35-question Twin baseline to explore how you handle pressure.'
+                : template.pushBody;
 
             const record = {
                 user_id: user.id,
@@ -518,7 +549,7 @@ export async function executeDripCampaignCheck(options = {}) {
                 day: nextDayNumber,
                 subject: emailSubject,
                 pushTitle: template.pushTitle,
-                pushBody: template.pushBody
+                pushBody
             };
 
             if (isDryRun) {
@@ -527,31 +558,52 @@ export async function executeDripCampaignCheck(options = {}) {
                 continue;
             }
 
-            // 1. Send Email via Resend
-            const emailResult = await sendEmail({
-                to: user.email,
-                subject: emailSubject,
-                html: htmlContent
-            });
+            const stepKey = `day_${nextDayNumber}`;
+            const priorOutcome = dripState.step_outcomes?.[stepKey] || {};
 
-            // 2. Dispatch Push Notification via FCM
-            let pushSent = false;
-            try {
-                pushSent = await sendPushNotification(user.id, template.pushTitle, template.pushBody, {
-                    type: 'drip_reengagement',
-                    day: nextDayNumber
+            // 1. Send Email via Resend (only if not already sent for this step)
+            let emailResult = { success: Boolean(priorOutcome.email_sent), id: priorOutcome.email_id || null, simulated: false };
+            if (!priorOutcome.email_sent) {
+                emailResult = await sendEmail({
+                    to: user.email,
+                    subject: emailSubject,
+                    html: htmlContent,
+                    idempotencyKey: `drip-${user.id}-day-${nextDayNumber}`,
                 });
-            } catch (pErr) {
-                logger.warn(`Push notification failed for user ${user.id}:`, pErr?.message);
             }
 
-            if (emailResult.success) {
+            // 2. Dispatch Push Notification via FCM ONLY if not already sent for this step
+            let pushSent = Boolean(priorOutcome.push_sent);
+            if (!priorOutcome.push_sent && !emailResult.simulated) {
+                try {
+                    pushSent = await sendPushNotification(user.id, template.pushTitle, pushBody, {
+                        type: 'drip_reengagement',
+                        action: 'chat',
+                        day: nextDayNumber
+                    });
+                } catch (pErr) {
+                    logger.warn(`Push notification failed for user ${user.id}:`, pErr?.message);
+                }
+            }
+
+            const emailDone = Boolean(emailResult.success && !emailResult.simulated);
+            const updatedOutcomes = {
+                ...(dripState.step_outcomes || {}),
+                [stepKey]: {
+                    email_sent: emailDone || Boolean(priorOutcome.email_sent),
+                    email_id: emailResult.id || priorOutcome.email_id || null,
+                    push_sent: pushSent || Boolean(priorOutcome.push_sent),
+                    updated_at: now.toISOString(),
+                }
+            };
+
+            if (emailDone) {
                 summary.sentCount++;
 
-                // 3. Update user_metadata with new drip state
                 const updatedDripState = {
                     last_sent_day: nextDayNumber,
                     last_sent_at: now.toISOString(),
+                    step_outcomes: updatedOutcomes,
                     history: [
                         ...(dripState.history || []),
                         {
@@ -563,17 +615,35 @@ export async function executeDripCampaignCheck(options = {}) {
                     ]
                 };
 
-                await supabaseAdmin.auth.admin.updateUserById(user.id, {
+                const { error: metaErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
                     user_metadata: {
                         ...meta,
                         drip_campaign: updatedDripState
                     }
                 });
+                if (metaErr) {
+                    logger.error(`Failed to persist drip metadata for ${user.id}:`, metaErr.message);
+                }
 
                 summary.details.push({ ...record, status: 'sent', email_id: emailResult.id, push_sent: pushSent });
             } else {
+                // Still save push_sent flag so retry never spams duplicate push notifications
+                if (pushSent && !priorOutcome.push_sent) {
+                    const { error: partialErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+                        user_metadata: {
+                            ...meta,
+                            drip_campaign: {
+                                ...dripState,
+                                step_outcomes: updatedOutcomes,
+                            }
+                        }
+                    });
+                    if (partialErr) {
+                        logger.error(`Failed saving partial push outcome for ${user.id}:`, partialErr.message);
+                    }
+                }
                 summary.errors++;
-                summary.details.push({ ...record, status: 'failed', error: emailResult.error });
+                summary.details.push({ ...record, status: 'failed', error: emailResult.error, push_sent: pushSent });
             }
 
             // 400ms pause to respect Resend rate limits

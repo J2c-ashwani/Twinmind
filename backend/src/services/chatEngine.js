@@ -16,7 +16,12 @@ import { detectGenZUsage, mirrorUserStyle } from './genZLanguageService.js';
 import smartContextManager from './smartContextManager.js';
 import { detectAndCreateMemory } from './memoryJournalService.js';
 import { recordDailyMetrics, getEvolutionSummaryForPrompt } from './relationshipEvolutionService.js';
-import outputGuard from './outputGuard.js';
+import {
+    CRISIS_RESPONSE,
+    crisisCheck,
+    logCrisisEvent,
+    applyOutputSafetyGuard,
+} from './conversationSafety.js';
 
 /* ---------------------------------------
    INTERNAL HELPERS
@@ -44,96 +49,6 @@ function sanitize(text = "") {
     return text
         .replace(/^(Sure|Certainly|Of course)[.,\s]*/gi, "")
         .trim();
-}
-
-/* ===========================================
-   🚨 MD RULE: CRISIS INTERCEPTION (LAYER 2)
-   "Zero Unfiltered Crisis Flow to LLM"
-   
-   BOARD-LEVEL POLICY:
-   Under no circumstance shall any user message indicating 
-   self-harm, suicide, or severe psychological crisis be 
-   processed by an LLM. All such inputs must be intercepted
-   deterministically and routed to a controlled, non-AI 
-   response system.
-=========================================== */
-
-const CRISIS_KEYWORDS = [
-    'kill myself',
-    'killing myself',
-    'suicide',
-    'suicidal',
-    'end my life',
-    'ending my life',
-    'self harm',
-    'self-harm',
-    'want to die',
-    'wanna die',
-    'going to die',
-    'no reason to live',
-    'better off dead',
-    'ending it all',
-    'take my own life',
-    'taking my own life',
-    'don\'t want to live',
-    'don\'t want to be alive',
-    'don\'t want to exist',
-    'hurt myself',
-    'hurting myself',       // ← was missing — LLM was responding instead
-    'harm myself',
-    'harming myself',       // ← was missing
-    'cutting myself',
-    'cut myself',
-    'no point in living',
-    'life is not worth',
-    'wish i was dead',
-    'wish i were dead',
-    'want to disappear',    // ← ambiguous but crisis-adjacent
-    'want to vanish',
-    'want to end it',
-];
-
-const CRISIS_RESPONSE = 
-    "I'm really sorry you're feeling this way. I'm not the right support for this, " +
-    "but you don't have to go through it alone.\n\n" +
-    "Please reach out to someone who can truly help:\n" +
-    "🇮🇳 India: AASRA — 91-9820466726\n" +
-    "🇮🇳 iCall — 9152987821\n" +
-    "🇺🇸 USA: 988 Suicide & Crisis Lifeline — dial 988\n" +
-    "🌍 Global: findahelpline.com\n\n" +
-    "You matter. Please talk to a real person — a friend, family member, or professional. " +
-    "They can help in ways I cannot.";
-
-function crisisCheck(message) {
-    const lower = message.toLowerCase();
-    return CRISIS_KEYWORDS.some(k => lower.includes(k));
-}
-
-async function logCrisisEvent(userId, message) {
-    try {
-        // Log to database for internal alerting & audit trail
-        await supabaseAdmin
-            .from('behavioral_triggers')
-            .insert({
-                user_id: userId,
-                trigger_type: 'CRISIS_EVENT',
-                old_state: null,
-                new_state: 'crisis_intercepted',
-                metadata: {
-                    CRISIS_EVENT: true,
-                    intercepted_at: new Date().toISOString(),
-                    message_preview: message.substring(0, 100) + '...',
-                    action_taken: 'LLM_BYPASSED_FIXED_RESPONSE_SENT'
-                }
-            });
-
-        // Console alert for server monitoring
-        logger.error(`🚨 CRISIS EVENT INTERCEPTED — User: ${userId} at ${new Date().toISOString()}`);
-        logger.error(`🚨 LLM BYPASSED. Fixed helpline response sent.`);
-    } catch (err) {
-        // Crisis logging failure must NEVER block the safety response
-        logger.error('Crisis logging failed (non-blocking):', err?.message);
-    }
 }
 
 /* ---------------------------------------
@@ -244,14 +159,17 @@ export async function generateChatResponse(
         /* 2. GEN Z DETECTION */
         const genZ = detectGenZUsage(userMessage);
 
-        /* 3. CONDITIONAL MEMORY RETRIEVAL (only if needed) */
-        const memoryTriggers = [/remember/i, /last time/i, /we talked/i, /you said/i];
-        const shouldFetchMemory = memoryTriggers.some(p => p.test(userMessage));
+        /* 3. CROSS-SESSION SEMANTIC MEMORY RETRIEVAL */
+        const trimmedMessage = String(userMessage || '').trim();
+        const shouldFetchMemory = trimmedMessage.length >= 8;
 
         let memoryContent = [];
         if (shouldFetchMemory) {
             try {
-                const memories = await retrieveMemories(userId, userMessage, { limit: 5, threshold: 0.72, conversationId });
+                const memories = await withTimeout(
+                    retrieveMemories(userId, trimmedMessage, { limit: 5, threshold: 0.70 }),
+                    2500
+                );
                 memoryContent = memories?.map(m => m.content) || [];
             } catch (err) {
                 logger.warn("Memory retrieval failed:", err?.message);
@@ -328,15 +246,7 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
         aiMessage = sanitize(aiMessage);
 
         /* 9.5 OUTPUT REPUTATION GUARD — MD Layer 4 */
-        const guardResult = outputGuard.check(aiMessage, userId);
-        if (guardResult.blocked) {
-            // HARD BLOCK: Replace entire response with safe fallback
-            aiMessage = guardResult.safeResponse;
-            logger.warn(`🛡️ OUTPUT GUARD BLOCKED [${guardResult.reason}] for user ${userId}`);
-        } else if (guardResult.disclaimer) {
-            // SOFT DISCLAIMER: Prepend at TOP (MD Rule: risky advice must never appear before boundary)
-            aiMessage = guardResult.disclaimer + "\n\n" + aiMessage;
-        }
+        aiMessage = applyOutputSafetyGuard(aiMessage, userId);
         const emotion = detectEmotion(userMessage);
 
         if (genZ.isGenZ && (emotion === "neutral" || emotion === "excited")) {
@@ -345,9 +255,10 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
 
 
         /* 11. BACKGROUND TASKS (fire-and-forget, don't await) */
-        // Store memories in background
-        storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
-        storeChatMemory(userId, aiMessage, "ai", mode).catch(() => { });
+        // Store memories & extract life context in background
+        storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+        storeChatMemory(userId, aiMessage, "ai", mode, conversationId).catch(() => { });
+        extractLifeContext(userId, userMessage, conversationId).catch(() => { });
         detectAndCreateMemory(userId, conversationId, null, userMessage, { mode }).catch(() => { });
         recordDailyMetrics(userId).catch(() => { });
 

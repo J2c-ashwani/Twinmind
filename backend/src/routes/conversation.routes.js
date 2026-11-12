@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import { verifyConversationOwnership } from '../services/conversationAccess.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -79,11 +80,12 @@ router.get('/:id', authenticateUser, async (req, res) => {
             return res.status(404).json({ error: 'Conversation not found' });
         }
 
-        // Fetch messages
+        // Fetch messages strictly scoped to conversation and owner
         const { data: messages, error: msgError } = await supabaseAdmin
             .from('chat_history')
             .select('*')
             .eq('conversation_id', id)
+            .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(parseInt(limit));
 
@@ -105,13 +107,18 @@ router.delete('/:id', authenticateUser, async (req, res) => {
         const userId = req.userId;
         const { id } = req.params;
 
-        // Verify ownership and delete (cascade should handle messages if configured, otherwise manual)
-        // For safety, we'll delete messages first then conversation
+        const { owned } = await verifyConversationOwnership(id, userId);
+        if (!owned) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
 
-        await supabaseAdmin
+        const { error: msgDeleteError } = await supabaseAdmin
             .from('chat_history')
             .delete()
-            .eq('conversation_id', id);
+            .eq('conversation_id', id)
+            .eq('user_id', userId);
+
+        if (msgDeleteError) throw msgDeleteError;
 
         const { error } = await supabaseAdmin
             .from('conversations')

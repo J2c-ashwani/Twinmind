@@ -35,6 +35,8 @@ import 'screens/auth_wrapper.dart';
 
 import 'dart:async';
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   // Catch errors during strict startup
   runZonedGuarded(() {
@@ -192,6 +194,7 @@ class TwinGenieApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: rootNavigatorKey,
         title: 'TwinGenie',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(

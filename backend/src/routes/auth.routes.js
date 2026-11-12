@@ -13,7 +13,7 @@ const router = express.Router();
  */
 router.post('/signup', async (req, res) => {
     try {
-        const { userId, fullName, email, country, referralCode } = req.body;
+        const { userId, fullName, email, country, referralCode, attribution } = req.body;
         const authHeader = req.headers.authorization;
 
         if (!authHeader?.startsWith('Bearer ')) {
@@ -32,7 +32,7 @@ router.post('/signup', async (req, res) => {
             .from('users')
             .upsert({
                 id: userId,
-                full_name: fullName,
+                full_name: fullName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
                 email: email || user.email,
                 country: country || null
             }, { onConflict: 'id' })
@@ -41,19 +41,40 @@ router.post('/signup', async (req, res) => {
 
         if (error) throw error;
 
-        // Create default free subscription
+        // Create default free subscription if missing (do not overwrite an existing Pro row)
         const { error: subscriptionError } = await supabaseAdmin
             .from('subscriptions')
             .upsert({
                 user_id: userId,
                 plan_type: 'free',
                 status: 'active'
-            }, { onConflict: 'user_id' });
+            }, { onConflict: 'user_id', ignoreDuplicates: true });
 
         if (subscriptionError) throw subscriptionError;
 
-        if (referralCode) {
-            await recordReferral({ code: referralCode, referredUserId: userId });
+        const effectiveReferralCode = referralCode || user.user_metadata?.referral_code;
+        if (effectiveReferralCode) {
+            await recordReferral({ code: effectiveReferralCode, referredUserId: userId });
+        }
+
+        const effectiveAttribution = attribution || user.user_metadata?.attribution;
+        if (effectiveAttribution && typeof effectiveAttribution === 'object') {
+            const { data: existingAttr } = await supabaseAdmin
+                .from('metric_events')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('event_type', 'signup_attributed')
+                .limit(1)
+                .maybeSingle();
+
+            if (!existingAttr) {
+                await supabaseAdmin.from('metric_events').insert({
+                    user_id: userId,
+                    event_type: 'signup_attributed',
+                    metric_type: 'acquisition',
+                    metadata: effectiveAttribution,
+                });
+            }
         }
 
         res.json({ success: true, user: data });

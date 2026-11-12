@@ -10,11 +10,11 @@ const router = express.Router();
 // Middleware to check if user is admin
 const isAdmin = async (req, res, next) => {
     try {
-        const { data: profile } = await supabase
+        const { data: profile } = await supabaseAdmin
             .from('personality_profiles')
-            .select('*')
+            .select('metadata')
             .eq('user_id', req.user.userId)
-            .single();
+            .maybeSingle();
 
         // Check against environment variable and metadata
         const adminEmail = process.env.ADMIN_EMAIL;
@@ -59,6 +59,11 @@ router.get('/me', verifyToken, isAdmin, async (req, res) => {
 // Get platform statistics with rigorous sender=user separation
 router.get('/stats', verifyToken, isAdmin, async (req, res) => {
     try {
+        // Total registered users
+        const { count: totalUsersCount } = await supabaseAdmin
+            .from('users')
+            .select('*', { count: 'exact', head: true });
+
         // Total personality profiles
         const { count: profileCount } = await supabaseAdmin
             .from('personality_profiles')
@@ -84,15 +89,27 @@ router.get('/stats', verifyToken, isAdmin, async (req, res) => {
 
         const activatedUserCount = new Set((userAuthors || []).map(m => m.user_id)).size;
 
+        // 24h active user-authored chatters
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentUserAuthors } = await supabaseAdmin
+            .from('chat_history')
+            .select('user_id')
+            .eq('sender', 'user')
+            .gte('created_at', oneDayAgo);
+        const active24hCount = new Set((recentUserAuthors || []).map(m => m.user_id)).size;
+
         // Total conversations
         const { count: conversationCount } = await supabaseAdmin
             .from('conversations')
             .select('*', { count: 'exact', head: true });
 
         res.json({
+            totalUsers: totalUsersCount ?? profileCount ?? 0,
+            activeUsers: active24hCount,
+            totalMessages: (userMessageCount || 0) + (aiMessageCount || 0),
             totalProfiles: profileCount || 0,
             activatedUsers: activatedUserCount,
-            unengagedSeededUsers: (profileCount || 0) - activatedUserCount,
+            unengagedSeededUsers: Math.max(0, (profileCount || 0) - activatedUserCount),
             userAuthoredMessages: userMessageCount || 0,
             aiMessages: aiMessageCount || 0,
             totalConversations: conversationCount || 0
@@ -105,7 +122,7 @@ router.get('/stats', verifyToken, isAdmin, async (req, res) => {
 
 router.get('/analytics', verifyToken, isAdmin, async (req, res) => {
     try {
-        const { count: profileCount } = await supabase
+        const { count: profileCount } = await supabaseAdmin
             .from('personality_profiles')
             .select('*', { count: 'exact', head: true });
 
@@ -122,15 +139,23 @@ router.get('/analytics', verifyToken, isAdmin, async (req, res) => {
 // Get recent users
 router.get('/users/recent', verifyToken, isAdmin, async (req, res) => {
     try {
-        const { data: users, error } = await supabase
-            .from('personality_profiles')
-            .select('user_id, created_at, updated_at')
+        const { data: users, error } = await supabaseAdmin
+            .from('users')
+            .select('id, email, full_name, created_at, updated_at')
             .order('created_at', { ascending: false })
             .limit(10);
 
         if (error) throw error;
 
-        res.json({ users });
+        res.json({
+            users: (users || []).map((u) => ({
+                user_id: u.id,
+                email: u.email,
+                full_name: u.full_name,
+                created_at: u.created_at,
+                updated_at: u.updated_at,
+            })),
+        });
     } catch (error) {
         console.error('Admin users error:', error);
         res.status(500).json({ error: 'Failed to fetch users' });
@@ -140,8 +165,9 @@ router.get('/users/recent', verifyToken, isAdmin, async (req, res) => {
 // Get system health
 router.get('/health', verifyToken, isAdmin, async (req, res) => {
     try {
-        // Check database connection
-        const { error: dbError } = await supabase.from('personality_profiles').select('count').limit(1);
+        const { error: dbError } = await supabaseAdmin
+            .from('personality_profiles')
+            .select('user_id', { count: 'exact', head: true });
 
         res.json({
             status: 'healthy',

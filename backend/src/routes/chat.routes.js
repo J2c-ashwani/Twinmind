@@ -1,8 +1,9 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
-import { checkSubscription, requirePro, checkUsageLimits, trackUsage, getMonthlyUsage } from '../middleware/subscriptionMiddleware.js';
+import { checkSubscription, checkUsageLimits, releaseDailyQuota } from '../middleware/subscriptionMiddleware.js';
+import { resolveConversationForUser } from '../services/conversationAccess.js';
 import { generateChatResponse, getChatHistory, clearChatHistory } from '../services/chatEngine.js';
-import aiService from '../services/aiService.js';
+import { checkAndAwardAchievements } from '../services/gamificationService.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import {
     getUserEngagementState,
@@ -40,73 +41,28 @@ const router = express.Router();
  */
 router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, async (req, res) => {
     const T1 = Date.now(); // T1: request received by backend
+    let responseSent = false;
     try {
         const { message, mode = 'normal', conversation_id } = req.body;
         const userId = req.userId;
 
         // Validate message length
         if (!message || message.trim().length === 0) {
+            if (req.reservedQuota) await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
             return res.status(400).json({ error: 'Message cannot be empty' });
         }
         if (message.length > 5000) {
+            if (req.reservedQuota) await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
             return res.status(400).json({ error: 'Message too long. Maximum 5000 characters.' });
         }
 
-        // Ensure conversation_id exists or handle legacy/default
-        // For now, if no conversation_id is provided, we might want to create one or use a "General" one.
-        // But to keep it simple for the API, we'll assume the frontend passes it, OR we create a new one if missing.
-        let targetConversationId = conversation_id;
-
-        if (!targetConversationId) {
-            // Check for most recent active conversation
-            const { data: recent } = await supabaseAdmin
-                .from('conversations')
-                .select('id, created_at')
-                .eq('user_id', userId)
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            // Check if the recent conversation is from today
-            const isToday = (date) => {
-                const today = new Date();
-                const compare = new Date(date);
-                return today.getFullYear() === compare.getFullYear() &&
-                    today.getMonth() === compare.getMonth() &&
-                    today.getDate() === compare.getDate();
-            };
-
-            // Only reuse if it's from today, otherwise create a new one
-            if (recent && isToday(recent.created_at)) {
-                targetConversationId = recent.id;
-            } else {
-                // Create new conversation with today's date as title
-                const today = new Date();
-                const dateTitle = today.toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
-
-                const { data: newConv, error: createError } = await supabaseAdmin
-                    .from('conversations')
-                    .insert([{
-                        user_id: userId,
-                        title: dateTitle,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
-                    .select()
-                    .single();
-
-                if (createError || !newConv) {
-                    logger.error('Failed to create conversation:', createError);
-                    return res.status(500).json({ error: 'Failed to start conversation' });
-                }
-
-                targetConversationId = newConv.id;
-            }
+        // Verify ownership if conversation_id is supplied, or find/create today's conversation
+        let targetConversationId;
+        try {
+            targetConversationId = await resolveConversationForUser(userId, conversation_id);
+        } catch (convErr) {
+            if (req.reservedQuota) await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+            return res.status(convErr.statusCode || 500).json({ error: convErr.message || 'Failed to resolve conversation' });
         }
 
         const T2 = Date.now();
@@ -191,104 +147,105 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             };
 
             const aiMessageString = extractMessageText(response);
-            logger.info(`AI Response extracted: ${aiMessageString.substring(0, 100)}...`);
+            logger.info(`AI Response generated (${aiMessageString.length} chars)`);
 
             const T5 = Date.now();
             logger.info(`⏱ [LATENCY] T4→T5 llm_generation: ${T5 - T4}ms  ← AI provider time`);
 
-            // ─── RESPOND IMMEDIATELY — user is waiting ───────────────────
-            // Flutter only reads 'message' and 'conversation_id'.
-            // Everything else is post-processing that does NOT need to block.
+            // ─── PERSIST CHAT TURN DURABLY BEFORE RESPONDING ─────────────
+            const userTime = new Date();
+            const aiTime = new Date(userTime.getTime() + 100);
+
+            const { error: historyInsertError } = await supabaseAdmin.from('chat_history').insert([
+                {
+                    user_id: userId,
+                    conversation_id: targetConversationId,
+                    message,
+                    sender: 'user',
+                    mode,
+                    created_at: userTime.toISOString(),
+                },
+                {
+                    user_id: userId,
+                    conversation_id: targetConversationId,
+                    message: aiMessageString,
+                    sender: 'ai',
+                    mode,
+                    created_at: aiTime.toISOString(),
+                },
+            ]);
+
+            if (historyInsertError) {
+                throw new Error(`Failed to persist chat history: ${historyInsertError.message}`);
+            }
+
+            const { error: convUpdateError } = await supabaseAdmin
+                .from('conversations')
+                .update({ updated_at: aiTime.toISOString() })
+                .eq('id', targetConversationId)
+                .eq('user_id', userId);
+
+            if (convUpdateError) {
+                logger.warn('Failed to update conversation timestamp:', convUpdateError.message);
+            }
+
+            responseSent = true;
             res.json({
                 message: aiMessageString,
                 conversation_id: targetConversationId,
                 mode,
-                timestamp: new Date().toISOString(),
+                timestamp: aiTime.toISOString(),
             });
-            logger.info(`⏱ [LATENCY] T5→RESPONSE (user unblocked): ${Date.now() - T5}ms`);
+            logger.info(`⏱ [LATENCY] T5→RESPONSE (saved & delivered): ${Date.now() - T5}ms`);
             logger.info(`⏱ [LATENCY] TOTAL T1→RESPONSE: ${Date.now() - T1}ms  (userId=${userId})`);
 
-            // ─── BACKGROUND POST-PROCESSING (fire-and-forget) ────────────
-            // None of these block the user. Errors are logged but swallowed.
+            // ─── BACKGROUND NON-CRITICAL ANALYTICS & ENGAGEMENT ──────────
             setImmediate(async () => {
                 try {
                     const Tbg = Date.now();
 
-                    const userTime = new Date();
-                    const aiTime = new Date(userTime.getTime() + 100);
-
-                    // Parallelize all background work
                     await Promise.all([
-                        // 1. Store chat history (both rows in one insert)
-                        supabaseAdmin.from('chat_history').insert([
-                            {
-                                user_id: userId,
-                                conversation_id: targetConversationId,
-                                message: message,
-                                sender: 'user',
-                                mode: mode,
-                                created_at: userTime.toISOString()
-                            },
-                            {
-                                user_id: userId,
-                                conversation_id: targetConversationId,
-                                message: aiMessageString,
-                                sender: 'ai',
-                                mode: mode,
-                                created_at: aiTime.toISOString()
-                            }
-                        ]),
-
-                        // 2. Update conversation timestamp
-                        supabaseAdmin
-                            .from('conversations')
-                            .update({ updated_at: new Date().toISOString() })
-                            .eq('id', targetConversationId),
-
-                        // 3. Update emotional metrics
                         updateEmotionalMetrics(
                             userId, message, isEmotional, hasGoals,
                             engagementState.total_messages, aiMessageString
                         ).catch(e => logger.warn('updateEmotionalMetrics bg error:', e.message)),
 
-                        // 4. Track usage — writes to usage_tracking table for analytics
-                        trackUsage(userId, 'chat_message')
-                            .catch(e => logger.warn('trackUsage bg error:', e.message)),
+                        checkAndAwardAchievements(userId)
+                            .catch(e => logger.warn('checkAndAwardAchievements bg error:', e.message)),
 
-                        // 5. Track funnel metrics (first_message_sent, second_message_sent, conversation_completed)
                         (async () => {
-                            const { count: priorMsgCount } = await supabaseAdmin
+                            const { count: totalUserMessages } = await supabaseAdmin
                                 .from('chat_history')
                                 .select('*', { count: 'exact', head: true })
                                 .eq('user_id', userId)
                                 .eq('sender', 'user');
 
-                            if (priorMsgCount === 1) {
+                            if (totalUserMessages === 1) {
                                 await supabaseAdmin.from('metric_events').insert({
                                     user_id: userId,
                                     event_type: 'first_message_sent',
                                     metric_type: 'funnel',
                                     metadata: {
                                         source: req.body.starter_prompt_variant ? 'starter_prompt' : 'custom_input',
-                                        variant: req.body.starter_prompt_variant || null
+                                        variant: req.body.starter_prompt_variant || null,
                                     },
-                                    created_at: new Date().toISOString()
+                                    created_at: new Date().toISOString(),
                                 });
-                            } else if (priorMsgCount === 2) {
+                            } else if (totalUserMessages === 2) {
                                 await supabaseAdmin.from('metric_events').insert({
                                     user_id: userId,
                                     event_type: 'second_message_sent',
                                     metric_type: 'funnel',
                                     metadata: {},
-                                    created_at: new Date().toISOString()
+                                    created_at: new Date().toISOString(),
                                 });
-                            } else if (priorMsgCount === 5) {
+                            } else if (totalUserMessages === 5) {
                                 await supabaseAdmin.from('metric_events').insert({
                                     user_id: userId,
                                     event_type: 'conversation_completed',
                                     metric_type: 'funnel',
-                                    metadata: { total_messages: priorMsgCount },
-                                    created_at: new Date().toISOString()
+                                    metadata: { total_messages: totalUserMessages },
+                                    created_at: new Date().toISOString(),
                                 });
                             }
                         })().catch(e => logger.warn('Funnel metric tracking error:', e.message)),
@@ -301,14 +258,18 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             });
 
         } catch (innerError) {
-            // STRICT MODE: No mock responses. Fail properly.
             logger.error('Chat services critical failure:', innerError);
-            throw innerError; // Re-throw to be caught by outer catch
+            throw innerError;
         }
 
     } catch (error) {
+        if (!responseSent && req.reservedQuota) {
+            await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+        }
         logger.error('Error in chat message:', error);
-        res.status(500).json({ error: 'Failed to process message' });
+        if (!responseSent) {
+            res.status(500).json({ error: 'Failed to process message' });
+        }
     }
 });
 
@@ -396,29 +357,31 @@ router.get('/modes', authenticateUser, checkSubscription, async (req, res) => {
                 id: 'normal',
                 name: 'Normal Twin',
                 description: 'Your authentic digital twin',
-                available: true
+                available: true,
+                requiresPro: false,
             },
             {
                 id: 'future',
                 name: 'Future Twin',
                 description: '5 years wiser version of you',
-                available: true,  // Available to all with limitations
-                requiresPro: true,
-                isPro: req.isPro  // Indicates if user has Pro access
+                available: true,
+                requiresPro: false,
+                isPro: req.isPro,
             },
             {
                 id: 'dark',
                 name: 'Dark Twin',
                 description: 'Brutally honest, unfiltered version',
-                available: true,  // Available to all with limitations
-                requiresPro: true,
-                isPro: req.isPro  // Indicates if user has Pro access
+                available: true,
+                requiresPro: false,
+                isPro: req.isPro,
             },
             {
                 id: 'therapist',
                 name: 'Therapist Twin',
                 description: 'Compassionate, reflective healing version',
-                available: true
+                available: true,
+                requiresPro: false,
             }
         ];
 

@@ -1,25 +1,6 @@
+import crypto from 'crypto';
 import logger from '../../config/logger.js';
 import { supabaseAdmin } from '../../config/supabase.js';
-
-/**
- * Publication Slot Service
- * Implements the Authoritative Atomic Idempotency & State Machine Engine for Growth Publishing.
- * 
- * State Machine Lifecycle:
- * [PENDING] 
- *    │ (claimSlot: atomically reserves slot lease)
- *    ▼
- * [RENDERING] 
- *    │ (media generation in progress; 15-min distributed lease)
- *    ▼
- * [PUBLISHING] 
- *    │ (dispatching payload to platform API)
- *    ├── (API 200 OK) ──────────────► [PUBLISHED] (terminal success)
- *    ├── (504 Timeout / Ambiguous) ──► [VERIFYING] ──► (Reconciliation: queries platform API)
- *    │                                                    ├── (Post exists on platform) ─► [PUBLISHED] (prevents dup)
- *    │                                                    └── (No post found) ───────────► [PENDING] (safe retry)
- *    └── (Non-retryable Error) ─────► [FAILED] (terminal failure after max retries)
- */
 
 export const SlotStatus = {
     PENDING: 'pending',
@@ -27,8 +8,19 @@ export const SlotStatus = {
     PUBLISHING: 'publishing',
     VERIFYING: 'verifying',
     PUBLISHED: 'published',
-    FAILED: 'failed'
+    FAILED: 'failed',
 };
+
+function deterministicLockUuid(slotKey) {
+    const hash = crypto.createHash('sha256').update(`slot_lock:${slotKey}`).digest('hex');
+    return [
+        hash.slice(0, 8),
+        hash.slice(8, 12),
+        '4' + hash.slice(13, 16),
+        '8' + hash.slice(17, 20),
+        hash.slice(20, 32),
+    ].join('-');
+}
 
 class PublicationSlotService {
     constructor() {
@@ -36,44 +28,28 @@ class PublicationSlotService {
         this._maxRetries = 3;
     }
 
-    /**
-     * Formats canonical persistent slot key
-     * e.g. 'facebook:2026-10-31:1'
-     */
     formatSlotKey(platform, slotDate, slotIndex = 1) {
         return `${platform}:${slotDate}:${slotIndex}`;
     }
 
     /**
-     * Atomically claims a publication slot for processing.
-     * Prevents race conditions between concurrent workers & server restarts.
-     * 
-     * @param {Object} params
-     * @param {string} params.platform - 'facebook' | 'instagram' | 'linkedin' | 'threads' | 'youtube'
-     * @param {string} params.slotDate - 'YYYY-MM-DD' (Asia/Kolkata date)
-     * @param {number} params.slotIndex - 1 (Morning), 2 (Afternoon), 3 (Evening)
-     * @param {string} params.workerId - Container / PID identifier
-     * @param {boolean} params.force - Force bypass check
-     * @returns {Promise<{ granted: boolean, slotKey: string, status: string, reason?: string }>}
+     * Atomically claims a publication slot using compare-and-set semantics.
+     * Fails closed on unavailable persistence unless force=true.
      */
     async claimSlot({ platform, slotDate, slotIndex = 1, workerId = `worker_${process.pid}_${Date.now()}`, force = false }) {
         const slotKey = this.formatSlotKey(platform, slotDate, slotIndex);
 
-        // 1. Process-level mutex check (Synchronous check-and-set to prevent in-process race conditions)
         if (!force && this._inMemoryLocks.has(slotKey)) {
             logger.warn(`🔒 [SLOT SERVICE] Slot ${slotKey} is locked in-process by another task.`);
             return { granted: false, slotKey, reason: 'in_process_lock' };
         }
 
-        // Synchronously acquire provisional lock token before entering async I/O
         this._inMemoryLocks.set(slotKey, workerId);
 
         try {
-            // 2. Primary Atomic Check via growth_publication_slots table
             const leaseExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
             const nowIso = new Date().toISOString();
 
-            // Check existing slot status
             const { data: existingSlot, error: selectErr } = await supabaseAdmin
                 .from('growth_publication_slots')
                 .select('*')
@@ -84,7 +60,6 @@ class PublicationSlotService {
                 if (existingSlot) {
                     if (existingSlot.status === SlotStatus.PUBLISHED && !force) {
                         this._inMemoryLocks.delete(slotKey);
-                        logger.info(`✅ [SLOT SERVICE] Slot ${slotKey} is already PUBLISHED on ${platform}. Skipping.`);
                         return { granted: false, slotKey, status: SlotStatus.PUBLISHED, reason: 'already_published' };
                     }
 
@@ -92,18 +67,16 @@ class PublicationSlotService {
                         const leaseValid = existingSlot.locked_until && new Date(existingSlot.locked_until) > new Date();
                         if (leaseValid) {
                             this._inMemoryLocks.delete(slotKey);
-                            logger.warn(`⏳ [SLOT SERVICE] Slot ${slotKey} currently held by worker ${existingSlot.worker_id} until ${existingSlot.locked_until}. Skipping.`);
                             return { granted: false, slotKey, status: existingSlot.status, reason: 'lease_active' };
                         }
                     }
 
                     if (existingSlot.status === SlotStatus.VERIFYING && !force) {
                         this._inMemoryLocks.delete(slotKey);
-                        logger.warn(`🔍 [SLOT SERVICE] Slot ${slotKey} is in VERIFYING state. Ambiguous timeout resolution pending.`);
                         return { granted: false, slotKey, status: SlotStatus.VERIFYING, reason: 'verifying_timeout' };
                     }
 
-                    // Attempt claim: Update existing row with lease
+                    // Compare-and-set predicate prevents dual workers from claiming the same stale/pending slot simultaneously
                     const { data: updated, error: updateErr } = await supabaseAdmin
                         .from('growth_publication_slots')
                         .update({
@@ -111,85 +84,108 @@ class PublicationSlotService {
                             locked_until: leaseExpiry,
                             worker_id: workerId,
                             attempts: (existingSlot.attempts || 0) + 1,
-                            updated_at: nowIso
+                            updated_at: nowIso,
                         })
                         .eq('slot_key', slotKey)
+                        .eq('status', existingSlot.status)
                         .select()
                         .maybeSingle();
 
                     if (!updateErr && updated) {
-                        logger.info(`🔑 [SLOT SERVICE] Acquired slot lease: ${slotKey} (attempt ${updated.attempts})`);
+                        logger.info(`🔑 [SLOT SERVICE] Acquired slot CAS lease: ${slotKey} (attempt ${updated.attempts})`);
                         return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: updated.attempts };
                     }
-                } else {
-                    // Insert new slot row
-                    const { data: inserted, error: insertErr } = await supabaseAdmin
-                        .from('growth_publication_slots')
-                        .insert({
-                            slot_key: slotKey,
-                            platform,
-                            slot_date: slotDate,
-                            slot_index: slotIndex,
-                            status: SlotStatus.RENDERING,
-                            locked_until: leaseExpiry,
-                            worker_id: workerId,
-                            attempts: 1,
-                            created_at: nowIso,
-                            updated_at: nowIso
-                        })
-                        .select()
-                        .maybeSingle();
 
-                    if (!insertErr && inserted) {
-                        logger.info(`🔑 [SLOT SERVICE] Created and claimed new slot: ${slotKey}`);
-                        return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
-                    }
+                    this._inMemoryLocks.delete(slotKey);
+                    return { granted: false, slotKey, reason: 'cas_conflict' };
+                }
+
+                const { data: inserted, error: insertErr } = await supabaseAdmin
+                    .from('growth_publication_slots')
+                    .insert({
+                        slot_key: slotKey,
+                        platform,
+                        slot_date: slotDate,
+                        slot_index: slotIndex,
+                        status: SlotStatus.RENDERING,
+                        locked_until: leaseExpiry,
+                        worker_id: workerId,
+                        attempts: 1,
+                        created_at: nowIso,
+                        updated_at: nowIso,
+                    })
+                    .select()
+                    .maybeSingle();
+
+                if (!insertErr && inserted) {
+                    return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
+                }
+
+                if (insertErr?.code === '23505') {
+                    this._inMemoryLocks.delete(slotKey);
+                    return { granted: false, slotKey, reason: 'concurrent_slot_created' };
                 }
             }
         } catch (dbErr) {
             logger.warn(`[SLOT SERVICE] Primary table query note (${dbErr.message}). Evaluating fallback durable ledger.`);
         }
 
-        // 3. Fallback Durable Ledger & Atomic Database-Level Lock
+        // Scoped fallback ledger + per-slot lease lock (only when growth_publication_slots table is absent)
         try {
             const ledgerAction = `slot_ledger:${slotKey}`;
-            const { data: publishedRows } = await supabaseAdmin
+            const { data: publishedRows, error: ledgerErr } = await supabaseAdmin
                 .from('usage_tracking')
                 .select('id')
                 .eq('action_type', ledgerAction)
                 .limit(1);
 
+            if (ledgerErr) {
+                throw ledgerErr;
+            }
+
             if (publishedRows && publishedRows.length > 0 && !force) {
                 this._inMemoryLocks.delete(slotKey);
-                logger.info(`✅ [SLOT SERVICE] Slot ${slotKey} recorded as published in durable ledger. Skipping.`);
                 return { granted: false, slotKey, status: SlotStatus.PUBLISHED, reason: 'already_published_durable' };
             }
 
-            // Atomic Distributed Database Mutex across independent Render containers
-            // PostgreSQL unique constraint enforces exactly-once lock grant via SQLSTATE 23505
-            const fallbackLockId = '00000000-0000-0000-0000-000000000002';
+            const fallbackCode = `LOCK-${slotKey}`;
+            const staleCutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+
+            // Expire only stale leases belonging specifically to THIS slotKey
+            await supabaseAdmin
+                .from('referral_codes')
+                .delete()
+                .eq('code', fallbackCode)
+                .lt('created_at', staleCutoff);
+
             const { error: lockErr } = await supabaseAdmin
                 .from('referral_codes')
-                .insert({ user_id: fallbackLockId, code: `LOCK-${slotKey}` });
+                .insert({
+                    user_id: deterministicLockUuid(slotKey),
+                    code: fallbackCode,
+                });
 
             if (lockErr) {
+                this._inMemoryLocks.delete(slotKey);
                 if (lockErr.code === '23505') {
-                    this._inMemoryLocks.delete(slotKey);
-                    logger.warn(`🔒 [SLOT SERVICE] Database-level mutual exclusion active (23505): another container holds slot ${slotKey}.`);
                     return { granted: false, slotKey, status: SlotStatus.RENDERING, reason: 'database_slot_locked' };
+                }
+                if (!force) {
+                    return { granted: false, slotKey, reason: `fallback_lock_error:${lockErr.code || 'unknown'}` };
                 }
             }
 
             return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
         } catch (fallbackErr) {
-            logger.warn(`[SLOT SERVICE] Fallback ledger check warning: ${fallbackErr.message}`);
-            return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
+            logger.error(`[SLOT SERVICE] Fallback ledger unavailable for ${slotKey}: ${fallbackErr.message}`);
+            if (force) {
+                return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
+            }
+            this._inMemoryLocks.delete(slotKey);
+            return { granted: false, slotKey, reason: 'lock_unavailable' };
         }
     }
 
-    /**
-     * Updates slot state during publishing pipeline
-     */
     async transitionStatus(slotKey, targetStatus, metadata = {}) {
         const nowIso = new Date().toISOString();
         try {
@@ -201,21 +197,24 @@ class PublicationSlotService {
                     post_url: metadata.postUrl || null,
                     error_message: metadata.errorMessage || null,
                     updated_at: nowIso,
-                    ...(targetStatus === SlotStatus.PUBLISHED || targetStatus === SlotStatus.FAILED ? { locked_until: null } : {})
+                    ...(targetStatus === SlotStatus.PUBLISHED || targetStatus === SlotStatus.FAILED ? { locked_until: null } : {}),
                 })
                 .eq('slot_key', slotKey);
         } catch (e) {
             logger.warn(`[SLOT SERVICE] Could not update slot table for ${slotKey}:`, e.message);
         }
 
-        if (targetStatus === SlotStatus.PUBLISHED) {
+        if (targetStatus === SlotStatus.PUBLISHED || targetStatus === SlotStatus.FAILED) {
             this._inMemoryLocks.delete(slotKey);
-            // Release fallback distributed database lock
             try {
-                await supabaseAdmin.from('referral_codes').delete().eq('user_id', '00000000-0000-0000-0000-000000000002');
-            } catch (err) {}
+                await supabaseAdmin
+                    .from('referral_codes')
+                    .delete()
+                    .eq('code', `LOCK-${slotKey}`);
+            } catch {}
+        }
 
-            // Also commit to durable ledger for double protection
+        if (targetStatus === SlotStatus.PUBLISHED) {
             try {
                 const { data: users } = await supabaseAdmin.from('users').select('id').limit(1);
                 if (users && users.length > 0) {
@@ -225,68 +224,63 @@ class PublicationSlotService {
                         count: 1,
                         period_start: nowIso,
                         period_end: nowIso,
-                        created_at: nowIso
+                        created_at: nowIso,
                     });
                 }
             } catch (err) {
                 logger.warn(`[SLOT SERVICE] Durable ledger commit warning: ${err.message}`);
             }
-        } else if (targetStatus === SlotStatus.FAILED) {
-            this._inMemoryLocks.delete(slotKey);
-            try {
-                await supabaseAdmin.from('referral_codes').delete().eq('user_id', '00000000-0000-0000-0000-000000000002');
-            } catch (err) {}
         }
     }
 
     /**
-     * Handles ambiguous network timeout / 504 Gateway error.
-     * Prevents duplicate publishing by querying the platform's native API before retrying.
-     * 
-     * @param {Object} params
-     * @param {string} params.platform
-     * @param {string} params.slotKey
-     * @param {Object} params.adapter - Platform adapter instance with hasPublishedTodayIST()
-     * @returns {Promise<{ reconciled: boolean, status: string, postId?: string }>}
+     * Reconcile ambiguous timeout against native platform feed without inventing synthetic URLs.
      */
     async reconcileAmbiguousTimeout({ platform, slotKey, adapter }) {
         logger.warn(`⚠️ [SLOT SERVICE] Ambiguous timeout during publish for ${slotKey}. Entering VERIFYING state...`);
-        await this.transitionStatus(slotKey, SlotStatus.VERIFYING, { errorMessage: 'Ambiguous API response/timeout: awaiting reconciliation' });
+        await this.transitionStatus(slotKey, SlotStatus.VERIFYING, {
+            errorMessage: 'Ambiguous API response/timeout: awaiting reconciliation',
+        });
 
-        // Query the platform's native feed to inspect if the post was received
         try {
             if (adapter && typeof adapter.hasPublishedTodayIST === 'function') {
                 const verifiedOnPlatform = await adapter.hasPublishedTodayIST();
                 if (verifiedOnPlatform) {
-                    logger.info(`🎯 [SLOT SERVICE] Reconciliation SUCCESS for ${slotKey}: Post confirmed live on ${platform} feed! Marking PUBLISHED.`);
+                    const postMeta =
+                        typeof adapter.getLatestTodayPost === 'function'
+                            ? await adapter.getLatestTodayPost().catch(() => null)
+                            : null;
                     await this.transitionStatus(slotKey, SlotStatus.PUBLISHED, {
-                        postId: `reconciled_${Date.now()}`,
-                        postUrl: `https://${platform}.com/reconciled`
+                        postId: postMeta?.postId || null,
+                        postUrl: postMeta?.url || null,
+                        errorMessage: 'Verified live on platform feed after timeout',
                     });
-                    return { reconciled: true, status: SlotStatus.PUBLISHED };
-                } else {
-                    logger.info(`ℹ️ [SLOT SERVICE] Reconciliation check: No post found on ${platform} feed. Safely resetting to PENDING for retry.`);
-                    await this.transitionStatus(slotKey, SlotStatus.PENDING, { errorMessage: 'Post unverified after timeout. Safe for retry.' });
-                    return { reconciled: true, status: SlotStatus.PENDING };
+                    return { reconciled: true, status: SlotStatus.PUBLISHED, postId: postMeta?.postId || null };
                 }
+
+                await this.transitionStatus(slotKey, SlotStatus.PENDING, {
+                    errorMessage: 'No live post found after timeout. Reset to pending for retry.',
+                });
+                return { reconciled: true, status: SlotStatus.PENDING };
             }
         } catch (recErr) {
             logger.error(`[SLOT SERVICE] Platform reconciliation query failed for ${slotKey}:`, recErr.message);
         }
 
-        // If platform cannot be reached, mark failed for deliberate retry
-        await this.transitionStatus(slotKey, SlotStatus.FAILED, { errorMessage: 'Ambiguous timeout unverified. Marked for retry sweep.' });
-        return { reconciled: false, status: SlotStatus.FAILED };
+        await this.transitionStatus(slotKey, SlotStatus.PENDING, {
+            errorMessage: 'Ambiguous timeout unverified. Reset to pending for retry sweep.',
+        });
+        return { reconciled: false, status: SlotStatus.PENDING };
     }
 
-    /**
-     * Release slot lock on failure
-     */
     async releaseSlot(slotKey) {
         this._inMemoryLocks.delete(slotKey);
         try {
-            await supabaseAdmin.from('referral_codes').delete().eq('user_id', '00000000-0000-0000-0000-000000000002');
-        } catch (err) {}
+            await supabaseAdmin
+                .from('referral_codes')
+                .delete()
+                .eq('code', `LOCK-${slotKey}`);
+        } catch {}
     }
 }
 

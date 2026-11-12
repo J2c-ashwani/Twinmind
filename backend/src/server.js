@@ -1,8 +1,8 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from './config/logger.js';
@@ -34,8 +34,6 @@ import proactiveRoutes from './routes/proactive.routes.js';
 import growthRoutes from './routes/growth.routes.js';
 import smartRouterService from './services/growth/smartRouterService.js';
 import { initJobs } from './jobs/reminderJob.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

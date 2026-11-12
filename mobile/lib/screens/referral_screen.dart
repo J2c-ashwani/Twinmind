@@ -62,7 +62,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   void _shareReferral() {
     Share.share(
-      'Hey! I\'ve been using TwinGenie as my AI Digital Twin for self-reflection. Here is 7 days of Pro access on me: $_referralUrl',
+      'Join me on TwinGenie — an AI Digital Twin for self-reflection. Use my link to get 25 bonus XP when you sign up: $_referralUrl',
     );
   }
 
@@ -323,13 +323,13 @@ class _ReferralScreenState extends State<ReferralScreen> {
           ),
           const SizedBox(height: 16),
           _buildRewardItem(
-              '7 Days', 'Give 7 Days of TwinGenie Pro to a friend', const Color(0xFF8B5CF6)),
+              '50 XP', 'You earn 50 XP when a friend joins with your link', const Color(0xFF8B5CF6)),
           const SizedBox(height: 12),
           _buildRewardItem(
-              '7 Days', 'Unlock 7 Days of Pro for yourself when they reflect', const Color(0xFF10B981)),
+              '25 XP', 'Your friend receives a 25 XP welcome bonus', const Color(0xFF10B981)),
           const SizedBox(height: 12),
           _buildRewardItem(
-              '🎁', 'Unlimited AI Twin insights & voice reflections', const Color(0xFFF59E0B)),
+              '⭐', 'Level up your Twin Companion & earn Streak Freezes (500 XP)', const Color(0xFFF59E0B)),
         ],
       ),
     );

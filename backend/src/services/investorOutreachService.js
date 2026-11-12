@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../config/logger.js';
-import { sendEmail } from './emailService.js';
-import { supabaseAdmin } from '../config/supabase.js';
 import leadDiscoveryService from './leadDiscoveryService.js';
+import { executeOutreachTick } from './outreachRunner.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,199 +129,19 @@ class InvestorOutreachService {
      * Continuously self-replenishes via PostgreSQL Supabase and local discovery catalogs.
      */
     async executeTick(force = false) {
-        this._refreshDailyQuota();
-
-        if (process.env.INVESTOR_CAMPAIGN_AUTORUN === 'false' && !force) {
-            logger.info('[INVESTOR OUTREACH] Autorun disabled via INVESTOR_CAMPAIGN_AUTORUN=false');
-            return { action: 'skipped', reason: 'autorun_disabled' };
-        }
-
-        // US Eastern Business Hours check (Mon-Fri 9am - 5pm EST)
-        const windowCheck = isUSInvestorBusinessHours();
-        if (!windowCheck.isHours && !force && process.env.FORCE_INVESTOR_SEND !== 'true') {
-            logger.info(`[INVESTOR OUTREACH] Outside US business hours (${windowCheck.reason}). Holding queue.`);
-            return { action: 'skipped', reason: 'outside_business_hours', details: windowCheck.reason };
-        }
-
-        // Daily limit check
-        if (this.state.sentToday >= this.dailyLimit && !force) {
-            logger.info(`[INVESTOR OUTREACH] Daily limit reached (${this.state.sentToday}/${this.dailyLimit})`);
-            return { action: 'skipped', reason: 'daily_limit_reached' };
-        }
-
-        // Spacing cooldown check
-        if (this.state.lastSentTimestamp && !force) {
-            const lastSent = new Date(this.state.lastSentTimestamp).getTime();
-            const now = Date.now();
-            const diffMinutes = (now - lastSent) / (1000 * 60);
-
-            if (diffMinutes < this.minIntervalMinutes) {
-                const waitTime = Math.round(this.minIntervalMinutes - diffMinutes);
-                logger.info(`[INVESTOR OUTREACH] Cooling active (${waitTime}m remaining before next pitch)`);
-                return { action: 'cooling', remainingMinutes: waitTime };
-            }
-        }
-
-        // Ensure database lead replenishment
-        try {
-            await leadDiscoveryService.replenishQueue('investor', 15);
-        } catch (replenishErr) {
-            logger.warn(`[INVESTOR OUTREACH] DB auto-replenishment notice: ${replenishErr.message}`);
-        }
-
-        // Ensure local queue replenishment as fallback
-        leadDiscoveryService.replenishLocalQueue(this.state, 'investor', 15);
-
-        // Candidate selection: Try Supabase first, fallback to local state
-        let candidate = null;
-        let isDbCandidate = false;
-
-        try {
-            const { data: dbLeads, error: dbErr } = await supabaseAdmin
-                .from('outreach_campaign_leads')
-                .select('*')
-                .eq('campaign_type', 'investor')
-                .eq('status', 'pending')
-                .order('created_at', { ascending: true })
-                .limit(1);
-
-            if (!dbErr && dbLeads && dbLeads.length > 0) {
-                candidate = {
-                    id: dbLeads[0].id,
-                    name: dbLeads[0].recipient_name,
-                    email: dbLeads[0].email,
-                    firm: dbLeads[0].organization,
-                    subject: dbLeads[0].subject,
-                    bodyText: dbLeads[0].body_text,
-                    attempts: dbLeads[0].attempts || 0
-                };
-                isDbCandidate = true;
-            }
-        } catch (dbEx) {
-            logger.warn(`[INVESTOR OUTREACH] Supabase query fallback: ${dbEx.message}`);
-        }
-
-        let candidateIndex = -1;
-        if (!candidate) {
-            candidateIndex = (this.state.queue || []).findIndex(t => t.status === 'pending');
-            if (candidateIndex !== -1) {
-                candidate = this.state.queue[candidateIndex];
-            }
-        }
-
-        if (!candidate) {
-            logger.info('[INVESTOR OUTREACH] No pending investors in queue');
-            return { action: 'idle', reason: 'queue_empty' };
-        }
-
-        // Format clean, professional HTML container with anti-spam compliance opt-out footer
-        const htmlContent = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #334155; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
-${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br/>')}</p>`).join('')}
-<p style="margin: 24px 0 0 0; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-TwinGenie (https://twingenie.app) • Pre-Seed Round • If you prefer not to receive investment correspondence, reply with 'unsubscribe' to be permanently excluded.
-</p>
-</div>
-`.trim();
-
-        const candidateName = candidate.name || candidate.recipientName;
-        logger.info(`[INVESTOR OUTREACH] Dispatching pitch to ${candidateName} at ${candidate.firm || candidate.organization} (${candidate.email})...`);
-
-        const nowIso = new Date().toISOString();
-        this.state.lastSentTimestamp = nowIso;
-
-        try {
-            const result = await sendEmail({
-                to: candidate.email,
-                subject: candidate.subject,
-                text: candidate.bodyText,
-                html: htmlContent,
-                from: this.senderEmail,
-                reply_to: this.replyTo,
-                tags: [
-                    { name: 'type', value: 'investor-preseed-pitch' },
-                    { name: 'firm', value: (candidate.firm || candidate.organization || 'Angel').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50) }
-                ]
-            });
-
-            if (result.success) {
-                logger.info(`✅ [INVESTOR OUTREACH] Successfully sent pitch to ${candidateName} (${candidate.email})! Resend ID: ${result.id}`);
-                this.state.sentToday += 1;
-
-                if (isDbCandidate) {
-                    try {
-                        await supabaseAdmin
-                            .from('outreach_campaign_leads')
-                            .update({
-                                status: 'sent',
-                                sent_at: nowIso,
-                                resend_id: result.id,
-                                updated_at: nowIso
-                            })
-                            .eq('id', candidate.id);
-                    } catch (updateErr) {
-                        logger.warn(`[INVESTOR OUTREACH] Could not update DB lead status: ${updateErr.message}`);
-                    }
-                }
-
-                if (candidateIndex !== -1) {
-                    candidate.status = 'sent';
-                    candidate.sentAt = nowIso;
-                    candidate.resendId = result.id;
-                    this.state.queue.splice(candidateIndex, 1);
-                    this.state.history.push({ ...candidate });
-                } else {
-                    this.state.history.push({
-                        ...candidate,
-                        status: 'sent',
-                        sentAt: nowIso,
-                        resendId: result.id
-                    });
-                }
-                this._saveState();
-
-                // Trigger background replenishment check
-                leadDiscoveryService.replenishLocalQueue(this.state, 'investor', 15);
-                this._saveState();
-
-                return {
-                    action: 'sent',
-                    recipient: candidateName,
-                    email: candidate.email,
-                    firm: candidate.firm || candidate.organization,
-                    subject: candidate.subject,
-                    resendId: result.id
-                };
-            } else {
-                logger.error(`❌ [INVESTOR OUTREACH] Failed to send to ${candidate.email}:`, result.error);
-                if (isDbCandidate) {
-                    try {
-                        await supabaseAdmin
-                            .from('outreach_campaign_leads')
-                            .update({
-                                attempts: (candidate.attempts || 0) + 1,
-                                last_attempt_at: nowIso,
-                                error: JSON.stringify(result.error),
-                                updated_at: nowIso
-                            })
-                            .eq('id', candidate.id);
-                    } catch (dbErr) {
-                        logger.warn(`[INVESTOR OUTREACH] DB error update notice: ${dbErr.message}`);
-                    }
-                }
-
-                if (candidateIndex !== -1) {
-                    candidate.attempts = (candidate.attempts || 0) + 1;
-                    candidate.lastAttemptAt = nowIso;
-                    candidate.error = JSON.stringify(result.error);
-                }
-                this._saveState();
-                return { action: 'error', candidate: candidate.email, error: result.error };
-            }
-        } catch (err) {
-            logger.error(`🚨 [INVESTOR OUTREACH] Exception sending to ${candidate.email}:`, err);
-            return { action: 'exception', error: err.message };
-        }
+        return executeOutreachTick({
+            campaignType: 'investor',
+            logPrefix: '[INVESTOR OUTREACH]',
+            autorunEnvVar: 'INVESTOR_CAMPAIGN_AUTORUN',
+            forceEnvVar: 'FORCE_INVESTOR_SEND',
+            isBusinessHoursFn: isUSInvestorBusinessHours,
+            service: this,
+            footerNote:
+                "TwinGenie (https://twingenie.app) • Direct founder correspondence • If you prefer not to receive investment updates, reply with 'unsubscribe' to be permanently excluded.",
+            resendTagType: 'investor-preseed-pitch',
+            organizationTagKey: 'firm',
+            force,
+        });
     }
 }
 

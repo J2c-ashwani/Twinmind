@@ -4,117 +4,96 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
 
 /**
  * Growth Distribution Scheduler Job
- * Runs 24/7 on Render in the cloud.
- * 
- * ARCHITECTURE PRINCIPLE: Single Source of Scheduling Truth
- * Authoritative primary scheduler: cron-job.org (external cloud cron calling secure webhooks).
- * This internal job serves purely as:
- * 1. Nightly Fail-Safe Sweep (11:00 PM IST): Safely catches up any missed post across platforms
- *    using the Supabase Durable Distributed Idempotency Ledger.
- * 2. Graceful Boot Check (30s after startup): Validates today's publishing state without duplicating.
- * 
- * Duplicate intra-day internal timers (8:30 AM, 4:00 PM, 7:00 PM, 7:30 PM) have been retired
- * to prevent dual-scheduler collision and guarantee exactly-once daily publishing.
+ * Single-source schedule definitions aligned with external cron-job.org triggers (IST):
+ * - LinkedIn Personal: 08:30 IST (03:00 UTC)
+ * - Facebook Page Reel: 16:30 IST (11:00 UTC)
+ * - Instagram Reel: 19:00 IST (13:30 UTC)
+ * - Threads Micro-Essay: 19:30 IST (14:00 UTC)
+ * - Nightly Fail-Safe Sweep: 23:00 IST (17:30 UTC)
  */
-
 export function initGrowthJobs() {
-    logger.info('Initializing Growth Distribution Jobs (Quad-Platform Dedicated Crons + Startup Boot Check + Nightly Sweep)...');
+    logger.info('Initializing Growth Distribution Jobs (aligned IST schedules + Boot Check + Nightly Sweep)...');
 
-    // 1. 4:00 PM IST (16:00 Asia/Kolkata): Daily LinkedIn Personal Profile Carousel
-    cron.schedule('0 16 * * *', async () => {
-        try {
-            logger.info('⏰ [GROWTH JOB] 4:00 PM IST reached! Executing daily LinkedIn carousel publication...');
-            await growthOrchestratorService.publishDailyLinkedInPersonal(false);
-        } catch (e) {
-            logger.error('[GROWTH JOB] 4:00 PM LinkedIn publication error:', e);
-        }
-    }, { timezone: 'Asia/Kolkata' });
+    // Note: External cron-job.org triggers primary webhooks. Set ENABLE_INTERNAL_GROWTH_TIMERS=true only if external cron is disabled.
+    if (process.env.ENABLE_INTERNAL_GROWTH_TIMERS === 'true') {
+        cron.schedule('30 8 * * *', async () => {
+            try {
+                await growthOrchestratorService.publishDailyLinkedInPersonal(false);
+            } catch (e) {
+                logger.error('[GROWTH JOB] 08:30 IST LinkedIn publication error:', e);
+            }
+        }, { timezone: 'Asia/Kolkata' });
 
-    // 2. 4:30 PM IST (16:30 Asia/Kolkata): Daily Facebook Page Reel Broadcast
-    cron.schedule('30 16 * * *', async () => {
-        try {
-            logger.info('⏰ [GROWTH JOB] 4:30 PM IST reached! Executing daily Facebook Reel publication...');
-            await growthOrchestratorService.publishDailyFacebookReel(false);
-        } catch (e) {
-            logger.error('[GROWTH JOB] 4:30 PM Facebook publication error:', e);
-        }
-    }, { timezone: 'Asia/Kolkata' });
+        cron.schedule('30 16 * * *', async () => {
+            try {
+                await growthOrchestratorService.publishDailyFacebookReel(false);
+            } catch (e) {
+                logger.error('[GROWTH JOB] 16:30 IST Facebook publication error:', e);
+            }
+        }, { timezone: 'Asia/Kolkata' });
 
-    // 3. 7:00 PM IST (19:00 Asia/Kolkata): Daily Instagram Reel Broadcast
-    cron.schedule('0 19 * * *', async () => {
-        try {
-            logger.info('⏰ [GROWTH JOB] 7:00 PM IST reached! Executing daily Instagram Reel publication...');
-            await growthOrchestratorService.publishDailyInstagram(false);
-        } catch (e) {
-            logger.error('[GROWTH JOB] 7:00 PM Instagram publication error:', e);
-        }
-    }, { timezone: 'Asia/Kolkata' });
+        cron.schedule('0 19 * * *', async () => {
+            try {
+                await growthOrchestratorService.publishDailyInstagram(false);
+            } catch (e) {
+                logger.error('[GROWTH JOB] 19:00 IST Instagram publication error:', e);
+            }
+        }, { timezone: 'Asia/Kolkata' });
 
-    // 4. 7:30 PM IST (19:30 Asia/Kolkata): Daily Threads Micro-Essay Broadcast
-    cron.schedule('30 19 * * *', async () => {
-        try {
-            logger.info('⏰ [GROWTH JOB] 7:30 PM IST reached! Executing daily Threads micro-essay publication...');
-            await growthOrchestratorService.publishDailyThreads(false);
-        } catch (e) {
-            logger.error('[GROWTH JOB] 7:30 PM Threads publication error:', e);
-        }
-    }, { timezone: 'Asia/Kolkata' });
+        cron.schedule('30 19 * * *', async () => {
+            try {
+                await growthOrchestratorService.publishDailyThreads(false);
+            } catch (e) {
+                logger.error('[GROWTH JOB] 19:30 IST Threads publication error:', e);
+            }
+        }, { timezone: 'Asia/Kolkata' });
+    }
 
-    // 5. Nightly Fail-Safe Sweep: 11:00 PM IST (23:00 Asia/Kolkata)
-    // Runs once daily at the end of the day. If already published, the Durable Distributed Ledger
-    // skips in <10ms. If any platform was missed, this guarantees publication before midnight!
+    // Nightly Fail-Safe Sweep: 23:00 IST
     cron.schedule('0 23 * * *', async () => {
         try {
-            logger.info('⏰ [GROWTH JOB] 11:00 PM IST reached! Executing nightly fail-safe sweep for all platforms...');
+            if (growthOrchestratorService.isSystemPaused()) {
+                logger.info('[GROWTH JOB] Nightly sweep skipped: system paused.');
+                return;
+            }
+            logger.info('⏰ [GROWTH JOB] 23:00 IST Nightly fail-safe sweep...');
             await growthOrchestratorService.publishDailyLinkedInPersonal(false);
             await growthOrchestratorService.publishDailyFacebookReel(false);
             await growthOrchestratorService.publishDailyInstagram(false);
             await growthOrchestratorService.publishDailyThreads(false);
+            await growthOrchestratorService.publishDailyYouTube(false);
         } catch (e) {
             logger.error('[GROWTH JOB] Nightly fail-safe sweep error:', e);
         }
     }, { timezone: 'Asia/Kolkata' });
 
-    // Graceful Boot Check: Safely checks for any missing post on container startup
-    // Protected by Durable Distributed Idempotency Ledger in Supabase
+    // Graceful Boot Check: respects pause state and aligned IST publication windows
     setTimeout(async () => {
         try {
+            if (growthOrchestratorService.isSystemPaused()) {
+                logger.info('⏸️ [GROWTH JOB] Boot check skipped: system is paused.');
+                return;
+            }
             logger.info('🚀 [GROWTH JOB] Performing startup durable ledger verification...');
-            const now = new Date();
             const nowIST = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Kolkata',
                 hour: 'numeric',
                 minute: 'numeric',
-                hour12: false
-            }).format(now);
+                hour12: false,
+            }).format(new Date());
             const [istHour, istMin] = nowIST.split(':').map(Number);
             const istTimeNum = istHour * 60 + (istMin || 0);
 
-            // After 09:00 AM IST (540 min): verify LinkedIn Personal Carousel
-            if (istTimeNum >= 540) {
-                await growthOrchestratorService.publishDailyLinkedInPersonal(false);
-            }
-
-            // After 05:00 PM IST (1020 min): verify Facebook Page broadcast
-            if (istTimeNum >= 1020) {
-                await growthOrchestratorService.publishDailyFacebookReel(false);
-            }
-
-            // After 07:30 PM IST (1170 min): verify Instagram broadcast
-            if (istTimeNum >= 1170) {
-                await growthOrchestratorService.publishDailyInstagram(false);
-            }
-
-            // After 08:00 PM IST (1200 min): verify Threads micro-essay
-            if (istTimeNum >= 1200) {
-                await growthOrchestratorService.publishDailyThreads(false);
-            }
+            if (istTimeNum >= 510) await growthOrchestratorService.publishDailyLinkedInPersonal(false); // >= 08:30 IST
+            if (istTimeNum >= 990) await growthOrchestratorService.publishDailyFacebookReel(false);      // >= 16:30 IST
+            if (istTimeNum >= 1140) await growthOrchestratorService.publishDailyInstagram(false);        // >= 19:00 IST
+            if (istTimeNum >= 1170) await growthOrchestratorService.publishDailyThreads(false);          // >= 19:30 IST
         } catch (e) {
             logger.warn('[GROWTH JOB] Startup check warning:', e.message);
         }
-    }, 30000); // 30 seconds after startup
+    }, 30000);
 
-    logger.info('✅ Growth distribution scheduler active (Single Source: cron-job.org + Nightly Sweep at 23:00 IST)');
+    logger.info('✅ Growth distribution scheduler active (IST aligned; external cron primary + Nightly Sweep 23:00 IST)');
 }
 
 export default { initGrowthJobs };

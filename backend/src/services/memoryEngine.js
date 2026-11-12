@@ -11,25 +11,35 @@ import logger from '../config/logger.js';
  */
 
 /**
- * Generate embedding safely through aiService
+ * Generate embedding + provider metadata safely through aiService
  */
-export async function generateEmbedding(text) {
+export async function generateEmbeddingWithMeta(text) {
     try {
         if (!text || text.trim().length === 0) {
             throw new Error("Cannot generate embedding for empty text.");
         }
 
-        const embedding = await aiService.generateEmbedding(text);
+        const result = typeof aiService.generateEmbeddingWithMeta === 'function'
+            ? await aiService.generateEmbeddingWithMeta(text)
+            : { vector: await aiService.generateEmbedding(text), provider: 'unknown', model: 'unknown' };
 
-        if (!embedding || !Array.isArray(embedding)) {
-            throw new Error("Invalid embedding returned by provider.");
+        if (!result?.vector || !Array.isArray(result.vector) || !result.vector.some((v) => v !== 0)) {
+            throw new Error("Invalid or zero embedding returned by provider.");
         }
 
-        return embedding;
+        return result;
     } catch (err) {
-        logger.error("❌ Embedding generation error:", err);
+        logger.error("❌ Embedding generation error:", err.message);
         throw err;
     }
+}
+
+/**
+ * Generate embedding safely through aiService
+ */
+export async function generateEmbedding(text) {
+    const { vector } = await generateEmbeddingWithMeta(text);
+    return vector;
 }
 
 /**
@@ -69,16 +79,24 @@ export async function storeMemory(userId, content, metadata = {}) {
 
         logger.info(`🧠 Storing memory for user ${userId}`);
 
-        const embedding = await generateEmbedding(content);
+        let embeddingResult;
+        try {
+            embeddingResult = await generateEmbeddingWithMeta(content);
+        } catch (embErr) {
+            logger.warn(`⚠️ Skipping vector memory insert due to embedding failure: ${embErr.message}`);
+            return null;
+        }
 
         const { data, error } = await supabaseAdmin
             .from("memory_vectors")
             .insert({
                 user_id: userId,
                 content,
-                embedding,
+                embedding: embeddingResult.vector,
                 metadata: {
                     ...metadata,
+                    embedding_provider: embeddingResult.provider,
+                    embedding_model: embeddingResult.model,
                     stored_at: new Date().toISOString(),
                 }
             })
@@ -103,40 +121,58 @@ export async function storeMemory(userId, content, metadata = {}) {
 }
 
 /**
+ * Filter matched vector results for matching embedding space & optional conversation metadata
+ */
+export function filterRetrievedMemories(results = [], { queryProvider = null, scopeConversationId = null } = {}) {
+    return (results || []).filter((m) => {
+        const storedProvider = m?.metadata?.embedding_provider;
+        if (queryProvider && queryProvider !== 'unknown' && storedProvider && storedProvider !== queryProvider) {
+            return false;
+        }
+        if (scopeConversationId) {
+            const rowConvId = m?.conversation_id || m?.metadata?.conversation_id;
+            return rowConvId === scopeConversationId;
+        }
+        return true;
+    });
+}
+
+/**
  * Retrieve relevant memories using semantic search (Supabase RPC)
+ * Note: Long-term memory is intentionally cross-session (per user), not discarded per conversationId.
  */
 export async function retrieveMemories(userId, query, options = {}) {
     try {
         const {
             limit = 15,
             threshold = 0.70,
-            conversationId = null,
+            scopeConversationId = null,
         } = options;
 
         if (!query || query.trim().length === 0) return [];
 
         logger.info(`🔍 Retrieving memories for user ${userId}`);
 
-        const queryEmbedding = await generateEmbedding(query);
+        const { vector: queryEmbedding, provider: queryProvider } = await generateEmbeddingWithMeta(query);
 
-        // Call SQL function match_memories
+        // Call SQL function match_memories (over-fetch slightly to allow provider-space filtering)
         let { data, error } = await supabaseAdmin.rpc("match_memories", {
             query_embedding: queryEmbedding,
             match_user_id: userId,
             match_threshold: threshold,
-            match_count: limit
+            match_count: limit * 2
         });
 
         if (error) throw error;
         if (!data) data = [];
 
-        // Filter by conversation context
-        if (conversationId) {
-            data = data.filter(m => m.conversation_id === conversationId);
-        }
+        const filtered = filterRetrievedMemories(data, {
+            queryProvider,
+            scopeConversationId,
+        }).slice(0, limit);
 
-        logger.info(`📚 Retrieved ${data.length} memories`);
-        return data;
+        logger.info(`📚 Retrieved ${filtered.length} memories`);
+        return filtered;
     } catch (err) {
         logger.error("❌ Memory retrieval error:", err);
         return []; // Fail safe
@@ -146,7 +182,7 @@ export async function retrieveMemories(userId, query, options = {}) {
 /**
  * Store chat memory (User or Twin)
  */
-export async function storeChatMemory(userId, message, sender, mode = "normal") {
+export async function storeChatMemory(userId, message, sender, mode = "normal", conversationId = null) {
     try {
         if (!message || !sender) return;
 
@@ -158,6 +194,7 @@ export async function storeChatMemory(userId, message, sender, mode = "normal") 
             type: "chat",
             sender,
             mode,
+            ...(conversationId ? { conversation_id: conversationId } : {}),
             timestamp: new Date().toISOString(),
         });
 

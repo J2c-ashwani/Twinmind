@@ -5,6 +5,7 @@ import 'welcome_screen.dart';
 import 'main_screen.dart';
 
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'onboarding_screen.dart';
 
 class AuthWrapper extends StatefulWidget {
@@ -44,6 +45,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
             setState(() {
               _hasPersonality = true;
               _isLoading = false;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              NotificationService().consumePendingNavigation();
             });
           }
         } on HttpException catch (e) {

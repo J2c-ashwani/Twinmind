@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.asmind.app",
+      "sha256_cert_fingerprints": [
+        "A2:05:D8:19:0E:ED:60:C4:38:0E:AF:4C:77:58:EB:3A:5D:63:F8:11:35:9B:7F:06:01:A7:08:87:4A:06:BC:FD"
+      ]
+    }
+  }
+]

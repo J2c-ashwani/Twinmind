@@ -5,8 +5,10 @@ import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
 import {
     acknowledgeSubscriptionPurchase,
+    evaluatePlayEntitlement,
     verifySubscriptionPurchase,
 } from '../services/googlePlayService.js';
+import { isEffectivePro } from '../middleware/subscriptionMiddleware.js';
 
 const router = express.Router();
 const paymentProvider = process.env.PAYMENTS_PROVIDER || 'google_play';
@@ -67,16 +69,30 @@ router.get('/status', authenticateUser, async (req, res) => {
             .from('subscriptions')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (error && error.code !== 'PGRST116') throw error;
 
-        const subscription = data || {
-            plan_type: 'free',
-            status: 'active'
-        };
+        const isPro = isEffectivePro(data);
+        const expired = Boolean(
+            data?.plan_type === 'pro' &&
+            data?.current_period_end &&
+            new Date(data.current_period_end) <= new Date()
+        );
 
-        res.json({ subscription });
+        const subscription = data
+            ? {
+                  ...data,
+                  status: expired ? 'expired' : data.status,
+                  is_pro: isPro,
+              }
+            : {
+                  plan_type: 'free',
+                  status: 'active',
+                  is_pro: false,
+              };
+
+        res.json({ subscription, isPro });
 
     } catch (error) {
         logger.error('Error fetching subscription:', error);
@@ -86,7 +102,7 @@ router.get('/status', authenticateUser, async (req, res) => {
 
 /**
  * POST /api/subscription/google-play/verify
- * Verify a Google Play purchase token and activate the user's subscription.
+ * Verify a Google Play purchase token, bind single-account ownership, and persist entitlement.
  */
 router.post('/google-play/verify', authenticateUser, async (req, res) => {
     try {
@@ -104,21 +120,62 @@ router.post('/google-play/verify', authenticateUser, async (req, res) => {
             return res.status(400).json({ error: 'productId and purchaseToken are required' });
         }
 
+        // Reject purchase tokens already owned by another TwinGenie user
+        const { data: existingTokenOwner, error: tokenLookupError } = await supabaseAdmin
+            .from('subscriptions')
+            .select('user_id, google_play_purchase_token')
+            .eq('google_play_purchase_token', purchaseToken)
+            .maybeSingle();
+
+        if (tokenLookupError && tokenLookupError.code !== 'PGRST116') {
+            throw tokenLookupError;
+        }
+
+        if (existingTokenOwner && existingTokenOwner.user_id !== userId) {
+            return res.status(409).json({
+                error: 'This purchase token is already linked to another TwinGenie account.',
+            });
+        }
+
         const verified = await verifySubscriptionPurchase({ productId, purchaseToken });
-        if (verified.status !== 'active') {
+
+        if (verified.obfuscatedExternalAccountId && verified.obfuscatedExternalAccountId !== userId) {
+            return res.status(403).json({
+                error: 'This Google Play subscription belongs to a different TwinGenie account.',
+            });
+        }
+
+        if (verified.linkedPurchaseToken) {
+            const { data: linkedOwner } = await supabaseAdmin
+                .from('subscriptions')
+                .select('user_id')
+                .eq('google_play_purchase_token', verified.linkedPurchaseToken)
+                .maybeSingle();
+
+            if (linkedOwner && linkedOwner.user_id !== userId) {
+                return res.status(409).json({
+                    error: 'Linked purchase token belongs to another TwinGenie account.',
+                });
+            }
+        }
+
+        const grantsPro = evaluatePlayEntitlement(verified);
+        if (!grantsPro) {
             return res.status(402).json({
-                error: 'Google Play subscription is not active yet.',
+                error: 'Google Play subscription is not active.',
                 subscriptionState: verified.raw.subscriptionState,
                 status: verified.status,
             });
         }
 
-        await acknowledgeSubscriptionPurchase({ productId, purchaseToken });
+        if (verified.acknowledgementState !== 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED') {
+            await acknowledgeSubscriptionPurchase({ productId, purchaseToken });
+        }
 
         const upsertData = {
             user_id: userId,
             plan_type: 'pro',
-            status: 'active',
+            status: verified.status === 'cancelled' ? 'cancelled' : 'active',
             google_play_product_id: productId,
             google_play_purchase_token: purchaseToken,
             google_play_order_id: verified.orderId,
@@ -135,16 +192,90 @@ router.post('/google-play/verify', authenticateUser, async (req, res) => {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '23505') {
+                return res.status(409).json({
+                    error: 'Purchase token is already registered to another account.',
+                });
+            }
+            throw error;
+        }
 
         res.json({
             success: true,
             subscription,
+            isPro: isEffectivePro(subscription),
             provider: 'google_play',
         });
     } catch (error) {
         logger.error('Google Play verification error:', error);
         res.status(500).json({ error: error.message || 'Failed to verify Google Play subscription' });
+    }
+});
+
+/**
+ * POST /api/subscription/google-play/rtdn
+ * Google Play Real-Time Developer Notifications (Pub/Sub push) reconciliation endpoint
+ */
+router.post('/google-play/rtdn', async (req, res) => {
+    try {
+        const expectedSecret = process.env.GOOGLE_PLAY_RTDN_SECRET;
+        if (expectedSecret) {
+            const supplied = req.headers['x-rtdn-secret'] || req.query.secret;
+            if (supplied !== expectedSecret) {
+                return res.status(401).json({ error: 'Unauthorized RTDN notification' });
+            }
+        }
+
+        const encodedData = req.body?.message?.data;
+        if (!encodedData) {
+            return res.status(400).json({ error: 'Missing Pub/Sub message data' });
+        }
+
+        const decoded = JSON.parse(Buffer.from(encodedData, 'base64').toString('utf8'));
+        const subNotif = decoded.subscriptionNotification;
+
+        if (!subNotif?.purchaseToken) {
+            return res.json({ received: true, ignored: true });
+        }
+
+        const purchaseToken = subNotif.purchaseToken;
+        const { data: subRow } = await supabaseAdmin
+            .from('subscriptions')
+            .select('user_id, google_play_product_id')
+            .or(`google_play_purchase_token.eq.${purchaseToken},google_play_linked_purchase_token.eq.${purchaseToken}`)
+            .maybeSingle();
+
+        const verified = await verifySubscriptionPurchase({
+            productId: subNotif.subscriptionId || subRow?.google_play_product_id,
+            purchaseToken,
+        });
+
+        const grantsPro = evaluatePlayEntitlement(verified);
+        const mappedStatus = verified.status === 'cancelled' ? 'cancelled' : grantsPro ? 'active' : 'expired';
+        const targetUserId = subRow?.user_id || verified.obfuscatedExternalAccountId;
+
+        if (targetUserId) {
+            await supabaseAdmin
+                .from('subscriptions')
+                .update({
+                    plan_type: grantsPro ? 'pro' : 'free',
+                    status: mappedStatus,
+                    google_play_product_id: verified.productId || subRow?.google_play_product_id,
+                    google_play_purchase_token: purchaseToken,
+                    google_play_order_id: verified.orderId,
+                    google_play_linked_purchase_token: verified.linkedPurchaseToken,
+                    google_play_raw_response: verified.raw,
+                    current_period_end: verified.expiryTime,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('user_id', targetUserId);
+        }
+
+        res.json({ received: true, reconciled: Boolean(targetUserId), status: mappedStatus });
+    } catch (error) {
+        logger.error('Google Play RTDN error:', error);
+        res.status(500).json({ error: 'Failed to process Google Play notification' });
     }
 });
 

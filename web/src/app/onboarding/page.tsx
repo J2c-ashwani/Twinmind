@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import api from '@/lib/api'
+import { flushPendingAttribution } from '@/lib/attribution'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Brain, Loader2, ChevronLeft, ChevronRight, Mail, Lock, User } from 'lucide-react'
 
@@ -96,6 +97,14 @@ export default function OnboardingPage() {
             const { data: { session } } = await supabase.auth.getSession()
 
             if (session) {
+                await flushPendingAttribution({
+                    accessToken: session.access_token,
+                    userId: session.user.id,
+                    email: session.user.email,
+                    fullName: session.user.user_metadata?.full_name,
+                    userMetadata: session.user.user_metadata,
+                })
+
                 // User is signed in, check if they've completed onboarding (must have generated personality)
                 const { data: profile } = await supabase
                     .from('personality_profiles')

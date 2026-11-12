@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/api_service.dart';
 
@@ -14,13 +13,33 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
   final _searchController = TextEditingController();
   bool _isLoading = false;
   Map<String, dynamic>? _matchResult;
+  List<dynamic> _invitations = [];
+  String? _statusMessage;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvitations();
+  }
+
+  Future<void> _loadInvitations() async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) return;
+    try {
+      final api = ApiService();
+      api.setToken(session.accessToken);
+      final invites = await api.getTwinMatchInvitations();
+      if (mounted) {
+        setState(() => _invitations = invites);
+      }
+    } catch (_) {}
+  }
 
   Future<void> _handleSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
 
-    // Check if user is authenticated
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       setState(() {
@@ -32,18 +51,31 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _statusMessage = null;
       _matchResult = null;
     });
 
     try {
       final api = ApiService();
       api.setToken(session.accessToken);
-      
-      final result = await api.compareTwins(query);
-      
-      setState(() {
-        _matchResult = result;
-      });
+
+      try {
+        final result = await api.compareTwins(query);
+        setState(() {
+          _matchResult = result;
+        });
+      } on HttpException catch (e) {
+        if (e.statusCode == 403) {
+          final inviteRes = await api.inviteTwinMatch(query);
+          setState(() {
+            _statusMessage = inviteRes['message'] ??
+                'Consent invitation sent. Compatibility unlocks once accepted.';
+          });
+          await _loadInvitations();
+        } else {
+          rethrow;
+        }
+      }
     } catch (e) {
       setState(() {
         _error = e.toString().replaceAll('Exception: ', '');
@@ -52,6 +84,29 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _respondInvite(String invitationId, bool accept) async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) return;
+    setState(() => _isLoading = true);
+    try {
+      final api = ApiService();
+      api.setToken(session.accessToken);
+      if (accept) {
+        final res = await api.acceptTwinMatchInvitation(invitationId);
+        if (res['comparison'] is Map<String, dynamic>) {
+          setState(() => _matchResult = res['comparison']);
+        }
+      } else {
+        await api.declineTwinMatchInvitation(invitationId);
+      }
+      await _loadInvitations();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -149,6 +204,21 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
                           ),
                         ],
                       ),
+                      if (_statusMessage != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            _statusMessage!,
+                            style: TextStyle(color: Colors.green[200], fontSize: 14),
+                          ),
+                        ),
+                      ],
                       if (_error != null) ...[
                         const SizedBox(height: 16),
                         Container(
@@ -164,6 +234,40 @@ class _TwinMatchScreenState extends State<TwinMatchScreen> {
                           ),
                         ),
                       ],
+                      ..._invitations
+                          .where((i) => i['direction'] == 'incoming' && i['status'] == 'pending')
+                          .map((inv) => Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '${inv['partner_twin_name'] ?? 'Friend'} invited you to Twin Match',
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: _isLoading
+                                            ? null
+                                            : () => _respondInvite(inv['id'].toString(), true),
+                                        child: const Text('Accept'),
+                                      ),
+                                      TextButton(
+                                        onPressed: _isLoading
+                                            ? null
+                                            : () => _respondInvite(inv['id'].toString(), false),
+                                        child: const Text('Decline'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )),
                     ],
                   ),
                 ),

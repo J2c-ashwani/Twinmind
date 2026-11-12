@@ -35,6 +35,7 @@ export async function middleware(req: NextRequest) {
         '/onboarding',
         '/subscription',
         '/try',
+        '/test',
         '/pricing',
         '/coaching',
         '/robots.txt',

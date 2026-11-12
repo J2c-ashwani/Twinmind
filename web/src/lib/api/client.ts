@@ -430,7 +430,36 @@ class ApiClient {
         return this.request(`/api/growth-story/insights/${period}`);
     }
 
-    // Twin Match
+    // Twin Match (consent-based)
+    async inviteTwinMatch(identifier: string) {
+        return this.request('/api/twin-match/invite', {
+            method: 'POST',
+            body: JSON.stringify({ identifier }),
+        });
+    }
+
+    async getTwinMatchInvitations() {
+        return this.request('/api/twin-match/invitations');
+    }
+
+    async acceptTwinMatchInvitation(invitationId: string) {
+        return this.request(`/api/twin-match/invitations/${invitationId}/accept`, {
+            method: 'POST',
+        });
+    }
+
+    async declineTwinMatchInvitation(invitationId: string) {
+        return this.request(`/api/twin-match/invitations/${invitationId}/decline`, {
+            method: 'POST',
+        });
+    }
+
+    async revokeTwinMatch(matchId: string) {
+        return this.request(`/api/twin-match/${matchId}`, {
+            method: 'DELETE',
+        });
+    }
+
     async findUserForMatch(identifier: string) {
         return this.request('/api/twin-match/find', {
             method: 'POST',

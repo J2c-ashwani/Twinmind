@@ -166,17 +166,28 @@ export function normalizePersonalityProfile(rawJson) {
 
     const bigFive = rawJson.big_five || {};
 
-    // Helper to clamp values to 0.0 - 1.0 range
+    // Helper to parse numeric or stringified numeric values and clamp to 0.0 - 1.0 range
+    const toNumericScore = (val) => {
+        if (typeof val === 'number' && !Number.isNaN(val)) return val;
+        if (typeof val === 'string' && val.trim() !== '') {
+            const parsed = Number(val.trim());
+            if (!Number.isNaN(parsed)) return parsed;
+        }
+        return null;
+    };
+
     const normalizeScore = (val, defaultVal = 50) => {
-        if (typeof val !== 'number' || isNaN(val)) val = defaultVal;
-        if (val > 1) val = val / 100; // Handle 1-100 scale to 0-1
-        return Math.max(0, Math.min(1, val));
+        let num = toNumericScore(val);
+        if (num === null) num = defaultVal;
+        if (num > 1) num = num / 100; // Handle 1-100 scale to 0-1
+        return Math.max(0, Math.min(1, num));
     };
 
     // Calculate neuroticism from emotional_stability if needed (emotional_stability = 100 - neuroticism)
-    let neuroticismVal = bigFive.neuroticism;
-    if (neuroticismVal === undefined && bigFive.emotional_stability !== undefined) {
-        neuroticismVal = 100 - bigFive.emotional_stability;
+    let neuroticismVal = toNumericScore(bigFive.neuroticism);
+    const stabilityVal = toNumericScore(bigFive.emotional_stability);
+    if (neuroticismVal === null && stabilityVal !== null) {
+        neuroticismVal = stabilityVal <= 1 ? 1 - stabilityVal : 100 - stabilityVal;
     }
 
     // Extract core values array

@@ -648,15 +648,15 @@ class LeadDiscoveryService {
         const name = candidate.recipientName.split(' ')[0] || candidate.recipientName;
         const pub = candidate.organization || 'your publication';
 
-        let subject = `Pitch: Reddit’s backlash against sycophantic AI companions (and our unedited head-to-head test)`;
+        let subject = `Pitch: Why AI companions need anti-sycophancy guardrails (TwinGenie)`;
         let introP = `I’ve followed your coverage of consumer AI and tech culture at ${pub}, particularly how companion models shape human behavior.`;
 
         if (candidate.angle === 'cognitive_architecture') {
-            subject = `${name} — unedited test: Why AI companions flatter users (and our anti-sycophancy model)`;
+            subject = `${name} — Designing an anti-sycophantic AI self-reflection twin`;
             introP = `I follow your analysis of AI cognition and thinking tools at ${pub}.`;
         } else if (candidate.angle === 'loneliness_economy') {
-            subject = `Story idea: The dangerous sycophancy trap of AI companions`;
-            introP = `I follow your reporting at ${pub} on the societal and emotional impact of companion AI algorithms.`;
+            subject = `Story idea: The sycophancy trap in consumer AI companions`;
+            introP = `I follow your reporting at ${pub} on the societal and emotional impact of companion AI systems.`;
         } else if (candidate.angle === 'product_teardown') {
             subject = `Product teardown: What happens when an AI companion refuses to flatter you?`;
             introP = `I read your coverage of new consumer AI products and UX patterns at ${pub}.`;
@@ -666,20 +666,16 @@ class LeadDiscoveryService {
 
 ${introP}
 
-Over on Reddit (across r/Replika, r/CharacterAI, and r/artificial), there is an escalating backlash against "AI sycophancy"—the way companion chatbots agree with every rationalization, cheer on procrastination, and act as hollow flattery mirrors. When a user confesses they spent 5 hours organizing Notion cards instead of doing real work, standard AI cheers: "Great job staying organized! You're doing amazing!"
+Across consumer AI companion forums, users increasingly push back on AI sycophancy—the tendency of chat assistants to agree with every rationalization and flatter procrastination instead of encouraging honest reflection.
 
-It feels comforting in the moment, but users are increasingly reporting feeling hollow and alienated by bots that never push back.
+I’m Ashwani Kumar, an independent solo founder, and I built TwinGenie (https://twingenie.app) as an AI self-reflection companion designed around grounded feedback rather than empty validation.
 
-I’m an indie engineer, and over the past 6 months I built TwinGenie (https://twingenie.app) to test the opposite hypothesis: what happens when an AI companion acts as an uncompromising cognitive mirror?
+What is live today on Android and Web:
+• 35-question Big Five personality onboarding that shapes each user's Twin profile from day one.
+• 4 reflective perspectives: Normal Twin, 5-Year Future Self, Reflective/Supportive mode, and Honest mode.
+• Semantic vector memory built on PostgreSQL + pgvector plus deterministic crisis interception and output safety boundaries (non-clinical mindfulness tool, not licensed therapy).
 
-We built a transparent system using longitudinal memory (PostgreSQL + pgvector) and a 35-question Big Five personality baseline:
-• 4 Distinct Perspectives: Baseline, 5-Year Future Self, Clinical Therapist, and Honest/Shadow Twin.
-• The Single-Strike Rule: In Honest Mode, TwinGenie calls out avoidance and excuses directly—while strictly guarded to never attack the user's worth or identity.
-• The Head-to-Head Comparison: When tested with identical procrastination prompts, conventional companions validate the delay, while TwinGenie pinpoints the avoidance and urges immediate action.
-
-I would love to send you our unedited prompt comparison data, or give you unrestricted access to test TwinGenie directly.
-
-Would you be interested in exploring this or seeing the unedited transcripts?
+If you'd like to explore how it works, I’d be glad to send over a short product walkthrough video or set up test access on Google Play or Web.
 
 Best,
 Ashwani Kumar
@@ -693,23 +689,19 @@ https://twingenie.app | founder@twingenie.app`;
         const name = candidate.recipientName.split(' ')[0] || candidate.recipientName;
         const firm = candidate.organization || 'your fund';
 
-        const subject = `TwinGenie (Pre-Seed): Building the Zero-Party Cognitive Graph for Consumer AI`;
+        const subject = `TwinGenie: Structured Big Five onboarding & longitudinal memory for personal AI`;
         const bodyText = `Hi ${name},
 
-I follow your focus at ${firm} on consumer AI and conversational software, particularly the challenges around retention cliffs and product differentiation.
+I follow your focus at ${firm} on consumer AI and conversational software, especially around retention and differentiation beyond generic chat wrappers.
 
-The fundamental reason consumer AI chatbots experience high D30 churn is context amnesia and sycophancy. Because commodity models have no longitudinal baseline, they default to empty cheerleading and mirror the user's confirmation bias.
+Generic AI chatbots start every session cold and tend toward agreeable sycophancy. I’m Ashwani Kumar, solo founder of TwinGenie (https://twingenie.app), an early-stage self-reflection companion built to personalize from session one:
+• 35-Question Personality Onboarding: Captures Big Five tendencies and reflection preferences up front to shape tone and perspective.
+• Persistent Context Layer: Built on Node.js, PostgreSQL + pgvector semantic memory, and multi-provider LLM routing with deterministic crisis & safety guards.
+• 4 Reflective Perspectives: Normal, 5-Year Future Self, Reflective/Supportive, and Honest modes designed to challenge avoidance rather than flatter it.
 
-I’m Ashwani, founder of TwinGenie (https://twingenie.app). We are building what we call the "Zero-Party Cognitive Graph" for consumer AI:
-• 35-Vector Baseline Calibration: Before their first session, users complete an onboarding assessment across the Big Five personality traits (78.8% completion rate), establishing an objective cognitive baseline.
-• Longitudinal Context Moat: Built on PostgreSQL + pgvector, TwinGenie tracks user rationalizations, goal drift, and behavioral patterns over weeks, rather than treating each chat as day zero.
-• The Anti-Sycophancy Positioning: 4 real-time cognitive perspectives (Baseline, 5-Year Future Self, Clinical Therapist, and Honest Twin). Honest Mode calls out avoidance and excuses with zero flattery—while enforcing a Single-Strike guardrail to protect user dignity.
+We have a live Android app on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) alongside a Next.js web app. We're still early-stage (pre-revenue) and exploring strategic partners, angel backing, or product acquisition conversations.
 
-Just as Cred built an irreplaceable data moat around creditworthiness, TwinGenie captures the high-resolution psychographic context layer that commodity foundation models can never replicate.
-
-We are an early-stage, self-funded team with a live production Android app on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app) and a responsive Next.js web platform.
-
-We are opening a pre-seed angel round ($150k-$250k checks) to accelerate North American distribution. Can I share our 1-page memo or set up test access for you?
+Would you like to see our 1-page architecture summary or take a quick product walkthrough?
 
 Best,
 Ashwani Kumar
@@ -726,20 +718,20 @@ https://twingenie.app | founder@twingenie.app`;
         const subject = `${company} — mobile software & IP acquisition opportunity: TwinGenie`;
         const bodyText = `Hi ${name},
 
-I saw ${company} evaluates mobile application and consumer software acquisitions, so I wanted to connect directly. I’m Ashwani, founder of TwinGenie (https://twingenie.app).
+I saw ${company} evaluates mobile applications and AI software assets, so I wanted to reach out directly. I’m Ashwani Kumar, solo founder of TwinGenie (https://twingenie.app).
 
-I built TwinGenie as a turnkey AI self-reflection companion:
+I built TwinGenie as a full-stack AI self-reflection companion:
 • Production Android app live on Google Play (https://play.google.com/store/apps/details?id=com.asmind.app)
-• Built Flutter iOS codebase ready for App Store submission
-• Node.js & Next.js backend with pgvector longitudinal memory
-• 35-question Big Five personality baseline with a 78.8% completion rate
+• Responsive Next.js web application and Flutter mobile codebase (Android shipped; iOS build still requires store submission work)
+• Node.js backend with multi-provider LLM routing, deterministic safety guards, and PostgreSQL + pgvector memory
+• 35-question Big Five personality onboarding engine
 
-Why sell? I am an engineering founder running a digital agency (FSI Digital), and I don't have the consumer marketing bandwidth to scale B2C distribution. I'm looking for an experienced operator to take over 100% of the IP, codebases, and store listings under a clean asset sale.
+I'm an engineering founder looking for an operator with consumer distribution expertise to take over 100% of the IP, codebases, and store listings—or explore joining a strong product team where TwinGenie's architecture fits. We're early-stage and pre-revenue, so the value is in the turnkey codebase and months of engineering saved.
 
-If this aligns with your criteria, can I send over our 1-page asset teardown and summary deck?
+If this fits what ${company} looks at, I can send over our technical overview and a live walkthrough.
 
 Best,
-Ashwani
+Ashwani Kumar
 Founder, TwinGenie
 founder@twingenie.app`;
 

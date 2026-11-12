@@ -9,6 +9,10 @@ interface Stats {
   activeUsers: number;
   totalMessages: number;
   totalConversations: number;
+  totalProfiles?: number;
+  activatedUsers?: number;
+  userAuthoredMessages?: number;
+  aiMessages?: number;
 }
 
 interface User {
@@ -82,7 +86,18 @@ export default function SecretAdminPanel() {
 
       if (response.ok) {
         const statsData = await response.json();
-        setStats(statsData);
+        setStats({
+          totalUsers: statsData.totalUsers ?? statsData.totalProfiles ?? 0,
+          activeUsers: statsData.activeUsers ?? statsData.activatedUsers ?? 0,
+          totalMessages:
+            statsData.totalMessages ??
+            ((statsData.userAuthoredMessages ?? 0) + (statsData.aiMessages ?? 0)),
+          totalConversations: statsData.totalConversations ?? 0,
+          totalProfiles: statsData.totalProfiles ?? 0,
+          activatedUsers: statsData.activatedUsers ?? 0,
+          userAuthoredMessages: statsData.userAuthoredMessages ?? 0,
+          aiMessages: statsData.aiMessages ?? 0,
+        });
       }
 
       // Fetch recent users from backend
@@ -153,7 +168,7 @@ export default function SecretAdminPanel() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard title="Total Users" value={stats.totalUsers} icon="👥" />
               <StatCard title="Active (24h)" value={stats.activeUsers} icon="🟢" />
-              <StatCard title="Total Messages" value={stats.totalMessages} icon="💬" />
+              <StatCard title="User Messages" value={stats.userAuthoredMessages ?? stats.totalMessages} icon="💬" />
               <StatCard title="Conversations" value={stats.totalConversations} icon="💭" />
             </div>
 

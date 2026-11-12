@@ -27,19 +27,21 @@ export async function sendEmail({
     from = DEFAULT_FROM,
     reply_to = process.env.RESEND_REPLY_TO || process.env.FOUNDER_REPLY_TO || 'founder@twingenie.app',
     tags,
-    headers
+    headers,
+    idempotencyKey
 }) {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
-        logger.warn(`[EMAIL NOTICE] RESEND_API_KEY is not set. Email to [${to}] was not sent via network.`);
-        logger.info(`[EMAIL PREVIEW] Subject: "${subject}" | To: ${to}`);
+        logger.warn(`[EMAIL NOTICE] RESEND_API_KEY is not set. Email to [${to}] was simulated only (not delivered).`);
         return {
             simulated: true,
-            success: true,
+            delivered: false,
+            success: false,
             id: 'simulated_' + Date.now(),
             to,
-            subject
+            subject,
+            error: 'RESEND_API_KEY not configured'
         };
     }
 
@@ -54,12 +56,12 @@ export async function sendEmail({
                     const mx = await dns.resolveMx(domain);
                     if (!mx || mx.length === 0) {
                         logger.error(`[EMAIL BOUNCE GUARD] Aborting dispatch: ${recipient} domain (${domain}) has no MX records.`);
-                        return { success: false, bounced: true, error: `Domain ${domain} has no valid MX records` };
+                        return { success: false, delivered: false, bounced: true, error: `Domain ${domain} has no valid MX records` };
                     }
                 } catch (dnsErr) {
                     if (['ENODATA', 'ENOTFOUND', 'ESERVFAIL'].includes(dnsErr.code)) {
                         logger.error(`[EMAIL BOUNCE GUARD] Aborting dispatch: ${recipient} domain (${domain}) DNS failure: ${dnsErr.code}`);
-                        return { success: false, bounced: true, error: `Domain ${domain} DNS failure: ${dnsErr.code}` };
+                        return { success: false, delivered: false, bounced: true, error: `Domain ${domain} DNS failure: ${dnsErr.code}` };
                     }
                 }
             }
@@ -84,12 +86,15 @@ export async function sendEmail({
             payload.headers = headers;
         }
 
+        const requestHeaders = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            ...(idempotencyKey ? { 'Idempotency-Key': String(idempotencyKey).slice(0, 256) } : {})
+        };
+
         const response = await fetch(RESEND_API_URL, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
+            headers: requestHeaders,
             body: JSON.stringify(payload)
         });
 
@@ -97,11 +102,11 @@ export async function sendEmail({
 
         if (!response.ok) {
             logger.error(`Resend API error (${response.status}):`, data);
-            return { success: false, error: data };
+            return { success: false, delivered: false, error: data };
         }
 
         logger.info(`✅ Email successfully sent to ${recipients.join(', ')} (ID: ${data.id})`);
-        return { success: true, id: data.id };
+        return { success: true, delivered: true, simulated: false, id: data?.id, data };
 
     } catch (error) {
         logger.error('Failed to send email via Resend:', error);

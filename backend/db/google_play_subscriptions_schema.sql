@@ -10,4 +10,6 @@ ALTER TABLE subscriptions
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_user_unique ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_google_play_order_id ON subscriptions(google_play_order_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_google_play_token ON subscriptions(google_play_purchase_token);
+DROP INDEX IF EXISTS idx_subscriptions_google_play_token;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_google_play_token ON subscriptions(google_play_purchase_token)
+    WHERE google_play_purchase_token IS NOT NULL;

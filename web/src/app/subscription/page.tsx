@@ -181,7 +181,8 @@ export default function GeoPricingPage() {
                         <ul className="space-y-4 mb-8">
                             {[
                                 'All 4 AI personality modes',
-                                '10 messages per day',
+                                '10 text messages per day',
+                                '3 voice messages per day',
                                 'Daily challenges',
                                 'Mood tracking',
                                 'Memory timeline',
@@ -230,7 +231,7 @@ export default function GeoPricingPage() {
                             {[
                                 'Unlimited messages/day',
                                 'All 4 AI personality modes',
-                                'Voice messages',
+                                'Unlimited voice messages',
                                 'Priority response speed',
                                 'Advanced insights',
                                 'Proactive check-ins',

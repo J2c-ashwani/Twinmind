@@ -86,10 +86,11 @@ class AIService {
         try {
             const now = new Date();
             const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 this.resetDailyQuotas();
                 this.scheduleDailyReset();
             }, tomorrow - now);
+            timer?.unref?.();
         } catch (e) { console.warn('Daily reset scheduling failed'); }
     }
 
@@ -431,15 +432,35 @@ class AIService {
     async analyzeEmotion(text) { return await geminiService.analyzeEmotion(text); }
     async extractEntities(text) { return await geminiService.extractEntities(text); }
     async detectMemorableMoment(text) { return await geminiService.detectMemorableMoment(text); }
-    async generateEmbedding(text) {
+    async generateEmbeddingWithMeta(text) {
         if (openaiService && openaiService.isConfigured) {
             try {
-                return await openaiService.generateEmbedding(text);
+                const vector = await openaiService.generateEmbedding(text);
+                if (Array.isArray(vector) && vector.some((v) => v !== 0)) {
+                    return {
+                        vector,
+                        provider: 'openai',
+                        model: 'text-embedding-3-small',
+                    };
+                }
             } catch (err) {
                 // OpenAI embedding failed, proceed to Gemini fallback
             }
         }
-        return await geminiService.generateEmbedding(text);
+        const vector = await geminiService.generateEmbedding(text);
+        if (!Array.isArray(vector) || !vector.some((v) => v !== 0)) {
+            throw new Error('Embedding provider returned invalid or zero vector');
+        }
+        return {
+            vector,
+            provider: 'gemini',
+            model: 'text-embedding-004',
+        };
+    }
+
+    async generateEmbedding(text) {
+        const { vector } = await this.generateEmbeddingWithMeta(text);
+        return vector;
     }
 
     getStats() {

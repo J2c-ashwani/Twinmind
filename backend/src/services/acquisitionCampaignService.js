@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../config/logger.js';
-import { sendEmail } from './emailService.js';
-import { supabaseAdmin } from '../config/supabase.js';
-import leadDiscoveryService, { PERMANENT_SUPPRESSION_LIST } from './leadDiscoveryService.js';
+import leadDiscoveryService from './leadDiscoveryService.js';
+import { executeOutreachTick } from './outreachRunner.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,217 +129,19 @@ class AcquisitionCampaignService {
      * Continuously self-replenishes via PostgreSQL Supabase and local discovery catalogs.
      */
     async executeTick(force = false) {
-        this._refreshDailyQuota();
-
-        if (process.env.CAMPAIGN_AUTORUN === 'false' && !force) {
-            logger.info('[CAMPAIGN] Autorun disabled via CAMPAIGN_AUTORUN=false');
-            return { action: 'skipped', reason: 'autorun_disabled' };
-        }
-
-        // Strict Business Hours Gate (Eastern Time Mon-Fri 9:00 - 17:00)
-        const windowCheck = isNorthStarBusinessHours();
-        if (!windowCheck.isHours && !force && process.env.FORCE_CAMPAIGN_SEND !== 'true') {
-            logger.info(`[CAMPAIGN] Outside North Star business hours (${windowCheck.reason}). Holding outreach queue.`);
-            return { action: 'skipped', reason: 'outside_business_hours', details: windowCheck.reason };
-        }
-
-        // Check daily limit
-        if (this.state.sentToday >= this.dailyLimit && !force) {
-            logger.info(`[CAMPAIGN] Daily limit reached (${this.state.sentToday}/${this.dailyLimit})`);
-            return { action: 'skipped', reason: 'daily_limit_reached' };
-        }
-
-        // Check spacing interval
-        if (this.state.lastSentTimestamp && !force) {
-            const lastSent = new Date(this.state.lastSentTimestamp).getTime();
-            const now = Date.now();
-            const diffMinutes = (now - lastSent) / (1000 * 60);
-
-            if (diffMinutes < this.minIntervalMinutes) {
-                const waitTime = Math.round(this.minIntervalMinutes - diffMinutes);
-                logger.info(`[CAMPAIGN] Interval cooling active (${waitTime}m remaining before next send)`);
-                return { action: 'cooling', remainingMinutes: waitTime };
-            }
-        }
-
-        // Ensure database lead replenishment
-        try {
-            await leadDiscoveryService.replenishQueue('acquisition', 15);
-        } catch (replenishErr) {
-            logger.warn(`[CAMPAIGN] DB auto-replenishment notice: ${replenishErr.message}`);
-        }
-
-        // Ensure local queue replenishment as fallback
-        leadDiscoveryService.replenishLocalQueue(this.state, 'acquisition', 15);
-
-        // Candidate selection: Try Supabase first, fallback to local state
-        let candidate = null;
-        let isDbCandidate = false;
-
-        try {
-            const { data: dbLeads, error: dbErr } = await supabaseAdmin
-                .from('outreach_campaign_leads')
-                .select('*')
-                .eq('campaign_type', 'acquisition')
-                .eq('status', 'pending')
-                .order('created_at', { ascending: true })
-                .limit(1);
-
-            if (!dbErr && dbLeads && dbLeads.length > 0) {
-                candidate = {
-                    id: dbLeads[0].id,
-                    recipientName: dbLeads[0].recipient_name,
-                    company: dbLeads[0].organization,
-                    email: dbLeads[0].email,
-                    subject: dbLeads[0].subject,
-                    bodyText: dbLeads[0].body_text,
-                    attempts: dbLeads[0].attempts || 0
-                };
-                isDbCandidate = true;
-            }
-        } catch (dbEx) {
-            logger.warn(`[CAMPAIGN] Supabase query fallback: ${dbEx.message}`);
-        }
-
-        let candidateIndex = -1;
-        if (!candidate) {
-            candidateIndex = (this.state.queue || []).findIndex(t => t.status === 'pending');
-            if (candidateIndex !== -1) {
-                candidate = this.state.queue[candidateIndex];
-            }
-        }
-
-        if (!candidate) {
-            logger.info('[CAMPAIGN] No pending candidates in queue');
-            return { action: 'idle', reason: 'queue_empty' };
-        }
-
-        // Check suppression
-        const normEmail = (candidate.email || '').toLowerCase().trim();
-        if (PERMANENT_SUPPRESSION_LIST.has(normEmail)) {
-            logger.warn(`[CAMPAIGN] Candidate ${candidate.email} is in suppression list! Skipping.`);
-            if (isDbCandidate) {
-                await supabaseAdmin
-                    .from('outreach_campaign_leads')
-                    .update({ status: 'skipped', error: 'suppressed_contact' })
-                    .eq('id', candidate.id);
-            }
-            if (candidateIndex !== -1) {
-                candidate.status = 'skipped';
-                candidate.error = 'suppressed_contact';
-                this._saveState();
-            }
-            return { action: 'skipped', reason: 'suppressed', candidate: candidate.email };
-        }
-
-        // Format clean, professional HTML container with anti-spam compliance opt-out footer
-        const htmlContent = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; color: #334155; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
-${candidate.bodyText.split('\n\n').map(p => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br/>')}</p>`).join('')}
-<p style="margin: 24px 0 0 0; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-TwinGenie (https://twingenie.app) • Direct founder correspondence • If you prefer not to receive acquisition opportunities, reply with 'unsubscribe' to be permanently excluded.
-</p>
-</div>
-`.trim();
-
-        const candidateName = candidate.recipientName || candidate.company || 'Executive';
-        logger.info(`[CAMPAIGN] Dispatching acquisition pitch to ${candidateName} at ${candidate.company || 'Partner'} (${candidate.email})...`);
-
-        const nowIso = new Date().toISOString();
-        this.state.lastSentTimestamp = nowIso;
-
-        try {
-            const result = await sendEmail({
-                to: candidate.email,
-                subject: candidate.subject,
-                text: candidate.bodyText,
-                html: htmlContent,
-                from: this.senderEmail,
-                reply_to: this.replyTo,
-                tags: [
-                    { name: 'type', value: 'acquisition-outreach' },
-                    { name: 'company', value: (candidate.company || 'Unknown').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50) }
-                ]
-            });
-
-            if (result.success) {
-                logger.info(`✅ [CAMPAIGN] Successfully sent acquisition email to ${candidate.email}! Resend ID: ${result.id}`);
-                this.state.sentToday += 1;
-
-                if (isDbCandidate) {
-                    try {
-                        await supabaseAdmin
-                            .from('outreach_campaign_leads')
-                            .update({
-                                status: 'sent',
-                                sent_at: nowIso,
-                                resend_id: result.id,
-                                updated_at: nowIso
-                            })
-                            .eq('id', candidate.id);
-                    } catch (updateErr) {
-                        logger.warn(`[CAMPAIGN] Could not update DB lead status: ${updateErr.message}`);
-                    }
-                }
-
-                if (candidateIndex !== -1) {
-                    candidate.status = 'sent';
-                    candidate.sentAt = nowIso;
-                    candidate.resendId = result.id;
-                    this.state.queue.splice(candidateIndex, 1);
-                    this.state.history.push({ ...candidate });
-                } else {
-                    this.state.history.push({
-                        ...candidate,
-                        status: 'sent',
-                        sentAt: nowIso,
-                        resendId: result.id
-                    });
-                }
-                this._saveState();
-
-                // Trigger background replenishment check
-                leadDiscoveryService.replenishLocalQueue(this.state, 'acquisition', 15);
-                this._saveState();
-
-                return {
-                    action: 'sent',
-                    recipient: candidateName,
-                    email: candidate.email,
-                    company: candidate.company,
-                    subject: candidate.subject,
-                    resendId: result.id
-                };
-            } else {
-                logger.error(`❌ [CAMPAIGN] Failed to send to ${candidate.email}:`, result.error);
-                if (isDbCandidate) {
-                    try {
-                        await supabaseAdmin
-                            .from('outreach_campaign_leads')
-                            .update({
-                                attempts: (candidate.attempts || 0) + 1,
-                                last_attempt_at: nowIso,
-                                error: JSON.stringify(result.error),
-                                updated_at: nowIso
-                            })
-                            .eq('id', candidate.id);
-                    } catch (dbErr) {
-                        logger.warn(`[CAMPAIGN] DB error update notice: ${dbErr.message}`);
-                    }
-                }
-
-                if (candidateIndex !== -1) {
-                    candidate.attempts = (candidate.attempts || 0) + 1;
-                    candidate.lastAttemptAt = nowIso;
-                    candidate.error = JSON.stringify(result.error);
-                }
-                this._saveState();
-                return { action: 'error', candidate: candidate.email, error: result.error };
-            }
-        } catch (err) {
-            logger.error(`🚨 [CAMPAIGN] Exception sending to ${candidate.email}:`, err);
-            return { action: 'exception', error: err.message };
-        }
+        return executeOutreachTick({
+            campaignType: 'acquisition',
+            logPrefix: '[CAMPAIGN]',
+            autorunEnvVar: 'CAMPAIGN_AUTORUN',
+            forceEnvVar: 'FORCE_CAMPAIGN_SEND',
+            isBusinessHoursFn: isNorthStarBusinessHours,
+            service: this,
+            footerNote:
+                "TwinGenie (https://twingenie.app) • Direct founder correspondence • If you prefer not to receive acquisition opportunities, reply with 'unsubscribe' to be permanently excluded.",
+            resendTagType: 'acquisition-outreach',
+            organizationTagKey: 'company',
+            force,
+        });
     }
 }
 

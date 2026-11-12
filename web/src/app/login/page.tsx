@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Brain, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useUserStore } from '@/store/useStore';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { flushPendingAttribution } from '@/lib/attribution';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -31,6 +32,16 @@ export default function LoginPage() {
             if (signInError) throw signInError;
 
             if (data.user) {
+                if (data.session?.access_token) {
+                    await flushPendingAttribution({
+                        accessToken: data.session.access_token,
+                        userId: data.user.id,
+                        email: data.user.email,
+                        fullName: data.user.user_metadata?.full_name,
+                        userMetadata: data.user.user_metadata,
+                    });
+                }
+
                 // Store user in local state
                 setUser({
                     id: data.user.id,
