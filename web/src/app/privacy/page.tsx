@@ -114,7 +114,7 @@ export default function PrivacyPolicy() {
                     </p>
                     <ul className="list-disc pl-6 space-y-2 text-gray-300">
                         <li><strong>Right to Access:</strong> View all stored conversations and memory summaries at any time.</li>
-                        <li><strong>Right to Deletion:</strong> Permanently erase your account, personality profile, and memory vectors via application settings or by emailing our team.</li>
+                        <li><strong>Right to Deletion:</strong> Permanently erase your account via our <Link href="/delete-account" className="text-purple-400 hover:underline">Account Deletion page</Link>, delete specific data categories via our <Link href="/delete-data" className="text-purple-400 hover:underline">Data Deletion page</Link>, use application settings, or email our team.</li>
                         <li><strong>Data Retention:</strong> We delete associated vectors and personality records within 30 days of an account deletion request.</li>
                     </ul>
                 </section>

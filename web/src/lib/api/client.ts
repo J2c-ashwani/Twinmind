@@ -488,6 +488,20 @@ class ApiClient {
             method: 'POST',
         });
     }
+
+    // Account & Data Deletion (Google Play Compliance)
+    async deleteUserData(categories: string[]): Promise<{ success: boolean; deletedCategories: string[]; deletedVoiceFiles?: number }> {
+        return this.request('/api/auth/data', {
+            method: 'DELETE',
+            body: JSON.stringify({ categories }),
+        }) as Promise<{ success: boolean; deletedCategories: string[]; deletedVoiceFiles?: number }>;
+    }
+
+    async deleteAccount() {
+        return this.request('/api/auth/account', {
+            method: 'DELETE',
+        });
+    }
 }
 
 export const apiClient = new ApiClient();

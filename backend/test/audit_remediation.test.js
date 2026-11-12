@@ -12,6 +12,7 @@ import { DAILY_CHALLENGES } from '../src/routes/daily.routes.js';
 import growthOrchestratorService from '../src/services/growth/growthOrchestratorService.js';
 import leadDiscoveryService from '../src/services/leadDiscoveryService.js';
 import smartRouterService from '../src/services/growth/smartRouterService.js';
+import { deleteSelectedUserData, deleteUserAccount } from '../src/services/accountDeletionService.js';
 
 describe('TwinGenie Full Audit Remediation Verification', () => {
     const originalPausedState = growthOrchestratorService.state?.isPaused;
@@ -243,6 +244,101 @@ describe('TwinGenie Full Audit Remediation Verification', () => {
                 'youtube'
             );
             assert.strictEqual(smartRouterService.isSocialCrawler('LinkedInBot/1.0'), true);
+        });
+    });
+
+    describe('Google Play Compliance: Account & Selected Data Deletion', () => {
+        function createMockDeletionDeps() {
+            const deletedTables = [];
+            const removedFiles = [];
+            const deletedAuthUsers = [];
+
+            const db = {
+                from(table) {
+                    return {
+                        delete() {
+                            return {
+                                async eq(col, val) {
+                                    deletedTables.push({ table, col, val });
+                                    return { error: null };
+                                },
+                            };
+                        },
+                    };
+                },
+            };
+
+            const storage = {
+                from(bucket) {
+                    return {
+                        async list(prefix) {
+                            if (prefix === 'user-123') {
+                                return {
+                                    data: [
+                                        { name: 'clip1.mp3', id: 'obj-1' },
+                                        { name: 'nested', id: null },
+                                    ],
+                                    error: null,
+                                };
+                            }
+                            if (prefix === 'user-123/nested') {
+                                return { data: [{ name: 'clip2.mp3', id: 'obj-2' }], error: null };
+                            }
+                            return { data: [], error: null };
+                        },
+                        async remove(paths) {
+                            removedFiles.push({ bucket, paths });
+                            return { error: null };
+                        },
+                    };
+                },
+            };
+
+            const authAdmin = {
+                async deleteUser(userId) {
+                    deletedAuthUsers.push(userId);
+                    return { error: null };
+                },
+            };
+
+            return { db, storage, authAdmin, deletedTables, removedFiles, deletedAuthUsers };
+        }
+
+        it('rejects empty or unknown deletion categories with INVALID_DATA_CATEGORIES', async () => {
+            const deps = createMockDeletionDeps();
+            await assert.rejects(
+                () => deleteSelectedUserData({ userId: 'user-123', categories: ['unknown'], ...deps }),
+                (err) => err.code === 'INVALID_DATA_CATEGORIES'
+            );
+        });
+
+        it('deletes only selected categories and purges nested voice recordings', async () => {
+            const deps = createMockDeletionDeps();
+            const res = await deleteSelectedUserData({
+                userId: 'user-123',
+                categories: ['memories', 'voice'],
+                ...deps,
+            });
+
+            assert.strictEqual(res.success, true);
+            assert.deepStrictEqual(res.deletedCategories, ['memories', 'voice']);
+            assert.strictEqual(res.deletedVoiceFiles, 2);
+            assert.deepStrictEqual(deps.removedFiles, [
+                { bucket: 'voice-responses', paths: ['user-123/clip1.mp3', 'user-123/nested/clip2.mp3'] },
+            ]);
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'memory_vectors'), true);
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'users'), false);
+            assert.strictEqual(deps.deletedAuthUsers.length, 0);
+        });
+
+        it('deletes all user data, voice storage, users row, and Supabase Auth user on account deletion', async () => {
+            const deps = createMockDeletionDeps();
+            const res = await deleteUserAccount({ userId: 'user-123', ...deps });
+
+            assert.strictEqual(res.success, true);
+            assert.strictEqual(res.deletedUserId, 'user-123');
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'users' && d.col === 'id'), true);
+            assert.deepStrictEqual(deps.deletedAuthUsers, ['user-123']);
         });
     });
 });

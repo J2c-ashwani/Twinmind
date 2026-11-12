@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
 import { recordReferral } from '../services/referralService.js';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { deleteSelectedUserData, deleteUserAccount } from '../services/accountDeletionService.js';
 
 const router = express.Router();
 
@@ -140,6 +141,43 @@ router.put('/profile/:userId', authenticateUser, async (req, res) => {
     } catch (error) {
         logger.error('Error updating profile:', error);
         res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+/**
+ * DELETE /api/auth/data
+ * Delete selected user data categories without deleting the user account
+ */
+router.delete('/data', authenticateUser, async (req, res) => {
+    try {
+        const categories = req.body?.categories;
+        const result = await deleteSelectedUserData({
+            userId: req.userId,
+            categories,
+        });
+        res.json(result);
+    } catch (error) {
+        if (error.code === 'INVALID_DATA_CATEGORIES') {
+            return res.status(400).json({ error: error.message });
+        }
+        logger.error('Error deleting selected user data:', error);
+        res.status(500).json({ error: 'Failed to delete selected user data' });
+    }
+});
+
+/**
+ * DELETE /api/auth/account
+ * Permanently delete the authenticated user's account and associated data
+ */
+router.delete('/account', authenticateUser, async (req, res) => {
+    try {
+        const result = await deleteUserAccount({
+            userId: req.userId,
+        });
+        res.json(result);
+    } catch (error) {
+        logger.error('Error deleting user account:', error);
+        res.status(500).json({ error: 'Failed to delete user account' });
     }
 });
 
