@@ -601,6 +601,9 @@ def render_discussion_slide(draw, slide_data, cur_y):
 
 # ----------------- MAIN DISPATCHER -----------------
 def render_slide(slide_data, slide_index, total_slides, output_path):
+    if slide_data.get('visualStyle') == 'motion_v2':
+        from motionReelRenderer import render_motion_slide
+        return render_motion_slide(slide_data, slide_index, total_slides, output_path)
     img, draw, cur_y = draw_header_and_bg(slide_data, slide_index, total_slides)
 
     stype = slide_data.get('type')

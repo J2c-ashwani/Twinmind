@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/review_service.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -88,6 +89,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 (value) {
                   setState(() => _darkMode = value);
                   _savePreference('pref_dark_mode', value);
+                  if (mounted) {
+                    context.read<ThemeProvider>().setDarkMode(value);
+                  }
                 },
                 Icons.dark_mode_outlined,
               ),

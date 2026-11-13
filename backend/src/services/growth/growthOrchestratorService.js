@@ -354,6 +354,19 @@ class GrowthOrchestratorService {
     }
 
     /**
+     * Transition slot status fenced by worker lease ownership
+     */
+    async _transitionSlot(slotClaim, targetStatus, metadata = {}) {
+        if (!slotClaim?.slotKey) return false;
+        return publicationSlotService.transitionStatus(
+            slotClaim.slotKey,
+            targetStatus,
+            { ...metadata, workerId: slotClaim.workerId },
+            slotClaim.workerId
+        );
+    }
+
+    /**
      * Commits successful publication to the durable ledger in Supabase
      */
     async commitDurableLedger(platform, todayIST, postId, postUrl) {
@@ -511,7 +524,7 @@ class GrowthOrchestratorService {
 
             // 6. Publish to Facebook Page as Reel or Carousel with First Comment
             logger.info(`[GROWTH ORCHESTRATOR] Publishing ${renderedReel ? 'Reel' : 'Carousel'} directly to Facebook Page...`);
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            await this._transitionSlot(slotClaim, SlotStatus.PUBLISHING);
             let publishResult;
             try {
                 publishResult = await this.adapters.facebook.publish({
@@ -539,13 +552,13 @@ class GrowthOrchestratorService {
             // 7. Track published timestamp in Supabase & update debounce timer
             if (publishResult.success) {
                 this._lastPublishedTimestamps.facebook = Date.now();
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                await this._transitionSlot(slotClaim, SlotStatus.PUBLISHED, {
                     postId: publishResult.postId,
                     postUrl: publishResult.url
                 });
                 await this.commitDurableLedger('facebook', todayIST, publishResult.postId, publishResult.url);
             } else {
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                     errorMessage: publishResult.error?.message || 'Publishing rejected by Facebook'
                 });
                 await this.releaseDurableLock('facebook', todayIST);
@@ -583,7 +596,7 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (fbError) {
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+            await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                 errorMessage: fbError.message
             });
             await this.releaseDurableLock('facebook', todayIST);
@@ -800,7 +813,7 @@ class GrowthOrchestratorService {
 
             // 6. Publish to LinkedIn via official API (strictly no self-comments & clean human typography)
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            await this._transitionSlot(slotClaim, SlotStatus.PUBLISHING);
             const cleanCaption = cleanLinkedInHumanCaption(dailyPackage.linkedin.caption, {
                 includeCaptionLink: true,
                 utmLink: armInfo.utmLink
@@ -833,13 +846,13 @@ class GrowthOrchestratorService {
             // 7. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.linkedin = Date.now();
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                await this._transitionSlot(slotClaim, SlotStatus.PUBLISHED, {
                     postId: publishResult.postId,
                     postUrl: publishResult.url
                 });
                 await this.commitDurableLedger('linkedin', todayIST, publishResult.postId, publishResult.url);
             } else {
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                     errorMessage: publishResult.error?.message || 'Publishing rejected by LinkedIn'
                 });
                 await this.releaseDurableLock('linkedin', todayIST);
@@ -893,7 +906,7 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (liError) {
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+            await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                 errorMessage: liError.message
             });
             await this.releaseDurableLock('linkedin', todayIST);
@@ -1022,7 +1035,7 @@ class GrowthOrchestratorService {
 
             // 6. Dispatch to Instagram via official API
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching ${renderedReel ? 'Reel' : 'Carousel'} to Instagram account @twingenie.app...`);
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            await this._transitionSlot(slotClaim, SlotStatus.PUBLISHING);
             let publishResult;
             try {
                 publishResult = await this.adapters.instagram.publish({
@@ -1048,13 +1061,13 @@ class GrowthOrchestratorService {
             // 7. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.instagram = Date.now();
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                await this._transitionSlot(slotClaim, SlotStatus.PUBLISHED, {
                     postId: publishResult.postId,
                     postUrl: publishResult.url
                 });
                 await this.commitDurableLedger('instagram', todayIST, publishResult.postId, publishResult.url);
             } else {
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                     errorMessage: publishResult.error?.message || 'Publishing rejected by Instagram'
                 });
                 await this.releaseDurableLock('instagram', todayIST);
@@ -1091,7 +1104,7 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (igError) {
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+            await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                 errorMessage: igError.message
             });
             await this.releaseDurableLock('instagram', todayIST);
@@ -1169,13 +1182,13 @@ class GrowthOrchestratorService {
             const insight = dailyPackage.facebook?.caption ? dailyPackage.facebook.caption.split('\n')[0] : 'Most AI tools flatter you. TwinGenie acts as a true cognitive mirror.';
             const playStoreLink = 'https://play.google.com/store/apps/details?id=com.asmind.app';
 
-            let threadText = `${hook} 🪞\n\n${insight}\n\nMeet your AI digital twin free on Google Play:\n📲 ${playStoreLink}`;
+            let threadText = dailyPackage.threads?.text || `${hook} 🪞\n\n${insight}\n\nMeet your AI digital twin free on Google Play:\n📲 ${playStoreLink}`;
             if (threadText.length > 500) {
                 threadText = threadText.slice(0, 496) + '...';
             }
 
             logger.info(`[GROWTH ORCHESTRATOR] Dispatching micro-reflection to Threads account @twingenie.app...`);
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHING);
+            await this._transitionSlot(slotClaim, SlotStatus.PUBLISHING);
             let publishResult;
             try {
                 publishResult = await this.adapters.threads.publish({
@@ -1198,13 +1211,13 @@ class GrowthOrchestratorService {
             // 5. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.threads = Date.now();
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                await this._transitionSlot(slotClaim, SlotStatus.PUBLISHED, {
                     postId: publishResult.postId,
                     postUrl: publishResult.url
                 });
                 await this.commitDurableLedger('threads', todayIST, publishResult.postId, publishResult.url);
             } else {
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                     errorMessage: publishResult.error?.message || 'Publishing rejected by Threads'
                 });
                 await this.releaseDurableLock('threads', todayIST);
@@ -1238,7 +1251,7 @@ class GrowthOrchestratorService {
                 error: publishResult.error
             };
         } catch (thError) {
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+            await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                 errorMessage: thError.message
             });
             await this.releaseDurableLock('threads', todayIST);
@@ -1313,20 +1326,20 @@ class GrowthOrchestratorService {
 
             if (publishResult.success && !publishResult.simulated) {
                 this._lastPublishedTimestamps.youtube = Date.now();
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.PUBLISHED, {
+                await this._transitionSlot(slotClaim, SlotStatus.PUBLISHED, {
                     postId: publishResult.postId,
                     postUrl: publishResult.url,
                 });
                 await this.commitDurableLedger('youtube', todayIST, publishResult);
             } else {
-                await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+                await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                     errorMessage: publishResult.error || 'YouTube upload failed',
                 });
             }
 
             return publishResult;
         } catch (ytErr) {
-            await publicationSlotService.transitionStatus(slotClaim.slotKey, SlotStatus.FAILED, {
+            await this._transitionSlot(slotClaim, SlotStatus.FAILED, {
                 errorMessage: ytErr.message,
             });
             await this.releaseDurableLock('youtube', todayIST);

@@ -13,6 +13,7 @@ import GrowthCircleWidget from '@/components/Circles/GrowthCircleWidget';
 import MoodHistory from '@/components/Daily/MoodHistory';
 import WeeklyMotivationCard from '@/components/MotivationCard/WeeklyMotivationCard';
 import { Users, TrendingUp } from 'lucide-react';
+import { apiClient } from '@/lib/api/client';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -23,6 +24,8 @@ export default function ProfilePage() {
     const handleLogout = async () => {
         // Sign out from Supabase (clears session cookie)
         await supabase.auth.signOut();
+        // Clear cached API client auth token
+        apiClient.clearToken();
         logout();
         router.refresh();
         router.push('/login');

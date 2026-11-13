@@ -69,31 +69,51 @@ Output JSON format:
         const aiResult = await aiService.generateChatResponse(chatText, [], systemPrompt);
         const analysis = aiResult?.text || '';
 
-        let insightData;
+        let parsed = null;
         try {
             const sanitized = analysis
                 .replace(/^```(?:json)?\s*/i, '')
                 .replace(/\s*```$/i, '')
                 .trim();
-            insightData = JSON.parse(sanitized);
+            parsed = JSON.parse(sanitized);
         } catch (e) {
-            try {
-                const match = analysis.match(/\{[\s\S]*\}/);
-                if (match) {
-                    insightData = JSON.parse(match[0]);
-                } else {
-                    throw e;
+            const match = analysis.match(/\{[\s\S]*\}/);
+            if (match) {
+                try {
+                    parsed = JSON.parse(match[0]);
+                } catch (innerErr) {
+                    parsed = null;
                 }
-            } catch (innerErr) {
-                insightData = {
-                    summary: "You've been engaging in thoughtful conversations!",
-                    mood_score: 7,
-                    dominant_emotion: "reflective",
-                    key_topics: ["Self Growth", "Daily Reflections"],
-                    actionable_tip: "Take a moment to appreciate your personal progress."
-                };
             }
         }
+
+        if (!parsed || typeof parsed !== 'object') {
+            logger.warn(`AI daily insight response could not be parsed as valid JSON for user ${userId}: ${analysis}`);
+            return null;
+        }
+
+        const moodScore = Number(parsed.mood_score);
+        const hasValidMood = Number.isFinite(moodScore) && moodScore >= 1 && moodScore <= 10;
+        const hasValidSummary = typeof parsed.summary === 'string' && parsed.summary.trim().length > 0;
+
+        if (!hasValidMood || !hasValidSummary) {
+            logger.warn(`AI daily insight response failed schema validation for user ${userId}:`, parsed);
+            return null;
+        }
+
+        const insightData = {
+            summary: parsed.summary.trim(),
+            mood_score: Math.round(moodScore),
+            dominant_emotion: typeof parsed.dominant_emotion === 'string' && parsed.dominant_emotion.trim()
+                ? parsed.dominant_emotion.trim()
+                : 'reflective',
+            key_topics: Array.isArray(parsed.key_topics) && parsed.key_topics.length > 0
+                ? parsed.key_topics.map((t) => String(t).trim()).filter(Boolean)
+                : ['Self Reflection'],
+            actionable_tip: typeof parsed.actionable_tip === 'string' && parsed.actionable_tip.trim()
+                ? parsed.actionable_tip.trim()
+                : 'Take a moment to appreciate your personal progress.',
+        };
 
         // 4. Save to database
         const { data: newInsight, error } = await supabaseAdmin
@@ -102,10 +122,10 @@ Output JSON format:
                 user_id: userId,
                 date: today.toISOString().split('T')[0],
                 summary: insightData.summary,
-                mood_score: insightData.mood_score || 7,
-                dominant_emotion: insightData.dominant_emotion || "reflective",
-                key_topics: insightData.key_topics || ["Self Reflection"],
-                actionable_tip: insightData.actionable_tip || "Keep nurturing your self-growth."
+                mood_score: insightData.mood_score,
+                dominant_emotion: insightData.dominant_emotion,
+                key_topics: insightData.key_topics,
+                actionable_tip: insightData.actionable_tip,
             })
             .select()
             .single();

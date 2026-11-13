@@ -19,23 +19,28 @@ class ApiClient {
         this.token = null;
     }
 
+    public async getActiveToken(): Promise<string | null> {
+        try {
+            const { data } = await this.supabase.auth.getSession();
+            if (data?.session?.access_token) {
+                this.token = data.session.access_token;
+                return this.token;
+            }
+            // Authoritative session absence: clear cached token immediately
+            this.token = null;
+            return null;
+        } catch (e) {
+            console.warn('Failed to auto-fetch token:', e);
+            this.token = null;
+            return null;
+        }
+    }
+
     private async request<T>(
         endpoint: string,
         options: RequestInit = {}
     ): Promise<T> {
-        // Dynamically resolve active session token on every request to avoid stale/previous-user tokens
-        let activeToken = this.token;
-        try {
-            const { data } = await this.supabase.auth.getSession();
-            if (data.session?.access_token) {
-                activeToken = data.session.access_token;
-                this.token = activeToken;
-            } else if (!this.token) {
-                activeToken = null;
-            }
-        } catch (e) {
-            console.warn('Failed to auto-fetch token:', e);
-        }
+        const activeToken = await this.getActiveToken();
 
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
@@ -84,10 +89,12 @@ class ApiClient {
         formData.append('mode', mode);
         if (conversationId) formData.append('conversationId', conversationId);
 
+        const activeToken = await this.getActiveToken();
+
         const response = await fetch(`${this.baseUrl}/api/voice/message`, {
             method: 'POST',
             headers: {
-                ...(this.token && { Authorization: `Bearer ${this.token}` }),
+                ...(activeToken && { Authorization: `Bearer ${activeToken}` }),
             },
             body: formData,
         });

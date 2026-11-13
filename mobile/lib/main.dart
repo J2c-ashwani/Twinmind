@@ -27,9 +27,11 @@ import 'screens/twin_match_screen.dart';
 import 'screens/referral_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
+import 'services/attribution_service.dart';
 import 'providers/gamification_provider.dart';
 import 'providers/daily_provider.dart';
 import 'providers/memory_provider.dart';
+import 'providers/theme_provider.dart';
 
 import 'screens/auth_wrapper.dart';
 
@@ -101,6 +103,13 @@ class _SplashScreenState extends State<SplashScreen> {
           }
         } catch (e) {
           print('⚠️ Firebase/Notification init warning: $e');
+        }
+
+        // Initialize AttributionService for App Links and referral attribution
+        try {
+          await AttributionService().initialize();
+        } catch (e) {
+          print('⚠️ Attribution init warning: $e');
         }
       }
 
@@ -192,44 +201,41 @@ class TwinGenieApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GamificationProvider()),
         ChangeNotifierProvider(create: (_) => DailyProvider()),
         ChangeNotifierProvider(create: (_) => MemoryProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: MaterialApp(
-        navigatorKey: rootNavigatorKey,
-        title: 'TwinGenie',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: const Color(0xFF0F0F1E),
-          textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-          colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF9333EA),
-            secondary: Color(0xFF3B82F6),
-            surface: Color(0xFF1A1A2E),
-          ),
-        ),
-        home: const SplashScreen(),
-        routes: {
-          '/welcome': (context) => const WelcomeScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/onboarding': (context) => const OnboardingScreen(),
-          '/chat': (context) => const ChatScreen(),
-          '/profile': (context) => const ProfileScreen(),
-          '/settings': (context) => const SettingsScreen(),
-          '/subscription': (context) => const SubscriptionScreen(),
-          '/life-coach': (context) => const LifeCoachScreen(),
-          '/notifications': (context) => const NotificationsScreen(),
-          '/privacy': (context) => const PrivacyScreen(),
-          '/home': (context) => const MainScreen(),
-          '/daily-challenges': (context) => const DailyChallengesScreen(),
-          '/achievements': (context) => const AchievementsScreen(),
-          '/memory-timeline': (context) => const MemoryTimelineScreen(),
-          '/memory-detail': (context) => const MemoryDetailScreen(),
-          '/terms': (context) => const TermsScreen(),
-          '/insights': (context) => const InsightsScreen(),
-          '/growth-story': (context) => const GrowthStoryScreen(),
-          '/twin-match': (context) => const TwinMatchScreen(),
-          '/referral': (context) => const ReferralScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            navigatorKey: rootNavigatorKey,
+            title: 'TwinGenie',
+            debugShowCheckedModeBanner: false,
+            themeMode: themeProvider.themeMode,
+            theme: ThemeProvider.lightTheme,
+            darkTheme: ThemeProvider.darkTheme,
+            home: const SplashScreen(),
+            routes: {
+              '/welcome': (context) => const WelcomeScreen(),
+              '/login': (context) => const LoginScreen(),
+              '/onboarding': (context) => const OnboardingScreen(),
+              '/chat': (context) => const ChatScreen(),
+              '/profile': (context) => const ProfileScreen(),
+              '/settings': (context) => const SettingsScreen(),
+              '/subscription': (context) => const SubscriptionScreen(),
+              '/life-coach': (context) => const LifeCoachScreen(),
+              '/notifications': (context) => const NotificationsScreen(),
+              '/privacy': (context) => const PrivacyScreen(),
+              '/home': (context) => const MainScreen(),
+              '/daily-challenges': (context) => const DailyChallengesScreen(),
+              '/achievements': (context) => const AchievementsScreen(),
+              '/memory-timeline': (context) => const MemoryTimelineScreen(),
+              '/memory-detail': (context) => const MemoryDetailScreen(),
+              '/terms': (context) => const TermsScreen(),
+              '/insights': (context) => const InsightsScreen(),
+              '/growth-story': (context) => const GrowthStoryScreen(),
+              '/twin-match': (context) => const TwinMatchScreen(),
+              '/referral': (context) => const ReferralScreen(),
+            },
+          );
         },
       ),
     );

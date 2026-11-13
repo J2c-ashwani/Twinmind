@@ -11,10 +11,22 @@ export const DATA_DELETION_CATEGORIES = Object.freeze([
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205']);
 
+function isMissingTableError(error) {
+    if (!error) return false;
+    // Explicitly reject Postgres undefined_column (42703) or column-not-found errors
+    if (error.code === '42703') return false;
+    if (/column [^\n]+ does not exist/i.test(error.message || '')) return false;
+
+    if (MISSING_TABLE_CODES.has(error.code)) return true;
+    return /(?:^|[^\w])relation "[^"]+" does not exist|relation [^\n]+ does not exist|table [^\n]+ does not exist|Could not find the table/i.test(
+        error.message || ''
+    );
+}
+
 async function safeDeleteWhere(db, table, column, userId) {
     const { error } = await db.from(table).delete().eq(column, userId);
     if (error) {
-        if (MISSING_TABLE_CODES.has(error.code) || /does not exist|Could not find the table/i.test(error.message || '')) {
+        if (isMissingTableError(error)) {
             return { table, skipped: true };
         }
         throw error;
@@ -22,27 +34,37 @@ async function safeDeleteWhere(db, table, column, userId) {
     return { table, deleted: true };
 }
 
+async function listAllInPrefix(bucket, prefix) {
+    const allEntries = [];
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+    while (true) {
+        const { data, error } = await bucket.list(prefix, { limit: PAGE_SIZE, offset });
+        if (error) {
+            logger.error(`Failed to list voice files for prefix ${prefix}: ${error.message}`);
+            throw error;
+        }
+        if (!data || data.length === 0) break;
+        allEntries.push(...data);
+        if (data.length < PAGE_SIZE) break;
+        offset += data.length;
+    }
+    return allEntries;
+}
+
 export async function deleteVoiceFilesForUser(userId, storageClient = supabaseAdmin.storage) {
     const bucket = storageClient.from('voice-responses');
     const pathsToRemove = [];
 
-    const { data: entries, error: listError } = await bucket.list(userId, { limit: 1000 });
-    if (listError) {
-        logger.error(`Failed to list voice files for user ${userId}: ${listError.message}`);
-        throw listError;
-    }
+    const entries = await listAllInPrefix(bucket, userId);
 
-    for (const entry of entries || []) {
+    for (const entry of entries) {
         if (!entry?.name) continue;
         // In Supabase Storage, directories have id === null
         if (entry.id === null) {
             const prefix = `${userId}/${entry.name}`;
-            const { data: nested, error: nestedError } = await bucket.list(prefix, { limit: 1000 });
-            if (nestedError) {
-                logger.error(`Failed to list nested voice files for prefix ${prefix}: ${nestedError.message}`);
-                throw nestedError;
-            }
-            for (const item of nested || []) {
+            const nested = await listAllInPrefix(bucket, prefix);
+            for (const item of nested) {
                 if (item?.name) {
                     pathsToRemove.push(`${prefix}/${item.name}`);
                 }

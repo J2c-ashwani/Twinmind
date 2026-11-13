@@ -18,6 +18,8 @@ export default function SettingsPage() {
     const handleLogout = async () => {
         // Sign out from Supabase (clears session cookie)
         await supabase.auth.signOut();
+        // Clear cached API client auth token
+        apiClient.clearToken();
         // Clear local state
         logout();
         // Refresh router to update middleware state

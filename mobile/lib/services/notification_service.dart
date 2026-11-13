@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 
@@ -248,36 +249,50 @@ class NotificationService {
     String body,
     Map<String, dynamic> data,
   ) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'twingenie_channel_v1',
-      'TwinGenie Notifications',
-      channelDescription: 'Important notifications from your AI Twin',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: '@drawable/ic_notification',
-      largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-      color: Color(0xFF9333EA),
-    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notificationsEnabled = prefs.getBool('pref_notifications_enabled') ?? true;
+      if (!notificationsEnabled) {
+        _notificationLog('🔇 Local notification suppressed by user preference');
+        return;
+      }
+      final soundEnabled = prefs.getBool('pref_sound_enabled') ?? true;
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'twingenie_channel_v1',
+        'TwinGenie Notifications',
+        channelDescription: 'Important notifications from your AI Twin',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: '@drawable/ic_notification',
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+        color: const Color(0xFF9333EA),
+        playSound: soundEnabled,
+        enableVibration: soundEnabled,
+      );
 
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: soundEnabled,
+      );
 
-    await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
-      body,
-      details,
-      payload: jsonEncode(data),
-    );
+      final NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _localNotifications.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        details,
+        payload: jsonEncode(data),
+      );
+    } catch (e) {
+      _notificationLog('⚠️ Error showing local notification: $e');
+    }
   }
 
   // ============ Public methods for showing notifications ============

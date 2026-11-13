@@ -336,14 +336,16 @@ export async function addExperiencePoints(userId, points) {
             return { leveled_up: false, new_level: 1, experience_points: 0 };
         }
 
-        const { data: level } = await supabaseAdmin
+        const { data: level, error: selectErr } = await supabaseAdmin
             .from('user_levels')
             .select('*')
             .eq('user_id', userId)
             .maybeSingle();
 
+        if (selectErr) throw selectErr;
+
         if (!level) {
-            await supabaseAdmin
+            const { error: insertErr } = await supabaseAdmin
                 .from('user_levels')
                 .insert({
                     user_id: userId,
@@ -351,6 +353,7 @@ export async function addExperiencePoints(userId, points) {
                     level_number: 1,
                     experience_points: numericPoints,
                 });
+            if (insertErr) throw insertErr;
             return { leveled_up: false, new_level: 1, experience_points: numericPoints };
         }
 
@@ -366,7 +369,7 @@ export async function addExperiencePoints(userId, points) {
             leveledUp = true;
         }
 
-        await supabaseAdmin
+        const { error: updateErr } = await supabaseAdmin
             .from('user_levels')
             .update({
                 experience_points: newXP,
@@ -375,6 +378,8 @@ export async function addExperiencePoints(userId, points) {
                 level_up_at: leveledUp ? new Date().toISOString() : level.level_up_at,
             })
             .eq('user_id', userId);
+
+        if (updateErr) throw updateErr;
 
         return { leveled_up: leveledUp, new_level: newLevelNumber, new_level_name: newLevelName, experience_points: newXP };
 

@@ -77,14 +77,17 @@ describe('Growth Engine Reliability & Synchronized Multi-Platform Publishing', (
             assert.strictEqual(typeof fbAdapter.hasPublishedTodayIST, 'function');
         });
 
-        it('should verify US/UK/AU/India international growth hashtags are embedded in daily Facebook packages', async () => {
-            const pkg = await contentGeneratorService.getOrGenerateDailyContent(new Date());
-            const fbCaption = pkg.facebook?.caption || '';
-            assert.ok(fbCaption.includes('#TwinGenie'));
-            assert.ok(fbCaption.includes('#AICompanion'));
-            assert.ok(fbCaption.includes('#DigitalTwin'));
-            assert.ok(fbCaption.includes('#SelfReflection'));
-            assert.ok(fbCaption.includes('#MentalClarity'));
+        it('keeps pilot captions readable and same-day hook variants independently selectable', async () => {
+            const date = new Date();
+            const a = await contentGeneratorService.getOrGenerateDailyContent(date, { hookVariant: 'A' });
+            const b = await contentGeneratorService.getOrGenerateDailyContent(date, { hookVariant: 'B' });
+            const caption = a.facebook.caption;
+            assert.ok(caption.includes('#TwinGenie'));
+            assert.ok((caption.match(/#[A-Za-z]+/g) || []).length <= 5);
+            assert.ok(caption.length < 800);
+            assert.ok(!/ChatGPT|Replika|therapist-grade/i.test(caption));
+            assert.strictEqual(a.facebook.creative.id, b.facebook.creative.id);
+            assert.notStrictEqual(a.facebook.title, b.facebook.title);
         });
     });
 });

@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import supabaseAdmin from '../../config/supabase.js';
 import { cleanLinkedInHumanCaption } from './linkedinTextSanitizer.js';
+import { buildSocialPilotPackage } from './reelCreativeService.js';
 
 /**
  * TwinGenie Content Generator Engine
@@ -251,7 +252,7 @@ class ContentGeneratorService {
     async getOrGenerateDailyContent(date = new Date(), options = {}) {
         const schedule = this.getDailySchedule(date);
         const istDateStr = schedule.istDateStr;
-        const cacheKey = `${istDateStr}:${options.experimentArm || (options.includeCaptionLink ? 'arm_a' : 'arm_b')}`;
+        const cacheKey = `${istDateStr}:${options.experimentArm || (options.includeCaptionLink ? 'arm_a' : 'arm_b')}:${process.env.REEL_RENDERER_VERSION || 'motion_v2'}:${options.hookVariant || 'scheduled'}`;
 
         if (this._dailyCache[cacheKey]) {
             logger.info(`[CONTENT GENERATOR] Returning cached dynamic daily content for ${cacheKey}: "${this._dailyCache[cacheKey].topic}"`);
@@ -259,7 +260,9 @@ class ContentGeneratorService {
         }
 
         logger.info(`🧠 [CONTENT GENERATOR] Generating 100% fresh, bespoke daily content for ${istDateStr}...`);
-        const generated = await this.generateDynamicDailyContent(date, options);
+        const generated = process.env.REEL_RENDERER_VERSION !== 'legacy' && !options.specificThemeId
+            ? buildSocialPilotPackage(date, options)
+            : await this.generateDynamicDailyContent(date, options);
         this._dailyCache[cacheKey] = generated;
         return generated;
     }

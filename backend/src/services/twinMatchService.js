@@ -25,16 +25,7 @@ export async function hasAcceptedConsent(userId1, userId2) {
         return true;
     }
 
-    // Backwards-compatible check only for explicitly shared existing match rows
-    const { data: existingMatch } = await supabaseAdmin
-        .from('twin_matches')
-        .select('id, is_shared')
-        .or(`and(user1_id.eq.${userId1},user2_id.eq.${userId2}),and(user1_id.eq.${userId2},user2_id.eq.${userId1})`)
-        .eq('is_shared', true)
-        .limit(1)
-        .maybeSingle();
-
-    return Boolean(existingMatch);
+    return false;
 }
 
 /**

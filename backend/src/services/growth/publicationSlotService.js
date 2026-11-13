@@ -101,7 +101,7 @@ class PublicationSlotService {
 
                     if (!updateErr && updated) {
                         logger.info(`🔑 [SLOT SERVICE] Acquired slot CAS lease: ${slotKey} (attempt ${updated.attempts})`);
-                        return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: updated.attempts };
+                        return { granted: true, slotKey, workerId, status: SlotStatus.RENDERING, attempts: updated.attempts };
                     }
 
                     this._inMemoryLocks.delete(slotKey);
@@ -126,7 +126,7 @@ class PublicationSlotService {
                     .maybeSingle();
 
                 if (!insertErr && inserted) {
-                    return { granted: true, slotKey, status: SlotStatus.RENDERING, attempts: 1 };
+                    return { granted: true, slotKey, workerId, status: SlotStatus.RENDERING, attempts: 1 };
                 }
 
                 if (insertErr?.code === '23505') {
@@ -194,10 +194,11 @@ class PublicationSlotService {
         }
     }
 
-    async transitionStatus(slotKey, targetStatus, metadata = {}) {
+    async transitionStatus(slotKey, targetStatus, metadata = {}, workerId = null) {
+        const effectiveWorkerId = workerId || metadata?.workerId || null;
         const nowIso = new Date().toISOString();
         try {
-            await supabaseAdmin
+            let updateQuery = supabaseAdmin
                 .from('growth_publication_slots')
                 .update({
                     status: targetStatus,
@@ -208,6 +209,18 @@ class PublicationSlotService {
                     ...(targetStatus === SlotStatus.PUBLISHED || targetStatus === SlotStatus.FAILED ? { locked_until: null } : {}),
                 })
                 .eq('slot_key', slotKey);
+
+            if (effectiveWorkerId) {
+                updateQuery = updateQuery.eq('worker_id', effectiveWorkerId);
+            }
+
+            const { data, error } = await updateQuery.select();
+            if (error) {
+                logger.warn(`[SLOT SERVICE] Could not update slot table for ${slotKey}:`, error.message);
+            } else if (effectiveWorkerId && (!data || data.length === 0)) {
+                logger.warn(`[SLOT SERVICE] Slot transition to ${targetStatus} rejected for ${slotKey}: worker ${effectiveWorkerId} is no longer the active lease owner`);
+                return false;
+            }
         } catch (e) {
             logger.warn(`[SLOT SERVICE] Could not update slot table for ${slotKey}:`, e.message);
         }
@@ -239,6 +252,8 @@ class PublicationSlotService {
                 logger.warn(`[SLOT SERVICE] Durable ledger commit warning: ${err.message}`);
             }
         }
+
+        return true;
     }
 
     /**
@@ -293,4 +308,5 @@ class PublicationSlotService {
 }
 
 const publicationSlotService = new PublicationSlotService();
+export { publicationSlotService };
 export default publicationSlotService;

@@ -16,15 +16,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   bool _isLoading = false;
   bool _isSignupMode = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingReferral();
+  }
+
+  Future<void> _loadPendingReferral() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pending = prefs.getString('pending_referral_code');
+      if (pending != null && pending.trim().isNotEmpty && mounted) {
+        setState(() {
+          _referralCodeController.text = pending.trim().toUpperCase();
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -115,13 +135,15 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = response.user;
       
       if (mounted && user != null) {
-        // Attribute any pending referral code
+        // Attribute any pending referral code or manually entered code
         try {
           final prefs = await SharedPreferences.getInstance();
+          final manual = _referralCodeController.text.trim();
           final pendingRef = prefs.getString('pending_referral_code');
-          if (pendingRef != null && pendingRef.trim().isNotEmpty) {
+          final codeToSubmit = manual.isNotEmpty ? manual : pendingRef;
+          if (codeToSubmit != null && codeToSubmit.trim().isNotEmpty) {
             final api = ApiService();
-            await api.submitReferralCode(pendingRef.trim());
+            await api.submitReferralCode(codeToSubmit.trim().toUpperCase());
             await prefs.remove('pending_referral_code');
           }
         } catch (_) {}
@@ -263,6 +285,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock, color: Colors.white70),
                   ),
                 ),
+
+                if (_isSignupMode) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _referralCodeController,
+                    style: const TextStyle(color: Colors.white),
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      hintText: 'Referral Code (Optional)',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(Icons.card_giftcard, color: Colors.white70),
+                    ),
+                  ),
+                ],
                 
                 const SizedBox(height: 24),
                 

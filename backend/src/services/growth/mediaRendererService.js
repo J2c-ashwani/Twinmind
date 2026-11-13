@@ -3,12 +3,14 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import logger from '../../config/logger.js';
+import { buildMotionCreative } from './reelCreativeService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PYTHON_RENDERER_PATH = path.join(__dirname, 'renderers/carouselRenderer.py');
 const PYTHON_REEL_RENDERER_PATH = path.join(__dirname, 'renderers/reelRenderer.py');
+const MOTION_RENDERER_PATH = path.join(__dirname, 'renderers/motionReelRenderer.py');
 const PUBLIC_ASSETS_DIR = path.join(__dirname, '../../../public/growth_assets');
 
 // Ensure assets directory exists
@@ -88,9 +90,11 @@ class MediaRendererService {
                 fs.mkdirSync(targetDir, { recursive: true });
             }
             const outputMp4 = path.join(targetDir, 'reel.mp4');
-            const specJson = JSON.stringify(spec);
+            const motion = process.env.REEL_RENDERER_VERSION !== 'legacy';
+            const renderSpec = motion ? { ...spec, creative: buildMotionCreative(spec) } : spec;
+            const specJson = JSON.stringify(renderSpec);
 
-            execFile('python3', [PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: 180000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            execFile('python3', [motion ? MOTION_RENDERER_PATH : PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: 240000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
                 if (global.gc) {
                     try { global.gc(); } catch (e) {}
                 }
@@ -113,6 +117,11 @@ class MediaRendererService {
                         videoUrl,
                         durationSeconds: result.durationSeconds,
                         resolution: result.resolution,
+                        renderVersion: result.renderVersion || 'legacy',
+                        creativeId: result.creativeId,
+                        hookVariant: result.hookVariant,
+                        captionsPath: result.captionsPath,
+                        storyboardPath: result.storyboardPath,
                         localDir: targetDir
                     });
                 } catch (parseErr) {

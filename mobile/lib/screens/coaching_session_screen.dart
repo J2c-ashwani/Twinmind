@@ -51,14 +51,34 @@ class _CoachingSessionScreenState extends State<CoachingSessionScreen> {
         _sessionData = sessionData;
         _isLoading = false;
         
-        // Add initial prompt from AI if history is empty
+        final rawHistory = sessionData['session_history'];
+        if (rawHistory is List && rawHistory.isNotEmpty) {
+          _messages.clear();
+          for (final m in rawHistory) {
+            if (m is Map) {
+              final sender = m['sender_type']?.toString();
+              final role = (sender == 'user') ? 'user' : 'ai';
+              final content = m['content']?.toString() ?? '';
+              if (content.isNotEmpty) {
+                _messages.add({
+                  'role': role,
+                  'content': content,
+                });
+              }
+            }
+          }
+        }
+
+        // Add initial prompt from AI if history is still empty
         if (_messages.isEmpty) {
+          final initialPrompt = sessionData['content']?['initial_prompt'] ?? 'Welcome to your coaching session!';
           _messages.add({
             'role': 'ai',
-            'content': sessionData['content']['initial_prompt']
+            'content': initialPrompt,
           });
         }
       });
+      _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
