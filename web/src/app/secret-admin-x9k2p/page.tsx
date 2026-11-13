@@ -66,6 +66,10 @@ export default function SecretAdminPanel() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     activeUsers: 0,
@@ -83,43 +87,113 @@ export default function SecretAdminPanel() {
 
   const checkAdminAccess = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      const adminResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const storedKey = typeof window !== 'undefined' ? sessionStorage.getItem('twinmind_admin_key') : null;
+      if (storedKey) {
+        const verifyRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/verify-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: storedKey })
+        });
+        if (verifyRes.ok) {
+          setIsAdmin(true);
+          await fetchAdminData(storedKey);
+          return;
+        } else {
+          sessionStorage.removeItem('twinmind_admin_key');
         }
-      });
-
-      if (!adminResponse.ok) {
-        router.push('/chat');
-        return;
       }
 
-      setIsAdmin(true);
-      await fetchAdminData();
+      // Supabase user session check
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        const adminResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (adminResponse.ok) {
+          setIsAdmin(true);
+          await fetchAdminData();
+          return;
+        }
+      }
+
+      // If neither is valid, remain on the Password Gate
+      setIsAdmin(false);
     } catch (error) {
       console.error('Admin check failed:', error);
-      router.push('/chat');
+      setIsAdmin(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAdminData = async () => {
+  const handleUnlockWithPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = passwordInput.trim();
+    if (!trimmed) {
+      setAuthError('Please enter the admin password');
+      return;
+    }
+
+    setIsVerifying(true);
+    setAuthError('');
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/verify-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: trimmed })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 503) {
+          setAuthError(data.error || 'Admin access is disabled. Please set ADMIN_PASSWORD in your server environment.');
+        } else {
+          setAuthError(data.error || 'Incorrect admin password. Access denied.');
+        }
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('twinmind_admin_key', trimmed);
+      }
+      setIsAdmin(true);
+      await fetchAdminData(trimmed);
+    } catch (err: any) {
+      setAuthError(err.message || 'Network error verifying admin password');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleLockPortal = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('twinmind_admin_key');
+    }
+    setIsAdmin(false);
+    setPasswordInput('');
+    setAuthError('');
+  };
+
+  const fetchAdminData = async (adminKey?: string) => {
     try {
       const token = (await supabase.auth.getSession()).data.session?.access_token;
-      const headers = {
-        'Authorization': `Bearer ${token}`,
+      const keyToUse = adminKey || (typeof window !== 'undefined' ? sessionStorage.getItem('twinmind_admin_key') : null);
+
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (keyToUse) {
+        headers['x-admin-key'] = keyToUse;
+      }
 
       // 1. Fetch base stats
       const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/stats`, { headers });
@@ -177,8 +251,82 @@ export default function SecretAdminPanel() {
     );
   }
 
+  // Password Gate when not unlocked
   if (!isAdmin) {
-    return null;
+    return (
+      <div className="min-h-screen bg-[#0F0F1E] flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-[#1A1A2E] border border-purple-900/50 rounded-2xl p-8 shadow-2xl backdrop-blur-md">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-gradient-to-tr from-purple-600 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/20">
+              <span className="text-2xl">🔒</span>
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+              Admin Access Gate
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Restricted Area — TwinGenie Operations
+            </p>
+          </div>
+
+          {authError && (
+            <div className="mb-5 p-3 rounded-lg bg-red-900/30 border border-red-500/50 text-red-300 text-xs flex items-start gap-2">
+              <span className="text-base">⚠️</span>
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleUnlockWithPassword} className="space-y-4">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-medium">
+                Master Admin Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter administrator password..."
+                  className="w-full px-4 py-3 bg-[#0F0F1E] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition pr-16"
+                  autoFocus
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 text-xs focus:outline-none px-1 py-0.5"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isVerifying}
+              className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 font-medium rounded-xl text-white shadow-lg shadow-purple-900/30 transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isVerifying ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <span>Unlock Control Center</span>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-5 border-t border-gray-800 text-center">
+            <p className="text-xs text-gray-500">
+              Zero public access. Protected by fail-closed server authentication.
+            </p>
+            <p className="text-[11px] text-gray-600 mt-1">
+              To set or change your password, configure <code className="text-purple-400 bg-purple-950/60 px-1 py-0.5 rounded">ADMIN_PASSWORD</code> in your Render server environment.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const tabs: Array<{ id: 'overview' | 'revenue' | 'ai-health' | 'users' | 'system'; label: string }> = [
@@ -193,19 +341,32 @@ export default function SecretAdminPanel() {
     <div className="min-h-screen bg-[#0F0F1E] text-white p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Admin & Analytics Dashboard
-            </h1>
-            <p className="text-gray-400 mt-2">Platform Control Panel & Multi-LLM Telemetry — TwinGenie</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                Admin & Analytics Dashboard
+              </h1>
+              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-green-900/40 text-green-400 border border-green-500/30">
+                Live
+              </span>
+            </div>
+            <p className="text-gray-400 mt-1 text-sm">Platform Control Panel & Multi-LLM Telemetry — TwinGenie</p>
           </div>
-          <button
-            onClick={fetchAdminData}
-            className="px-4 py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 rounded-lg text-sm transition"
-          >
-            ↻ Refresh Data
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchAdminData()}
+              className="px-3.5 py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 rounded-lg text-sm transition"
+            >
+              ↻ Refresh Data
+            </button>
+            <button
+              onClick={handleLockPortal}
+              className="px-3.5 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/40 text-red-300 rounded-lg text-sm transition flex items-center gap-1.5"
+            >
+              <span>🔒</span> Lock Portal
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}

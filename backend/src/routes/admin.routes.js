@@ -1,6 +1,6 @@
 import express from 'express';
+import crypto from 'crypto';
 import { supabase, supabaseAdmin } from '../config/supabase.js';
-import { verifyToken } from '../middleware/authMiddleware.js';
 import { calculateDeterministicPersonality } from '../services/deterministicPersonality.js';
 import { sendRecoveryEmail, sendProductUpdateEmail } from '../services/emailService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
@@ -9,44 +9,127 @@ import aiService from '../services/aiService.js';
 
 const router = express.Router();
 
-// Middleware to check if user is admin
-const isAdmin = async (req, res, next) => {
+/**
+ * Constant-time string comparison to prevent timing attacks
+ */
+const safeCompare = (a, b) => {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+};
+
+/**
+ * Returns all active admin secrets configured in the server environment
+ */
+const getValidAdminSecrets = () => {
+    return [
+        process.env.ADMIN_PASSWORD,
+        process.env.ADMIN_API_KEY,
+        process.env.ADMIN_SECRET_KEY
+    ].filter(Boolean);
+};
+
+/**
+ * Master Admin Authentication Middleware.
+ * Fail-closed: If no admin credentials are set on the server, all access is denied.
+ * Supports:
+ *   1) Direct Admin Password / Key via X-Admin-Key or X-Admin-Password header
+ *   2) Bearer token matching the Admin Password / Key
+ *   3) Supabase JWT where user email matches ADMIN_EMAIL or personality_profiles metadata has role: 'admin'
+ */
+const requireAdminAuth = async (req, res, next) => {
     try {
-        const { data: profile } = await supabaseAdmin
-            .from('personality_profiles')
-            .select('metadata')
-            .eq('user_id', req.user.userId)
-            .maybeSingle();
-
-        // Check against environment variable and metadata
+        const validSecrets = getValidAdminSecrets();
         const adminEmail = process.env.ADMIN_EMAIL;
-        const isUserAdmin = (adminEmail && req.user.email === adminEmail) ||
-            profile?.metadata?.role === 'admin';
 
-        if (!isUserAdmin) {
-            console.warn(`Admin access denied for: ${req.user.email}`);
-            return res.status(403).json({ error: 'Forbidden: Admin access required' });
+        // Fail-closed rule: If no admin password or email is configured, refuse all entry
+        if (validSecrets.length === 0 && !adminEmail) {
+            console.warn('[SECURITY] Admin endpoint accessed but no ADMIN_PASSWORD or ADMIN_EMAIL is configured on server.');
+            return res.status(503).json({
+                error: 'Admin access is disabled. Please configure ADMIN_PASSWORD in your server environment variables.'
+            });
         }
 
-        next();
+        // 1. Direct Admin Key / Password Header
+        const providedKey = req.headers['x-admin-key'] || req.headers['x-admin-password'];
+        if (providedKey) {
+            const isValid = validSecrets.some(secret => safeCompare(providedKey, secret));
+            if (isValid) {
+                req.isAdmin = true;
+                req.adminAuthType = 'password';
+                return next();
+            } else {
+                console.warn(`[SECURITY] Invalid admin key/password attempt from IP ${req.ip}`);
+                return res.status(401).json({ error: 'Unauthorized: Invalid admin password' });
+            }
+        }
+
+        // 2. Authorization header check (Bearer token can be an admin password OR a Supabase JWT)
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+
+            // Direct check against admin secrets
+            if (validSecrets.some(secret => safeCompare(token, secret))) {
+                req.isAdmin = true;
+                req.adminAuthType = 'password';
+                return next();
+            }
+
+            // Supabase JWT check
+            if (token && token.split('.').length === 3) {
+                try {
+                    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+                    if (!error && user) {
+                        const { data: profile } = await supabaseAdmin
+                            .from('personality_profiles')
+                            .select('metadata')
+                            .eq('user_id', user.id)
+                            .maybeSingle();
+
+                        const isEmailAdmin = adminEmail && user.email && user.email.toLowerCase() === adminEmail.toLowerCase();
+                        const isRoleAdmin = profile?.metadata?.role === 'admin';
+
+                        if (isEmailAdmin || isRoleAdmin) {
+                            req.userId = user.id;
+                            req.user = { userId: user.id, email: user.email, role: 'admin' };
+                            req.isAdmin = true;
+                            req.adminAuthType = 'supabase_jwt';
+                            return next();
+                        }
+                    }
+                } catch (jwtErr) {
+                    // Ignore and fall through to 401
+                }
+            }
+        }
+
+        return res.status(401).json({ error: 'Unauthorized: Master admin password or authorized session required' });
     } catch (error) {
-        res.status(500).json({ error: 'Admin verification failed' });
+        console.error('Admin authentication error:', error);
+        return res.status(500).json({ error: 'Admin authentication verification error' });
     }
 };
 
+// Backwards compatibility alias
+const isAdmin = requireAdminAuth;
+
 // Strict server-level secret check for high-risk operations (broadcasts & batch recoveries)
 const requireAdminSecret = (req, res, next) => {
-    const adminKey = req.headers['x-admin-key'] || req.headers['x-admin-secret'];
-    const expectedKey = process.env.ADMIN_API_KEY || process.env.ADMIN_SECRET_KEY;
+    const adminKey = req.headers['x-admin-key'] || req.headers['x-admin-secret'] || req.headers['x-admin-password'];
+    const validSecrets = getValidAdminSecrets();
 
-    if (!expectedKey) {
-        console.error('[SECURITY ALERT] ADMIN_API_KEY / ADMIN_SECRET_KEY is not configured on server.');
+    if (validSecrets.length === 0) {
+        console.error('[SECURITY ALERT] ADMIN_PASSWORD / ADMIN_API_KEY is not configured on server.');
         return res.status(503).json({ 
-            error: 'Administrative broadcast endpoints are disabled until ADMIN_API_KEY is configured in server environment' 
+            error: 'Administrative broadcast endpoints are disabled until ADMIN_PASSWORD is configured in server environment' 
         });
     }
 
-    if (!adminKey || adminKey !== expectedKey) {
+    const isValid = adminKey && validSecrets.some(secret => safeCompare(adminKey, secret));
+    if (!isValid) {
         console.warn(`[SECURITY ALERT] Unauthorized admin key attempt from ${req.ip} for ${req.originalUrl}`);
         return res.status(401).json({ error: 'Unauthorized: Invalid or missing X-Admin-Key header' });
     }
@@ -54,12 +137,48 @@ const requireAdminSecret = (req, res, next) => {
     next();
 };
 
-router.get('/me', verifyToken, isAdmin, async (req, res) => {
-    res.json({ isAdmin: true, email: req.user.email });
+/**
+ * Public Verification Endpoint for Web Admin Portal.
+ * Verifies if the provided password matches ADMIN_PASSWORD.
+ */
+router.post('/verify-password', async (req, res) => {
+    try {
+        const validSecrets = getValidAdminSecrets();
+        if (validSecrets.length === 0) {
+            return res.status(503).json({
+                success: false,
+                configured: false,
+                error: 'Admin access is locked. Please set ADMIN_PASSWORD in your server environment variables.'
+            });
+        }
+
+        const password = req.body?.password || req.headers['x-admin-key'] || req.headers['x-admin-password'];
+        if (!password) {
+            return res.status(400).json({ success: false, error: 'Password is required' });
+        }
+
+        const isValid = validSecrets.some(secret => safeCompare(password, secret));
+        if (!isValid) {
+            return res.status(401).json({ success: false, error: 'Incorrect admin password' });
+        }
+
+        res.json({
+            success: true,
+            configured: true,
+            message: 'Admin access granted'
+        });
+    } catch (error) {
+        console.error('Verify admin password error:', error);
+        res.status(500).json({ success: false, error: 'Internal server error during verification' });
+    }
+});
+
+router.get('/me', requireAdminAuth, async (req, res) => {
+    res.json({ isAdmin: true, authType: req.adminAuthType, email: req.user?.email || 'admin' });
 });
 
 // Get platform statistics with rigorous sender=user separation
-router.get('/stats', verifyToken, isAdmin, async (req, res) => {
+router.get('/stats', requireAdminAuth, async (req, res) => {
     try {
         // Total registered users
         const { count: totalUsersCount } = await supabaseAdmin
@@ -122,7 +241,7 @@ router.get('/stats', verifyToken, isAdmin, async (req, res) => {
     }
 });
 
-router.get('/analytics', verifyToken, isAdmin, async (req, res) => {
+router.get('/analytics', requireAdminAuth, async (req, res) => {
     try {
         const analyticsData = await adminAnalyticsService.getAllAnalytics();
         res.json({
@@ -135,7 +254,7 @@ router.get('/analytics', verifyToken, isAdmin, async (req, res) => {
     }
 });
 
-router.get('/ai-health', verifyToken, isAdmin, async (req, res) => {
+router.get('/ai-health', requireAdminAuth, async (req, res) => {
     try {
         const stats = aiService.getStats();
         res.json({
@@ -150,7 +269,7 @@ router.get('/ai-health', verifyToken, isAdmin, async (req, res) => {
 });
 
 // Get recent users
-router.get('/users/recent', verifyToken, isAdmin, async (req, res) => {
+router.get('/users/recent', requireAdminAuth, async (req, res) => {
     try {
         const { data: users, error } = await supabaseAdmin
             .from('users')
@@ -176,7 +295,7 @@ router.get('/users/recent', verifyToken, isAdmin, async (req, res) => {
 });
 
 // Get system health
-router.get('/health', verifyToken, isAdmin, async (req, res) => {
+router.get('/health', requireAdminAuth, async (req, res) => {
     try {
         const { error: dbError } = await supabaseAdmin
             .from('personality_profiles')
@@ -194,7 +313,7 @@ router.get('/health', verifyToken, isAdmin, async (req, res) => {
 });
 
 // Trigger recovery for users who completed 35 questions without a profile
-router.post('/recover-stuck-users', verifyToken, isAdmin, requireAdminSecret, async (req, res) => {
+router.post('/recover-stuck-users', requireAdminAuth, requireAdminSecret, async (req, res) => {
     try {
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
         if (authError) throw authError;
@@ -267,7 +386,7 @@ router.post('/recover-stuck-users', verifyToken, isAdmin, requireAdminSecret, as
 });
 
 // Broadcast email (e.g. app update, new feature, re-engagement)
-router.post('/broadcast-email', verifyToken, isAdmin, requireAdminSecret, async (req, res) => {
+router.post('/broadcast-email', requireAdminAuth, requireAdminSecret, async (req, res) => {
     try {
         const { title, version, highlights, actionUrl, actionText, testEmailOnly } = req.body;
 
@@ -317,7 +436,7 @@ router.post('/broadcast-email', verifyToken, isAdmin, requireAdminSecret, async 
 });
 
 // Seed proactive AI greeting for all users who completed onboarding but haven't started chatting
-router.post('/seed-proactive-greetings', verifyToken, isAdmin, requireAdminSecret, async (req, res) => {
+router.post('/seed-proactive-greetings', requireAdminAuth, requireAdminSecret, async (req, res) => {
     try {
         const { data: profiles, error: pError } = await supabaseAdmin
             .from('personality_profiles')
