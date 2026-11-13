@@ -148,6 +148,7 @@ class GrowthOrchestratorService {
         const failedCount = this.state.posts.filter(p => p.status === 'failed').length;
 
         return {
+            contentEngine:{version:'companion_daily_v3',renderer:'companion_cinema',dailyWriting:'Groq/Gemini with reviewed fallback',artwork:'reused approved library',dailyImageApiEnabled:false,linkedinFormats:{Monday:'video',Tuesday:'carousel_pdf',Wednesday:'text',Thursday:'carousel_pdf',Friday:'video',Saturday:'video',Sunday:'carousel_pdf'},linkedinSelfComments:false},
             isPaused: this.isSystemPaused(),
             adapters: adapterHealth,
             queueSummary: {
@@ -487,6 +488,7 @@ class GrowthOrchestratorService {
                     renderedReel = await mediaRendererService.renderReel({
                         campaignId,
                         postId,
+                        creative: dailyPackage.facebook?.creative || dailyPackage.instagram?.creative,
                         format_type: dailyPackage.formatType || 'split',
                         mode: dailyPackage.mode || 'dark',
                         modeName: dailyPackage.modeName || 'Honest / Dark Twin',
@@ -609,16 +611,27 @@ class GrowthOrchestratorService {
     }
 
     /**
-     * Publishes today's high-converting PDF Carousel to Ashwani Kumar's LinkedIn Personal Profile.
-     * Generates fresh AI content, renders 1080x1350 multi-page PDF document carousel, and dispatches to LinkedIn.
-     * @param {boolean} force - If true, bypasses the duplicate post throttle
+     * Render the selected LinkedIn format; historical approved packages retain their format.
      */
+    async renderLinkedInContent(dailyPackage, campaignId, postId, approvedPkg = null) {
+        const format = dailyPackage.linkedin.format || 'carousel_pdf';
+        if (format === 'text') return {format};
+        if (format === 'video') {
+            const creative = dailyPackage.facebook?.creative || approvedPkg?.creative;
+            if (!creative) throw new Error('LinkedIn video requires the approved daily creative');
+            return {...await mediaRendererService.renderReel({campaignId,postId,creative}),format};
+        }
+        if (format !== 'carousel_pdf') throw new Error('Unsupported LinkedIn format');
+        if (approvedPkg?.pdfPath && fs.existsSync(approvedPkg.pdfPath)) return {pdfPath:approvedPkg.pdfPath,pngPaths:approvedPkg.pngPaths,format};
+        return {...await mediaRendererService.renderCarousel({campaignId,postId,slides:dailyPackage.linkedin.slides}),format};
+    }
+
     async publishDailyLinkedInPersonal(force = false, specificThemeId = null) {
         if (!force && this.isSystemPaused()) {
             logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping LinkedIn.');
             return { action: 'skipped', reason: 'system_paused' };
         }
-        logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile carousel flow...`);
+        logger.info(`[GROWTH ORCHESTRATOR] Starting daily LinkedIn Personal Profile publishing flow...`);
         const now = new Date();
         const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
@@ -636,6 +649,7 @@ class GrowthOrchestratorService {
 
         // 3. Durable Distributed Idempotency Ledger Check (Supabase + local state)
         if (!force) {
+            if(this.state.posts.some(p=>p.platform==='linkedin' && p.status==='verifying' && p.slotDate===todayIST)) return {action:'skipped',reason:'publish_outcome_unknown'};
             const ledgerCheck = await this.checkDurableLedger('linkedin', todayIST);
             if (ledgerCheck.isBlocked) {
                 return { action: 'skipped', reason: ledgerCheck.reason };
@@ -684,8 +698,7 @@ class GrowthOrchestratorService {
 
             // Immutable Approved Content Package with Autonomous Self-Healing Fallback:
             // 1. If an approved package exists on disk for today, publish it with zero regeneration.
-            // 2. If NO package exists for today, NEVER halt: gracefully fall back to the autonomous
-            //    curriculum & dynamic LLM generator so that today's post is GUARANTEED to publish!
+            // 2. Otherwise prepare a daily story; publishing can still fail if providers or APIs are unavailable.
             let usedApprovedPackage = false;
             if (process.env.LINKEDIN_CONTENT_EXPERIMENT_V2 === 'true') {
                 const pkgResult = approvedContentPackageService.getApprovedPackage('linkedin', todayIST);
@@ -702,7 +715,9 @@ class GrowthOrchestratorService {
                         linkedin: {
                             title: approvedPkg.title || approvedPkg.themeId,
                             caption: approvedPkg.caption,
-                            slides: approvedPkg.slides
+                            slides: approvedPkg.slides,
+                            format: approvedPkg.format || 'carousel_pdf',
+                            contentVersion: approvedPkg.contentVersion
                         }
                     };
                     armInfo = {
@@ -716,23 +731,10 @@ class GrowthOrchestratorService {
                     campaignId = `camp_${approvedPkg.themeId || 'daily'}_${Date.now()}`;
                     postId = `post_linkedin_personal_${Date.now()}`;
 
-                    const pdfExists = approvedPkg.pdfPath && fs.existsSync(approvedPkg.pdfPath);
-                    if (pdfExists) {
-                        rendered = {
-                            pdfPath: approvedPkg.pdfPath,
-                            pngPaths: approvedPkg.pngPaths
-                        };
-                    } else {
-                        logger.info(`[GROWTH ORCHESTRATOR] Approved package PDF not at ${approvedPkg.pdfPath}. Rendering directly on container from approved slides...`);
-                        rendered = await mediaRendererService.renderCarousel({
-                            campaignId,
-                            postId,
-                            slides: approvedPkg.slides
-                        });
-                    }
+                    rendered = await this.renderLinkedInContent(dailyPackage,campaignId,postId,approvedPkg);
                     usedApprovedPackage = true;
                 } else {
-                    logger.warn(`⚠️ [GROWTH ORCHESTRATOR] No pre-approved package found for ${todayIST} (${pkgResult.reason}). Gracefully falling back to autonomous rotational curriculum to guarantee publication!`);
+                    logger.warn(`⚠️ [GROWTH ORCHESTRATOR] No pre-approved package found for ${todayIST} (${pkgResult.reason}). Gracefully falling back to autonomous rotational curriculum for the scheduled slot.`);
                 }
             }
 
@@ -773,25 +775,23 @@ class GrowthOrchestratorService {
 
                 logger.info(`[GROWTH ORCHESTRATOR] Today's LinkedIn Topic: "${dailyPackage.topic}" (${dailyPackage.category})`);
 
-                // 5. Render 1080x1350 Multi-Page PDF Carousel
-                logger.info(`[GROWTH ORCHESTRATOR] Rendering Carousel & PDF for Ashwani Kumar's LinkedIn: "${dailyPackage.topic}"...`);
-                rendered = await mediaRendererService.renderCarousel({
-                    campaignId,
-                    postId,
-                    slides: dailyPackage.linkedin.slides
-                });
+                // Render the weekday's native format from the same canonical daily story.
+                rendered = await this.renderLinkedInContent(dailyPackage,campaignId,postId);
 
                 // Auto-save generated package so it has durable audit provenance
                 try {
                     approvedContentPackageService.saveApprovedPackage({
                         packageId: `pkg_linkedin_${todayIST.replace(/-/g, '')}_auto`,
-                        version: 'v2.0.0',
+                        version: dailyPackage.linkedin.contentVersion ? 'v3.0.0' : 'v2.0.0',
+                        contentVersion: dailyPackage.linkedin.contentVersion,
+                        format: rendered.format,
+                        creative: dailyPackage.facebook?.creative,
                         status: 'approved',
                         approvedBy: 'Autonomous Engine',
                         approvedAt: new Date().toISOString(),
                         platform: 'linkedin',
                         date: todayIST,
-                        scheduledPublishTimeIST: '16:00:00',
+                        scheduledPublishTimeIST: '08:30:00',
                         pillarId: assignedPillar,
                         themeId: dailyPackage.themeId || 'daily',
                         topic: dailyPackage.topic,
@@ -812,10 +812,10 @@ class GrowthOrchestratorService {
             }
 
             // 6. Publish to LinkedIn via official API (strictly no self-comments & clean human typography)
-            logger.info(`[GROWTH ORCHESTRATOR] Dispatching PDF document carousel to LinkedIn personal profile...`);
+            logger.info(`[GROWTH ORCHESTRATOR] Dispatching selected native format to LinkedIn personal profile...`);
             await this._transitionSlot(slotClaim, SlotStatus.PUBLISHING);
             const cleanCaption = cleanLinkedInHumanCaption(dailyPackage.linkedin.caption, {
-                includeCaptionLink: true,
+                includeCaptionLink: armInfo.includeCaptionLink !== false,
                 utmLink: armInfo.utmLink
             });
             let publishResult;
@@ -823,6 +823,8 @@ class GrowthOrchestratorService {
                 publishResult = await this.adapters.linkedin.postToPersonalProfile({
                     title: dailyPackage.linkedin.title,
                     caption: cleanCaption,
+                    format: rendered.format,
+                    videoPath: rendered.videoPath,
                     pdfPath: rendered.pdfPath,
                     pngPaths: rendered.pngPaths,
                     utmLink: armInfo.utmLink,
@@ -830,6 +832,13 @@ class GrowthOrchestratorService {
                     firstComment: null
                 });
             } catch (netErr) {
+                if(netErr.code==='LINKEDIN_PUBLISH_AMBIGUOUS') {
+                    // A timed-out create may already be live. Do not reset to FAILED or retry blindly.
+                    await this._transitionSlot(slotClaim,SlotStatus.VERIFYING,{errorMessage:netErr.message});
+                    this.state.posts.push({id:postId,campaignId,platform:'linkedin',target:'personal',slotDate:todayIST,status:'verifying',format:rendered.format,error:netErr.message});
+                    this._saveState();
+                    return {success:false,needsVerification:true,reason:'publish_outcome_unknown',error:netErr.message};
+                }
                 logger.error(`[GROWTH ORCHESTRATOR] Ambiguous timeout during LinkedIn publish: ${netErr.message}. Triggering reconciliation...`);
                 const rec = await publicationSlotService.reconcileAmbiguousTimeout({
                     platform: 'linkedin',
@@ -843,6 +852,7 @@ class GrowthOrchestratorService {
                 }
             }
 
+            if (publishResult.simulated) publishResult = {success:false,error:'LinkedIn credentials unavailable; simulated publishing is not a live post'};
             // 7. Commit to Durable Distributed Ledger
             if (publishResult.success) {
                 this._lastPublishedTimestamps.linkedin = Date.now();
@@ -864,9 +874,11 @@ class GrowthOrchestratorService {
                 campaignId,
                 platform: 'linkedin',
                 target: 'personal',
-                format: 'carousel_pdf',
+                format: rendered.format,
+                videoPath: rendered.videoPath,
+                creativeRevision: rendered.creativeRevision,
                 title: dailyPackage.linkedin.title,
-                caption: dailyPackage.linkedin.caption,
+                caption: cleanCaption,
                 pdfPath: rendered.pdfPath,
                 mediaPaths: rendered.pngPaths,
                 status: publishResult.success ? 'published' : 'failed',
@@ -883,7 +895,7 @@ class GrowthOrchestratorService {
                     sampleStatus: armInfo.sampleStatus,
                     attribution: {
                         channel: 'linkedin',
-                        medium: armInfo.arm === 'arm_a_caption' ? 'post_caption' : 'first_comment',
+                        medium: armInfo.includeCaptionLink !== false ? 'post_caption' : 'no_post_link',
                         campaign: dailyPackage.pillarId || assignedPillar,
                         content: dailyPackage.themeId,
                         destination: 'google_play_store',
@@ -998,6 +1010,7 @@ class GrowthOrchestratorService {
                     renderedReel = await mediaRendererService.renderReel({
                         campaignId,
                         postId,
+                        creative: dailyPackage.facebook?.creative || dailyPackage.instagram?.creative,
                         format_type: dailyPackage.formatType || 'split',
                         mode: dailyPackage.mode || 'dark',
                         modeName: dailyPackage.modeName || 'Honest / Dark Twin',
@@ -1312,6 +1325,7 @@ class GrowthOrchestratorService {
             const renderResult = await mediaRendererService.renderReel({
                 campaignId: `yt_${todayIST}`,
                 postId: Date.now(),
+                creative: dailyPackage.youtube?.creative || reelPkg.creative,
                 mode: reelPkg.mode || 'dark',
                 hook: reelPkg.hook || dailyPackage.topic,
                 tag: 'TWINGENIE',
@@ -1319,8 +1333,8 @@ class GrowthOrchestratorService {
             });
 
             const publishResult = await this.adapters.youtube.publish({
-                title: (dailyPackage.topic || 'TwinGenie Reflection').slice(0, 95),
-                description: `${reelPkg.caption || dailyPackage.topic}\n\nhttps://twingenie.app/download?utm_source=youtube&utm_medium=shorts`,
+                title: (dailyPackage.youtube?.title || dailyPackage.hook || dailyPackage.topic || 'TwinGenie').slice(0, 95),
+                description: dailyPackage.youtube?.description || `${reelPkg.caption || dailyPackage.topic}\n\nhttps://twingenie.app/download?utm_source=youtube&utm_medium=shorts`,
                 videoPath: renderResult?.videoPath || renderResult?.localPath,
             });
 

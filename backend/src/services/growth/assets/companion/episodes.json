@@ -1,0 +1,309 @@
+[
+  {
+    "id": "midnight_chat",
+    "feature": "chat",
+    "featureName": "Everyday chat",
+    "mode": "reflective",
+    "storyFormat": "midnight_microfilm",
+    "heroAsset": "night-chat.png",
+    "creativeRevision": "chat_dialogue_v4",
+    "editStyle": "dialogue_reveal",
+    "hooks": [
+      "Deleted “I’m fine.” Sent this instead.",
+      "The message you almost didn’t send."
+    ],
+    "problem": "Sometimes you want a conversation before you want advice.",
+    "question": "Can we just talk tonight?",
+    "reply": "Of course. Deep thoughts, or something ridiculous?",
+    "followupText": "Ridiculous. Please.",
+    "action": "Start with what’s on your mind.",
+    "actionTitle": "Try one conversation.",
+    "narration": [
+      "You deleted, I’m fine.",
+      "Can we just talk tonight?",
+      "Of course. Deep thoughts, or something ridiculous?",
+      "Ridiculous. Please.",
+      "Would a ghost need a passport?",
+      "TwinGenie. Try one conversation."
+    ],
+    "discussion": "Would a ghost need a passport? What’s your verdict?",
+    "sceneTitles": [
+      "Deleted “I’m fine.”",
+      "Can we just talk tonight?",
+      "Deep thoughts, or something ridiculous?",
+      "Ridiculous. Please.",
+      "Would a ghost need a passport?",
+      "Try one conversation."
+    ],
+    "inputText": "I’m fine.",
+    "scenePerformance": [
+      {
+        "voice": "en-US-JennyNeural",
+        "rate": "+8%",
+        "pitch": "-2Hz",
+        "hold": 0.1,
+        "minSeconds": 2.2
+      },
+      {
+        "voice": "en-US-AriaNeural",
+        "rate": "+6%",
+        "pitch": "-1Hz",
+        "hold": 0.1,
+        "minSeconds": 2
+      },
+      {
+        "voice": "en-US-JennyNeural",
+        "rate": "+8%",
+        "pitch": "-1Hz",
+        "hold": 0.15,
+        "minSeconds": 3
+      },
+      {
+        "voice": "en-US-AriaNeural",
+        "rate": "+3%",
+        "pitch": "+1Hz",
+        "hold": 0.12,
+        "minSeconds": 1.35
+      },
+      {
+        "voice": "en-US-JennyNeural",
+        "rate": "+7%",
+        "pitch": "+1Hz",
+        "hold": 0.2,
+        "minSeconds": 2.55
+      },
+      {
+        "voice": "en-US-JennyNeural",
+        "rate": "+6%",
+        "pitch": "-1Hz",
+        "hold": 0.15,
+        "minSeconds": 2.2
+      }
+    ],
+    "payoffText": "Would a ghost need a passport?",
+    "trimTrailingSilence": true,
+    "cta": "Try one conversation",
+    "socialCaption": "Would a ghost need a passport? 👻\n\nSome nights call for a deep conversation. Others take a ridiculous turn. TwinGenie is an AI companion for everyday life, with room for both.\n\nWhat’s your verdict?\n\nTry one conversation. Google Play — link in bio.\nThe conversation shown is an illustrative example.\n#TwinGenie #AICompanion",
+    "threadText": "Would a ghost need a passport? 👻\n\nOur illustrative TwinGenie chat took a turn from “Can we just talk tonight?” to this.\n\nDeep thoughts or something ridiculous—which conversation are you in the mood for?"
+  },
+  {
+    "id": "room_for_you",
+    "feature": "life_coach",
+    "featureName": "Life Coach",
+    "mode": "lifecoach",
+    "storyFormat": "everyday_role_reversal",
+    "heroAsset": "life-coach.png",
+    "hooks": [
+      "You: ‘Take a break.’ Also you…",
+      "Great advice. Except to yourself."
+    ],
+    "problem": "You can look after other people and still make a little room for yourself.",
+    "question": "I keep putting myself last.",
+    "reply": "What is one small thing you need for yourself today?",
+    "action": "One guided session. At your pace.",
+    "actionTitle": "Make a little room for you.",
+    "narration": [
+      "You tell everyone else to take a break.",
+      "Then you keep going. Sound familiar?",
+      "TwinGenie’s Life Coach offers guided sessions.",
+      "Space to reflect, with small exercises along the way.",
+      "Not everything tonight. One session at your pace.",
+      "TwinGenie. An AI companion for your everyday life."
+    ],
+    "discussion": "What would you say to a friend who had your day?",
+    "sceneTitles": [
+      "You: ‘Take a break.’",
+      "Also you, at 11:58 PM…",
+      "What about you?",
+      "Life Coach. At your pace.",
+      "Your day matters, too.",
+      "Your everyday AI companion."
+    ],
+    "inputText": "Everyone else first.",
+    "cta": "Meet TwinGenie"
+  },
+  {
+    "id": "same_text",
+    "feature": "perspectives",
+    "featureName": "Four perspectives",
+    "mode": "future",
+    "storyFormat": "same_message_different_lens",
+    "heroAsset": "night-chat.png",
+    "hooks": [
+      "One text. Four stories in your head.",
+      "You read it again. And again."
+    ],
+    "problem": "A short message can feel different depending on the perspective you bring to it.",
+    "question": "They just wrote “okay”. Are they upset?",
+    "reply": "What do you know from the message, and what are you adding?",
+    "action": "Try a different perspective before replying.",
+    "actionTitle": "Same moment. Another angle.",
+    "narration": [
+      "One text. Four stories in your head.",
+      "You read it again. And again.",
+      "Bring the thought to TwinGenie.",
+      "Try a reflective, honest, normal, or future perspective.",
+      "A different angle before your next reply.",
+      "TwinGenie. Your everyday AI companion."
+    ],
+    "discussion": "Have you ever read a whole mood into a one-word reply?",
+    "sceneTitles": [
+      "One text.",
+      "Four stories in your head.",
+      "Is it the message, or the meaning?",
+      "Try another perspective.",
+      "Pause before replying.",
+      "Your everyday AI companion."
+    ],
+    "inputText": "Okay.",
+    "cta": "Meet TwinGenie"
+  },
+  {
+    "id": "week_in_colour",
+    "feature": "mood",
+    "featureName": "Mood and reflection",
+    "mode": "reflective",
+    "storyFormat": "colour_diary",
+    "heroAsset": "everyday-joy.png",
+    "hooks": [
+      "How was your week? ‘Fine.’ Really?",
+      "Your week had more than one colour."
+    ],
+    "problem": "A week can hold a mix of ordinary, difficult and lovely moments.",
+    "question": "I said my week was fine. It was a mix.",
+    "reply": "Which little moment would you want to remember?",
+    "action": "Notice one moment from today.",
+    "actionTitle": "Let the little moments count.",
+    "narration": [
+      "How was your week? Fine. Really?",
+      "There was the hard bit. And that lovely little moment.",
+      "TwinGenie has space for reflection and mood tracking.",
+      "Look back at the colours of your days.",
+      "Let the little moments count, too.",
+      "TwinGenie. Your everyday AI companion."
+    ],
+    "discussion": "What colour would you give today?",
+    "sceneTitles": [
+      "‘My week was fine.’",
+      "Actually, it was a mix.",
+      "The little moments count.",
+      "Your days, in colour.",
+      "What stayed with you today?",
+      "Your everyday AI companion."
+    ],
+    "inputText": "Fine. Mostly. Sort of.",
+    "cta": "Meet TwinGenie"
+  },
+  {
+    "id": "cat_judgement",
+    "feature": "light_chat",
+    "featureName": "A lighter conversation",
+    "mode": "normal",
+    "storyFormat": "playful_everyday_chat",
+    "heroAsset": "everyday-joy.png",
+    "hooks": [
+      "My cat is judging me. Again.",
+      "Not every AI chat needs a big question."
+    ],
+    "problem": "An AI companion can be part of light, ordinary conversations as well as serious reflection.",
+    "question": "My cat stared at me for ten minutes. Your theory?",
+    "reply": "Dinner was late. The household royalty is not impressed.",
+    "action": "Bring the big thoughts. Or the tiny, silly ones.",
+    "actionTitle": "A little conversation is enough.",
+    "narration": [
+      "My cat is judging me. Again.",
+      "Not every conversation needs a life changing question.",
+      "Sometimes you just want a little chat.",
+      "TwinGenie can do the light conversations, too.",
+      "Bring the big thoughts. Or the tiny, silly ones.",
+      "TwinGenie. Your everyday AI companion."
+    ],
+    "discussion": "What tiny thing made you smile today?",
+    "sceneTitles": [
+      "The cat has notes.",
+      "Dinner was late. Clearly.",
+      "A little chat is enough.",
+      "Big thoughts. Small, silly ones.",
+      "Everyday company, your way.",
+      "Your everyday AI companion."
+    ],
+    "inputText": "Serious question. About my cat.",
+    "cta": "Meet TwinGenie"
+  },
+  {
+    "id": "remember_the_walk",
+    "feature": "memory",
+    "featureName": "Conversation memory",
+    "mode": "normal",
+    "storyFormat": "two_moments_callback",
+    "heroAsset": "everyday-joy.png",
+    "hooks": [
+      "A little thing you mentioned last time.",
+      "You shouldn’t need to start from zero."
+    ],
+    "problem": "Conversation memory helps bring relevant earlier context into later conversations.",
+    "question": "Remember I wanted to spend more time outside?",
+    "reply": "How did getting outside feel this time?",
+    "action": "Let your conversations build on what matters to you.",
+    "actionTitle": "A conversation with continuity.",
+    "narration": [
+      "A little thing you mentioned last time.",
+      "It might matter in your next conversation.",
+      "TwinGenie uses memory to bring relevant context forward.",
+      "Like something you wanted to try, or talk about again.",
+      "A conversation that can build on earlier moments.",
+      "TwinGenie. Your everyday AI companion."
+    ],
+    "discussion": "What small thing would you like a conversation to remember?",
+    "sceneTitles": [
+      "A little thing, from last time.",
+      "Still part of your story.",
+      "You mentioned getting outside.",
+      "Bring context forward.",
+      "More than one isolated chat.",
+      "Your everyday AI companion."
+    ],
+    "inputText": "I tried that walk.",
+    "cta": "Meet TwinGenie",
+    "memoryEarlier": "I want more time outside.",
+    "memoryLater": "I tried that walk."
+  },
+  {
+    "id": "weekend_twins",
+    "feature": "twin_match",
+    "featureName": "Twin Match",
+    "mode": "normal",
+    "storyFormat": "two_person_story",
+    "heroAsset": "everyday-joy.png",
+    "hooks": [
+      "Same invite. Very different weekends.",
+      "Your friend’s perfect day. Your perfect day."
+    ],
+    "problem": "Twin Match offers a way to explore personality similarities and differences with a consenting friend.",
+    "question": "My perfect weekend is completely different from theirs.",
+    "reply": "Different preferences can be a good conversation starter.",
+    "action": "Invite a friend. Compare only after they accept.",
+    "actionTitle": "Get curious about each other.",
+    "narration": [
+      "Same invite. Very different weekends.",
+      "One friend wants everyone there. One wants a quiet afternoon.",
+      "Twin Match lets you explore personality similarities and differences.",
+      "Send an invitation. Your friend chooses whether to accept.",
+      "Get curious about each other.",
+      "TwinGenie. Your everyday AI companion."
+    ],
+    "discussion": "Are you the big-plans friend or the quiet-weekend friend?",
+    "sceneTitles": [
+      "Same invite.",
+      "Two very different weekends.",
+      "Get curious, not competitive.",
+      "Invite. Accept. Explore.",
+      "Make it a conversation.",
+      "Your everyday AI companion."
+    ],
+    "inputText": "Go out? Stay in?",
+    "cta": "Meet TwinGenie",
+    "matchA": "Everyone over for dinner",
+    "matchB": "A quiet afternoon"
+  }
+]

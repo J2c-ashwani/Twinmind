@@ -31,6 +31,8 @@ class ApprovedContentPackageService {
             slides: pkg.slides,
             utmLink: pkg.utmLink
         };
+        // Keep historical package hashes stable. New packages also bind the selected media.
+        if (pkg.contentVersion) Object.assign(payloadToHash,{contentVersion:pkg.contentVersion,format:pkg.format,creative:pkg.creative});
         const canonicalString = JSON.stringify(payloadToHash);
         return crypto.createHash('sha256').update(canonicalString).digest('hex');
     }

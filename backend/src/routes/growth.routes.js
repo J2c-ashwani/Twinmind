@@ -1,3 +1,4 @@
+import {respondToGrowthJob} from '../services/growth/growthWebhookService.js';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -533,8 +534,7 @@ const handleDailyFacebook = async (req, res) => {
         const theme = req.query.theme || req.body?.theme || null;
         const format = req.query.format || req.body?.format || null;
         logger.info(`[GROWTH CRON] Triggering automated daily Facebook publication (force=${force}, theme=${theme || 'auto'}, format=${format || 'auto'})...`);
-        const result = await growthOrchestratorService.publishDailyFacebookReel(force, theme, format);
-        res.json({ success: true, result });
+        return await respondToGrowthJob(req,res,()=>growthOrchestratorService.publishDailyFacebookReel(force,theme,format),{platform:'facebook'});
     } catch (error) {
         logger.error('[GROWTH CRON] Daily Facebook publication failed:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -546,18 +546,17 @@ router.all('/cron/daily-facebook', requireAdminSecret, handleDailyFacebook);
 
 /**
  * GET & POST /api/admin/growth/cron/daily-linkedin
- * Automated webhook called by cron-job.org daily at 4:00 PM IST (10:30 UTC)
- * Renders 1080x1350 multi-page PDF document carousel and publishes to Ashwani Kumar's LinkedIn.
+ * Automated webhook at 08:30 IST; selects native video, document or text.
+ * async=true acknowledges before rendering to avoid cron's HTTP timeout.
  */
 router.all('/cron/daily-linkedin', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
         const theme = req.query.theme || req.body?.theme || null;
-        logger.info(`[GROWTH CRON] Triggering automated daily LinkedIn Personal Carousel publication (force=${force}, theme=${theme || 'auto'})...`);
-        const result = await growthOrchestratorService.publishDailyLinkedInPersonal(force, theme);
-        res.json({ success: true, result });
+        logger.info(`[GROWTH CRON] Triggering automated daily LinkedIn Personal publication (force=${force}, theme=${theme || 'auto'})...`);
+        return await respondToGrowthJob(req,res,()=>growthOrchestratorService.publishDailyLinkedInPersonal(force,theme),{platform:'linkedin'});
     } catch (error) {
-        logger.error('[GROWTH CRON] Daily LinkedIn carousel publication failed:', error);
+        logger.error('[GROWTH CRON] Daily LinkedIn publication failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

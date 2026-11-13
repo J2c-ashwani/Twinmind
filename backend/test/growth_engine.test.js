@@ -79,8 +79,8 @@ describe('Growth Engine Reliability & Synchronized Multi-Platform Publishing', (
 
         it('keeps pilot captions readable and same-day hook variants independently selectable', async () => {
             const date = new Date();
-            const a = await contentGeneratorService.getOrGenerateDailyContent(date, { hookVariant: 'A' });
-            const b = await contentGeneratorService.getOrGenerateDailyContent(date, { hookVariant: 'B' });
+            const a = await contentGeneratorService.getOrGenerateDailyContent(date, { hookVariant: 'A', _skipExternalLlm:true });
+            const b = await contentGeneratorService.getOrGenerateDailyContent(date, { hookVariant: 'B', _skipExternalLlm:true });
             const caption = a.facebook.caption;
             assert.ok(caption.includes('#TwinGenie'));
             assert.ok((caption.match(/#[A-Za-z]+/g) || []).length <= 5);

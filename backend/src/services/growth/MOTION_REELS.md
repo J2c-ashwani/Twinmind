@@ -1,30 +1,48 @@
-# Motion reels v2
+# Daily companion content and mixed LinkedIn formats
 
-The daily generator now selects an original six-scene pilot story, with native channel copy. `mediaRendererService.renderReel` builds that same creative for the FB/IG/YouTube callers and invokes `renderers/motionReelRenderer.py`. The orchestrator's Threads path uses the prepared short discussion text. Existing LinkedIn approved-package checks, carousel rendering, publishing leases and schedules are retained.
+The default daily path is `companion_daily_v3`. The existing scheduled webhooks call the same orchestrator methods and retain platform leases, daily publication ledgers, pause controls and LinkedIn's no-self-comment policy.
 
-## Run a preview
+| IST weekday | Feature | LinkedIn format |
+| --- | --- | --- |
+| Monday | Everyday chat | Native video |
+| Tuesday | Life Coach | PDF document |
+| Wednesday | Four perspectives | Text |
+| Thursday | Mood reflection | PDF document |
+| Friday | Light conversation | Native video |
+| Saturday | Conversation memory | Native video |
+| Sunday | Twin Match with accepted invitation | PDF document |
 
-From `backend`, generate the spec and render it into a review directory:
+## Daily path
+
+1. Load the canonical draft for the IST date, or generate a short story using existing Groq/Gemini credentials and recent-topic history. Groq is preferred; a live check found the local default Gemini model unavailable.
+2. Validate supported features, length, claims and visual fit. At most two writing attempts are made. Rejected/unavailable writing uses a reviewed feature story. Fallback stories can repeat; novelty is not guaranteed during outages.
+3. Use the original three companion artworks with camera movement, layered chat, timed captions and neural speech. Chat speech and UI messages derive from the same fields. This is 2.5D animation, not rigged or lip-synced 3D.
+4. Reuse one successful MP4 render across platform callers in the same server process. Cache loss/restart can cause rerendering; canonical story persistence keeps the daily story consistent when the database is available.
+5. Upload native media to each platform. LinkedIn initializes/uploads/finalizes a video and waits for AVAILABLE before creating a post. An ambiguous creation result enters VERIFYING and needs feed verification before retry. No text-only success is substituted for a failed video.
+
+Canonical drafts use deterministic UUIDs in the existing `usage_tracking` table. Serialized draft data is namespaced in `action_type`, consistent with the table's existing text-ledger pattern; this does not assume a metadata column or require a migration. Only generated marketing copy is stored. The first successful database writer supplies the canonical draft. Without database access only process-local consistency is available.
+
+LinkedIn uses native captions with an illustrative exchange and a relevant discussion question. Existing caption-link policy is preserved; explicit no-link approved packages are honored. Historical approved packages retain their original format and integrity hash. The new package hash also binds format and creative.
+
+## Unattended operation
+
+No image-generation API is invoked by cron. Artwork made in the chat is bundled in `assets/companion`; fresh daily illustrations would require a separate production image API and budget. Existing writing and edge-tts services still require available credentials/network/quota. No Google Cloud project or startup credits are configured or spent by this change.
+
+LinkedIn and Facebook cron endpoints support `async=true` to acknowledge quickly while the existing orchestrator renders/uploads. Instagram already supports this option. Configure existing cron jobs with that parameter after deploying. HTTP 202 means accepted for work, not published. Check growth status, native platform posts and the publication ledger for the result. Background execution uses the existing server process; it is not a separate persistent task queue.
+
+YouTube's live readiness check returned false on 13 November 2026. There is no dedicated YouTube external cron job in the inspected account; the existing 23:00 IST server sweep calls its publisher. Complete YouTube credentials/OAuth before expecting unattended Shorts. Do not force an upload merely to test deployment.
+
+## Preview and checks
+
+From `backend`:
 
 ```sh
-node --input-type=module -e "import {buildMotionCreative} from './src/services/growth/reelCreativeService.js'; console.log(JSON.stringify({creative:buildMotionCreative({mode:'dark',hookVariant:'A'})}));" > /tmp/twingenie-preview.json
-python3 src/services/growth/renderers/motionReelRenderer.py "$(cat /tmp/twingenie-preview.json)" /tmp/twingenie-motion/reel.mp4
+node scripts/check_growth_media.js
+node scripts/preview_daily_growth.js --date=2026-11-16 --output=/absolute/review/directory
 ```
 
-Requirements are the same Pillow/edge-tts/ffmpeg dependencies as the existing renderer. Network access is needed for edge-tts. Narration errors abort rather than silently publishing a voiceless film. The existing publisher may then use its carousel fallback. No Google Cloud service is called.
+The preview uses `draft()`: no database writes and no social publication. Add `--offline=true` to use the reviewed story without provider calls. Outputs include MP4, SRT, six frames, storyboard timing, package and LinkedIn caption. Runtime requires Python/Pillow/edge-tts, ffmpeg/ffprobe and bundled fonts/images.
 
-Exports: MP4, actual word-boundary SRT, timed storyboard JSON, six scene JPGs, local cached narration and render metadata. Use a unique directory per render. Local cache is not a media archive; apply the platform's existing retention rules to old render folders.
+`REEL_RENDERER_VERSION=legacy` selects the prior generator/renderer. Explicit theme requests retain the legacy curriculum. Deployment/restart is required for changed source; do not interpret a local preview or successful webhook acknowledgement as proof of production publication or reach.
 
-## Rollout
-
-`REEL_RENDERER_VERSION=legacy` restores both the legacy daily generation path and the old reel renderer. Without that override, the new daily pilot/renderer is selected. A server deployment/restart is required to run changed source. Existing already-approved LinkedIn packages and already-published posts are not rewritten. Explicit theme requests can still use the legacy generator; review them before publishing because their old copy is not part of the new pilot.
-
-Six pilot stories × two opening hooks are a bounded creative library, not an infinite fresh-content generator. Review results and add approved episodes before repeating the cycle. Hook A/B is an organic creative comparison, not a randomized experiment. Never infer automatic winning hooks from a tiny audience.
-
-## Quality and measurement
-
-Keep one central situation, one visible product example and one action. All demo chat is labelled illustrative. Avoid fabricated competitor responses, customer testimonials, clinical promises and precise memory claims without an actual consented demonstration.
-
-Before publishing: verify scene fit, mobile readability, captions, audio and destination links. The saved creative ID/variant in each storyboard identifies what was rendered. Join native published post IDs to that creative ID when collecting performance. Missing insights are unavailable, never zero.
-
-The existing Meta credential can list posts but currently cannot read the checked Instagram insight metrics. Grant the appropriate insights permission through the account's existing OAuth/admin flow before enabling automated performance reporting. Do not add a secret to source or log an access token. Publication is not proof of reach, retention or acquired users.
+Completion, skip rate, reach, follows and installs must be measured on native platforms. Missing analytics remain unavailable, not zero. Neither this renderer nor the publishing API guarantees virality or the founder's retention/view targets.

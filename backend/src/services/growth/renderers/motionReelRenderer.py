@@ -4,6 +4,7 @@ import asyncio, bisect, hashlib, json, math, os, subprocess, sys, time, wave
 from array import array
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+from companionVisuals import render_companion_frame,render_companion_slide
 
 ROOT = Path(__file__).resolve().parent
 FONTS = ROOT.parent / 'assets/fonts'
@@ -65,6 +66,7 @@ def background(dark=False):
 BACKGROUNDS=[background(False),background(True)]
 
 def render_frame(c,scene,p,t,caption):
+    if c.get('storyStyle')=='companion_cinema':return render_companion_frame(c,scene,p,t,caption)
     dark=scene in (1,3);im=BACKGROUNDS[int(dark)].copy();d=ImageDraw.Draw(im)
     fg=CREAM if dark else NAVY; accent=MINT if dark else PURPLE
     d.ellipse((82,157,110,185),fill=accent);d.text((128,145),'TwinGenie',font=font(33),fill=fg)
@@ -147,12 +149,12 @@ def render_frame(c,scene,p,t,caption):
 def duration(path):
     return float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',str(path)],text=True).strip())
 
-async def voice(text,path,voice_name):
+async def voice(text,path,voice_name,rate='+0%',pitch='+0Hz'):
     import edge_tts
     timings=[]
     async def generate():
         with open(path,'wb') as f:
-            async for chunk in edge_tts.Communicate(text,voice_name,rate='+0%',boundary='WordBoundary',connect_timeout=10,receive_timeout=30).stream():
+            async for chunk in edge_tts.Communicate(text,voice_name,rate=rate,pitch=pitch,boundary='WordBoundary',connect_timeout=10,receive_timeout=30).stream():
                 if chunk['type']=='audio':f.write(chunk['data'])
                 elif chunk['type']=='WordBoundary':timings.append({'start':chunk['offset']/10000000,'end':(chunk['offset']+chunk['duration'])/10000000,'text':chunk['text']})
     await asyncio.wait_for(generate(),45)
@@ -167,18 +169,25 @@ def render(spec,output):
     if c.get('version')!='motion_v2' or len(c.get('narration',[]))!=6:raise ValueError('Six-scene motion_v2 creative required')
     cache=out.parent/'.narration';cache.mkdir(exist_ok=True)
     clips=[];ends=[];caps=[];offset=0
-    for text in c['narration']:
-        digest=hashlib.sha256((text+'en-US-GuyNeural').encode()).hexdigest()[:20]
+    for index,text in enumerate(c['narration']):
+        perf=(c.get('scenePerformance') or [{}]*6)[index]
+        voice_name=perf.get('voice',c.get('voice','en-US-GuyNeural'));rate=perf.get('rate','+5%');pitch=perf.get('pitch','-1Hz')
+        digest=hashlib.sha256((text+voice_name+rate+pitch).encode()).hexdigest()[:20]
         p=cache/(digest+'.mp3');timing_path=cache/(digest+'.json')
         if not p.exists() or not timing_path.exists():
-            timing=asyncio.run(voice(text,p,'en-US-GuyNeural'));timing_path.write_text(json.dumps(timing))
+            timing=asyncio.run(voice(text,p,voice_name,rate,pitch));timing_path.write_text(json.dumps(timing))
         else:timing=json.loads(timing_path.read_text())
-        length=duration(p)
+        source_length=duration(p)
+        length=max(float(perf.get('minSeconds',1.7)),min(source_length,timing[-1]['end']+.14)+float(perf.get('hold',.12)))
+        # Decode each turn separately so silence trimming and padding match the caption timeline.
+        clip=cache/(digest+'.wav')
+        subprocess.run(['ffmpeg','-y','-loglevel','error','-i',str(p),'-af',f'atrim=duration={min(source_length,timing[-1]["end"]+.14)},apad','-t',str(length),'-ar','48000','-ac','1',str(clip)],check=True)
         if length>6.5:raise ValueError('Scene narration too long; shorten this script')
         for j in range(0,len(timing),4):
             group=timing[j:j+4]
-            caps.append({'start':offset+group[0]['start'],'end':offset+group[-1]['end']+.10,'text':' '.join(w['text'] for w in group)})
-        clips.append(p);offset+=length;ends.append(offset)
+            caps.append({'start':offset+group[0]['start'],'end':offset+min(group[-1]['end']+.08,length),'text':' '.join(w['text'] for w in group)})
+        clips.append(clip);offset+=length;ends.append(offset)
+    for i in range(len(caps)-1):caps[i]['end']=min(caps[i]['end'],caps[i+1]['start'])
     if not 12<=offset<=36:raise ValueError(f'Unexpected reel duration {offset:.1f}s')
     captions_path=out.with_suffix('.srt');captions_path.write_text('\n\n'.join(f'{i+1}\n{srt_time(x["start"])} --> {srt_time(x["end"])}\n{x["text"]}' for i,x in enumerate(caps)))
     timeline=out.with_suffix('.storyboard.json');timeline.write_text(json.dumps({'creative':c,'sceneEnds':ends,'captions':caps},indent=2))
@@ -210,11 +219,12 @@ def render(spec,output):
     except Exception:
         proc.kill();proc.wait();raise
     actual=duration(out)
-    return {'success':True,'videoPath':str(out),'durationSeconds':round(actual,2),'resolution':f'{W}x{H}','fps':FPS,'hasVoiceover':True,'renderVersion':'motion_v2','sceneCount':6,'creativeId':c['id'],'hookVariant':c['hookVariant'],'captionsPath':str(captions_path),'storyboardPath':str(timeline),'renderSeconds':round(time.monotonic()-started,2)}
+    return {'success':True,'videoPath':str(out),'durationSeconds':round(actual,2),'resolution':f'{W}x{H}','fps':FPS,'hasVoiceover':True,'renderVersion':'motion_v2','sceneCount':6,'creativeId':c['id'],'creativeRevision':c.get('creativeRevision'),'hookVariant':c['hookVariant'],'captionsPath':str(captions_path),'storyboardPath':str(timeline),'renderSeconds':round(time.monotonic()-started,2)}
 
 
 
 def render_motion_slide(slide,index,total,output):
+    if slide.get('heroAsset'):return render_companion_slide(slide,index,total,output)
     """Matching mobile-readable carousel art; legacy carousel layouts are not modified."""
     dark=index in (2,4);bg=NAVY if dark else CREAM;fg=CREAM if dark else NAVY
     im=Image.new('RGB',(1080,1350),bg);d=ImageDraw.Draw(im);accent=MINT if dark else PURPLE
@@ -254,5 +264,11 @@ def render_motion_slide(slide,index,total,output):
 
 
 if __name__=='__main__':
-    try:print(json.dumps(render(json.loads(sys.argv[1]),sys.argv[2])))
+    try:
+        if sys.argv[1]=='--check-layout':
+            c=json.loads(sys.argv[2])['creative']
+            for scene in range(6):
+                for progress in [.05,.5,.95]:render_frame(c,scene,progress,scene*3+progress,'One short sample caption')
+            print(json.dumps({'success':True,'framesChecked':18}))
+        else:print(json.dumps(render(json.loads(sys.argv[1]),sys.argv[2])))
     except Exception as e:print(json.dumps({'success':False,'error':str(e)}),file=sys.stderr);sys.exit(1)

@@ -1,3 +1,4 @@
+import {uploadLinkedInVideo} from '../linkedinVideoService.js';
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
@@ -306,7 +307,28 @@ class LinkedInAdapter {
 
         logger.info(`[LINKEDIN] Initiating publish to ${target} destination: ${authorUrn}...`);
 
+        let videoPostAttempted = false;
         try {
+            if (postData.videoPath) {
+                const fetchFn = this._fetch || fetch;
+                const videoUrn = await uploadLinkedInVideo({accessToken,authorUrn,filePath:postData.videoPath,fetchFn,sleep:this._videoSleep});
+                videoPostAttempted = true;
+                const response = await fetchFn('https://api.linkedin.com/rest/posts', {
+                    method:'POST',
+                    headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json','Linkedin-Version':'202601','X-Restli-Protocol-Version':'2.0.0'},
+                    signal:AbortSignal.timeout(20000),
+                    body:JSON.stringify({author:authorUrn,commentary:this._sanitizeLittleText(postData.caption),visibility:'PUBLIC',distribution:{feedDistribution:'MAIN_FEED',targetEntities:[],thirdPartyDistributionChannels:[]},content:{media:{id:videoUrn,title:postData.title||'TwinGenie'}},lifecycleState:'PUBLISHED'})
+                });
+                if (!response.ok) {
+                    if(response.status>=500 || response.status===408) throw new Error('Ambiguous server error');
+                    // A received non-2xx rejection is distinct from an ambiguous network timeout.
+                    videoPostAttempted = false;
+                    return {success:false,error:`LinkedIn rejected video post (HTTP ${response.status})`};
+                }
+                const postId = response.headers.get('x-restli-id');
+                if (!postId) throw new Error('Missing post identifier');
+                return {success:true,platform:this.platform,postId,url:`https://www.linkedin.com/feed/update/${postId}`,mediaType:'video',videoUrn,firstCommentResult:{skipped:true,reason:'self_comments_disabled'}};
+            }
             // 1. Try Document Upload (Native PDF Carousel for interactive on-feed slider)
             let documentUrn = null;
             if (postData.pdfPath && fs.existsSync(postData.pdfPath)) {
@@ -449,6 +471,7 @@ class LinkedInAdapter {
                 firstCommentResult: commentResult
             };
         } catch (err) {
+            if (videoPostAttempted) {const error=new Error('LinkedIn video post outcome unknown; reconciliation required before retry');error.code='LINKEDIN_PUBLISH_AMBIGUOUS';throw error;}
             logger.error('[LINKEDIN] Exception during publish:', err);
             return { success: false, error: err.message };
         }

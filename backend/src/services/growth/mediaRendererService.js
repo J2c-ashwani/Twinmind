@@ -80,6 +80,23 @@ class MediaRendererService {
      * @returns {Promise<{ videoPath: string, videoUrl: string, durationSeconds: number, resolution: string, localDir: string }>}
      */
     async renderReel(spec) {
+        if (process.env.REEL_RENDERER_VERSION === 'legacy') return this._renderReel(spec);
+        const creative = buildMotionCreative(spec);
+        const key = JSON.stringify(creative);
+        this._motionCache ||= new Map();
+        const cached = this._motionCache.get(key);
+        if (cached) {
+            const result = await cached;
+            if (fs.existsSync(result.videoPath)) return result;
+            this._motionCache.delete(key);
+        }
+        const pending = this._renderReel({...spec,creative}).catch(error=>{this._motionCache.delete(key);throw error;});
+        this._motionCache.set(key,pending);
+        if (this._motionCache.size>8) this._motionCache.delete(this._motionCache.keys().next().value);
+        return pending;
+    }
+
+    async _renderReel(spec) {
         return new Promise((resolve, reject) => {
             if (global.gc) {
                 try { global.gc(); } catch (e) {}
@@ -119,6 +136,7 @@ class MediaRendererService {
                         resolution: result.resolution,
                         renderVersion: result.renderVersion || 'legacy',
                         creativeId: result.creativeId,
+                        creativeRevision: result.creativeRevision,
                         hookVariant: result.hookVariant,
                         captionsPath: result.captionsPath,
                         storyboardPath: result.storyboardPath,
