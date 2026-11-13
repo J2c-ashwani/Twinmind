@@ -114,36 +114,45 @@ export async function recordReferral({ code, referredUserId }) {
         return eventRow;
     }
 
-    await Promise.all([
-        addExperiencePoints(referralCode.user_id, REFERRER_XP_REWARD),
-        addExperiencePoints(referredUserId, REFERRED_XP_REWARD),
-        supabaseAdmin.from('metric_events').insert([
-            {
-                user_id: referralCode.user_id,
-                event_type: 'referral_reward',
-                event_value: REFERRER_XP_REWARD,
-                metric_type: 'referral',
-                metadata: {
-                    role: 'referrer',
-                    referral_event_id: claimed.id,
-                    referral_code: referralCode.code,
-                    referred_user_id: referredUserId,
+    try {
+        await Promise.all([
+            addExperiencePoints(referralCode.user_id, REFERRER_XP_REWARD),
+            addExperiencePoints(referredUserId, REFERRED_XP_REWARD),
+            supabaseAdmin.from('metric_events').insert([
+                {
+                    user_id: referralCode.user_id,
+                    event_type: 'referral_reward',
+                    event_value: REFERRER_XP_REWARD,
+                    metric_type: 'referral',
+                    metadata: {
+                        role: 'referrer',
+                        referral_event_id: claimed.id,
+                        referral_code: referralCode.code,
+                        referred_user_id: referredUserId,
+                    },
                 },
-            },
-            {
-                user_id: referredUserId,
-                event_type: 'referral_reward',
-                event_value: REFERRED_XP_REWARD,
-                metric_type: 'referral',
-                metadata: {
-                    role: 'referred',
-                    referral_event_id: claimed.id,
-                    referral_code: referralCode.code,
-                    referrer_user_id: referralCode.user_id,
+                {
+                    user_id: referredUserId,
+                    event_type: 'referral_reward',
+                    event_value: REFERRED_XP_REWARD,
+                    metric_type: 'referral',
+                    metadata: {
+                        role: 'referred',
+                        referral_event_id: claimed.id,
+                        referral_code: referralCode.code,
+                        referrer_user_id: referralCode.user_id,
+                    },
                 },
-            },
-        ]),
-    ]);
+            ]),
+        ]);
+    } catch (rewardError) {
+        logger.error('Failed to grant XP reward for referral, reverting status to joined:', rewardError);
+        await supabaseAdmin
+            .from('referral_events')
+            .update({ status: 'joined' })
+            .eq('id', claimed.id);
+        throw rewardError;
+    }
 
     return claimed;
 }

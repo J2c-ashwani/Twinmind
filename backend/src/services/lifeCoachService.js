@@ -99,13 +99,15 @@ export async function getSession(userId, programId) {
             .eq('user_id', userId)
             .eq('mode', 'coaching')
             .contains('metadata', { program_id: programId, day_number: progress.current_day })
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
             .limit(30);
+
+        const orderedMessages = (sessionMessages || []).slice().reverse();
 
         return {
             progress,
             content: dayContent,
-            session_history: (sessionMessages || []).map((m) => ({
+            session_history: orderedMessages.map((m) => ({
                 sender_type: m.sender,
                 content: m.message,
                 created_at: m.created_at,

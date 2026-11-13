@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notification_service.dart';
+import 'api_service.dart';
 
 class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   final _supabase = Supabase.instance.client;
@@ -149,6 +150,16 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> signOut() async {
     await NotificationService().deregisterDeviceToken(getAccessToken());
+    await _supabase.auth.signOut();
+  }
+
+  Future<void> deleteAccount() async {
+    final token = getAccessToken();
+    if (token == null) throw 'Not signed in';
+    await NotificationService().deregisterDeviceToken(token);
+    final api = ApiService();
+    api.setToken(token);
+    await api.deleteAccount();
     await _supabase.auth.signOut();
   }
 

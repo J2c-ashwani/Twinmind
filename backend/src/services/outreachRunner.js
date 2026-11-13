@@ -187,7 +187,7 @@ export async function executeOutreachTick({
 
         // Enforce unified suppression + DB cross-check BEFORE calling Resend
         const suppressionReason = await isEmailSuppressed(candidate.email, campaignType);
-        if (suppressionReason && suppressionReason !== `already_sending`) {
+        if (suppressionReason) {
             // Note: DB row was just moved to 'sending' by us, so ignore only our own 'sending' state for isDbCandidate
             const ignoreOwnSending = isDbCandidate && suppressionReason === 'already_sending';
             if (!ignoreOwnSending) {

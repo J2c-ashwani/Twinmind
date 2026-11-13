@@ -11,29 +11,35 @@ class ApiClient {
         this.baseUrl = API_URL;
     }
 
-    setToken(token: string) {
+    setToken(token: string | null) {
         this.token = token;
+    }
+
+    clearToken() {
+        this.token = null;
     }
 
     private async request<T>(
         endpoint: string,
         options: RequestInit = {}
     ): Promise<T> {
-        // Robust Token Fetching (Mobile Parity)
-        if (!this.token) {
-            try {
-                const { data } = await this.supabase.auth.getSession();
-                if (data.session?.access_token) {
-                    this.token = data.session.access_token;
-                }
-            } catch (e) {
-                console.warn('Failed to auto-fetch token:', e);
+        // Dynamically resolve active session token on every request to avoid stale/previous-user tokens
+        let activeToken = this.token;
+        try {
+            const { data } = await this.supabase.auth.getSession();
+            if (data.session?.access_token) {
+                activeToken = data.session.access_token;
+                this.token = activeToken;
+            } else if (!this.token) {
+                activeToken = null;
             }
+        } catch (e) {
+            console.warn('Failed to auto-fetch token:', e);
         }
 
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
-            ...(this.token && { Authorization: `Bearer ${this.token}` }),
+            ...(activeToken && { Authorization: `Bearer ${activeToken}` }),
             ...options.headers,
         };
 

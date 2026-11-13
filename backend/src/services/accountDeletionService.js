@@ -9,7 +9,7 @@ export const DATA_DELETION_CATEGORIES = Object.freeze([
     'insights',
 ]);
 
-const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205', '42703']);
+const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205']);
 
 async function safeDeleteWhere(db, table, column, userId) {
     const { error } = await db.from(table).delete().eq(column, userId);
@@ -28,8 +28,8 @@ export async function deleteVoiceFilesForUser(userId, storageClient = supabaseAd
 
     const { data: entries, error: listError } = await bucket.list(userId, { limit: 1000 });
     if (listError) {
-        logger.warn(`Could not list voice files for user ${userId}: ${listError.message}`);
-        return 0;
+        logger.error(`Failed to list voice files for user ${userId}: ${listError.message}`);
+        throw listError;
     }
 
     for (const entry of entries || []) {
@@ -37,7 +37,11 @@ export async function deleteVoiceFilesForUser(userId, storageClient = supabaseAd
         // In Supabase Storage, directories have id === null
         if (entry.id === null) {
             const prefix = `${userId}/${entry.name}`;
-            const { data: nested } = await bucket.list(prefix, { limit: 1000 });
+            const { data: nested, error: nestedError } = await bucket.list(prefix, { limit: 1000 });
+            if (nestedError) {
+                logger.error(`Failed to list nested voice files for prefix ${prefix}: ${nestedError.message}`);
+                throw nestedError;
+            }
             for (const item of nested || []) {
                 if (item?.name) {
                     pathsToRemove.push(`${prefix}/${item.name}`);
@@ -52,11 +56,16 @@ export async function deleteVoiceFilesForUser(userId, storageClient = supabaseAd
         return 0;
     }
 
-    const { error: removeError } = await bucket.remove(pathsToRemove);
-    if (removeError) {
-        throw removeError;
+    let totalRemoved = 0;
+    for (let i = 0; i < pathsToRemove.length; i += 1000) {
+        const batch = pathsToRemove.slice(i, i + 1000);
+        const { error: removeError } = await bucket.remove(batch);
+        if (removeError) {
+            throw removeError;
+        }
+        totalRemoved += batch.length;
     }
-    return pathsToRemove.length;
+    return totalRemoved;
 }
 
 export async function deleteSelectedUserData({
@@ -109,6 +118,7 @@ export async function deleteSelectedUserData({
             await safeDeleteWhere(db, 'emotional_metrics', 'user_id', userId);
             await safeDeleteWhere(db, 'emotional_history', 'user_id', userId);
             await safeDeleteWhere(db, 'metric_events', 'user_id', userId);
+            await safeDeleteWhere(db, 'daily_insights', 'user_id', userId);
         }
     }
 
@@ -153,11 +163,12 @@ export async function deleteUserAccount({
         ['circle_members', 'user_id'],
         ['twin_match_invitations', 'requester_id'],
         ['twin_match_invitations', 'recipient_id'],
-        ['twin_matches', 'user_a_id'],
-        ['twin_matches', 'user_b_id'],
-        ['referral_events', 'referrer_id'],
+        ['twin_matches', 'user1_id'],
+        ['twin_matches', 'user2_id'],
+        ['referral_events', 'referrer_user_id'],
         ['referral_events', 'referred_user_id'],
         ['referral_codes', 'user_id'],
+        ['daily_insights', 'user_id'],
         ['subscriptions', 'user_id'],
         ['users', 'id'],
     ];

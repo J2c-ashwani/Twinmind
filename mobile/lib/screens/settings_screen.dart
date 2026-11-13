@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/review_service.dart';
@@ -17,6 +18,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _darkMode = true;
   bool _soundEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = prefs.getBool('pref_notifications_enabled') ?? true;
+          _darkMode = prefs.getBool('pref_dark_mode') ?? true;
+          _soundEnabled = prefs.getBool('pref_sound_enabled') ?? true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading preferences: $e');
+    }
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, value);
+    } catch (e) {
+      debugPrint('Error saving preference $key: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,21 +75,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Notifications',
                 'Receive daily reminders and updates',
                 _notificationsEnabled,
-                (value) => setState(() => _notificationsEnabled = value),
+                (value) {
+                  setState(() => _notificationsEnabled = value);
+                  _savePreference('pref_notifications_enabled', value);
+                },
                 Icons.notifications_outlined,
               ),
               _buildSwitchTile(
                 'Dark Mode',
                 'Use dark theme across the app',
                 _darkMode,
-                (value) => setState(() => _darkMode = value),
+                (value) {
+                  setState(() => _darkMode = value);
+                  _savePreference('pref_dark_mode', value);
+                },
                 Icons.dark_mode_outlined,
               ),
               _buildSwitchTile(
                 'Sound Effects',
                 'Play sounds for messages and actions',
                 _soundEnabled,
-                (value) => setState(() => _soundEnabled = value),
+                (value) {
+                  setState(() => _soundEnabled = value);
+                  _savePreference('pref_sound_enabled', value);
+                },
                 Icons.volume_up_outlined,
               ),
               const SizedBox(height: 32),
@@ -67,13 +107,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Personal Information',
                 'Update your name and email',
                 Icons.person_outline,
-                () {},
+                () => Navigator.pushNamed(context, '/profile'),
               ),
               _buildActionTile(
                 'Privacy & Security',
-                'Manage your data and password',
+                'Manage your data and privacy policy',
                 Icons.lock_outline,
-                () {},
+                () => Navigator.pushNamed(context, '/privacy'),
               ),
               _buildActionTile(
                 'Subscription',
@@ -94,8 +134,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Delete all messages permanently',
                 Icons.delete_outline,
                 () => _showClearHistoryDialog(context),
-                iconColor: Colors.red,
-                textColor: Colors.red,
+                iconColor: Colors.orangeAccent,
+                textColor: Colors.orangeAccent,
+              ),
+              _buildActionTile(
+                'Delete Account',
+                'Permanently remove your account and all data',
+                Icons.delete_forever,
+                () => _showDeleteAccountDialog(context),
+                iconColor: Colors.redAccent,
+                textColor: Colors.redAccent,
               ),
               const SizedBox(height: 32),
               _buildSectionHeader('Support & Feedback'),
@@ -134,8 +182,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 32),
               const Center(
                 child: Text(
-                  'Version 1.0.0',
-                  style: TextStyle(color: Colors.white30),
+                  'Version 1.0.7 (Build 8)',
+                  style: TextStyle(color: Colors.white30, fontSize: 13),
                 ),
               ),
             ],
@@ -248,8 +296,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A0B2E),
-        title:
-            const Text('Clear History?', style: TextStyle(color: Colors.white)),
+        title: const Text('Clear History?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'This will permanently delete all your chat messages. This action cannot be undone.',
           style: TextStyle(color: Colors.white70),
@@ -261,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+            child: const Text('Clear', style: TextStyle(color: Colors.orangeAccent)),
           ),
         ],
       ),
@@ -295,6 +342,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to clear history: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0B2E),
+        title: const Text(
+          'Delete Account Permanently?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'This will permanently delete your entire account, AI twin personality profile, voice recordings, conversation history, and memories.\n\nThis action is immediate and cannot be reversed.',
+          style: TextStyle(color: Colors.white70, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete Forever',
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(color: Colors.redAccent),
+          ),
+        );
+
+        final authService = Provider.of<AuthService>(context, listen: false);
+        await authService.deleteAccount();
+
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // dismiss spinner
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Your account and data have been permanently deleted.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // dismiss spinner
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete account: $e')),
           );
         }
       }

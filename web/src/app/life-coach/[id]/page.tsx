@@ -52,14 +52,24 @@ export default function CoachingSessionPage() {
             const data = await apiClient.getSession(params.id as string);
             setSession(data);
 
-            // Add initial AI message
-            setMessages([
-                {
-                    role: 'ai',
-                    content: (data as any).content?.initial_prompt || 'Welcome to your coaching session!',
-                    id: 'init'
-                }
-            ]);
+            // Populate session history if available, otherwise start with initial AI prompt
+            if ((data as any)?.session_history && (data as any).session_history.length > 0) {
+                setMessages(
+                    (data as any).session_history.map((m: any, idx: number) => ({
+                        role: m.sender_type === 'user' ? 'user' : 'ai',
+                        content: m.content,
+                        id: `hist-${idx}-${m.created_at || Date.now()}`,
+                    }))
+                );
+            } else {
+                setMessages([
+                    {
+                        role: 'ai',
+                        content: (data as any).content?.initial_prompt || 'Welcome to your coaching session!',
+                        id: 'init',
+                    },
+                ]);
+            }
         } catch (error) {
             console.error('Failed to start session:', error);
             setError(error instanceof Error ? error.message : 'Failed to start Life Coach session.');

@@ -78,6 +78,9 @@ export default function DataDeletionView() {
                 password,
             })
             if (signInError) throw signInError
+            if (data.session?.access_token) {
+                apiClient.setToken(data.session.access_token)
+            }
             setSessionEmail(data.user?.email || email.trim())
             setPassword('')
         } catch (err: any) {

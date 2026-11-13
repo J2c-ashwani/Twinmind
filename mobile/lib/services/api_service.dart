@@ -399,6 +399,17 @@ class ApiService {
     throw Exception('Failed to load referral stats');
   }
 
+  Future<void> submitReferralCode(String code) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/referral/submit'),
+      headers: _headers,
+      body: json.encode({'code': code}),
+    );
+    if (response.statusCode != 200) {
+      print('⚠️ Failed to submit referral code: Status ${response.statusCode}');
+    }
+  }
+
   // Additional Personality endpoints
   Future<Map<String, dynamic>> regeneratePersonality() async {
     final response = await http.post(
@@ -947,6 +958,39 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw HttpException('Failed to deregister FCM token (Status ${response.statusCode})', response.statusCode);
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/auth/account'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      try {
+        final err = json.decode(response.body);
+        throw HttpException(err['error'] ?? 'Failed to delete account', response.statusCode);
+      } catch (e) {
+        if (e is HttpException) rethrow;
+        throw HttpException('Failed to delete account (Status ${response.statusCode})', response.statusCode);
+      }
+    }
+  }
+
+  Future<void> deleteUserData(List<String> categories) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/auth/data'),
+      headers: _headers,
+      body: json.encode({'categories': categories}),
+    );
+    if (response.statusCode != 200) {
+      try {
+        final err = json.decode(response.body);
+        throw HttpException(err['error'] ?? 'Failed to delete user data', response.statusCode);
+      } catch (e) {
+        if (e is HttpException) rethrow;
+        throw HttpException('Failed to delete user data (Status ${response.statusCode})', response.statusCode);
+      }
     }
   }
 }

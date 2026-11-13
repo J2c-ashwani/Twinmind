@@ -77,7 +77,7 @@ class PublicationSlotService {
                     }
 
                     // Compare-and-set predicate prevents dual workers from claiming the same stale/pending slot simultaneously
-                    const { data: updated, error: updateErr } = await supabaseAdmin
+                    let updateQuery = supabaseAdmin
                         .from('growth_publication_slots')
                         .update({
                             status: SlotStatus.RENDERING,
@@ -87,7 +87,15 @@ class PublicationSlotService {
                             updated_at: nowIso,
                         })
                         .eq('slot_key', slotKey)
-                        .eq('status', existingSlot.status)
+                        .eq('status', existingSlot.status);
+
+                    if (existingSlot.locked_until) {
+                        updateQuery = updateQuery.eq('locked_until', existingSlot.locked_until);
+                    } else {
+                        updateQuery = updateQuery.is('locked_until', null);
+                    }
+
+                    const { data: updated, error: updateErr } = await updateQuery
                         .select()
                         .maybeSingle();
 

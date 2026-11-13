@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -113,6 +115,17 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = response.user;
       
       if (mounted && user != null) {
+        // Attribute any pending referral code
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final pendingRef = prefs.getString('pending_referral_code');
+          if (pendingRef != null && pendingRef.trim().isNotEmpty) {
+            final api = ApiService();
+            await api.submitReferralCode(pendingRef.trim());
+            await prefs.remove('pending_referral_code');
+          }
+        } catch (_) {}
+
         // New users always need onboarding
         Navigator.pushReplacementNamed(context, '/onboarding');
       }

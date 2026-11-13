@@ -338,6 +338,10 @@ describe('TwinGenie Full Audit Remediation Verification', () => {
             assert.strictEqual(res.success, true);
             assert.strictEqual(res.deletedUserId, 'user-123');
             assert.strictEqual(deps.deletedTables.some((d) => d.table === 'users' && d.col === 'id'), true);
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'twin_matches' && d.col === 'user1_id'), true);
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'twin_matches' && d.col === 'user2_id'), true);
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'referral_events' && d.col === 'referrer_user_id'), true);
+            assert.strictEqual(deps.deletedTables.some((d) => d.table === 'daily_insights' && d.col === 'user_id'), true);
             assert.deepStrictEqual(deps.deletedAuthUsers, ['user-123']);
         });
     });

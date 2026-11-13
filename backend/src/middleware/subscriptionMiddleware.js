@@ -1,5 +1,9 @@
+import fs from 'fs';
+import { promisify } from 'util';
 import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+
+const unlink = promisify(fs.unlink);
 
 const quotaLocks = new Map();
 
@@ -231,6 +235,11 @@ function createQuotaMiddleware(actionType, envLimitKey, defaultLimit, label) {
             const quota = await reserveDailyQuota(userId, actionType, limit);
 
             if (!quota.allowed) {
+                if (req.file?.path) {
+                    await unlink(req.file.path).catch((err) => {
+                        logger.warn(`Failed to clean up rejected voice file ${req.file.path}: ${err.message}`);
+                    });
+                }
                 return res.status(429).json({
                     error: `Free tier limit reached (${limit} ${label}/day)`,
                     current: quota.current,

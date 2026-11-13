@@ -46,6 +46,9 @@ export default function AccountDeletionView() {
                 password,
             })
             if (signInError) throw signInError
+            if (data.session?.access_token) {
+                apiClient.setToken(data.session.access_token)
+            }
             setSessionEmail(data.user?.email || email.trim())
             setPassword('')
         } catch (err: any) {
@@ -67,6 +70,7 @@ export default function AccountDeletionView() {
         try {
             await apiClient.deleteAccount()
             await supabase.auth.signOut().catch(() => {})
+            apiClient.clearToken()
             logout()
             setSessionEmail(null)
             setDeleted(true)

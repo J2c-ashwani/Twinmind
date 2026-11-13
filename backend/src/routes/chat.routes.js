@@ -31,6 +31,7 @@ import {
     getUserStyleMode,
     adjustModifiersForStyle
 } from '../services/emotionalStyleAdapter.js';
+import { storeMessageWithEmbedding } from '../services/conversationMemoryService.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
@@ -156,7 +157,7 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             const userTime = new Date();
             const aiTime = new Date(userTime.getTime() + 100);
 
-            const { error: historyInsertError } = await supabaseAdmin.from('chat_history').insert([
+            const { data: insertedRows, error: historyInsertError } = await supabaseAdmin.from('chat_history').insert([
                 {
                     user_id: userId,
                     conversation_id: targetConversationId,
@@ -173,7 +174,7 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                     mode,
                     created_at: aiTime.toISOString(),
                 },
-            ]);
+            ]).select('id, sender, message');
 
             if (historyInsertError) {
                 throw new Error(`Failed to persist chat history: ${historyInsertError.message}`);
@@ -205,6 +206,17 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                     const Tbg = Date.now();
 
                     await Promise.all([
+                        // Populate secondary semantic recall vector store (message_embeddings)
+                        (async () => {
+                            if (insertedRows && insertedRows.length > 0) {
+                                for (const row of insertedRows) {
+                                    if (row.sender === 'user' && row.message) {
+                                        await storeMessageWithEmbedding(row.id, userId, row.message, targetConversationId);
+                                    }
+                                }
+                            }
+                        })().catch(e => logger.warn('storeMessageWithEmbedding bg error:', e.message)),
+
                         updateEmotionalMetrics(
                             userId, message, isEmotional, hasGoals,
                             engagementState.total_messages, aiMessageString

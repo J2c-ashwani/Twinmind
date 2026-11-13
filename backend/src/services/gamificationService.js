@@ -272,10 +272,9 @@ export async function getUserStats(userId) {
             supabaseAdmin.from('conversations').select('*', { count: 'exact', head: true }).eq('user_id', userId),
             supabaseAdmin
                 .from('chat_history')
-                .select('created_at')
+                .select('conversation_id, created_at, sender')
                 .eq('user_id', userId)
-                .eq('sender', 'user')
-                .limit(500),
+                .limit(1000),
             supabaseAdmin
                 .from('life_context')
                 .select('id', { count: 'exact', head: true })
@@ -287,7 +286,8 @@ export async function getUserStats(userId) {
         const pattern = patternRes.data;
         const streaks = streaksRes.data || [];
         const events = eventsRes.data || [];
-        const userChats = userChatsRes.data || [];
+        const allChats = userChatsRes.data || [];
+        const userChats = allChats.filter((m) => m.sender === 'user');
 
         const dailyStreak = streaks.find((s) => s.streak_type === 'daily_checkin')?.current_streak || 0;
         const vulnerabilityCount = events.filter((e) => e.event_type === 'vulnerability_shared').length;
@@ -302,6 +302,14 @@ export async function getUserStats(userId) {
 
         const distinctDays = new Set(userChats.map((m) => String(m.created_at).slice(0, 10))).size;
 
+        const conversationCounts = {};
+        for (const msg of allChats) {
+            if (msg.conversation_id) {
+                conversationCounts[msg.conversation_id] = (conversationCounts[msg.conversation_id] || 0) + 1;
+            }
+        }
+        const longConversations = Object.values(conversationCounts).filter((c) => c >= 50).length;
+
         return {
             days_active: Math.max(pattern?.total_days_active || 0, distinctDays),
             daily_streak: dailyStreak,
@@ -309,7 +317,7 @@ export async function getUserStats(userId) {
             goals_achieved: goalsRes.count || 0,
             late_night_chats: lateNightChats,
             morning_chats: morningChats,
-            long_conversations: userChats.length >= 20 ? 1 : 0,
+            long_conversations: longConversations,
             total_conversations: convCountRes.count || 0,
         };
     } catch (error) {

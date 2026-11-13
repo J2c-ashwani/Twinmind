@@ -36,6 +36,7 @@ export async function middleware(req: NextRequest) {
         '/account-deletion',
         '/delete-data',
         '/data-deletion',
+        '/download',
         '/onboarding',
         '/subscription',
         '/try',

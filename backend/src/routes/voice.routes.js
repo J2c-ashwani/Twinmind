@@ -207,8 +207,8 @@ router.post(
                     aiAudioUrl = await createOwnerSignedUrl(aiObjectPath);
                 }
             } catch (ttsError) {
-                logger.error('TTS/Upload failed:', ttsError.message);
-                throw new Error(`TTS generation failed: ${ttsError.message}`);
+                logger.warn('TTS/Upload failed after conversation persisted (non-fatal):', ttsError.message);
+                aiAudioUrl = null;
             }
 
             await Promise.all([
@@ -224,6 +224,8 @@ router.post(
                 userAudioUrl,
                 aiResponse: aiMessageText,
                 audioUrl: aiAudioUrl,
+                audioAvailable: !!aiAudioUrl,
+                ...(aiAudioUrl ? {} : { audioWarning: 'Voice audio playback is temporarily unavailable' }),
             });
         } catch (error) {
             logger.error('Voice processing error:', error.message);

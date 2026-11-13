@@ -71,15 +71,28 @@ Output JSON format:
 
         let insightData;
         try {
-            insightData = JSON.parse(analysis);
+            const sanitized = analysis
+                .replace(/^```(?:json)?\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .trim();
+            insightData = JSON.parse(sanitized);
         } catch (e) {
-            insightData = {
-                summary: "You've been engaging in thoughtful conversations!",
-                mood_score: 7,
-                dominant_emotion: "reflective",
-                key_topics: ["Self Growth", "Daily Reflections"],
-                actionable_tip: "Take a moment to appreciate your personal progress."
-            };
+            try {
+                const match = analysis.match(/\{[\s\S]*\}/);
+                if (match) {
+                    insightData = JSON.parse(match[0]);
+                } else {
+                    throw e;
+                }
+            } catch (innerErr) {
+                insightData = {
+                    summary: "You've been engaging in thoughtful conversations!",
+                    mood_score: 7,
+                    dominant_emotion: "reflective",
+                    key_topics: ["Self Growth", "Daily Reflections"],
+                    actionable_tip: "Take a moment to appreciate your personal progress."
+                };
+            }
         }
 
         // 4. Save to database
