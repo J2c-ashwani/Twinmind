@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../widgets/mood_history_widget.dart';
 import '../widgets/weekly_motivation_card_widget.dart';
 import '../widgets/streak_widget.dart';
@@ -8,14 +9,48 @@ import 'growth_story_screen.dart';
 import 'twin_match_screen.dart';
 import 'growth_circles_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final ApiService _apiService = ApiService();
+  bool _isPro = false;
+  bool _isLoadingPro = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSubscriptionStatus();
+  }
+
+  Future<void> _checkSubscriptionStatus() async {
+    try {
+      final res = await _apiService.getSubscriptionStatus();
+      if (mounted) {
+        setState(() {
+          _isPro = res['isPro'] == true ||
+              res['subscription']?['plan_type'] == 'pro';
+          _isLoadingPro = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingPro = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final user = authService.currentUser;
-    const isPro = false;
+    final isPro = _isPro;
 
     return Scaffold(
       appBar: AppBar(
@@ -241,10 +276,23 @@ class ProfileScreen extends StatelessWidget {
                         _buildActionButton(
                           'Upgrade to Pro',
                           Icons.workspace_premium,
-                          () => Navigator.pushNamed(context, '/subscription'),
+                          () async {
+                            await Navigator.pushNamed(context, '/subscription');
+                            _checkSubscriptionStatus();
+                          },
                           gradient: const LinearGradient(
                             colors: [Color(0xFF9333EA), Color(0xFF3B82F6)],
                           ),
+                        )
+                      else
+                        _buildActionButton(
+                          'Manage Subscription',
+                          Icons.workspace_premium,
+                          () async {
+                            await Navigator.pushNamed(context, '/subscription');
+                            _checkSubscriptionStatus();
+                          },
+                          backgroundColor: Colors.white.withOpacity(0.08),
                         ),
                       const SizedBox(height: 12),
                       _buildActionButton(

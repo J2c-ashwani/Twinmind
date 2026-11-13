@@ -423,9 +423,92 @@ class AIService {
         };
     }
 
-    // Streaming placeholder (returns null for now to force standard)
-    async generateStreamingResponse() {
-        return null;
+    /**
+     * Stream AI chat response chunks via AsyncGenerator.
+     * Tries available streaming providers sequentially; falls back to standard generation if needed.
+     */
+    async * generateStreamingResponse(input, legacyHistory = [], legacySystemPrompt = '', legacyTaskType = 'default') {
+        this.stats.totalRequests++;
+
+        let userMessage = '';
+        let conversationHistory = [];
+        let systemPrompt = '';
+        let taskType = 'default';
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            userMessage = input.userMessage || input.prompt || input.message || '';
+            conversationHistory = input.conversationHistory || input.history || [];
+            systemPrompt = input.systemPrompt || '';
+            taskType = input.taskType || 'default';
+        } else {
+            userMessage = input || '';
+            conversationHistory = legacyHistory || [];
+            systemPrompt = legacySystemPrompt || '';
+            taskType = legacyTaskType || 'default';
+        }
+
+        if (!taskType || taskType === 'default') {
+            taskType = this.detectTaskType(userMessage, systemPrompt);
+        }
+
+        const messagesArray = this.buildMessagesArray(systemPrompt, conversationHistory, userMessage);
+        const preferredProviders = this.getProvidersForTask(taskType);
+
+        const uniqueAvailable = [];
+        const seen = new Set();
+
+        for (const p of preferredProviders) {
+            if (!seen.has(p.name) && this.isProviderAvailable(p)) {
+                if (typeof p.service?.generateStreamingResponse === 'function') {
+                    uniqueAvailable.push(p);
+                    seen.add(p.name);
+                }
+            }
+        }
+
+        const providerParams = {
+            messages: messagesArray,
+            userMessage,
+            conversationHistory,
+            systemPrompt,
+            taskType,
+        };
+
+        if (uniqueAvailable.length === 0) {
+            const fallback = await this.generateChatResponse(providerParams);
+            yield fallback.text || SAFE_FALLBACK_REPLY;
+            return;
+        }
+
+        for (const provider of uniqueAvailable) {
+            try {
+                this.stats.providerUsage[provider.name].requests++;
+                this.providerStatus[provider.name].requestsToday++;
+                let streamedAny = false;
+
+                const stream = provider.service.generateStreamingResponse(providerParams, userMessage, conversationHistory);
+                for await (const chunk of stream) {
+                    if (chunk) {
+                        streamedAny = true;
+                        yield chunk;
+                    }
+                }
+
+                if (streamedAny) {
+                    this.markProviderSuccess(provider.name);
+                    this.stats.successfulRequests++;
+                    return;
+                }
+            } catch (err) {
+                console.warn(`❌ Streaming on ${provider.name} failed: ${err.message}. Trying next provider...`);
+                this.markProviderError(provider.name, err);
+                continue;
+            }
+        }
+
+        // If all streaming providers fail, generate standard response and yield as fallback chunk
+        const standardResult = await this.generateChatResponse(providerParams);
+        yield standardResult.text || SAFE_FALLBACK_REPLY;
     }
 
     // Helpers

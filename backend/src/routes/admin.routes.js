@@ -4,6 +4,8 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 import { calculateDeterministicPersonality } from '../services/deterministicPersonality.js';
 import { sendRecoveryEmail, sendProductUpdateEmail } from '../services/emailService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
+import adminAnalyticsService from '../services/adminAnalyticsService.js';
+import aiService from '../services/aiService.js';
 
 const router = express.Router();
 
@@ -122,17 +124,28 @@ router.get('/stats', verifyToken, isAdmin, async (req, res) => {
 
 router.get('/analytics', verifyToken, isAdmin, async (req, res) => {
     try {
-        const { count: profileCount } = await supabaseAdmin
-            .from('personality_profiles')
-            .select('*', { count: 'exact', head: true });
-
+        const analyticsData = await adminAnalyticsService.getAllAnalytics();
         res.json({
-            totalProfiles: profileCount || 0,
-            generatedAt: new Date().toISOString(),
+            success: true,
+            ...analyticsData,
         });
     } catch (error) {
         console.error('Admin analytics error:', error);
-        res.status(500).json({ error: 'Failed to fetch analytics' });
+        res.status(500).json({ error: 'Failed to fetch analytics', details: error.message });
+    }
+});
+
+router.get('/ai-health', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const stats = aiService.getStats();
+        res.json({
+            success: true,
+            stats,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Admin AI health error:', error);
+        res.status(500).json({ error: 'Failed to fetch AI health status' });
     }
 });
 

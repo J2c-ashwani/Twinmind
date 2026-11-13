@@ -263,17 +263,221 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
         recordDailyMetrics(userId).catch(() => { });
 
         /* 12. RETURN RESPONSE IMMEDIATELY */
+        const followups = getSuggestedFollowups(mode, emotion);
+
         return {
             message: aiMessage,
             mode,
             timestamp: new Date().toISOString(),
             genZ: genZ.isGenZ,
-            tokensSaved: optimized.tokensSaved
+            tokensSaved: optimized.tokensSaved,
+            suggestedFollowups: followups
         };
 
     } catch (error) {
         logger.error("❌ Chat Engine Fatal:", error);
         throw new Error("Chat generation failed: " + error.message);
+    }
+}
+
+export function getSuggestedFollowups(mode = 'normal', emotion = 'neutral') {
+    const suggestionsByMode = {
+        normal: [
+            "How does this relate to my long-term goals?",
+            "What's a practical next step for today?",
+            "Show me what this says about my mindset."
+        ],
+        future: [
+            "What will I wish I had done 6 months from now?",
+            "What's the high-leverage move here?",
+            "How do I prevent this pattern from repeating?"
+        ],
+        dark: [
+            "Call out what I'm avoiding right now.",
+            "What excuse am I telling myself?",
+            "Give me the unfiltered bottom line."
+        ],
+        therapist: [
+            "Can we explore what feeling is underneath this?",
+            "How can I be kinder to myself about this?",
+            "What do I need right now to feel grounded?"
+        ]
+    };
+    return suggestionsByMode[mode] || suggestionsByMode.normal;
+}
+
+/**
+ * Stream response chunks from the chat engine.
+ * Emits { type: 'chunk', text } as chunks arrive, and ends with { type: 'done', fullMessage, suggestedFollowups, mode }
+ */
+export async function* generateStreamingChatResponse(
+    userId,
+    userMessage,
+    mode = "normal",
+    behavioralModifiers = "",
+    conversationId = null
+) {
+    try {
+        logger.info(`➡️ Streaming chat request from ${userId} [mode=${mode}]`);
+
+        // 1. Crisis Check
+        if (crisisCheck(userMessage)) {
+            logCrisisEvent(userId, userMessage).catch(() => { });
+            storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+            storeChatMemory(userId, CRISIS_RESPONSE, "ai", mode, conversationId).catch(() => { });
+
+            yield { type: 'chunk', text: CRISIS_RESPONSE };
+            yield {
+                type: 'done',
+                fullMessage: CRISIS_RESPONSE,
+                mode,
+                crisis: true,
+                suggestedFollowups: [],
+                timestamp: new Date().toISOString()
+            };
+            return;
+        }
+
+        // 2. Identity Question Check
+        if (detectIdentityQuestion(userMessage)) {
+            const honestReply = IDENTITY_RESPONSES[Math.floor(Math.random() * IDENTITY_RESPONSES.length)];
+            storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+            storeChatMemory(userId, honestReply, "ai", mode, conversationId).catch(() => { });
+
+            yield { type: 'chunk', text: honestReply };
+            yield {
+                type: 'done',
+                fullMessage: honestReply,
+                mode,
+                suggestedFollowups: getSuggestedFollowups(mode, "neutral"),
+                timestamp: new Date().toISOString()
+            };
+            return;
+        }
+
+        // 3. Parallel Context Load
+        let [personality, userData, recentChats, contextPrompt, evolutionPrompt] = await Promise.all([
+            getPersonality(userId),
+            supabaseAdmin.from("users").select("full_name").eq("id", userId).single(),
+            supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
+            getContextForPrompt(userId, 10).catch(() => ""),
+            getEvolutionSummaryForPrompt(userId).catch(() => "")
+        ]);
+
+        if (!personality) throw new Error("Chat Engine Fatal: Personality not found.");
+        const userName = userData?.data?.full_name || "User";
+
+        const conversationHistory = (recentChats?.data || [])
+            .reverse()
+            .map(m => ({ sender_type: m.sender, content: m.message }));
+
+        const genZ = detectGenZUsage(userMessage);
+
+        const trimmedMessage = String(userMessage || '').trim();
+        const shouldFetchMemory = trimmedMessage.length >= 8;
+
+        let memoryContent = [];
+        if (shouldFetchMemory) {
+            try {
+                const memories = await withTimeout(
+                    retrieveMemories(userId, trimmedMessage, { limit: 5, threshold: 0.70 }),
+                    2500
+                );
+                memoryContent = memories?.map(m => m.content) || [];
+            } catch (err) {
+                logger.warn("Memory retrieval failed:", err?.message);
+            }
+        }
+
+        let systemPrompt = buildModePrompt(
+            personality.personality_json,
+            mode,
+            userName,
+            memoryContent
+        );
+
+        if (behavioralModifiers?.trim()?.length > 3) {
+            systemPrompt += `\n\n## BEHAVIOR MODIFIERS\n${behavioralModifiers}`;
+        }
+        if (contextPrompt) systemPrompt += contextPrompt;
+        if (evolutionPrompt) systemPrompt += evolutionPrompt;
+
+        if (genZ.isGenZ) {
+            systemPrompt += `\n## GEN-Z STYLE\nMirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/angry.\n`;
+        }
+
+        try {
+            if (smartContextManager.detectPastReference(userMessage)) {
+                const smart = await smartContextManager.buildSmartContext(userId, userMessage, conversationHistory);
+                if (smart?.contextSummary) {
+                    systemPrompt += `\n## PAST CONVERSATION CONTEXT\n${smart.contextSummary}`;
+                }
+            }
+        } catch (err) {
+            logger.warn("smartContextManager failed:", err?.message);
+        }
+
+        const compressed = promptOptimizer.compressSystemPrompt(systemPrompt);
+        const optimized = promptOptimizer.optimizePrompt(compressed, userMessage, conversationHistory);
+
+        let accumulated = '';
+        try {
+            const stream = aiService.generateStreamingResponse(
+                userMessage,
+                optimized.history,
+                compressed,
+                mode
+            );
+
+            for await (const chunk of stream) {
+                if (chunk) {
+                    accumulated += chunk;
+                    yield { type: 'chunk', text: chunk };
+                }
+            }
+        } catch (streamErr) {
+            logger.warn("Streaming generation failed, falling back to standard reply:", streamErr.message);
+            const fallbackText = mode === "therapist"
+                ? "Let's slow down. Tell me the one thing bothering you the most."
+                : mode === "dark"
+                    ? "You know your patterns bro. What triggered it?"
+                    : mode === "future"
+                        ? "You'll laugh at this later bro. What started it?"
+                        : "Bro, tell me quickly — what happened?";
+            accumulated = fallbackText;
+            yield { type: 'chunk', text: fallbackText };
+        }
+
+        // Final sanitization & safety guard
+        accumulated = sanitize(accumulated);
+        accumulated = applyOutputSafetyGuard(accumulated, userId);
+        const emotion = detectEmotion(userMessage);
+
+        if (genZ.isGenZ && (emotion === "neutral" || emotion === "excited")) {
+            accumulated = mirrorUserStyle(userMessage, accumulated);
+        }
+
+        // Background persistence (non-blocking)
+        storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+        storeChatMemory(userId, accumulated, "ai", mode, conversationId).catch(() => { });
+        extractLifeContext(userId, userMessage, conversationId).catch(() => { });
+        detectAndCreateMemory(userId, conversationId, null, userMessage, { mode }).catch(() => { });
+        recordDailyMetrics(userId).catch(() => { });
+
+        const followups = getSuggestedFollowups(mode, emotion);
+
+        yield {
+            type: 'done',
+            fullMessage: accumulated,
+            mode,
+            genZ: genZ.isGenZ,
+            suggestedFollowups: followups,
+            timestamp: new Date().toISOString()
+        };
+
+    } catch (error) {
+        logger.error("❌ Streaming Chat Engine Fatal:", error);
+        throw new Error("Streaming chat generation failed: " + error.message);
     }
 }
 
@@ -313,6 +517,8 @@ export async function clearChatHistory(userId) {
 
 export default {
     generateChatResponse,
+    generateStreamingChatResponse,
+    getSuggestedFollowups,
     getChatHistory,
     clearChatHistory
 };

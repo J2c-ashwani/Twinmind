@@ -65,6 +65,39 @@ class OpenAIService {
     }
 
     /**
+     * Stream response chunks from OpenAI
+     */
+    async * generateStreamingResponse(input) {
+        if (!this.client) throw new Error("OpenAI not configured");
+
+        let messagesArray = [];
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [
+                    ...(input.systemPrompt ? [{ role: 'system', content: input.systemPrompt }] : []),
+                    { role: 'user', content: input.userMessage }
+                ];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+        }
+
+        const stream = await this.client.chat.completions.create({
+            model: this.model,
+            messages: messagesArray,
+            temperature: 0.7,
+            max_tokens: 2048,
+            stream: true,
+        });
+
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) yield content;
+        }
+    }
+
+    /**
      * Used when aiService wants a simple call.
      * generateWithContext(systemPrompt, userMessage)
      */

@@ -105,6 +105,41 @@ class GroqService {
     }
 
     /**
+     * Stream response chunks from Groq
+     */
+    async * generateStreamingResponse(input) {
+        if (!this.isEnabled || !this.groq) {
+            throw new Error('Groq API key not configured');
+        }
+
+        let messagesArray = [];
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            if (messagesArray.length === 0 && input.userMessage) {
+                messagesArray = [
+                    ...(input.systemPrompt ? [{ role: 'system', content: input.systemPrompt }] : []),
+                    { role: 'user', content: input.userMessage }
+                ];
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+        }
+
+        const stream = await this.groq.chat.completions.create({
+            messages: messagesArray,
+            model: this.model,
+            temperature: 0.7,
+            max_tokens: 2048,
+            stream: true,
+        });
+
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) yield content;
+        }
+    }
+
+    /**
      * Transcribe audio file using Groq Whisper (Distil-V3)
      */
     async transcribeAudio(filePath) {

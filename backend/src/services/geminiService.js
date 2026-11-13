@@ -127,6 +127,65 @@ class GeminiService {
     }
 
     /**
+     * Stream response chunks from Gemini
+     */
+    async * generateStreamingResponse(input, legacyUserMessage, legacyHistory) {
+        if (!this.genAI) {
+            throw new Error('Gemini not configured');
+        }
+
+        let messagesArray = [];
+        let userMessage = '';
+        let systemPrompt = null;
+
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = input.messages || [];
+            userMessage = input.userMessage || '';
+            systemPrompt = input.systemPrompt || null;
+        } else {
+            messagesArray = input || [];
+            userMessage = legacyUserMessage || '';
+        }
+
+        if (!systemPrompt) {
+            const systemMsg = messagesArray.find(m => m.role === 'system');
+            systemPrompt = systemMsg ? systemMsg.content : null;
+        }
+
+        let finalHistory = messagesArray.filter(m => m.role !== 'system');
+        const lastMsg = finalHistory[finalHistory.length - 1];
+        let currentPrompt = userMessage;
+
+        if (lastMsg && lastMsg.role === 'user' && lastMsg.content === userMessage) {
+            finalHistory.pop();
+        } else if (!userMessage && lastMsg && lastMsg.role === 'user') {
+            currentPrompt = finalHistory.pop().content;
+        }
+
+        const geminiHistory = finalHistory.map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content || ' ' }],
+        }));
+
+        const model = this.genAI.getGenerativeModel({
+            model: this.modelName,
+            systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }], role: 'model' } : undefined,
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2048,
+            },
+        });
+
+        const chat = model.startChat({ history: geminiHistory });
+        const result = await chat.sendMessageStream(currentPrompt || 'Hello');
+
+        for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            if (chunkText) yield chunkText;
+        }
+    }
+
+    /**
      * Generate response with system instructions
      */
     async generateWithContext(systemPrompt, userMessage) {

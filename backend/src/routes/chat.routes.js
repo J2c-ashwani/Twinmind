@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { checkSubscription, checkUsageLimits, releaseDailyQuota } from '../middleware/subscriptionMiddleware.js';
 import { resolveConversationForUser } from '../services/conversationAccess.js';
-import { generateChatResponse, getChatHistory, clearChatHistory } from '../services/chatEngine.js';
+import { generateChatResponse, generateStreamingChatResponse, getChatHistory, clearChatHistory } from '../services/chatEngine.js';
 import { checkAndAwardAchievements } from '../services/gamificationService.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import {
@@ -402,6 +402,82 @@ router.get('/modes', authenticateUser, checkSubscription, async (req, res) => {
     } catch (error) {
         logger.error('Error fetching modes:', error);
         res.status(500).json({ error: 'Failed to fetch modes' });
+    }
+});
+
+/**
+ * POST /api/chat/stream
+ * Stream an AI twin response via Server-Sent Events (SSE)
+ */
+router.post('/stream', authenticateUser, checkSubscription, checkUsageLimits, async (req, res) => {
+    let headersSent = false;
+    try {
+        const { message, mode = 'normal', conversation_id } = req.body || {};
+        const userId = req.userId;
+
+        if (!message || message.trim().length === 0) {
+            if (req.reservedQuota) await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+            return res.status(400).json({ error: 'Message cannot be empty' });
+        }
+        if (message.length > 5000) {
+            if (req.reservedQuota) await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+            return res.status(400).json({ error: 'Message too long. Maximum 5000 characters.' });
+        }
+
+        let targetConversationId;
+        try {
+            targetConversationId = await resolveConversationForUser(userId, conversation_id);
+        } catch (convErr) {
+            if (req.reservedQuota) await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+            return res.status(convErr.statusCode || 500).json({ error: convErr.message || 'Failed to resolve conversation' });
+        }
+
+        let engagementState = await getUserEngagementState(userId);
+        if (!engagementState || engagementState.total_messages === 0) {
+            await initializeEngagement(userId);
+            engagementState = await getUserEngagementState(userId);
+        }
+
+        const isEmotional = detectEmotionalContent(message);
+        const hasGoals = detectGoalContent(message);
+        trackMessage(userId, message, isEmotional, hasGoals).catch(() => {});
+
+        const behavioralModifiers = getBehavioralModifiers(engagementState);
+
+        // SSE Headers
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache, no-transform',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
+        });
+        headersSent = true;
+
+        const stream = generateStreamingChatResponse(
+            userId,
+            message,
+            mode,
+            behavioralModifiers,
+            targetConversationId
+        );
+
+        for await (const chunk of stream) {
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
+
+        res.end();
+
+    } catch (error) {
+        if (!headersSent && req.reservedQuota) {
+            await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
+        }
+        logger.error('Error in streaming chat:', error);
+        if (!headersSent) {
+            res.status(500).json({ error: 'Failed to process streaming message' });
+        } else {
+            res.write(`data: ${JSON.stringify({ type: 'error', error: 'Stream interrupted' })}\n\n`);
+            res.end();
+        }
     }
 });
 
