@@ -4,8 +4,13 @@ from pathlib import Path
 from PIL import Image,ImageDraw,ImageFont
 W,H=1080,1920
 ROOT=Path(__file__).resolve().parent.parent
-ART={name:Image.open(ROOT/'assets/companion'/name).convert('RGB') for name in ['night-chat.png','life-coach.png','everyday-joy.png']}
+ART={}
+def artwork(name):
+ if name not in ['night-chat.png','life-coach.png','everyday-joy.png']:raise ValueError('Unknown companion artwork')
+ if name not in ART:ART[name]=Image.open(ROOT/'assets/companion'/name).convert('RGB')
+ return ART[name]
 FONTS={}
+MASKS={}
 def font(size):
  if size not in FONTS:FONTS[size]=ImageFont.truetype(str(ROOT/'assets/fonts/Font-Black.ttf'),size)
  return FONTS[size]
@@ -34,20 +39,22 @@ def card(im,value,x,y,width=900,size=52,fill='#AFF6D8',color='#101725',label=Non
  return bottom
 
 def render_companion_frame(c,scene,p,t,caption):
- source=ART[c['heroAsset']];iw,ih=source.size
+ source=artwork(c['heroAsset']);iw,ih=source.size
  scale=max(W/iw,H/ih)*(1.025+.035*p)
  rw,rh=round(iw*scale),round(ih*scale)
  # Bicubic gives smooth, subtle camera movement with bounded render time.
  resized=source.resize((rw,rh),Image.Resampling.BICUBIC)
  left=int((rw-W)/2+math.sin(t*.35)*min(12,(rw-W)/2));top=int((rh-H)/2)
- im=resized.crop((left,top,left+W,top+H)).convert('RGBA')
- # Top/bottom gradients preserve the approved artwork and protect legibility.
- overlay=Image.new('RGBA',(W,H));od=ImageDraw.Draw(overlay)
- for y in range(H):
-  a=int(max(max(0,1-y/850)*215,max(0,(y-1170)/750)*225))
-  if scene in (2,3,4):a=max(a,65)
-  od.line((0,y,W,y),fill=(9,14,27,a))
- im=Image.alpha_composite(im,overlay).convert('RGB');d=ImageDraw.Draw(im)
+ im=resized.crop((left,top,left+W,top+H));resized.close()
+ # An 8-bit reusable alpha mask avoids three full-size RGBA buffers per frame.
+ dark=scene in (2,3,4)
+ if dark not in MASKS:
+  mask=Image.new('L',(W,H));md=ImageDraw.Draw(mask)
+  for y in range(H):
+   a=int(max(max(0,1-y/850)*215,max(0,(y-1170)/750)*225))
+   md.line((0,y,W,y),fill=max(a,65) if dark else a)
+  MASKS[dark]=mask
+ im.paste((9,14,27),(0,0,W,H),MASKS[dark]);d=ImageDraw.Draw(im)
  if scene==0:
   d.text((82,183),'12:47 AM' if c['heroAsset']=='night-chat.png' else 'AN EVERYDAY MOMENT',font=font(26),fill='#AFF6D8')
   text(d,c['hook'],82,300,80,900,3)
@@ -108,7 +115,7 @@ def render_companion_frame(c,scene,p,t,caption):
  return im
 
 def render_companion_slide(slide,index,total,output):
- im=ART[slide.get('heroAsset','night-chat.png')].resize((1080,1620),Image.Resampling.LANCZOS).crop((0,120,1080,1470)).convert('RGBA')
+ im=artwork(slide.get('heroAsset','night-chat.png')).resize((1080,1620),Image.Resampling.LANCZOS).crop((0,120,1080,1470)).convert('RGBA')
  overlay=Image.new('RGBA',im.size,(9,14,27,150));im=Image.alpha_composite(im,overlay).convert('RGB');d=ImageDraw.Draw(im)
  d.text((72,75),'TwinGenie',font=font(38),fill='#FFFFFF');d.text((870,85),f'{index}/{total}',font=font(28),fill='#AFF6D8')
  text(d,slide.get('tag','AN EVERYDAY MOMENT'),72,164,24,930,2,color='#AFF6D8')

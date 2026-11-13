@@ -155,4 +155,15 @@ describe('Daily companion and mixed LinkedIn publishing',()=>{
   assert.equal(sync.body.result.postId,'verified');
  });
 
+ it('serializes distinct render workers and continues after one render fails',async()=>{
+  const original=media._renderQueue;let active=0,peak=0;
+  const task=async()=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,5));active--;return 'ok';};
+  try {
+   media._renderQueue=null;
+   const bad=media._queueRender(async()=>{throw Error('render rejected');});
+   const good=Promise.all([media._queueRender(task),media._queueRender(task)]);
+   await assert.rejects(bad,/render rejected/);assert.deepEqual(await good,['ok','ok']);assert.equal(peak,1);
+  } finally {media._renderQueue=original;}
+ });
+
 });

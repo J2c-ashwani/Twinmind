@@ -8,6 +8,7 @@ import supabaseAdmin from '../../config/supabase.js';
 import logger from '../../config/logger.js';
 import {buildSocialPilotPackage, validateCreative} from './reelCreativeService.js';
 import {validateLinkedInEditorial} from './linkedinEditorialService.js';
+import mediaRendererService from './mediaRendererService.js';
 
 const identity = date => {
   const h=crypto.createHash('sha256').update(`twingenie:daily-companion:${date}`).digest('hex');
@@ -62,7 +63,7 @@ export function normalizeDailyCompanion(raw, base) {
 }
 
 export class CompanionDailyContentService {
-  constructor({db=supabaseAdmin, requestJson=null,validateLayout=null}={}) {this.db=db;this.requestJson=requestJson;this.pending=new Map();this.validateLayout=validateLayout || (async creative=>{await runFile('python3',[new URL('./renderers/motionReelRenderer.py',import.meta.url).pathname,'--check-layout',JSON.stringify({creative})],{timeout:20000,maxBuffer:1000000});});}
+  constructor({db=supabaseAdmin, requestJson=null,validateLayout=null}={}) {this.db=db;this.requestJson=requestJson;this.pending=new Map();this.validateLayout=validateLayout || (async creative=>{await mediaRendererService._queueRender(()=>runFile('python3',[new URL('./renderers/motionReelRenderer.py',import.meta.url).pathname,'--check-layout',JSON.stringify({creative})],{timeout:20000,maxBuffer:1000000}));});}
   async _read(id) {
     const {data,error}=await this.db.from('usage_tracking').select('action_type').eq('id',id).maybeSingle();
     if(error) throw new Error('Daily creative store unavailable');

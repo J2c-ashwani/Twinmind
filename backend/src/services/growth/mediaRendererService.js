@@ -24,7 +24,18 @@ class MediaRendererService {
      * @param {Object} spec - { campaignId, postId, slides: [{ title, content, highlight, tag }] }
      * @returns {Promise<{ totalSlides: number, pngUrls: string[], pdfUrl: string, localDir: string }>}
      */
+    _queueRender(task) {
+        // Video encoders and Pillow workers share the app server's memory limit.
+        const next = (this._renderQueue || Promise.resolve()).catch(()=>{}).then(task);
+        this._renderQueue = next;
+        return next;
+    }
+
     async renderCarousel(spec) {
+        return this._queueRender(()=>this._renderCarousel(spec));
+    }
+
+    async _renderCarousel(spec) {
         return new Promise((resolve, reject) => {
             if (global.gc) {
                 try { global.gc(); } catch (e) {}
@@ -80,7 +91,7 @@ class MediaRendererService {
      * @returns {Promise<{ videoPath: string, videoUrl: string, durationSeconds: number, resolution: string, localDir: string }>}
      */
     async renderReel(spec) {
-        if (process.env.REEL_RENDERER_VERSION === 'legacy') return this._renderReel(spec);
+        if (process.env.REEL_RENDERER_VERSION === 'legacy') return this._queueRender(()=>this._renderReel(spec));
         const creative = buildMotionCreative(spec);
         const key = JSON.stringify(creative);
         this._motionCache ||= new Map();
@@ -90,7 +101,7 @@ class MediaRendererService {
             if (fs.existsSync(result.videoPath)) return result;
             this._motionCache.delete(key);
         }
-        const pending = this._renderReel({...spec,creative}).catch(error=>{this._motionCache.delete(key);throw error;});
+        const pending = this._queueRender(()=>this._renderReel({...spec,creative})).catch(error=>{this._motionCache.delete(key);throw error;});
         this._motionCache.set(key,pending);
         if (this._motionCache.size>8) this._motionCache.delete(this._motionCache.keys().next().value);
         return pending;
@@ -137,6 +148,8 @@ class MediaRendererService {
                         renderVersion: result.renderVersion || 'legacy',
                         creativeId: result.creativeId,
                         creativeRevision: result.creativeRevision,
+                        peakRendererMemoryMb: result.peakRendererMemoryMb,
+                        peakEncoderMemoryMb: result.peakEncoderMemoryMb,
                         hookVariant: result.hookVariant,
                         captionsPath: result.captionsPath,
                         storyboardPath: result.storyboardPath,

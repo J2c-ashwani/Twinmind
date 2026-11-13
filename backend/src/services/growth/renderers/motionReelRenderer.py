@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Original layered 2D motion reels. Bounded memory, real narration timing, no stock/competitor assets."""
-import asyncio, bisect, hashlib, json, math, os, subprocess, sys, time, wave
+import asyncio, bisect, hashlib, json, math, os, resource, subprocess, sys, time, wave
 from array import array
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -63,11 +63,13 @@ def background(dark=False):
     for x in range(60,W,120):
         for y in range(220,1670,120):d.ellipse((x,y,x+3,y+3),fill=c)
     return im
-BACKGROUNDS=[background(False),background(True)]
+BACKGROUNDS={}
 
 def render_frame(c,scene,p,t,caption):
     if c.get('storyStyle')=='companion_cinema':return render_companion_frame(c,scene,p,t,caption)
-    dark=scene in (1,3);im=BACKGROUNDS[int(dark)].copy();d=ImageDraw.Draw(im)
+    dark=scene in (1,3)
+    if dark not in BACKGROUNDS:BACKGROUNDS[dark]=background(dark)
+    im=BACKGROUNDS[dark].copy();d=ImageDraw.Draw(im)
     fg=CREAM if dark else NAVY; accent=MINT if dark else PURPLE
     d.ellipse((82,157,110,185),fill=accent);d.text((128,145),'TwinGenie',font=font(33),fill=fg)
     d.text((82,192),'A DIFFERENT PERSPECTIVE',font=font(17),fill=accent)
@@ -204,7 +206,7 @@ def render(spec,output):
             if 0<=dt<.13:value+=.06*math.sin(2*math.pi*(560-1500*dt)*dt)*math.exp(-30*dt)
         audio.append(int(max(-1,min(1,value*max(0,fade)))*32767))
     with wave.open(str(sfx),'wb') as f:f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate);f.writeframes(audio.tobytes())
-    cmd=['ffmpeg','-y','-loglevel','error','-f','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r',str(FPS),'-i','pipe:0','-i',str(narration),'-i',str(sfx),'-filter_complex','[1:a][2:a]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=7[a]','-map','0:v','-map','[a]','-c:v','libx264','-preset','veryfast','-crf','20','-threads','2','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-t',str(offset),'-movflags','+faststart',str(out)]
+    cmd=['ffmpeg','-y','-loglevel','error','-thread_queue_size','1','-f','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r',str(FPS),'-i','pipe:0','-i',str(narration),'-i',str(sfx),'-filter_complex','[1:a][2:a]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=7[a]','-map','0:v','-map','[a]','-c:v','libx264','-preset','veryfast','-tune','zerolatency','-crf','19','-threads','1','-x264-params','ref=1:rc-lookahead=0:sync-lookahead=0','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-t',str(offset),'-movflags','+faststart',str(out)]
     proc=subprocess.Popen(cmd,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
     cap_starts=[x['start'] for x in caps]
     try:
@@ -214,12 +216,13 @@ def render(spec,output):
             image=render_frame(c,scene,p,t,caption)
             if abs(p-.5)<1/((ends[scene]-start)*FPS):image.save(out.parent/f'scene_{scene+1}.jpg',quality=90)
             proc.stdin.write(image.tobytes())
+            image.close()
         proc.stdin.close();err=proc.stderr.read().decode();code=proc.wait()
         if code:raise RuntimeError('Video encoder failed: '+err[-1000:])
     except Exception:
         proc.kill();proc.wait();raise
     actual=duration(out)
-    return {'success':True,'videoPath':str(out),'durationSeconds':round(actual,2),'resolution':f'{W}x{H}','fps':FPS,'hasVoiceover':True,'renderVersion':'motion_v2','sceneCount':6,'creativeId':c['id'],'creativeRevision':c.get('creativeRevision'),'hookVariant':c['hookVariant'],'captionsPath':str(captions_path),'storyboardPath':str(timeline),'renderSeconds':round(time.monotonic()-started,2)}
+    return {'success':True,'videoPath':str(out),'durationSeconds':round(actual,2),'resolution':f'{W}x{H}','fps':FPS,'hasVoiceover':True,'renderVersion':'motion_v2','sceneCount':6,'creativeId':c['id'],'creativeRevision':c.get('creativeRevision'),'hookVariant':c['hookVariant'],'captionsPath':str(captions_path),'storyboardPath':str(timeline),'renderSeconds':round(time.monotonic()-started,2),'peakRendererMemoryMb':round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1048576 if sys.platform=='darwin' else 1024),1),'peakEncoderMemoryMb':round(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1048576 if sys.platform=='darwin' else 1024),1)}
 
 
 
