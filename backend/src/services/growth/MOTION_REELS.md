@@ -34,6 +34,8 @@ YouTube's live readiness check returned false on 13 November 2026. There is no d
 
 ## Preview and checks
 
+The authenticated `/api/admin/growth/render-test` reel endpoint accepts `async=true` and returns a job status URL. Poll that URL to observe narration, frame encoding and final completion without keeping a gateway connection open. This preview never publishes to a social feed. Jobs are process-local and may be lost on restart. The reel worker has a ten-minute timeout, below the existing fifteen-minute publication lease; cancellation cleans up its encoder. This replaces the four-minute limit observed terminating real production renders on the free shared server.
+
 From `backend`:
 
 ```sh

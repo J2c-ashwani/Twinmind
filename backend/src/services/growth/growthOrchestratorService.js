@@ -148,7 +148,7 @@ class GrowthOrchestratorService {
         const failedCount = this.state.posts.filter(p => p.status === 'failed').length;
 
         return {
-            contentEngine:{version:'companion_daily_v3',renderer:'companion_cinema',rendererResourcePolicy:'serial_low_memory_v1',dailyWriting:'Groq/Gemini with reviewed fallback',artwork:'reused approved library',dailyImageApiEnabled:false,linkedinFormats:{Monday:'video',Tuesday:'carousel_pdf',Wednesday:'text',Thursday:'carousel_pdf',Friday:'video',Saturday:'video',Sunday:'carousel_pdf'},linkedinSelfComments:false},
+            contentEngine:{version:'companion_daily_v3',renderer:'companion_cinema',rendererResourcePolicy:'serial_low_memory_v2',renderWorkerTimeoutSeconds:600,asyncRenderPreview:true,dailyWriting:'Groq/Gemini with reviewed fallback',artwork:'reused approved library',dailyImageApiEnabled:false,linkedinFormats:{Monday:'video',Tuesday:'carousel_pdf',Wednesday:'text',Thursday:'carousel_pdf',Friday:'video',Saturday:'video',Sunday:'carousel_pdf'},linkedinSelfComments:false},
             isPaused: this.isSystemPaused(),
             adapters: adapterHealth,
             queueSummary: {

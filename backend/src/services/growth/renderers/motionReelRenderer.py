@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Original layered 2D motion reels. Bounded memory, real narration timing, no stock/competitor assets."""
-import asyncio, bisect, hashlib, json, math, os, resource, subprocess, sys, time, wave
+import asyncio, bisect, hashlib, json, math, os, resource, signal, subprocess, sys, time, wave
 from array import array
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -166,12 +166,23 @@ async def voice(text,path,voice_name,rate='+0%',pitch='+0Hz'):
 def srt_time(t):
     ms=round(t*1000);return f'{ms//3600000:02}:{ms//60000%60:02}:{ms//1000%60:02},{ms%1000:03}'
 
+def write_progress(output,stage,**fields):
+    # Diagnostics must not turn a successfully encoded video into a failed job.
+    try:
+        target=Path(output).with_suffix('.status.json');target.parent.mkdir(parents=True,exist_ok=True)
+        temp=target.with_suffix('.tmp')
+        temp.write_text(json.dumps({'stage':stage,'updatedAt':time.time(),**fields}))
+        temp.replace(target)
+    except OSError:pass
+
 def render(spec,output):
     started=time.monotonic();c=spec['creative'];out=Path(output);out.parent.mkdir(parents=True,exist_ok=True)
     if c.get('version')!='motion_v2' or len(c.get('narration',[]))!=6:raise ValueError('Six-scene motion_v2 creative required')
+    write_progress(output,'narration',scene=0)
     cache=out.parent/'.narration';cache.mkdir(exist_ok=True)
     clips=[];ends=[];caps=[];offset=0
     for index,text in enumerate(c['narration']):
+        write_progress(output,'narration',scene=index+1)
         perf=(c.get('scenePerformance') or [{}]*6)[index]
         voice_name=perf.get('voice',c.get('voice','en-US-GuyNeural'));rate=perf.get('rate','+5%');pitch=perf.get('pitch','-1Hz')
         digest=hashlib.sha256((text+voice_name+rate+pitch).encode()).hexdigest()[:20]
@@ -207,6 +218,7 @@ def render(spec,output):
         audio.append(int(max(-1,min(1,value*max(0,fade)))*32767))
     with wave.open(str(sfx),'wb') as f:f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate);f.writeframes(audio.tobytes())
     cmd=['ffmpeg','-y','-loglevel','error','-thread_queue_size','1','-f','rawvideo','-pix_fmt','rgb24','-s',f'{W}x{H}','-r',str(FPS),'-i','pipe:0','-i',str(narration),'-i',str(sfx),'-filter_complex','[1:a][2:a]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=7[a]','-map','0:v','-map','[a]','-c:v','libx264','-preset','veryfast','-tune','zerolatency','-crf','19','-threads','1','-x264-params','ref=1:rc-lookahead=0:sync-lookahead=0','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-t',str(offset),'-movflags','+faststart',str(out)]
+    write_progress(output,'encoding',frames=0,totalFrames=math.ceil(offset*FPS))
     proc=subprocess.Popen(cmd,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
     cap_starts=[x['start'] for x in caps]
     try:
@@ -217,10 +229,13 @@ def render(spec,output):
             if abs(p-.5)<1/((ends[scene]-start)*FPS):image.save(out.parent/f'scene_{scene+1}.jpg',quality=90)
             proc.stdin.write(image.tobytes())
             image.close()
+            if frame%30==0:write_progress(output,'encoding',frames=frame+1,totalFrames=math.ceil(offset*FPS))
+        write_progress(output,'finishing_encoder')
         proc.stdin.close();err=proc.stderr.read().decode();code=proc.wait()
         if code:raise RuntimeError('Video encoder failed: '+err[-1000:])
     except Exception:
         proc.kill();proc.wait();raise
+    write_progress(output,'probing')
     actual=duration(out)
     return {'success':True,'videoPath':str(out),'durationSeconds':round(actual,2),'resolution':f'{W}x{H}','fps':FPS,'hasVoiceover':True,'renderVersion':'motion_v2','sceneCount':6,'creativeId':c['id'],'creativeRevision':c.get('creativeRevision'),'hookVariant':c['hookVariant'],'captionsPath':str(captions_path),'storyboardPath':str(timeline),'renderSeconds':round(time.monotonic()-started,2),'peakRendererMemoryMb':round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1048576 if sys.platform=='darwin' else 1024),1),'peakEncoderMemoryMb':round(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1048576 if sys.platform=='darwin' else 1024),1)}
 
@@ -267,11 +282,18 @@ def render_motion_slide(slide,index,total,output):
 
 
 if __name__=='__main__':
+    def cancelled(_signal,_frame):raise TimeoutError('Render cancelled by worker timeout')
+    signal.signal(signal.SIGTERM,cancelled)
     try:
         if sys.argv[1]=='--check-layout':
             c=json.loads(sys.argv[2])['creative']
             for scene in range(6):
                 for progress in [.05,.5,.95]:render_frame(c,scene,progress,scene*3+progress,'One short sample caption')
             print(json.dumps({'success':True,'framesChecked':18}))
-        else:print(json.dumps(render(json.loads(sys.argv[1]),sys.argv[2])))
-    except Exception as e:print(json.dumps({'success':False,'error':str(e)}),file=sys.stderr);sys.exit(1)
+        else:
+            result=render(json.loads(sys.argv[1]),sys.argv[2])
+            write_progress(sys.argv[2],'complete',result=result)
+            print(json.dumps(result))
+    except Exception as e:
+        if len(sys.argv)>2 and sys.argv[1]!='--check-layout':write_progress(sys.argv[2],'failed',error=str(e))
+        print(json.dumps({'success':False,'error':str(e)}),file=sys.stderr);sys.exit(1)

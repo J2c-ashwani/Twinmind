@@ -9,7 +9,7 @@ import {CompanionDailyContentService,normalizeDailyCompanion} from '../src/servi
 import {uploadLinkedInVideo} from '../src/services/growth/linkedinVideoService.js';
 import linkedin from '../src/services/growth/adapters/linkedinAdapter.js';
 import orchestrator from '../src/services/growth/growthOrchestratorService.js';
-import media from '../src/services/growth/mediaRendererService.js';
+import media,{REEL_WORKER_TIMEOUT_MS} from '../src/services/growth/mediaRendererService.js';
 import generator from '../src/services/growth/contentGeneratorService.js';
 import packages from '../src/services/growth/approvedContentPackageService.js';
 import {respondToGrowthJob} from '../src/services/growth/growthWebhookService.js';
@@ -164,6 +164,23 @@ describe('Daily companion and mixed LinkedIn publishing',()=>{
    const good=Promise.all([media._queueRender(task),media._queueRender(task)]);
    await assert.rejects(bad,/render rejected/);assert.deepEqual(await good,['ok','ok']);assert.equal(peak,1);
   } finally {media._renderQueue=original;}
+ });
+
+ it('tracks an asynchronous non-publishing preview through success and failure',async()=>{
+  const oldRender=media.renderReel,oldJobs=media._previewJobs;let finish;
+  try {
+   media._previewJobs=new Map();media.renderReel=()=>new Promise(resolve=>{finish=resolve;});
+   const job=media.startRenderPreview({mode:'reflective'});
+   assert.equal(job.status,'processing');assert.match(job.statusUrl,/render-test\/preview_/);
+   assert.equal(media.getRenderPreview(job.id).status,'processing');
+   finish({videoPath:mp4,durationSeconds:16});await new Promise(r=>setImmediate(r));
+   assert.equal(media.getRenderPreview(job.id).status,'succeeded');assert.equal(media.getRenderPreview(job.id).result.durationSeconds,16);
+   media.renderReel=async()=>{throw Error('encoder rejected');};
+   const bad=media.startRenderPreview({});await new Promise(r=>setImmediate(r));
+   assert.equal(media.getRenderPreview(bad.id).status,'failed');assert.equal(media.getRenderPreview(bad.id).error,'encoder rejected');
+   assert.equal(media.getRenderPreview('unknown'),null);
+   assert.equal(REEL_WORKER_TIMEOUT_MS,600000);assert(REEL_WORKER_TIMEOUT_MS<15*60*1000);
+  } finally {media.renderReel=oldRender;media._previewJobs=oldJobs;}
  });
 
 });

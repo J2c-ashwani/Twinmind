@@ -1,4 +1,5 @@
 import path from 'path';
+import {randomUUID} from 'crypto';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
@@ -11,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const PYTHON_RENDERER_PATH = path.join(__dirname, 'renderers/carouselRenderer.py');
 const PYTHON_REEL_RENDERER_PATH = path.join(__dirname, 'renderers/reelRenderer.py');
 const MOTION_RENDERER_PATH = path.join(__dirname, 'renderers/motionReelRenderer.py');
+export const REEL_WORKER_TIMEOUT_MS = 600000; // Under the existing 15-minute publication lease.
 const PUBLIC_ASSETS_DIR = path.join(__dirname, '../../../public/growth_assets');
 
 // Ensure assets directory exists
@@ -24,6 +26,29 @@ class MediaRendererService {
      * @param {Object} spec - { campaignId, postId, slides: [{ title, content, highlight, tag }] }
      * @returns {Promise<{ totalSlides: number, pngUrls: string[], pdfUrl: string, localDir: string }>}
      */
+    startRenderPreview(spec) {
+        this._previewJobs ||= new Map();
+        for(const [id,job] of this._previewJobs) if(this._previewJobs.size>=16 && ['succeeded','failed'].includes(job.status))this._previewJobs.delete(id);
+        if(this._previewJobs.size>=16)throw new Error('Too many active render previews');
+        const id=`preview_${Date.now()}_${randomUUID().slice(0,8)}`;
+        const job={id,status:'processing',createdAt:new Date().toISOString(),progressPath:path.join(PUBLIC_ASSETS_DIR,`test_render_${id}`,'reel.status.json')};
+        this._previewJobs.set(id,job);
+        void this.renderReel({...spec,campaignId:'test_render',postId:id}).then(result=>{
+            Object.assign(job,{status:'succeeded',finishedAt:new Date().toISOString(),result});
+        }).catch(error=>{
+            Object.assign(job,{status:'failed',finishedAt:new Date().toISOString(),error:error.message});
+        });
+        return {id,status:job.status,statusUrl:`/api/admin/growth/render-test/${id}`};
+    }
+
+    getRenderPreview(id) {
+        const job=this._previewJobs?.get(id);
+        if(!job)return null;
+        const {progressPath,...publicJob}=job;
+        try {publicJob.progress=JSON.parse(fs.readFileSync(progressPath,'utf8'));}catch{}
+        return publicJob;
+    }
+
     _queueRender(task) {
         // Video encoders and Pillow workers share the app server's memory limit.
         const next = (this._renderQueue || Promise.resolve()).catch(()=>{}).then(task);
@@ -86,7 +111,7 @@ class MediaRendererService {
     }
 
     /**
-     * Renders a 1080x1920 motion Reel video (MP4) with ultra-low RAM concat demuxer (<20MB RAM)
+     * Renders a 1080x1920 motion Reel video (MP4) with a serialized worker and bounded encoder buffers
      * @param {Object} spec - { campaignId, postId, hook, tag, voiceHook, voiceProblem, voiceSolution, voiceCta }
      * @returns {Promise<{ videoPath: string, videoUrl: string, durationSeconds: number, resolution: string, localDir: string }>}
      */
@@ -122,7 +147,7 @@ class MediaRendererService {
             const renderSpec = motion ? { ...spec, creative: buildMotionCreative(spec) } : spec;
             const specJson = JSON.stringify(renderSpec);
 
-            execFile('python3', [motion ? MOTION_RENDERER_PATH : PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: 240000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            execFile('python3', [motion ? MOTION_RENDERER_PATH : PYTHON_REEL_RENDERER_PATH, specJson, outputMp4], { timeout: REEL_WORKER_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
                 if (global.gc) {
                     try { global.gc(); } catch (e) {}
                 }

@@ -490,7 +490,7 @@ router.all('/render-test', requireAdminSecret, async (req, res) => {
         if (format === 'reel') {
             const mode = req.query.mode || req.body?.mode || 'dark';
             const format_type = req.query.format_type || req.body?.format_type || 'split';
-            const rendered = await mediaRendererService.renderReel({
+            const spec = {
                 campaignId: 'test_render',
                 postId: Date.now(),
                 format_type,
@@ -498,7 +498,12 @@ router.all('/render-test', requireAdminSecret, async (req, res) => {
                 hook: req.query.hook || 'POV: You told an AI your 2 AM excuses 💀',
                 tag: req.query.tag || 'SELF-AWARENESS',
                 split_screen: true
-            });
+            };
+            if(req.query.async==='true' || req.body?.async===true) {
+                const job=mediaRendererService.startRenderPreview(spec);
+                return res.status(202).json({success:true,format:'reel',job});
+            }
+            const rendered=await mediaRendererService.renderReel(spec);
             return res.json({ success: true, format: 'reel', mode, rendered });
         }
         const rendered = await mediaRendererService.renderCarousel({
@@ -514,6 +519,13 @@ router.all('/render-test', requireAdminSecret, async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+// Read-only preview status; this endpoint never publishes a social post.
+router.get('/render-test/:id',requireAdminSecret,(req,res)=>{
+    const job=mediaRendererService.getRenderPreview(req.params.id);
+    if(!job)return res.status(404).json({success:false,error:'Render preview not found in this server process'});
+    return res.json({success:true,job});
 });
 
 /**
