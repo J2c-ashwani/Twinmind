@@ -236,9 +236,10 @@ class InstagramAdapter {
     }
 
     /**
-     * Polls Instagram media container status until processing reaches FINISHED
+     * Polls Instagram media container status until processing reaches FINISHED.
+     * Allow two minutes for native video ingestion; acceptance is not processing completion.
      */
-    async _waitForContainerReady(containerId, accessToken, maxAttempts = 20, delayMs = 3000) {
+    async _waitForContainerReady(containerId, accessToken, maxAttempts = 40, delayMs = 3000) {
         logger.info(`[INSTAGRAM] Polling container ${containerId} status until FINISHED...`);
         for (let i = 0; i < maxAttempts; i++) {
             await new Promise(r => setTimeout(r, delayMs));
