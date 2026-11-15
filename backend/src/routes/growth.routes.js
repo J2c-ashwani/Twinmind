@@ -16,6 +16,7 @@ import acquisitionCampaignService from '../services/acquisitionCampaignService.j
 import growthDashboardService from '../services/growth/growthDashboardService.js';
 import smartRouterService from '../services/growth/smartRouterService.js';
 import logger from '../config/logger.js';
+import talkingReelService from '../services/growth/talkingReelService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +68,11 @@ router.get('/status', requireAdminSecret, async (req, res) => {
         logger.error('[GROWTH ROUTE] Status check failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+router.get('/talking/status', requireAdminSecret, async (req,res) => {
+    try { res.json({success:true,status:await talkingReelService.status()}); }
+    catch(error) { logger.error('[GROWTH ROUTE] Talking-reel status failed:',error); res.status(503).json({success:false,error:error.message}); }
 });
 
 /**

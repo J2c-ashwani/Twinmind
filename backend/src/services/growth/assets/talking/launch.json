@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-15",
+  "publicPath": "talking/twingenie-i-wanted-a-yes-2026-11-15.mp4",
+  "sha256": "a2ed40afeb07289a4a09dc5e1bbe19baf76dd19199df128348dd64f7f4ab83db",
+  "script": {
+    "version": "talking_reels_v1",
+    "date": "2026-11-15",
+    "format": "split",
+    "hook": "I wanted advice. Or did I want permission?",
+    "topic": "Wanting reassurance before an emotionally charged text",
+    "featureName": "Honest perspective",
+    "discussion": "Would you want the long answer or the straight answer in that moment?",
+    "contentSource": "founder_approved_head_to_head_pilot",
+    "scenes": [
+      {"turns": [
+        {"speaker":"LEFT","text":"I asked ChatGPT if I should text my ex."},
+        {"speaker":"RIGHT","text":"What did it say?"},
+        {"speaker":"LEFT","text":"Give yourself twenty-four hours."},
+        {"speaker":"RIGHT","text":"And TwinGenie?"}
+      ]},
+      {"turns": [
+        {"speaker":"LEFT","text":"You say you miss them, but you're reaching out just to fill your loneliness.","source":"twingenie"},
+        {"speaker":"RIGHT","text":"You wanted a yes, didn't you?"},
+        {"speaker":"LEFT","text":"I really did."}
+      ]}
+    ],
+    "captions": {
+      "instagram": "I wanted advice. Or did I want permission?\n\nWe gave ChatGPT and TwinGenie’s direct mode the same fictional question about texting an ex. One offered a detailed answer. The other went straight to a possible motive.\n\nWould you want the long answer or the straight answer in that moment?\n\nTwinGenie is an AI companion for everyday conversations and reflection. Download it on Google Play. On iPhone? Comment iOS.\n\nAI-generated dramatisation. One test: ChatGPT signed-out default; TwinGenie Honest/Dark mode-prompt test with no personal profile or history. Responses vary. This compares response styles, not overall product superiority.\n\n#TwinGenie #AICompanion #ChatGPT",
+      "linkedin": "I wanted advice. Or did I want permission?\n\nWe gave ChatGPT and TwinGenie’s direct mode the same fictional question about texting an ex. One offered a detailed answer; the other went straight to a possible motive.\n\nIt’s one prompt, not a product benchmark. The TwinGenie reply came from an isolated Honest/Dark mode test with no personal profile or conversation history.\n\nWould you want the long answer or the straight answer in that moment?",
+      "threads": "I wanted advice. Or did I want permission?\n\nWould you want the long answer or the straight answer in that moment?\n\nAI-generated dramatisation. One prompt, one response from each system; responses vary.",
+      "youtubeTitle": "I wanted a yes. ChatGPT vs TwinGenie",
+      "youtube": "We asked ChatGPT and TwinGenie’s direct mode the same fictional question about texting an ex. One offered a detailed answer. The other went straight to a possible motive.\n\nTwinGenie is an AI companion for everyday conversations and reflection. Download on Google Play. On iPhone? Comment iOS.\n\nAI-generated dramatisation. One test: ChatGPT signed-out default; TwinGenie Honest/Dark mode-prompt test with no personal profile or history. Responses vary. This compares response styles, not overall product superiority.\n\n#Shorts #TwinGenie #AICompanion"
+    }
+  }
+}

@@ -12,6 +12,8 @@ import threadsAdapter from './adapters/threadsAdapter.js';
 import publicationSlotService, { SlotStatus } from './publicationSlotService.js';
 import approvedContentPackageService from './approvedContentPackageService.js';
 import { supabaseAdmin } from '../../config/supabase.js';
+import talkingReelService from './talkingReelService.js';
+import { isTalkingEnabled } from './talkingReelCreativeService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -148,7 +150,7 @@ class GrowthOrchestratorService {
         const failedCount = this.state.posts.filter(p => p.status === 'failed').length;
 
         return {
-            contentEngine:{version:'companion_daily_v3',renderer:'companion_cinema',rendererResourcePolicy:'serial_low_memory_v2',renderWorkerTimeoutSeconds:600,asyncRenderPreview:true,dailyWriting:'Groq/Gemini with reviewed fallback',artwork:'reused approved library',dailyImageApiEnabled:false,linkedinFormats:{Monday:'video',Tuesday:'carousel_pdf',Wednesday:'text',Thursday:'carousel_pdf',Friday:'video',Saturday:'video',Sunday:'carousel_pdf'},linkedinSelfComments:false},
+            contentEngine:{version:isTalkingEnabled()?'talking_reels_v1':'companion_daily_v3',renderer:isTalkingEnabled()?'gemini-omni-1.2-flash':'companion_cinema',rendererResourcePolicy:'serial_low_memory_v2',renderWorkerTimeoutSeconds:600,asyncRenderPreview:true,dailyWriting:'Groq/Gemini with reviewed fallback',artwork:'daily generated talking scenes with transcript and visual review',dailyImageApiEnabled:false,linkedinFormats:{Monday:'video',Tuesday:'carousel_pdf',Wednesday:'text',Thursday:'carousel_pdf',Friday:'video',Saturday:'video',Sunday:'carousel_pdf'},linkedinSelfComments:false,talkingReels:{enabled:isTalkingEnabled(),googleCredentialConfigured:await talkingReelService.credentialsConfigured(),formatsPerWeek:7,videoGenerationCapPerDayUsd:2.2,estimatedTotalCapUsd:1500,creditExpiryDate:'2027-11-13'}},
             isPaused: this.isSystemPaused(),
             adapters: adapterHealth,
             queueSummary: {
@@ -485,7 +487,9 @@ class GrowthOrchestratorService {
             if (format === 'reel') {
                 try {
                     logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'}, Format: ${dailyPackage.formatType || 'split'})...`);
-                    renderedReel = await mediaRendererService.renderReel({
+                    renderedReel = dailyPackage.creativeVersion==='talking_reels_v1'
+                        ? await talkingReelService.ensureReady(dailyPackage.istDateStr)
+                        : await mediaRendererService.renderReel({
                         campaignId,
                         postId,
                         creative: dailyPackage.facebook?.creative || dailyPackage.instagram?.creative,
@@ -510,6 +514,7 @@ class GrowthOrchestratorService {
                         voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
                     });
                 } catch (reelErr) {
+                    if (dailyPackage.creativeVersion==='talking_reels_v1') throw reelErr;
                     logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
                 }
             }
@@ -617,6 +622,8 @@ class GrowthOrchestratorService {
         const format = dailyPackage.linkedin.format || 'carousel_pdf';
         if (format === 'text') return {format};
         if (format === 'video') {
+            if (dailyPackage.creativeVersion==='talking_reels_v1')
+                return {...await talkingReelService.ensureReady(dailyPackage.istDateStr),format};
             const creative = dailyPackage.facebook?.creative || approvedPkg?.creative;
             if (!creative) throw new Error('LinkedIn video requires the approved daily creative');
             return {...await mediaRendererService.renderReel({campaignId,postId,creative}),format};
@@ -1007,7 +1014,9 @@ class GrowthOrchestratorService {
             if (format === 'reel') {
                 try {
                     logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'}, Format: ${dailyPackage.formatType || 'split'})...`);
-                    renderedReel = await mediaRendererService.renderReel({
+                    renderedReel = dailyPackage.creativeVersion==='talking_reels_v1'
+                        ? await talkingReelService.ensureReady(dailyPackage.istDateStr)
+                        : await mediaRendererService.renderReel({
                         campaignId,
                         postId,
                         creative: dailyPackage.facebook?.creative || dailyPackage.instagram?.creative,
@@ -1032,6 +1041,7 @@ class GrowthOrchestratorService {
                         voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
                     });
                 } catch (reelErr) {
+                    if (dailyPackage.creativeVersion==='talking_reels_v1') throw reelErr;
                     logger.warn(`[GROWTH ORCHESTRATOR] Instagram Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
                 }
             }
@@ -1322,7 +1332,9 @@ class GrowthOrchestratorService {
         try {
             const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
             const reelPkg = dailyPackage.facebook || dailyPackage.instagram || {};
-            const renderResult = await mediaRendererService.renderReel({
+            const renderResult = dailyPackage.creativeVersion==='talking_reels_v1'
+                ? await talkingReelService.ensureReady(dailyPackage.istDateStr)
+                : await mediaRendererService.renderReel({
                 campaignId: `yt_${todayIST}`,
                 postId: Date.now(),
                 creative: dailyPackage.youtube?.creative || reelPkg.creative,

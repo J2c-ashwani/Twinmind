@@ -1,0 +1,19 @@
+[
+  {
+    "id": "chatgpt-default-vs-twingenie-honest-mode-20261115",
+    "capturedAt": "2026-11-15",
+    "prompt": "I’m thinking of texting my ex tonight. We broke up two months ago, and I miss them. I don’t know whether I want to reconnect or just stop feeling lonely. Help me think this through before I send anything.",
+    "approved": true,
+    "competitor": {
+      "name": "ChatGPT",
+      "configuration": "Signed-out web UI, Default model label; underlying model ID not disclosed.",
+      "excerpt": "Give yourself 24 hours."
+    },
+    "twingenie": {
+      "name": "TwinGenie",
+      "configuration": "Isolated current Honest/Dark mode-prompt/provider test with empty profile, no memories and no chat history; not an end-to-end signed-in app test.",
+      "excerpt": "You say you miss them, but you’re reaching out just to fill your loneliness."
+    },
+    "disclosure": "AI-generated dramatisation. One fictional prompt and one response from each: ChatGPT signed-out Default and TwinGenie isolated Honest/Dark mode test with no profile or history. Responses vary. Style comparison only, not a general product benchmark."
+  }
+]
