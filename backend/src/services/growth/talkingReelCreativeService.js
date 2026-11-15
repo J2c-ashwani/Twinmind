@@ -1,4 +1,7 @@
 import {getLinkedInFormat} from './linkedinEditorialService.js';
+import {existsSync} from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 export const TALKING_VERSION = 'talking_reels_v1';
 // 15 Nov 2026 launch is the split-screen pilot; continue with the other six
@@ -16,7 +19,9 @@ export const FORMAT_NOTES = Object.freeze({
 export const istDate = date => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata'}).format(date);
 export const dateObject = day => new Date(day+'T12:00:00+05:30');
 export const formatForDate = day => FORMAT_CALENDAR[dateObject(day).getUTCDay()];
-export const isTalkingEnabled = () => process.env.TALKING_REELS_ENABLED === 'true' && process.env.REEL_RENDERER_VERSION !== 'legacy';
+const HERE=path.dirname(fileURLToPath(import.meta.url));
+const hasVertexCredential=()=>Boolean(process.env.GOOGLE_TTS_SERVICE_ACCOUNT_JSON||process.env.GOOGLE_TTS_SERVICE_ACCOUNT_BASE64||process.env.GOOGLE_APPLICATION_CREDENTIALS||existsSync(path.join(HERE,'../../../google-tts-service-account.json')));
+export const isTalkingEnabled = () => process.env.REEL_RENDERER_VERSION !== 'legacy' && process.env.TALKING_REELS_ENABLED !== 'false' && (process.env.TALKING_REELS_ENABLED === 'true' || (process.env.NODE_ENV === 'production' && hasVertexCredential()));
 export const words = text => text.trim().split(/\s+/).filter(Boolean);
 
 export function validateTalkingScript(script, {date, evidence=null}={}) {

@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import logger from '../config/logger.js';
 import growthOrchestratorService from '../services/growth/growthOrchestratorService.js';
+import talkingReelService from '../services/growth/talkingReelService.js';
+import {isTalkingEnabled,istDate} from '../services/growth/talkingReelCreativeService.js';
 
 /**
  * Growth Distribution Scheduler Job
@@ -13,6 +15,14 @@ import growthOrchestratorService from '../services/growth/growthOrchestratorServ
  */
 export function initGrowthJobs() {
     logger.info('Initializing Growth Distribution Jobs (aligned IST schedules + Boot Check + Nightly Sweep)...');
+
+    // Render and review today's shared master well before LinkedIn's first video slot.
+    // This only prepares media; platform publishing remains on its existing schedule.
+    cron.schedule('0 3 * * *', async () => {
+        if (!isTalkingEnabled() || growthOrchestratorService.isSystemPaused()) return;
+        try { await talkingReelService.ensureReady(istDate(new Date())); }
+        catch (e) { logger.error(`[TALKING REELS] 03:00 IST preparation failed: ${e.message}`); }
+    }, { timezone: 'Asia/Kolkata' });
 
     // Note: External cron-job.org triggers primary webhooks. Set ENABLE_INTERNAL_GROWTH_TIMERS=true only if external cron is disabled.
     if (process.env.ENABLE_INTERNAL_GROWTH_TIMERS === 'true') {
@@ -83,6 +93,10 @@ export function initGrowthJobs() {
             }).format(new Date());
             const [istHour, istMin] = nowIST.split(':').map(Number);
             const istTimeNum = istHour * 60 + (istMin || 0);
+
+            if (isTalkingEnabled() && istTimeNum < 510) {
+                talkingReelService.ensureReady(istDate(new Date())).catch(e => logger.error(`[TALKING REELS] Startup preparation failed: ${e.message}`));
+            }
 
             if (istTimeNum >= 510) await growthOrchestratorService.publishDailyLinkedInPersonal(false); // >= 08:30 IST
             if (istTimeNum >= 990) await growthOrchestratorService.publishDailyFacebookReel(false);      // >= 16:30 IST
