@@ -15,5 +15,56 @@
       "excerpt": "You say you miss them, but you’re reaching out just to fill your loneliness."
     },
     "disclosure": "AI-generated dramatisation. One fictional prompt and one response from each: ChatGPT signed-out Default and TwinGenie isolated Honest/Dark mode test with no profile or history. Responses vary. Style comparison only, not a general product benchmark."
+  },
+  {
+    "id": "chatgpt-essay-vs-twingenie-sweetspot-20261116",
+    "capturedAt": "2026-11-16",
+    "prompt": "Should I text my ex after two months?",
+    "approved": true,
+    "competitor": {
+      "name": "ChatGPT",
+      "configuration": "Signed-out web UI, 5-paragraph structured essay format with bullet points and clinical disclaimers.",
+      "excerpt": "Consider emotional closure, evaluate pros and cons, establish clear personal boundaries, and reflect."
+    },
+    "twingenie": {
+      "name": "TwinGenie",
+      "configuration": "TwinGenie Honest perspective, direct conversational reflection with zero generic filler.",
+      "excerpt": "Are you reaching out to reconnect, or just looking for a hit of validation?"
+    },
+    "disclosure": "AI-generated dramatisation. Illustrative style comparison: ChatGPT bulleted essay format vs TwinGenie concise reflective question. Responses vary. Compares response style, not overall product superiority."
+  },
+  {
+    "id": "replika-yesman-vs-twingenie-honest-20261116",
+    "capturedAt": "2026-11-16",
+    "prompt": "I feel like skipping my team presentation and ghosting everyone today.",
+    "approved": true,
+    "competitor": {
+      "name": "Replika",
+      "configuration": "Consumer companion app with agreeable affirmative validation.",
+      "excerpt": "You deserve to protect your peace babe, do whatever feels right for your soul!"
+    },
+    "twingenie": {
+      "name": "TwinGenie",
+      "configuration": "TwinGenie Honest/Reflective perspective, supportive truth without enabling avoidance.",
+      "excerpt": "Skipping work won’t solve the burnout, it just guarantees tomorrow will be harder."
+    },
+    "disclosure": "AI-generated dramatisation. Illustrative style comparison: Replika flattering validation vs TwinGenie honest reflection. Responses vary. Compares response style, not overall product superiority."
+  },
+  {
+    "id": "characterai-fantasy-vs-twingenie-grounded-20261116",
+    "capturedAt": "2026-11-16",
+    "prompt": "I need advice on having a tough conversation with my manager about a promotion.",
+    "approved": true,
+    "competitor": {
+      "name": "Character.ai",
+      "configuration": "Default fictional roleplay persona responding with dramatic anime/story tropes.",
+      "excerpt": "The shadow warrior draws his katana and whispers that hesitation is defeat in the clan."
+    },
+    "twingenie": {
+      "name": "TwinGenie",
+      "configuration": "TwinGenie Life Coach / Career perspective with actionable adult clarity.",
+      "excerpt": "List three achievements from this quarter, then book a ten-minute meeting."
+    },
+    "disclosure": "AI-generated dramatisation. Illustrative style comparison: Character.ai fantasy roleplay vs TwinGenie grounded conversational guidance. Responses vary. Compares response style, not overall product superiority."
   }
 ]

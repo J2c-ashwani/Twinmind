@@ -70,7 +70,7 @@ export class TalkingReelService {
     const records=await jsonFile(path.join(ASSETS,'evidence.json'));
     const used=await this.store.read('comparisons/recent.json') || [];
     // Never invent competitor outputs or silently substitute an API model for a consumer product.
-    const available=records.filter(r=>r.approved && Date.parse(day)-Date.parse(r.capturedAt||day)>=28*86400000 && !used.some(u=>u.id===r.id && Date.parse(day)-Date.parse(u.date)<28*86400000));
+    const available=records.filter(r=>r.approved && Math.abs(Date.parse(day)-Date.parse(r.capturedAt||day))<=180*86400000 && !used.some(u=>u.id===r.id && Date.parse(day)-Date.parse(u.date)<28*86400000));
     if(!available.length)throw Error('COMPARISON_EVIDENCE_REQUIRED: no unused captured comparison is available');
     return available[0];
   }
