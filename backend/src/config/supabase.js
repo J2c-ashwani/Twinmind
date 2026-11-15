@@ -3,10 +3,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const supabaseUrl = process.env.SUPABASE_URL || 'https://mock.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock_service_key';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'mock_anon_key';
+
 // Client for admin operations (uses service role key)
 export const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseUrl,
+    supabaseServiceKey,
     {
         auth: {
             autoRefreshToken: false,
@@ -17,8 +21,8 @@ export const supabaseAdmin = createClient(
 
 // Client for user operations (uses anon key)
 export const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
+    supabaseUrl,
+    supabaseAnonKey
 );
 
 export default supabaseAdmin;
