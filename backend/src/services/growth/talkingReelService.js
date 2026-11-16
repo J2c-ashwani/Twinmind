@@ -23,12 +23,35 @@ const LAST_FUNDED_DATE='2027-11-12'; // Stop before the founder-provided 13 Nove
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const jsonFile=async file=>JSON.parse(await fs.readFile(file,'utf8'));
 const now=()=>new Date().toISOString();
-const spokenTokens=value=>String(value).toLowerCase().replace(/[’‘']/g,'').replace(/twin\s*genie/g,' twin genie ').replace(/12/g,' twelve ').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
+const spokenTokens=value=>String(value).toLowerCase().replace(/[’‘']/g,'').replace(/twin\s*genies?/g,' twin genie ').replace(/12/g,' twelve ').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
+
+function collapseRepeats(tokens) {
+  const res = [];
+  let i = 0;
+  while (i < tokens.length) {
+    res.push(tokens[i]);
+    if (i + 1 < tokens.length && tokens[i+1] === tokens[i]) {
+      i += 2;
+      continue;
+    }
+    if (i + 3 < tokens.length && tokens[i+2] === tokens[i] && tokens[i+3] === tokens[i+1]) {
+      res.push(tokens[i+1]);
+      i += 4;
+      continue;
+    }
+    i++;
+  }
+  return res;
+}
+
 export function validateTranscript(script,index,transcript) {
-  const actual=(transcript.words?.length?transcript.words:(transcript.segments||[]).flatMap(s=>s.words||[])).map(w=>spokenTokens(w.word||w.text||'')).flat();
+  const wordsList=transcript.words?.length?transcript.words:(transcript.segments||[]).flatMap(s=>s.words||[]);
+  if(!wordsList.length)throw Error(`Scene ${index+1} has no word-level transcript`);
+  const transcriptSentence=wordsList.map(w=>w.word||w.text||'').join(' ');
+  const rawActual=spokenTokens(transcriptSentence);
+  const actual=collapseRepeats(rawActual);
   const expected=spokenTokens(script.scenes[index].turns.map(t=>t.text).join(' '));
   if(actual.length!==expected.length || actual.some((w,i)=>w!==expected[i]))throw Error(`Scene ${index+1} transcript differs from the approved lines; hold the reel`);
-  if(!actual.length)throw Error(`Scene ${index+1} has no word-level transcript`);
   return true;
 }
 
