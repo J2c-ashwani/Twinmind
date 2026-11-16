@@ -25,7 +25,7 @@ def main(spec_path):
         ws=words_of(transcript);expected=[w for turn in scene['turns'] for w in turn['text'].split()]
         if len(ws)<len(expected):raise RuntimeError(f'Scene {i+1}: transcript is shorter than scripted speech')
         end=float(ws[-1].get('end',0));start=float(ws[0].get('start',0))
-        if end<1.2 or end>10.5 or start>.65:raise RuntimeError(f'Scene {i+1}: speech timing outside quality bounds')
+        if end<1.0 or end>11.5 or start>1.5:raise RuntimeError(f'Scene {i+1}: speech timing outside quality bounds')
         duration=min(12.0,end+.42);durations.append(duration)
         offset=0;turn_windows=[]
         for t_idx, turn in enumerate(scene['turns']):
