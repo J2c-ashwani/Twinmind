@@ -109,11 +109,53 @@ export class TalkingReelService {
     throw Error(`Talking script rejected: ${last}`);
   }
   async writeScript(prompt) {
-    if(!process.env.GROQ_API_KEY)throw Error('Existing writing credential is unavailable');
-    const model=process.env.GROWTH_GROQ_MODEL || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
-    const result=await new Groq({apiKey:process.env.GROQ_API_KEY,maxRetries:0,timeout:30000}).chat.completions.create({model,messages:[{role:'user',content:prompt}],response_format:{type:'json_object'},max_tokens:3500,...(model.startsWith('openai/gpt-oss')?{reasoning_effort:'low'}:{})});
-    if(result.choices[0]?.finish_reason!=='stop')throw Error('Incomplete script response');
-    return JSON.parse(result.choices[0].message.content);
+    const candidates = [
+      process.env.GROWTH_GROQ_MODEL,
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      process.env.GROQ_MODEL
+    ].filter(m => m && !m.includes('llama'));
+
+    let lastErr = null;
+    if (process.env.GROQ_API_KEY) {
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY, maxRetries: 0, timeout: 30000 });
+      for (const model of candidates) {
+        try {
+          const result = await groq.chat.completions.create({
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: 'json_object' },
+            max_tokens: 3500,
+            ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {})
+          });
+          if (result.choices[0]?.finish_reason !== 'stop') throw Error('Incomplete script response');
+          return JSON.parse(result.choices[0].message.content);
+        } catch (err) {
+          lastErr = err;
+          logger.warn(`[TALKING SCRIPT] Groq model ${model} failed (${err.message}). Trying next candidate...`);
+        }
+      }
+    }
+
+    // Gemini fallback via existing Google credentials
+    try {
+      logger.info('[TALKING SCRIPT] Falling back to Gemini for script writing...');
+      const model = process.env.TALKING_REVIEW_MODEL || 'gemini-2.5-flash';
+      const result = await this.googleRequest(
+        `https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/${model}:generateContent`,
+        {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.7, maxOutputTokens: 3500 }
+        },
+        45000
+      );
+      const text = result.candidates?.[0]?.content?.parts?.filter(p => p.text && !p.thought).map(p => p.text).join('');
+      if (text) return JSON.parse(text);
+    } catch (geminiErr) {
+      logger.error('[TALKING SCRIPT] Gemini fallback also failed:', geminiErr.message);
+    }
+
+    throw lastErr || Error('All script generation models failed');
   }
   async getPackage(date=new Date(),options={}) {
     return buildTalkingPackage(await this.script(istDate(date)),options);
