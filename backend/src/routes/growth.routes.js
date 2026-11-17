@@ -782,7 +782,8 @@ router.all('/cron/acquisition-outreach', requireAdminSecret, async (req, res) =>
 router.all('/cron/daily-youtube', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
-        const result = await growthOrchestratorService.publishDailyYouTube(force);
+        const date = req.query.date || req.body?.date || null;
+        const result = await growthOrchestratorService.publishDailyYouTube(force, date);
         res.json({ success: true, result });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily YouTube webhook failed:', error);

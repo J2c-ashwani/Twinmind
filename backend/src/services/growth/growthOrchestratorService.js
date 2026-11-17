@@ -1315,7 +1315,7 @@ class GrowthOrchestratorService {
     /**
      * Publishes today's daily YouTube Short when YouTube OAuth credentials are configured.
      */
-    async publishDailyYouTube(force = false) {
+    async publishDailyYouTube(force = false, targetDateStr = null) {
         if (!force && this.isSystemPaused()) {
             logger.warn('[GROWTH ORCHESTRATOR] Growth publishing is paused. Skipping YouTube.');
             return { action: 'skipped', reason: 'system_paused' };
@@ -1325,8 +1325,8 @@ class GrowthOrchestratorService {
             return { action: 'skipped', reason: 'youtube_credentials_not_configured' };
         }
 
-        const now = new Date();
-        const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+        const now = targetDateStr ? new Date(`${targetDateStr}T12:00:00Z`) : new Date();
+        const todayIST = targetDateStr || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
         if (this._publishingLocks.youtube) {
             return { action: 'skipped', reason: 'publish_in_progress' };
