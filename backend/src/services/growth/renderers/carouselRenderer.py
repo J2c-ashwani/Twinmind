@@ -176,19 +176,30 @@ def render_cover_slide(draw, slide_data, cur_y):
     font_title = get_font(62, bold=True)
     cur_y = draw_wrapped_text(draw, title, font_title, TEXT_WHITE, 70, cur_y, max_width=940, line_spacing=1.18)
 
-    # Subtitle / Hook explanation box (fills y=420 to y=680)
-    card_top = max(cur_y + 25, 410)
-    card_h = 245
-    draw.rounded_rectangle([70, card_top, w - 70, card_top + card_h], radius=24, fill=SURFACE_DARK, outline=CARD_BORDER, width=2)
+    # Subtitle / Hook explanation box (dynamically sized to fit content)
+    card_top = cur_y + 25
+    font_sub = get_font(30, bold=False)
     
-    # Mini Tag inside box
-    draw.rounded_rectangle([105, card_top + 26, 380, card_top + 66], radius=10, fill=(48, 32, 98))
-    draw.text((125, card_top + 36), "THE COGNITIVE MIRROR", font=get_font(20, bold=True), fill=PURPLE_GLOW)
-    
-    font_sub = get_font(32, bold=False)
-    draw_wrapped_text(draw, subtitle, font_sub, TEXT_MUTED, 105, card_top + 88, max_width=870, line_spacing=1.3)
+    # Pre-measure text height to hug content perfectly
+    dummy = Image.new('RGB', (w, h))
+    dummy_draw = ImageDraw.Draw(dummy)
+    end_text_y = draw_wrapped_text(dummy_draw, subtitle, font_sub, TEXT_MUTED, 105, card_top + 76, max_width=870, line_spacing=1.3)
+    card_h = max(145, end_text_y - card_top + 28)
 
-    # Takeaways / "Inside this breakdown" section (fills y=700 to y=1180)
+    # Draw card container
+    draw.rounded_rectangle([70, card_top, w - 70, card_top + card_h], radius=20, fill=SURFACE_DARK, outline=CARD_BORDER, width=1)
+    
+    # Dynamic tag inside box
+    box_tag = slide_data.get('box_tag') or slide_data.get('tag') or 'EXECUTIVE SUMMARY'
+    font_pill = get_font(18, bold=True)
+    bbox_p = draw.textbbox((0, 0), box_tag, font=font_pill)
+    pw = bbox_p[2] - bbox_p[0] + 30
+    draw.rounded_rectangle([105, card_top + 22, 105 + pw, card_top + 58], radius=10, fill=(48, 32, 98))
+    draw.text((120, card_top + 30), box_tag, font=font_pill, fill=PURPLE_GLOW)
+    
+    draw_wrapped_text(draw, subtitle, font_sub, TEXT_MUTED, 105, card_top + 76, max_width=870, line_spacing=1.3)
+
+    # Takeaways / "Inside this breakdown" section
     cur_y = card_top + card_h + 35
     draw.text((70, cur_y), "WHAT THIS 5-SLIDE BREAKDOWN REVEALS:", font=get_font(22, bold=True), fill=TEXT_DIM)
     cur_y += 42
