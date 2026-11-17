@@ -110,16 +110,25 @@ class GeminiService {
                 return response.text();
             };
 
-            try {
-                return await sendWithModel(this.modelName);
-            } catch (primaryErr) {
-                // If primary model failed with 404/not found or deprecation, fallback to secondary model
-                if (this.fallbackModelName && this.fallbackModelName !== this.modelName) {
-                    console.warn(`Gemini model ${this.modelName} failed, retrying with fallback model ${this.fallbackModelName}...`);
-                    return await sendWithModel(this.fallbackModelName);
+            const candidates = Array.from(new Set([
+                this.modelName,
+                this.fallbackModelName,
+                'gemini-3.6-flash',
+                'gemini-3.5-flash-lite',
+                'gemini-2.5-flash',
+                'gemini-2.5-flash-lite'
+            ].filter(Boolean)));
+
+            let lastErr = null;
+            for (const modelId of candidates) {
+                try {
+                    return await sendWithModel(modelId);
+                } catch (err) {
+                    lastErr = err;
+                    logger.warn(`Gemini model ${modelId} failed (${err.message}). Trying next candidate...`);
                 }
-                throw primaryErr;
             }
+            throw lastErr || new Error('All Gemini model candidates failed');
         } catch (error) {
             console.error('Gemini API error:', error);
             throw new Error('Failed to generate AI response: ' + error.message);

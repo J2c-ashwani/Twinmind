@@ -92,7 +92,7 @@ class GroqService {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage },
                 ],
-                model: 'llama-3.3-70b-versatile',
+                model: this.model || 'openai/gpt-oss-120b',
                 temperature: 0.9,
                 max_tokens: 2048,
             });

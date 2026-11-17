@@ -161,21 +161,23 @@ export class TalkingReelService {
     }
 
     // Gemini fallback via existing Google credentials
-    try {
-      logger.info('[TALKING SCRIPT] Falling back to Gemini for script writing...');
-      const model = process.env.TALKING_REVIEW_MODEL || 'gemini-2.5-flash';
-      const result = await this.googleRequest(
-        `https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/${model}:generateContent`,
-        {
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.7, maxOutputTokens: 3500 }
-        },
-        45000
-      );
-      const text = result.candidates?.[0]?.content?.parts?.filter(p => p.text && !p.thought).map(p => p.text).join('');
-      if (text) return JSON.parse(text);
-    } catch (geminiErr) {
-      logger.error('[TALKING SCRIPT] Gemini fallback also failed:', geminiErr.message);
+    const geminiCandidates = [process.env.TALKING_REVIEW_MODEL, 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'].filter(Boolean);
+    for (const geminiModel of geminiCandidates) {
+      try {
+        logger.info(`[TALKING SCRIPT] Falling back to Gemini (${geminiModel}) for script writing...`);
+        const result = await this.googleRequest(
+          `https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/${geminiModel}:generateContent`,
+          {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.7, maxOutputTokens: 3500 }
+          },
+          45000
+        );
+        const text = result.candidates?.[0]?.content?.parts?.filter(p => p.text && !p.thought).map(p => p.text).join('');
+        if (text) return JSON.parse(text);
+      } catch (geminiErr) {
+        logger.warn(`[TALKING SCRIPT] Gemini model ${geminiModel} failed (${geminiErr.message}). Trying next candidate...`);
+      }
     }
 
     throw lastErr || Error('All script generation models failed');
@@ -228,7 +230,7 @@ export class TalkingReelService {
     try {
       const parts=[{text:`Review these two ordered native video scenes against this script: ${JSON.stringify(script.scenes)}. These are fictional adult friends. Check: correct LEFT/RIGHT speakers, no obvious broken or extra fingers/phones or merged bodies, broadly aligned lips and words, natural intelligible English, stable character identity and clothing between scenes, no unintended written text, nudity or graphic content. Do not fail because of the small original generation provenance mark. A silent tail or extra speech AFTER the complete scripted ending will be trimmed by a separate transcript aligner, so judge the intended dialogue and exclude that tail. Return only JSON {pass:boolean,issues:[specific strings],notes:string}. Set pass false for a clear material defect; do not invent concerns. This is a secondary automated check, not proof of perfect lip sync.`}];
       for(const file of files)parts.push({inlineData:{mimeType:'video/mp4',data:(await fs.readFile(file)).toString('base64')}});
-      const candidateModels = [process.env.TALKING_REVIEW_MODEL, 'gemini-2.5-flash-lite', 'gemini-1.5-flash'].filter(Boolean);
+      const candidateModels = [process.env.TALKING_REVIEW_MODEL, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'].filter(Boolean);
       for(const model of candidateModels) {
         try {
           const result=await this.googleRequest(`https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/${model}:generateContent`,{contents:[{role:'user',parts}],generationConfig:{responseMimeType:'application/json',temperature:0,maxOutputTokens:1500,thinkingConfig:{thinkingBudget:0}}},90000);
