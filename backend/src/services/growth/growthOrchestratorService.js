@@ -487,9 +487,7 @@ class GrowthOrchestratorService {
             if (format === 'reel') {
                 try {
                     logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Facebook: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'}, Format: ${dailyPackage.formatType || 'split'})...`);
-                    renderedReel = dailyPackage.creativeVersion==='talking_reels_v1'
-                        ? await talkingReelService.ensureReady(dailyPackage.istDateStr)
-                        : await mediaRendererService.renderReel({
+                    const render2DMotionReel = async () => await mediaRendererService.renderReel({
                         campaignId,
                         postId,
                         creative: dailyPackage.facebook?.creative || dailyPackage.instagram?.creative,
@@ -513,9 +511,19 @@ class GrowthOrchestratorService {
                         voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
                         voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
                     });
+
+                    if (dailyPackage.creativeVersion === 'talking_reels_v1') {
+                        try {
+                            renderedReel = await talkingReelService.ensureReady(dailyPackage.istDateStr);
+                        } catch (talkingErr) {
+                            logger.warn(`[GROWTH ORCHESTRATOR] Facebook talking reel render failed (${talkingErr.message}). Automatic failover to 2D motion reel.`);
+                            renderedReel = await render2DMotionReel();
+                        }
+                    } else {
+                        renderedReel = await render2DMotionReel();
+                    }
                 } catch (reelErr) {
-                    if (dailyPackage.creativeVersion==='talking_reels_v1') throw reelErr;
-                    logger.warn(`[GROWTH ORCHESTRATOR] Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
+                    logger.warn(`[GROWTH ORCHESTRATOR] Facebook Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
                 }
             }
 
@@ -622,11 +630,22 @@ class GrowthOrchestratorService {
         const format = dailyPackage.linkedin.format || 'carousel_pdf';
         if (format === 'text') return {format};
         if (format === 'video') {
-            if (dailyPackage.creativeVersion==='talking_reels_v1')
-                return {...await talkingReelService.ensureReady(dailyPackage.istDateStr),format};
+            if (dailyPackage.creativeVersion==='talking_reels_v1') {
+                try {
+                    return {...await talkingReelService.ensureReady(dailyPackage.istDateStr),format};
+                } catch (talkingErr) {
+                    logger.warn(`[GROWTH ORCHESTRATOR] LinkedIn talking reel render failed (${talkingErr.message}). Automatic failover to 2D reel or carousel.`);
+                }
+            }
             const creative = dailyPackage.facebook?.creative || approvedPkg?.creative;
-            if (!creative) throw new Error('LinkedIn video requires the approved daily creative');
-            return {...await mediaRendererService.renderReel({campaignId,postId,creative}),format};
+            if (creative) {
+                try {
+                    return {...await mediaRendererService.renderReel({campaignId,postId,creative}),format};
+                } catch (reelErr) {
+                    logger.warn(`[GROWTH ORCHESTRATOR] LinkedIn 2D reel render failed (${reelErr.message}). Falling back to carousel.`);
+                }
+            }
+            return {...await mediaRendererService.renderCarousel({campaignId,postId,slides:dailyPackage.linkedin.slides}),format:'carousel_pdf'};
         }
         if (format !== 'carousel_pdf') throw new Error('Unsupported LinkedIn format');
         if (approvedPkg?.pdfPath && fs.existsSync(approvedPkg.pdfPath)) return {pdfPath:approvedPkg.pdfPath,pngPaths:approvedPkg.pngPaths,format};
@@ -1014,9 +1033,7 @@ class GrowthOrchestratorService {
             if (format === 'reel') {
                 try {
                     logger.info(`[GROWTH ORCHESTRATOR] Rendering Low-RAM Reel for Instagram @twingenie.app: "${dailyPackage.topic}" (${dailyPackage.modeName || 'Honest Twin'}, Format: ${dailyPackage.formatType || 'split'})...`);
-                    renderedReel = dailyPackage.creativeVersion==='talking_reels_v1'
-                        ? await talkingReelService.ensureReady(dailyPackage.istDateStr)
-                        : await mediaRendererService.renderReel({
+                    const render2DMotionReel = async () => await mediaRendererService.renderReel({
                         campaignId,
                         postId,
                         creative: dailyPackage.facebook?.creative || dailyPackage.instagram?.creative,
@@ -1040,8 +1057,18 @@ class GrowthOrchestratorService {
                         voiceSolution: dailyPackage.facebook.voiceScript?.voiceSolution,
                         voiceCta: dailyPackage.facebook.voiceScript?.voiceCta
                     });
+
+                    if (dailyPackage.creativeVersion === 'talking_reels_v1') {
+                        try {
+                            renderedReel = await talkingReelService.ensureReady(dailyPackage.istDateStr);
+                        } catch (talkingErr) {
+                            logger.warn(`[GROWTH ORCHESTRATOR] Instagram talking reel render failed (${talkingErr.message}). Automatic failover to 2D motion reel.`);
+                            renderedReel = await render2DMotionReel();
+                        }
+                    } else {
+                        renderedReel = await render2DMotionReel();
+                    }
                 } catch (reelErr) {
-                    if (dailyPackage.creativeVersion==='talking_reels_v1') throw reelErr;
                     logger.warn(`[GROWTH ORCHESTRATOR] Instagram Reel render failed (${reelErr.message}). Automatic failover to Carousel.`);
                 }
             }
@@ -1332,17 +1359,25 @@ class GrowthOrchestratorService {
         try {
             const dailyPackage = await contentGeneratorService.getOrGenerateDailyContent(now);
             const reelPkg = dailyPackage.facebook || dailyPackage.instagram || {};
-            const renderResult = dailyPackage.creativeVersion==='talking_reels_v1'
-                ? await talkingReelService.ensureReady(dailyPackage.istDateStr)
-                : await mediaRendererService.renderReel({
-                campaignId: `yt_${todayIST}`,
-                postId: Date.now(),
-                creative: dailyPackage.youtube?.creative || reelPkg.creative,
-                mode: reelPkg.mode || 'dark',
-                hook: reelPkg.hook || dailyPackage.topic,
-                tag: 'TWINGENIE',
-                caption: reelPkg.caption || dailyPackage.topic,
-            });
+            let renderResult = null;
+            if (dailyPackage.creativeVersion === 'talking_reels_v1') {
+                try {
+                    renderResult = await talkingReelService.ensureReady(dailyPackage.istDateStr);
+                } catch (talkingErr) {
+                    logger.warn(`[GROWTH ORCHESTRATOR] YouTube talking reel render failed (${talkingErr.message}). Falling back to 2D reel.`);
+                }
+            }
+            if (!renderResult) {
+                renderResult = await mediaRendererService.renderReel({
+                    campaignId: `yt_${todayIST}`,
+                    postId: Date.now(),
+                    creative: dailyPackage.youtube?.creative || reelPkg.creative,
+                    mode: reelPkg.mode || 'dark',
+                    hook: reelPkg.hook || dailyPackage.topic,
+                    tag: 'TWINGENIE',
+                    caption: reelPkg.caption || dailyPackage.topic,
+                });
+            }
 
             const publishResult = await this.adapters.youtube.publish({
                 title: (dailyPackage.youtube?.title || dailyPackage.hook || dailyPackage.topic || 'TwinGenie').slice(0, 95),
