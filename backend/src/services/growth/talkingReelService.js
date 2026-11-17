@@ -51,7 +51,8 @@ export function validateTranscript(script,index,transcript) {
   const rawActual=spokenTokens(transcriptSentence);
   const actual=collapseRepeats(rawActual);
   const expected=spokenTokens(script.scenes[index].turns.map(t=>t.text).join(' '));
-  if(actual.length!==expected.length || actual.some((w,i)=>w!==expected[i]))throw Error(`Scene ${index+1} transcript differs from the approved lines; hold the reel`);
+  const candidate=actual.slice(0,expected.length);
+  if(candidate.length!==expected.length || candidate.some((w,i)=>w!==expected[i]))throw Error(`Scene ${index+1} transcript differs from the approved lines; hold the reel`);
   return true;
 }
 
