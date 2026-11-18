@@ -618,7 +618,7 @@ def render_slide(slide_data, slide_index, total_slides, output_path):
     img, draw, cur_y = draw_header_and_bg(slide_data, slide_index, total_slides)
 
     stype = slide_data.get('type')
-    if stype == 'cover' or (not stype and slide_index == 1):
+    if stype in ('cover', 'hook') or (not stype and slide_index == 1):
         render_cover_slide(draw, slide_data, cur_y)
     elif stype in ('discussion', 'question'):
         render_discussion_slide(draw, slide_data, cur_y)

@@ -63,14 +63,21 @@ export function buildTalkingPackage(script, options={}) {
   const direct=turns.find(t=>t.source==='twingenie')?.text || turns.at(-1).text;
   const limits=script.comparisonDisclosure || 'AI-generated fictional scene. Illustrative conversation; responses vary.';
   const caption=script.captions?.instagram || `${script.hook}\n\n${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\nDownload TwinGenie on Google Play — link in bio. On iPhone? Comment iOS.\n\n${limits}\n#TwinGenie #AICompanion`;
+  const linkedinFormat=getLinkedInFormat(dateObject(script.date));
   const slides=[
-    {type:'hook',title:script.hook,subtitle:script.topic,tag:script.featureName.toUpperCase()},
+    {type:'cover',title:script.hook,subtitle:script.topic,tag:script.featureName.toUpperCase(),takeaways:[question,direct,script.discussion]},
     {type:'insight',title:'A familiar moment',subtitle:question,content:direct,tag:'ILLUSTRATIVE EXAMPLE'},
-    {type:'insight',title:'A conversation worth starting',subtitle:`Explore ${script.featureName.toLowerCase()} in TwinGenie.`,content:limits,tag:'TWINGENIE'},
+    {type:'insight',title:'A conversation worth starting',subtitle:`Explore ${script.featureName.toLowerCase()} in TwinGenie.`,content:`TwinGenie is an AI companion for everyday conversations and reflection. ${script.discussion}`,tag:'TWINGENIE'},
     {type:'discussion',title:'Your perspective',question:script.discussion,tag:'TWINGENIE'}
   ];
-  const linkedinCaption=script.captions?.linkedin || `${script.hook}\n\n${script.topic}\n\nIn this fictional scene, two friends use TwinGenie to explore an everyday question. ${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n${limits}\n\n#TwinGenie #AICompanion`;
+  const linkedinCaption=script.captions?.linkedin || (
+    linkedinFormat==='video'
+      ? `${script.hook}\n\n${script.topic}\n\nIn this fictional scene, two friends use TwinGenie to explore an everyday question. ${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n${limits}\n\n#TwinGenie #AICompanion`
+      : linkedinFormat==='carousel_pdf'
+        ? `${script.hook}\n\n${script.topic}\n\nSwipe through this quick breakdown on how ${script.featureName.toLowerCase()} helps turn everyday overthinking into clarity.\n\n${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n#TwinGenie #AICompanion`
+        : `${script.hook}\n\n${script.topic}\n\nAn illustrative reflection:\n“${question}”\n“${direct}”\n\n${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n#TwinGenie #AICompanion`
+  );
   const link=n=>`https://www.twingenie.app/download?utm_source=${n}&utm_medium=organic&utm_campaign=talking_${script.date}_${script.format}`;
   const creative={...script};
-  return {topic:script.topic,hook:script.hook,themeId:`talking_${script.format}_${script.date}`,category:'EVERYDAY AI COMPANION',mode:'dark',modeName:script.featureName,format:'reel',formatType:script.format,creativeVersion:TALKING_VERSION,istDateStr:script.date,contentSource:script.contentSource||'daily_talking_script',includeCaptionLink:false,chatDialogue:{userDilemma:question,twinModeReply:direct},linkedin:{title:script.hook,caption:linkedinCaption,slides,format:getLinkedInFormat(dateObject(script.date)),contentVersion:'linkedin_talking_v1'},facebook:{title:script.hook,caption,slides,creative,firstComment:null},instagram:{caption,creative,firstComment:null},threads:{text:script.captions?.threads || `${script.hook}\n\n${script.discussion}\n\nTwinGenie: conversations for everyday life.`},youtube:{title:script.captions?.youtubeTitle || script.hook,description:script.captions?.youtube || `${caption.replace('— link in bio','')}\n\n${link('youtube')}`,creative}};
+  return {topic:script.topic,hook:script.hook,themeId:`talking_${script.format}_${script.date}`,category:'EVERYDAY AI COMPANION',mode:'dark',modeName:script.featureName,format:'reel',formatType:script.format,creativeVersion:TALKING_VERSION,istDateStr:script.date,contentSource:script.contentSource||'daily_talking_script',includeCaptionLink:false,chatDialogue:{userDilemma:question,twinModeReply:direct},linkedin:{title:script.hook,caption:linkedinCaption,slides,format:linkedinFormat,contentVersion:'linkedin_talking_v1'},facebook:{title:script.hook,caption,slides,creative,firstComment:null},instagram:{caption,creative,firstComment:null},threads:{text:script.captions?.threads || `${script.hook}\n\n${script.discussion}\n\nTwinGenie: conversations for everyday life.`},youtube:{title:script.captions?.youtubeTitle || script.hook,description:script.captions?.youtube || `${caption.replace('— link in bio','')}\n\n${link('youtube')}`,creative}};
 }
