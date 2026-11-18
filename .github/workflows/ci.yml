@@ -18,10 +18,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -33,10 +33,10 @@ jobs:
         env:
           NODE_ENV: test
           PORT: 3001
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://mock.supabase.co' }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'mock_service_key' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'mock_anon_key' }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'mock_openai_key' }}
+          SUPABASE_URL: https://mock.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: mock_service_key
+          SUPABASE_ANON_KEY: mock_anon_key
+          OPENAI_API_KEY: mock_openai_key
 
   web-build:
     name: Next.js Web App Build & Lint
@@ -84,6 +84,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.8'
           channel: 'stable'
           cache: true
 
