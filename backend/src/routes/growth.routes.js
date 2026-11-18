@@ -777,14 +777,14 @@ router.all('/cron/acquisition-outreach', requireAdminSecret, async (req, res) =>
 
 /**
  * GET & POST /api/admin/growth/cron/daily-youtube
- * Automated daily YouTube Shorts publisher
+ * Automated daily YouTube Shorts publisher (20:00 IST; supports async=true)
  */
 router.all('/cron/daily-youtube', requireAdminSecret, async (req, res) => {
     try {
         const force = req.query.force === 'true' || req.body?.force === true;
         const date = req.query.date || req.body?.date || null;
-        const result = await growthOrchestratorService.publishDailyYouTube(force, date);
-        res.json({ success: true, result });
+        logger.info(`[GROWTH CRON] Triggering automated daily YouTube Shorts publication (force=${force}, date=${date || 'today'})...`);
+        return await respondToGrowthJob(req, res, () => growthOrchestratorService.publishDailyYouTube(force, date), { platform: 'youtube' });
     } catch (error) {
         logger.error('[GROWTH CRON] Daily YouTube webhook failed:', error);
         res.status(500).json({ success: false, error: error.message });

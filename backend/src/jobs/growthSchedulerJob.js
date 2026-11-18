@@ -11,6 +11,7 @@ import {isTalkingEnabled,istDate} from '../services/growth/talkingReelCreativeSe
  * - Facebook Page Reel: 16:30 IST (11:00 UTC)
  * - Instagram Reel: 19:00 IST (13:30 UTC)
  * - Threads Micro-Essay: 19:30 IST (14:00 UTC)
+ * - YouTube Shorts: 20:00 IST (14:30 UTC)
  * - Nightly Fail-Safe Sweep: 23:00 IST (17:30 UTC)
  */
 export function initGrowthJobs() {
@@ -55,6 +56,14 @@ export function initGrowthJobs() {
                 await growthOrchestratorService.publishDailyThreads(false);
             } catch (e) {
                 logger.error('[GROWTH JOB] 19:30 IST Threads publication error:', e);
+            }
+        }, { timezone: 'Asia/Kolkata' });
+
+        cron.schedule('0 20 * * *', async () => {
+            try {
+                await growthOrchestratorService.publishDailyYouTube(false);
+            } catch (e) {
+                logger.error('[GROWTH JOB] 20:00 IST YouTube publication error:', e);
             }
         }, { timezone: 'Asia/Kolkata' });
     }
@@ -102,6 +111,7 @@ export function initGrowthJobs() {
             if (istTimeNum >= 990) await growthOrchestratorService.publishDailyFacebookReel(false);      // >= 16:30 IST
             if (istTimeNum >= 1140) await growthOrchestratorService.publishDailyInstagram(false);        // >= 19:00 IST
             if (istTimeNum >= 1170) await growthOrchestratorService.publishDailyThreads(false);          // >= 19:30 IST
+            if (istTimeNum >= 1200) await growthOrchestratorService.publishDailyYouTube(false);          // >= 20:00 IST
         } catch (e) {
             logger.warn('[GROWTH JOB] Startup check warning:', e.message);
         }
