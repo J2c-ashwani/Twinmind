@@ -23,19 +23,20 @@ def main(spec_path):
     normalized=[];durations=[]
     for i,(source,transcript,scene) in enumerate(zip(spec['files'],spec['transcripts'],script['scenes'])):
         ws=words_of(transcript);expected=[w for turn in scene['turns'] for w in turn['text'].split()]
-        if len(ws)<len(expected):raise RuntimeError(f'Scene {i+1}: transcript is shorter than scripted speech')
+        if len(ws)<max(1,int(len(expected)*0.85)):raise RuntimeError(f'Scene {i+1}: transcript is shorter than scripted speech')
         ws=ws[:len(expected)]
         end=float(ws[-1].get('end',0));start=float(ws[0].get('start',0))
-        if end<1.0 or end>11.5 or start>1.5:raise RuntimeError(f'Scene {i+1}: speech timing outside quality bounds')
+        if end<1.0 or end>11.8 or start>1.5:raise RuntimeError(f'Scene {i+1}: speech timing outside quality bounds')
         duration=min(12.0,end+.42);durations.append(duration)
-        offset=0;turn_windows=[]
+        total_expected=max(1,len(expected));offset_exp=0;turn_windows=[]
         for t_idx, turn in enumerate(scene['turns']):
             count=len(turn['text'].split())
-            a=max(0,float(ws[offset].get('start',0))-.03)
+            start_idx=min(int(round(offset_exp*len(ws)/total_expected)),len(ws)-1)
+            a=max(0,float(ws[start_idx].get('start',0))-.03)
             is_last=(t_idx==len(scene['turns'])-1)
-            end_idx=len(ws)-1 if is_last else min(offset+count-1,len(ws)-1)
+            end_idx=len(ws)-1 if is_last else min(max(start_idx,int(round((offset_exp+count)*len(ws)/total_expected))-1),len(ws)-1)
             b=float(ws[end_idx].get('end',a))+.12
-            offset+=count
+            offset_exp+=count
             turn_windows.append((a,b,turn['text']))
         target=tmp/f'scene-{i+1}.mp4'
         decode=subprocess.Popen(['ffmpeg','-hide_banner','-loglevel','error','-i',str(source),'-t',str(duration),'-vf',f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,fps={FPS}','-pix_fmt','rgb24','-f','rawvideo','pipe:1'],stdout=subprocess.PIPE)

@@ -128,9 +128,11 @@ class InstagramAdapter {
             } else if (postData.pngUrls && postData.pngUrls.length > 1) {
                 // Carousel Publishing (Multiple images)
                 creationId = await this._createCarouselContainer(accessToken, igUserId, postData.pngUrls, postData.caption);
+                await this._waitForContainerReady(creationId, accessToken, 20, 2000);
             } else if (postData.pngUrls && postData.pngUrls.length === 1) {
                 // Single Image Publishing
                 creationId = await this._createSingleImageContainer(accessToken, igUserId, postData.pngUrls[0], postData.caption);
+                await this._waitForContainerReady(creationId, accessToken, 20, 2000);
             } else {
                 throw new Error('No valid media provided for Instagram post');
             }
