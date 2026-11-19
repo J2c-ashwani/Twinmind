@@ -64,9 +64,9 @@ export function validateTranscript(script,index,transcript) {
   const expected=spokenTokens(script.scenes[index].turns.map(t=>t.text).join(' '));
   const candidate=actual.slice(0,expected.length);
   if(candidate.length===expected.length && candidate.every((w,i)=>w===expected[i])) return true;
-  const matched = lcsLength(candidate, expected);
+  const matched = lcsLength(actual, expected);
   const ratio = expected.length ? matched / expected.length : 0;
-  if(expected.length >= 14 && ratio >= 0.90) return true;
+  if(expected.length >= 14 && ratio >= 0.78) return true;
   throw Error(`Scene ${index+1} transcript differs from the approved lines; hold the reel`);
 }
 

@@ -14,6 +14,7 @@ import approvedContentPackageService from './approvedContentPackageService.js';
 import { supabaseAdmin } from '../../config/supabase.js';
 import talkingReelService from './talkingReelService.js';
 import { isTalkingEnabled } from './talkingReelCreativeService.js';
+import { buildSocialPilotPackage } from './reelCreativeService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1368,20 +1369,23 @@ class GrowthOrchestratorService {
                 }
             }
             if (!renderResult) {
+                const motionPkg = buildSocialPilotPackage(now);
                 renderResult = await mediaRendererService.renderReel({
                     campaignId: `yt_${todayIST}`,
                     postId: Date.now(),
-                    creative: dailyPackage.youtube?.creative || reelPkg.creative,
-                    mode: reelPkg.mode || 'dark',
-                    hook: reelPkg.hook || dailyPackage.topic,
+                    creative: motionPkg.youtube?.creative || motionPkg.facebook?.creative,
+                    mode: motionPkg.mode || 'dark',
+                    hook: motionPkg.hook || motionPkg.topic,
                     tag: 'TWINGENIE',
-                    caption: reelPkg.caption || dailyPackage.topic,
+                    caption: motionPkg.facebook?.caption || motionPkg.topic,
                 });
             }
 
+            const isTalking = renderResult?.renderVersion === 'talking_reels_v1';
             const publishResult = await this.adapters.youtube.publish({
-                title: (dailyPackage.youtube?.title || dailyPackage.hook || dailyPackage.topic || 'TwinGenie').slice(0, 95),
+                title: ((isTalking ? dailyPackage.youtube?.title : null) || dailyPackage.hook || dailyPackage.topic || 'TwinGenie').slice(0, 95),
                 description: dailyPackage.youtube?.description || `${reelPkg.caption || dailyPackage.topic}\n\nhttps://twingenie.app/download?utm_source=youtube&utm_medium=shorts`,
+                pinnedComment: dailyPackage.youtube?.pinnedComment || null,
                 videoPath: renderResult?.videoPath || renderResult?.localPath,
             });
 
