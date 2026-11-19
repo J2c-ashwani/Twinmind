@@ -172,6 +172,38 @@ class YouTubeAdapter {
             const shortUrl = `https://youtube.com/shorts/${videoId}`;
             logger.info(`🎉 [YOUTUBE] Published Short successfully! Video ID: ${videoId}`);
 
+            // Step 3: Optional Pinned / Top-Level Conversion Comment
+            const commentText = postData.pinnedComment || postData.firstComment;
+            if (commentText) {
+                try {
+                    const commentRes = await fetch('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            snippet: {
+                                videoId: videoId,
+                                topLevelComment: {
+                                    snippet: {
+                                        textOriginal: commentText
+                                    }
+                                }
+                            }
+                        })
+                    });
+                    if (commentRes.ok) {
+                        logger.info(`📌 [YOUTUBE] Added conversion comment on video ${videoId}`);
+                    } else {
+                        const err = await commentRes.json();
+                        logger.warn(`[YOUTUBE] Top-level comment skipped (non-blocking): ${err?.error?.message || 'insufficient permission'}`);
+                    }
+                } catch (cErr) {
+                    logger.warn(`[YOUTUBE] Exception adding comment (non-blocking): ${cErr.message}`);
+                }
+            }
+
             return {
                 success: true,
                 platform: this.platform,

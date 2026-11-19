@@ -10,7 +10,7 @@ import {GoogleAuth} from 'google-auth-library';
 import Groq from 'groq-sdk';
 import logger from '../../config/logger.js';
 import store,{STATE_BUCKET,MEDIA_BUCKET} from './talkingReelStore.js';
-import {TALKING_VERSION,istDate,dateObject,formatForDate,isTalkingEnabled,validateTalkingScript,talkingScriptPrompt,buildTalkingPackage} from './talkingReelCreativeService.js';
+import {TALKING_VERSION,istDate,dateObject,formatForDate,archetypeForDate,ARCHETYPES,isTalkingEnabled,validateTalkingScript,talkingScriptPrompt,buildTalkingPackage} from './talkingReelCreativeService.js';
 
 const run=promisify(execFile);
 const HERE=path.dirname(fileURLToPath(import.meta.url));
@@ -76,9 +76,32 @@ export function validateGenerationDate(day,today=istDate(new Date())) {
   if(Date.parse(day)<Date.parse(today)-86400000||Date.parse(day)>Date.parse(today)+86400000)throw Error('Only yesterday, today or tomorrow may be prepared');
 }
 
-export function makeSceneRequest(script,index,reference) {
+export function makeSceneRequest(script,index,reference,archetype=null) {
   const turns=script.scenes[index].turns.map(t=>`${t.speaker}: ${JSON.stringify(t.text)}`).join('\n');
-  return {model:MODEL,background:false,store:true,stream:false,labels:{app:'twingenie',creative:script.date,scene:String(index+1)},input:[{type:'user_input',content:[{type:'text',text:`Generate a 12-second photographic live-action-style vertical 9:16 video with native clear spoken American English. Preserve the exact two original adult women, faces, clothes and warm apartment in the reference. LEFT: shoulder-length dark hair, indigo sweatshirt, holds one unbranded phone with its screen facing away. RIGHT: short curly hair, teal overshirt, empty hands. Ordinary friends, not celebrities, customer testimonials or official representatives. Natural skin texture, stable hands and phone, separate bodies. One continuous eye-level medium two-shot, no cuts, at most a gentle 3 percent push-in. Two distinct natural adult female voices, warm and conversational, never seductive, robotic, angry or salesy. One speaker at a time; the listener's mouth rests. Speech must match lip motion and speaker assignment. Keep the same voices as the other scene. No captions, writing, graphics, logos, music or sound effects. Begin speech by 0.2 seconds, avoid long pauses, finish all words before 10.5 seconds, then a brief silent reaction. Say ONLY the exact dialogue below; no extra words. TwinGenie is pronounced Twin Jee-nee. This is scene ${index+1} of a fictional two-friend conversation. Mood: curiosity, a little self-recognition, a kind small smile. The payoff should feel spontaneous, not performed for an advert.\nExact dialogue:\n${turns}`},{type:'image',mime_type:'image/jpeg',data:reference.toString('base64')}]}],response_format:[{type:'video',delivery:'inline',aspect_ratio:'9:16',resolution:'720p',duration:'12s'}],generation_config:{max_output_tokens:80000,video_config:{task:'reference_to_video'}}};
+  const arch=archetype || archetypeForDate(script.date);
+  const charDesc=arch?.characters || 'LEFT: shoulder-length dark hair, indigo sweatshirt, holds one unbranded phone with its screen facing away. RIGHT: short curly hair, teal overshirt, empty hands.';
+  const settingDesc=arch?.setting || 'a warm apartment';
+  const moodDesc=arch?.mood || 'curiosity, a little self-recognition, a kind small smile';
+  return {
+    model:MODEL,
+    background:false,
+    store:true,
+    stream:false,
+    labels:{app:'twingenie',creative:script.date,scene:String(index+1)},
+    input:[{
+      type:'user_input',
+      content:[{
+        type:'text',
+        text:`Generate a 12-second photographic live-action-style vertical 9:16 video with native clear spoken American English. Preserve the exact characters, faces, clothes and ${settingDesc} in the reference. ${charDesc} Ordinary relatable adults, not celebrities, customer testimonials or official representatives. Natural skin texture, stable hands and phone, separate bodies. One continuous eye-level medium two-shot, no cuts, at most a gentle 3 percent push-in. Two distinct natural adult voices matching the characters, warm and conversational, never seductive, robotic, angry or salesy. One speaker at a time; the listener's mouth rests. Speech must match lip motion and speaker assignment. Keep the same voices as the other scene. No captions, writing, graphics, logos, music or sound effects. Begin speech by 0.2 seconds, avoid long pauses, finish all words before 10.5 seconds, then a brief silent reaction. Say ONLY the exact dialogue below; no extra words. TwinGenie is pronounced Twin Jee-nee. This is scene ${index+1} of a fictional conversation. Mood: ${moodDesc}. The payoff should feel spontaneous, not performed for an advert.\nExact dialogue:\n${turns}`
+      },{
+        type:'image',
+        mime_type:'image/jpeg',
+        data:reference.toString('base64')
+      }]
+    }],
+    response_format:[{type:'video',delivery:'inline',aspect_ratio:'9:16',resolution:'720p',duration:'12s'}],
+    generation_config:{max_output_tokens:80000,video_config:{task:'reference_to_video'}}
+  };
 }
 
 export class TalkingReelService {
@@ -216,8 +239,12 @@ export class TalkingReelService {
       data=this.sceneRequest?await this.sceneRequest(null,previous.interactionId):await this.googleRequest(`https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/global/interactions/${encodeURIComponent(previous.interactionId)}`);
     } else {
       // Exactly one reservation per scene/day, including uncertain or rejected requests: max two POSTs/day.
-      const reference=await fs.readFile(path.join(ASSETS,'reference.jpg'));
-      const payload=makeSceneRequest(script,index,reference);
+      const arch=archetypeForDate(script.date);
+      const refFilename=arch?.referenceFile || 'reference.jpg';
+      let refPath=path.join(ASSETS,refFilename);
+      try { await fs.access(refPath); } catch { refPath=path.join(ASSETS,'reference.jpg'); }
+      const reference=await fs.readFile(refPath);
+      const payload=makeSceneRequest(script,index,reference,arch);
       try {data=this.sceneRequest?await this.sceneRequest(payload):await this.googleRequest(`https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/global/interactions`,payload);}
       catch(e) {
         await this.store.write(base+'/result.json',{status:e.response?'rejected':'uncertain_submission',httpStatus:e.response?.status||null,at:now()});
