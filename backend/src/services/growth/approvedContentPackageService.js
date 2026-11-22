@@ -7,6 +7,34 @@ import logger from '../../config/logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PACKAGES_DIR = path.join(__dirname, 'packages');
+const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
+
+/**
+ * Resolves asset paths across varied host environments (local Mac dev, Linux CI runners, Docker containers).
+ */
+function resolveAssetPath(assetPath) {
+    if (!assetPath || typeof assetPath !== 'string') return assetPath;
+    if (fs.existsSync(assetPath)) return assetPath;
+
+    const publicIdx = assetPath.indexOf('public/growth_assets/');
+    if (publicIdx !== -1) {
+        const subPath = assetPath.slice(publicIdx + 'public/'.length);
+        const resolved = path.join(PUBLIC_DIR, subPath);
+        if (fs.existsSync(resolved)) return resolved;
+    }
+
+    const growthIdx = assetPath.indexOf('growth_assets/');
+    if (growthIdx !== -1) {
+        const subPath = assetPath.slice(growthIdx);
+        const resolved = path.join(PUBLIC_DIR, subPath);
+        if (fs.existsSync(resolved)) return resolved;
+    }
+
+    const relCandidate = path.resolve(__dirname, '../../../', assetPath);
+    if (fs.existsSync(relCandidate)) return relCandidate;
+
+    return assetPath;
+}
 
 class ApprovedContentPackageService {
     constructor() {
@@ -92,11 +120,15 @@ class ApprovedContentPackageService {
                 return { valid: false, reason: 'integrity_hash_mismatch_tampering_detected' };
             }
 
-            // 4. Verify assets exist on disk
-            if (pkg.pdfPath && !fs.existsSync(pkg.pdfPath)) {
-                return { valid: false, reason: `pdf_asset_missing: ${pkg.pdfPath}` };
+            // 4. Verify assets exist on disk (cross-platform path resolution for CI/Linux/Docker)
+            if (pkg.pdfPath) {
+                pkg.pdfPath = resolveAssetPath(pkg.pdfPath);
+                if (!fs.existsSync(pkg.pdfPath)) {
+                    return { valid: false, reason: `pdf_asset_missing: ${pkg.pdfPath}` };
+                }
             }
             if (Array.isArray(pkg.pngPaths)) {
+                pkg.pngPaths = pkg.pngPaths.map(p => resolveAssetPath(p));
                 for (const p of pkg.pngPaths) {
                     if (!fs.existsSync(p)) {
                         return { valid: false, reason: `slide_asset_missing: ${p}` };

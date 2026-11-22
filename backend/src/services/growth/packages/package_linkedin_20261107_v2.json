@@ -95,14 +95,14 @@
       "branding": "TwinGenie • Reflective Life Companion"
     }
   ],
-  "pdfPath": "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/carousel.pdf",
+  "pdfPath": "public/growth_assets/package_linkedin_20261107_v2/carousel.pdf",
   "pngPaths": [
-    "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/slide_1.png",
-    "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/slide_2.png",
-    "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/slide_3.png",
-    "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/slide_4.png",
-    "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/slide_5.png",
-    "/Users/ashwanikumar/.gemini/antigravity/scratch/twinmind/repo_clone/backend/public/growth_assets/package_linkedin_20261107_v2/slide_6.png"
+    "public/growth_assets/package_linkedin_20261107_v2/slide_1.png",
+    "public/growth_assets/package_linkedin_20261107_v2/slide_2.png",
+    "public/growth_assets/package_linkedin_20261107_v2/slide_3.png",
+    "public/growth_assets/package_linkedin_20261107_v2/slide_4.png",
+    "public/growth_assets/package_linkedin_20261107_v2/slide_5.png",
+    "public/growth_assets/package_linkedin_20261107_v2/slide_6.png"
   ],
   "integrityHash": "0c4453395706ffcffdb436abf2d1333fc908fd0481bf3b40b5afd4e403252608",
   "storedAt": "2026-11-06T15:06:29.480Z"
