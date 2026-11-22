@@ -88,6 +88,10 @@ export function initGrowthJobs() {
 
     // Graceful Boot Check: respects pause state and aligned IST publication windows
     setTimeout(async () => {
+        if (process.env.ENABLE_INTERNAL_GROWTH_TIMERS !== 'true') {
+            logger.info('🚀 [GROWTH JOB] Internal timers disabled; skipping auto-publish on startup.');
+            return;
+        }
         try {
             if (growthOrchestratorService.isSystemPaused()) {
                 logger.info('⏸️ [GROWTH JOB] Boot check skipped: system is paused.');

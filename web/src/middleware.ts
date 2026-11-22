@@ -56,10 +56,13 @@ export async function middleware(req: NextRequest) {
         pathname.endsWith('.png') ||
         pathname.endsWith('.jpg') ||
         pathname.endsWith('.svg') ||
-        pathname.endsWith('.webp')
+        pathname.endsWith('.webp') ||
+        pathname.endsWith('.mp4') ||
+        pathname.endsWith('.pdf')
 
     const isPublicPath = publicPaths.some(path => pathname === path) ||
         pathname.startsWith('/api/') ||
+        pathname.startsWith('/growth_assets/') ||
         isPublicFile
 
     if (isPublicPath) {

@@ -26,6 +26,10 @@ const nextConfig = {
             {
                 source: '/api/:path*',
                 destination: `${process.env.BACKEND_URL || 'https://twinmind-9l6x.onrender.com'}/api/:path*`
+            },
+            {
+                source: '/growth_assets/:path*',
+                destination: `${process.env.BACKEND_URL || 'https://twinmind-9l6x.onrender.com'}/growth_assets/:path*`
             }
         ]
     },
