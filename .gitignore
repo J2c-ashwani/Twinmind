@@ -61,6 +61,8 @@ google-services.json
 GoogleService-Info.plist
 # Growth distribution rendered assets
 backend/public/growth_assets/
+!backend/public/growth_assets/package_linkedin_20261107_v2/
+!backend/public/growth_assets/package_linkedin_20261107_v2/**
 backend/test_carousel_out/
 test_carousel_out/
 *.b64
