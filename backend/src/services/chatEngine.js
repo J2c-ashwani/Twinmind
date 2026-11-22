@@ -75,6 +75,86 @@ function detectIdentityQuestion(message) {
     return IDENTITY_PATTERNS.some(p => p.test(message));
 }
 
+/* ---------------------------------------
+   INTELLIGENT HOOKED GREETING ENGINE
+   Sub-50ms execution, personalized with user name and time gap,
+   inviting reflection without aggressive/ungrounded hostility.
+---------------------------------------- */
+const PURE_GREETING_PATTERNS = [
+    /^(hi|hey|hello|hiya|sup|yo|greetings|howdy|hola|namaste)$/i,
+    /^(good\s+(morning|afternoon|evening|day))$/i,
+    /^(hey|hi|hello)\s+(there|twin|twingenie|genie|bro|buddy)$/i,
+    /^(what'?s\s+up|whatsup|wassup|wazzup)$/i,
+];
+
+export function isPureGreeting(message = '') {
+    if (!message || typeof message !== 'string') return false;
+    const clean = message.trim().toLowerCase().replace(/[!.,?]+$/, '').trim();
+    return PURE_GREETING_PATTERNS.some(pattern => pattern.test(clean));
+}
+
+export function generateHookedGreeting({ userName, hoursSinceLastMessage, mode = 'normal' }) {
+    const rawFirst = userName && userName !== 'User' ? String(userName).trim().split(/\s+/)[0] : '';
+    const firstName = rawFirst ? (rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase()) : '';
+    const greetingPrefix = firstName ? `Hey ${firstName}` : 'Hey';
+
+    const isFirstEver = hoursSinceLastMessage === null || hoursSinceLastMessage === undefined;
+    const isReturning = hoursSinceLastMessage !== null && hoursSinceLastMessage >= 48;
+
+    if (isFirstEver) {
+        if (mode === 'therapist') {
+            return `Hi${firstName ? ` ${firstName}` : ''}. I'm here and listening. How are you holding up today?`;
+        }
+        if (mode === 'dark') {
+            return `${greetingPrefix}. No small talk. What's the main friction in your head right now?`;
+        }
+        if (mode === 'future') {
+            return `${greetingPrefix}! Let's lock in. What's one big priority or goal you want to tackle today?`;
+        }
+        // Normal mode (default)
+        const firstGreetings = [
+            `${greetingPrefix}! Glad you're here. How's your energy today—ready to unpack something on your mind, or just taking a breather?`,
+            `${greetingPrefix}! Your Twin is ready. What's on your mind today—want to vent about something, or unpack a decision you're mulling over?`
+        ];
+        return firstGreetings[Math.floor(Math.random() * firstGreetings.length)];
+    }
+
+    if (isReturning) {
+        if (mode === 'therapist') {
+            return `Welcome back${firstName ? `, ${firstName}` : ''}. It's good to hear from you again. How have you been feeling since we last spoke?`;
+        }
+        if (mode === 'dark') {
+            return `${greetingPrefix}. Welcome back. What brought you back to your Twin today?`;
+        }
+        if (mode === 'future') {
+            return `Welcome back${firstName ? `, ${firstName}` : ''}! Time to recalibrate. What's the next move you're planning?`;
+        }
+        // Normal mode (default)
+        const returningGreetings = [
+            `${greetingPrefix}, welcome back! It's been a minute. What's been taking up most of your headspace lately?`,
+            `${greetingPrefix}! Good to see you back. What's the main thing going on with you right now?`
+        ];
+        return returningGreetings[Math.floor(Math.random() * returningGreetings.length)];
+    }
+
+    // Active user (recent session < 48 hours)
+    if (mode === 'therapist') {
+        return `Hi${firstName ? ` ${firstName}` : ''}. I'm right here with you. What's coming up for you right now?`;
+    }
+    if (mode === 'dark') {
+        return `${greetingPrefix}. What's the latest update?`;
+    }
+    if (mode === 'future') {
+        return `${greetingPrefix}! What are we focusing on next?`;
+    }
+    // Normal mode (default)
+    const activeGreetings = [
+        `${greetingPrefix}! Good to see you again. What are we unpacking right now?`,
+        `${greetingPrefix}! Back at it. What's on your mind today?`
+    ];
+    return activeGreetings[Math.floor(Math.random() * activeGreetings.length)];
+}
+
 
 
 function detectEmotion(message = "") {
@@ -134,6 +214,37 @@ export async function generateChatResponse(
                 timestamp: new Date().toISOString(),
                 genZ: false,
                 tokensSaved: 0
+            };
+        }
+
+        /* 0b. INTELLIGENT HOOKED GREETING INTERCEPTOR (Sub-50ms) */
+        if (isPureGreeting(userMessage)) {
+            const [userRow, lastMsgRow] = await Promise.all([
+                supabaseAdmin.from("users").select("full_name").eq("id", userId).maybeSingle(),
+                supabaseAdmin.from("chat_history").select("created_at").eq("user_id", userId).eq("sender", "user").order("created_at", { ascending: false }).limit(1).maybeSingle()
+            ]);
+
+            const lastAt = lastMsgRow?.data?.created_at ? new Date(lastMsgRow.data.created_at) : null;
+            const hoursSince = lastAt ? (Date.now() - lastAt.getTime()) / (1000 * 60 * 60) : null;
+
+            const hookedGreeting = generateHookedGreeting({
+                userName: userRow?.data?.full_name,
+                hoursSinceLastMessage: hoursSince,
+                mode
+            });
+
+            // Non-blocking background memory & engagement persistence
+            storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+            storeChatMemory(userId, hookedGreeting, "ai", mode, conversationId).catch(() => { });
+            recordDailyMetrics(userId).catch(() => { });
+
+            return {
+                message: hookedGreeting,
+                mode,
+                timestamp: new Date().toISOString(),
+                genZ: false,
+                tokensSaved: 0,
+                isHookedGreeting: true
             };
         }
 
@@ -355,6 +466,37 @@ export async function* generateStreamingChatResponse(
             return;
         }
 
+        // 2b. Intelligent Hooked Greeting Check (Sub-50ms)
+        if (isPureGreeting(userMessage)) {
+            const [userRow, lastMsgRow] = await Promise.all([
+                supabaseAdmin.from("users").select("full_name").eq("id", userId).maybeSingle(),
+                supabaseAdmin.from("chat_history").select("created_at").eq("user_id", userId).eq("sender", "user").order("created_at", { ascending: false }).limit(1).maybeSingle()
+            ]);
+
+            const lastAt = lastMsgRow?.data?.created_at ? new Date(lastMsgRow.data.created_at) : null;
+            const hoursSince = lastAt ? (Date.now() - lastAt.getTime()) / (1000 * 60 * 60) : null;
+
+            const hookedGreeting = generateHookedGreeting({
+                userName: userRow?.data?.full_name,
+                hoursSinceLastMessage: hoursSince,
+                mode
+            });
+
+            storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+            storeChatMemory(userId, hookedGreeting, "ai", mode, conversationId).catch(() => { });
+            recordDailyMetrics(userId).catch(() => { });
+
+            yield { type: 'chunk', text: hookedGreeting };
+            yield {
+                type: 'done',
+                fullMessage: hookedGreeting,
+                mode,
+                suggestedFollowups: getSuggestedFollowups(mode, "neutral"),
+                timestamp: new Date().toISOString()
+            };
+            return;
+        }
+
         // 3. Parallel Context Load
         let [personality, userData, recentChats, contextPrompt, evolutionPrompt] = await Promise.all([
             getPersonality(userId),
@@ -520,5 +662,7 @@ export default {
     generateStreamingChatResponse,
     getSuggestedFollowups,
     getChatHistory,
-    clearChatHistory
+    clearChatHistory,
+    isPureGreeting,
+    generateHookedGreeting
 };
