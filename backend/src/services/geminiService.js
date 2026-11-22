@@ -4,8 +4,8 @@ import { logger } from '../config/logger.js';
 class GeminiService {
     constructor(apiKey) {
         this.apiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-        this.modelName = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').replace(/^models\//, '');
-        this.fallbackModelName = (process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash-lite').replace(/^models\//, '');
+        this.modelName = (process.env.GEMINI_MODEL || 'gemini-3.6-flash').replace(/^models\//, '');
+        this.fallbackModelName = (process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite').replace(/^models\//, '');
 
         if (this.apiKey) {
             this.genAI = new GoogleGenerativeAI(this.apiKey);

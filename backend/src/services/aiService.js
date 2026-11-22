@@ -34,16 +34,16 @@ class AIService {
             { name: 'DeepSeek', service: deepSeekService, dailyLimit: 100 } // Paid - Limit Risk
         ];
 
-        // Routing map: DEEPSEEK MOVED TO BOTTOM
-        // Prioritizes Free/Fast -> Fallback to Paid/Quota
+        // Routing map: Prioritizes Google Gemini (funded by Google Cloud Startup credits)
+        // Supported by high-speed free fallbacks: Groq, Mistral, OpenRouter, Cohere
         this.routingMap = {
-            fast_chat: ['Groq', 'Mistral', 'Gemini', 'Cloudflare', 'OpenRouter', 'Cohere', 'HuggingFace', 'DeepSeek', 'OpenAI'],
-            deep_reasoning: ['Claude', 'Gemini', 'Groq', 'Mistral', 'OpenRouter', 'DeepSeek', 'OpenAI'],
-            emotional_support: ['Gemini', 'Mistral', 'Claude', 'Groq', 'OpenRouter', 'DeepSeek', 'OpenAI'],
-            personality_core: ['Groq', 'Mistral', 'OpenRouter', 'Gemini', 'Cloudflare', 'DeepSeek', 'OpenAI'],
-            creative_writing: ['OpenRouter', 'Groq', 'Mistral', 'Claude', 'Gemini', 'DeepSeek'],
-            memory_analysis: ['Cohere', 'Groq', 'Mistral', 'Gemini', 'Cloudflare'],
-            default: ['Groq', 'Mistral', 'OpenRouter', 'Gemini', 'Cloudflare', 'DeepSeek', 'OpenAI']
+            fast_chat: ['Gemini', 'Groq', 'Mistral', 'OpenRouter', 'Cohere', 'Cloudflare', 'HuggingFace', 'DeepSeek', 'OpenAI'],
+            deep_reasoning: ['Gemini', 'Groq', 'Mistral', 'OpenRouter', 'Cohere', 'Claude', 'DeepSeek', 'OpenAI'],
+            emotional_support: ['Gemini', 'Mistral', 'Groq', 'OpenRouter', 'Cohere', 'Claude', 'DeepSeek', 'OpenAI'],
+            personality_core: ['Gemini', 'Groq', 'Mistral', 'OpenRouter', 'Cohere', 'Cloudflare', 'DeepSeek', 'OpenAI'],
+            creative_writing: ['Gemini', 'OpenRouter', 'Groq', 'Mistral', 'Cohere', 'Claude', 'DeepSeek'],
+            memory_analysis: ['Gemini', 'Cohere', 'Groq', 'Mistral', 'Cloudflare'],
+            default: ['Gemini', 'Groq', 'Mistral', 'OpenRouter', 'Cohere', 'Cloudflare', 'DeepSeek', 'OpenAI']
         };
 
         // Provider Status Tracking

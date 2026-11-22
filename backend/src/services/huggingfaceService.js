@@ -27,22 +27,19 @@ class HuggingFaceService {
                 }
             });
 
-            // Append explicit Assistant prompt if not present at end (to trigger generation)
-            if (!context.trim().endsWith('Assistant:')) {
-                context += 'Assistant:';
-            }
+            const formattedMessages = messagesArray.length > 0 ? messagesArray.map(m => ({
+                role: m.role === 'system' ? 'system' : (m.role === 'user' ? 'user' : 'assistant'),
+                content: m.content || userMessage || ''
+            })) : [{ role: 'user', content: userMessage || 'Hello' }];
 
-            const response = await this.hf.textGeneration({
-                model: 'mistralai/Mistral-7B-Instruct-v0.2', // Free tier
-                inputs: context,
-                parameters: {
-                    max_new_tokens: 512,
-                    temperature: 0.9,
-                    top_p: 0.95,
-                },
+            const response = await this.hf.chatCompletion({
+                model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.2-3B-Instruct',
+                messages: formattedMessages,
+                max_tokens: 512,
+                temperature: 0.9,
             });
 
-            return response.generated_text.split('Assistant:').pop().trim();
+            return response.choices?.[0]?.message?.content?.trim() || '';
         } catch (error) {
             console.error('Hugging Face API error:', error);
             throw new Error('Failed to generate AI response: ' + error.message);

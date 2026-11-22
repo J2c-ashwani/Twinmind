@@ -7,9 +7,9 @@ class OpenRouterService {
 
         const configuredModel = process.env.OPENROUTER_MODEL;
         this.models = configuredModel ? [configuredModel] : [
-            'meta-llama/llama-3.1-8b-instruct:free',
-            'qwen/qwen-2.5-7b-instruct:free',
-            'mistralai/mistral-7b-instruct:free'
+            'nvidia/nemotron-3.5-lightning:free',
+            'openrouter/free',
+            'liquid/lfm-3-1.7b:free'
         ];
 
         this.currentModelIndex = 0;

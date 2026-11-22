@@ -3,7 +3,7 @@ import { CohereClient } from 'cohere-ai';
 class CohereService {
     constructor() {
         this.apiKey = process.env.COHERE_API_KEY;
-        this.model = process.env.COHERE_MODEL || 'command-r';
+        this.model = process.env.COHERE_MODEL || 'command-r-08-2024';
         if (this.apiKey) {
             this.cohere = new CohereClient({ token: this.apiKey });
             console.log(`✅ Cohere Service initialized (Model: ${this.model})`);
@@ -66,7 +66,7 @@ class CohereService {
                 message: currentPrompt,
                 chatHistory: chatHistory,
                 preamble: preamble, // Use system prompt as preamble
-                model: 'command-r', // Free tier available
+                model: this.model, // Updated to supported command-r-08-2024
                 temperature: 0.9,
             });
 
