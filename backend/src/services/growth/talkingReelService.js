@@ -76,40 +76,61 @@ export function validateGenerationDate(day,today=istDate(new Date())) {
   if(Date.parse(day)<Date.parse(today)-86400000||Date.parse(day)>Date.parse(today)+86400000)throw Error('Only yesterday, today or tomorrow may be prepared');
 }
 
-export function makeSceneRequest(script,index,reference,archetype=null) {
+const wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+
+export async function mediaDuration(file) {
+  const {stdout}=await run('ffprobe',['-v','error','-select_streams','v:0','-show_entries','stream=duration','-of','default=noprint_wrappers=1:nokey=1',file]);
+  const dur=Number.parseFloat(stdout.trim());
+  return Number.isFinite(dur)?dur:null;
+}
+
+export async function extractExtensionSegment(combinedFile,outFile,offsetSeconds) {
+  await run('ffmpeg',[
+    '-hide_banner','-loglevel','error','-y',
+    '-ss',offsetSeconds.toFixed(3),'-i',combinedFile,
+    '-c:v','libx264','-preset','fast','-crf','17','-pix_fmt','yuv420p',
+    '-c:a','aac','-b:a','192k','-ar','48000','-movflags','+faststart',
+    outFile
+  ],{timeout:120000});
+}
+
+export function makeSceneRequest(script,index,options={}) {
+  const opts = Buffer.isBuffer(options) ? {} : (options || {});
   const turns=script.scenes[index].turns.map(t=>`${t.speaker}: ${JSON.stringify(t.text)}`).join('\n');
-  const arch=archetype || archetypeForDate(script.date);
+  const arch=opts.archetype || archetypeForDate(script.date);
   const charDesc=arch?.characters || 'LEFT: man in grey crewneck holding ceramic mug. RIGHT: woman in mustard sweater holding wooden spoon over steaming pot.';
   const settingDesc=arch?.setting || 'a dimly lit midnight home kitchen';
   const moodDesc=arch?.mood || 'late-night tension, caught in the moment, sudden comic clarity';
-  const cameraDirection = index === 0
-    ? 'Lively handheld candid medium two-shot while characters are actively engaged with their props (stirring, holding bottle/phone/basket, gesturing urgently mid-disagreement). Natural micro-movement and leaning in—never stiff talking heads. Slight natural 4% push-in on heated reaction.'
-    : 'Tighter framing (~8% closer intimacy than scene 1) with an unmistakable emotional turnaround: one character pauses mid-motion in surprised realization or wry smirk on the reveal line, holding the eye contact and reaction for the final second.';
-  return {
+  const resolution=opts.resolution || process.env.TALKING_VIDEO_RESOLUTION || '720p';
+  const isExtension=index > 0 && Boolean(opts.previousInteractionId);
+  const duration=opts.duration || (isExtension ? '10s' : '12s');
+
+  const text = isExtension
+    ? `Extend the previous video seamlessly starting immediately from its ending. Keep the exact same two characters (${charDesc}), clothing, faces, ${settingDesc}, natural lighting, and voices established in scene 1. Smoothly tighten framing toward a closer reaction angle on the revelation beat: one character freezes mid-motion in surprised realization or wry smirk on the final twist line, holding natural eye contact for the closing beat. Say ONLY the new Scene 2 dialogue below in crisp natural American English (do NOT repeat anything from Scene 1). One speaker at a time with synced lips and natural listener reactions. Zero burned-in captions, text, logos, music, or SFX. Finish all words before 9.2 seconds, then hold a clear expressive reaction beat. TwinGenie is pronounced Twin Jee-nee. Vibe: ${moodDesc}.\nExact Scene 2 dialogue:\n${turns}`
+    : `Generate a ${duration} candid, photorealistic live-action vertical 9:16 video directly in ${settingDesc} with crisp spoken American English. Characters: ${charDesc} Everyday relatable people shot handheld on a smartphone aesthetic—never stiff studio ads or static talking heads. Time-coded physical action & pacing: [0-4s] open mid-movement/action with characters actively engaged with objects in the environment and immediate conversational tension; [4-${parseInt(duration, 10) || 12}s] natural handheld framing shift or subtle push-in as disagreement escalates. Two distinct natural adult voices matching the characters, conversational and expressive. One speaker at a time matching lip motion; listener reacts naturally while silent. Zero burned-in captions, text, logos, music, or SFX. Begin speech by 0.2 seconds with crisp pacing and finish all words 1.5 seconds before clip end, holding a natural silent beat. Say ONLY the exact Scene 1 dialogue below; no extra words. TwinGenie is pronounced Twin Jee-nee. Vibe: ${moodDesc}.\nExact Scene 1 dialogue:\n${turns}`;
+
+  const payload = {
     model:MODEL,
-    background:false,
+    background:true,
     store:true,
     stream:false,
     labels:{app:'twingenie',creative:script.date,scene:String(index+1)},
     input:[{
       type:'user_input',
-      content:[{
-        type:'text',
-        text:`Generate a 12-second photographic live-action-style vertical 9:16 video with crisp spoken American English. Preserve the exact characters, faces, clothes and ${settingDesc} in the reference. ${charDesc} Everyday relatable people, not glossy actors or ads. Natural skin texture, normal hands, separate bodies. ${cameraDirection} Two distinct natural adult voices matching the characters, conversational and emotionally expressive—never robotic, rehearsed, or salesy. One speaker at a time; the listener reacts naturally with facial expressions while silent. Speech must match lip motion and speaker assignment. Keep the exact same voices as scene ${index===0?'2':'1'}. Zero burned-in captions, text, logos, music, or SFX. Begin speech by 0.2 seconds, crisp natural pacing with zero awkward dead pauses, finish all words by 10.2 seconds, then hold a clear expressive reaction beat. Say ONLY the exact dialogue below; no extra words. TwinGenie is pronounced Twin Jee-nee. Scene ${index+1} vibe: ${moodDesc}.\nExact dialogue:\n${turns}`
-      },{
-        type:'image',
-        mime_type:'image/jpeg',
-        data:reference.toString('base64')
-      }]
+      content:[{ type:'text', text }]
     }],
-    response_format:[{type:'video',delivery:'inline',aspect_ratio:'9:16',resolution:'720p',duration:'12s'}],
-    generation_config:{max_output_tokens:80000,video_config:{task:'reference_to_video'}}
+    response_format:[{type:'video',delivery:'inline',aspect_ratio:'9:16',resolution,duration}],
+    generation_config:{max_output_tokens:80000}
   };
+  if (isExtension) {
+    payload.previous_interaction_id = opts.previousInteractionId;
+  }
+  return payload;
 }
 
 export class TalkingReelService {
-  constructor({jobStore=store,requestJson=null,sceneRequest=null,transcribe=null,review=null,render=null,clock=()=>new Date()}={}) {
-    Object.assign(this,{store:jobStore,requestJson,sceneRequest,transcribeFn:transcribe,reviewFn:review,renderFn:render,clock});
+  constructor({jobStore=store,requestJson=null,sceneRequest=null,transcribe=null,review=null,render=null,probeDuration=null,sliceExtension=null,pollIntervalMs=5000,maxPollMs=600000,clock=()=>new Date()}={}) {
+    Object.assign(this,{store:jobStore,requestJson,sceneRequest,transcribeFn:transcribe,reviewFn:review,renderFn:render,probeDurationFn:probeDuration,sliceExtensionFn:sliceExtension,pollIntervalMs,maxPollMs,clock});
     this.pending=new Map();
   }
   async credentials() {
@@ -226,7 +247,12 @@ export class TalkingReelService {
   async getPackage(date=new Date(),options={}) {
     return buildTalkingPackage(await this.script(istDate(date)),options);
   }
-  async nativeScene(script,index) {
+  async pollInteraction(id) {
+    return this.sceneRequest
+      ? await this.sceneRequest(null,id)
+      : await this.googleRequest(`https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/global/interactions/${encodeURIComponent(id)}`,null,120000);
+  }
+  async nativeScene(script,index,previousInteractionId=null) {
     validateGenerationDate(script.date,istDate(this.clock()));
     const base=`jobs/${script.date}/scene-${index+1}`;
     const sourceKey=`source/${script.date}/scene-${index+1}.mp4`;
@@ -236,26 +262,49 @@ export class TalkingReelService {
     await this.reserveDay(script.date);
     const won=await this.store.create(requestKey,{createdAt:now(),scriptSha256:sha(JSON.stringify(script)),model:MODEL,reservedGenerationUsd:1.1,maxOutputTokens:80000,automaticRetries:0});
     let data;
+    let fallbackInteractionId=null;
     if(!won) {
       const previous=await this.store.read(base+'/result.json');
       if(!previous?.interactionId)throw Error('GENERATION_HELD: existing submission has no recoverable interaction ID; never automatically resubmit');
-      data=this.sceneRequest?await this.sceneRequest(null,previous.interactionId):await this.googleRequest(`https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/global/interactions/${encodeURIComponent(previous.interactionId)}`);
+      fallbackInteractionId=previous.interactionId;
+      logger.info(`[TALKING SCENE] Scene ${index+1} resuming Vertex interaction ${previous.interactionId}`);
+      data=await this.pollInteraction(previous.interactionId);
     } else {
       // Exactly one reservation per scene/day, including uncertain or rejected requests: max two POSTs/day.
       const arch=archetypeForDate(script.date);
-      const refFilename=arch?.referenceFile || 'reference.jpg';
-      let refPath=path.join(ASSETS,refFilename);
-      try { await fs.access(refPath); } catch { refPath=path.join(ASSETS,'reference.jpg'); }
-      const reference=await fs.readFile(refPath);
-      const payload=makeSceneRequest(script,index,reference,arch);
-      try {data=this.sceneRequest?await this.sceneRequest(payload):await this.googleRequest(`https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/global/interactions`,payload);}
+      let resolvedPrevId = previousInteractionId;
+      if (index > 0 && !resolvedPrevId) {
+        resolvedPrevId = (await this.store.read(`jobs/${script.date}/scene-${index}/result.json`))?.interactionId || null;
+      }
+      const payload=makeSceneRequest(script,index,{archetype:arch,previousInteractionId:resolvedPrevId});
+      logger.info(`[TALKING SCENE] Scene ${index+1} submitting pure-Vertex request (${payload.response_format[0].duration}${resolvedPrevId ? ', extension of '+resolvedPrevId : ''})`);
+      try {data=this.sceneRequest?await this.sceneRequest(payload):await this.googleRequest(`https://aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/global/interactions`,payload,120000);}
       catch(e) {
+        logger.warn(`[TALKING SCENE] Scene ${index+1} Vertex error: ${e?.response?.status || 'net'} ${JSON.stringify(e?.response?.data || e.message).slice(0, 400)}`);
         await this.store.write(base+'/result.json',{status:e.response?'rejected':'uncertain_submission',httpStatus:e.response?.status||null,at:now()});
         throw Error('GENERATION_HELD: generation did not settle; inspect the stored attempt before any retry');
       }
     }
-    const record={status:data.status==='completed'?'received':data.status,interactionId:data.id,usage:data.usage,model:data.model,at:now()};
+    const interactionId=data.id||fallbackInteractionId;
+    logger.info(`[TALKING SCENE] Scene ${index+1} interaction ${interactionId} initial status=${data.status}`);
+    const record={status:data.status==='completed'?'received':data.status,interactionId,usage:data.usage,model:data.model,at:now()};
     await this.store.write(base+'/result.json',record);
+    const startedAt=Date.now();
+    let pollStep=0;
+    while(interactionId && (data.status==='in_progress' || data.status==='queued')) {
+      if(Date.now()-startedAt>=this.maxPollMs)throw Error('Video interaction timed out waiting for completion; resume by its stored ID');
+      await wait(this.pollIntervalMs);
+      data=await this.pollInteraction(interactionId);
+      pollStep+=1;
+      if(pollStep===1 || pollStep%3===0 || (data.status!=='in_progress' && data.status!=='queued')) {
+        logger.info(`[TALKING SCENE] Scene ${index+1} poll #${pollStep} (${Math.round((Date.now()-startedAt)/1000)}s): status=${data.status}`);
+      }
+      Object.assign(record,{status:data.status==='completed'?'received':data.status,usage:data.usage||record.usage,at:now()});
+      await this.store.write(base+'/result.json',record);
+    }
+    if(data.status && data.status!=='completed') {
+      throw Error(`Video interaction ended with status "${data.status}"; inspect or resume by its stored ID`);
+    }
     const content=(data.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]);
     const video=content.find(c=>c.type==='video'&&c.data);
     if(!video)throw Error('Video interaction has no finished media; resume by its stored ID');
@@ -313,21 +362,48 @@ export class TalkingReelService {
     try {
       const script=await this.script(day);
       const files=[];const transcripts=[];
+      let prevInteractionId=null;
+      let scene1Dur=null;
       for(let i=0;i<2;i++) {
-        const scene=await this.nativeScene(script,i);const file=path.join(dir,`scene-${i+1}.mp4`);
-        await fs.writeFile(file,scene.bytes);files.push(file);
+        const scene=await this.nativeScene(script,i,prevInteractionId);const file=path.join(dir,`scene-${i+1}.mp4`);
+        prevInteractionId = scene.record?.interactionId || prevInteractionId;
+        await fs.writeFile(file,scene.bytes);
+        if(i===0 && (!this.renderFn || this.probeDurationFn)) {
+          scene1Dur = await (this.probeDurationFn ? this.probeDurationFn(file) : mediaDuration(file));
+        }
+        if(i===1 && scene1Dur && (!this.renderFn || this.probeDurationFn || this.sliceExtensionFn)) {
+          const s2Dur = await (this.probeDurationFn ? this.probeDurationFn(file) : mediaDuration(file));
+          if(s2Dur && s2Dur > scene1Dur + 3.0) {
+            const rawExt = path.join(dir, 'scene-2-combined.mp4');
+            await fs.rename(file, rawExt);
+            await (this.sliceExtensionFn ? this.sliceExtensionFn(rawExt, file, scene1Dur) : extractExtensionSegment(rawExt, file, scene1Dur));
+            logger.info(`[TALKING SCENE] Extracted Scene 2 slice from ${scene1Dur.toFixed(3)}s (raw=${s2Dur.toFixed(3)}s)`);
+          }
+        }
+        files.push(file);
         const key=`jobs/${day}/transcript-${i+1}.json`;
-        let t=await this.store.read(key);if(!t){t=await this.transcribe(file);await this.store.create(key,t);}
+        let t=await this.store.read(key);
+        if(!t){
+          logger.info(`[TALKING SCENE] Transcribing Scene ${i+1} audio...`);
+          t=await this.transcribe(file);
+          await this.store.create(key,t);
+        }
         if(!t.words?.length)throw Error('Word timestamps missing from transcript');
         validateTranscript(script,i,t);
+        logger.info(`[TALKING SCENE] Scene ${i+1} transcript validated (${t.words.length} words)`);
         transcripts.push(t);
       }
       const reviewKey=`jobs/${day}/visual-review.json`;
       let review=await this.store.read(reviewKey);
-      if(!review){review=await this.review(script,files);await this.store.create(reviewKey,review);}
+      if(!review){
+        logger.info(`[TALKING SCENE] Running automated visual review for ${day}...`);
+        review=await this.review(script,files);
+        await this.store.create(reviewKey,review);
+      }
       if(review.pass!==true||review.issues?.length)throw Error('Automated visual review held the reel: '+(review.issues||[]).join('; '));
       const spec={script,files,transcripts,cta:path.join(ASSETS,'cta.mp4'),output:path.join(dir,'reel.mp4'),fonts:path.join(HERE,'assets/fonts')};
       const specPath=path.join(dir,'spec.json');await fs.writeFile(specPath,JSON.stringify(spec));
+      logger.info(`[TALKING SCENE] Rendering final 1080x1920 reel for ${day}...`);
       const rendered=this.renderFn?await this.renderFn(spec):JSON.parse((await run('python3',[RENDERER,specPath],{timeout:600000,maxBuffer:1000000})).stdout.trim().split('\n').at(-1));
       const bytes=await fs.readFile(rendered.videoPath),digest=sha(bytes);
       const mediaKey=`${day}/${digest.slice(0,16)}.mp4`;

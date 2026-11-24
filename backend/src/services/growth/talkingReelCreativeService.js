@@ -114,12 +114,16 @@ export function validateTalkingScript(script, {date, evidence=null, viralGate=fa
   const scene2Speech=script.scenes[1].turns.map(t=>t.text).join(' ');
   const dialogue=`${scene1Speech} ${scene2Speech}`;
   if(!/Twin\s?Genie/i.test(dialogue))throw Error('TwinGenie must have a spoken role before the CTA');
-  if(words(dialogue).length<28 || words(dialogue).length>68)throw Error('Talking story length outside budget');
+  if(words(dialogue).length<24 || words(dialogue).length>68)throw Error('Talking story length outside budget');
+  if(!viralGate && words(dialogue).length<28)throw Error('Talking story length outside budget');
   if(/\b(?:cures?|diagnos\w*|guaranteed|never forgets|zero memory|100% private|clinical\w* proven|therapist.grade|subconscious trigger)\b/i.test(JSON.stringify(script)))throw Error('Unsupported talking-reel claim');
   if(viralGate) {
     if(!evidence && /\b(?:twin\s?genie|ai\b|chatbot|app\b)\b/i.test(script.hook))throw Error('Curiosity hook must not reveal TwinGenie or AI upfront');
     if(!evidence && /\b(?:twin\s?genie|play store|download|chatbot)\b/i.test(scene1Speech))throw Error('Scene 1 must stay 100% human story; reveal TwinGenie only in Scene 2');
     if(/\b(?:startup|founders?|entrepreneurs?|ceo|executives?|standups?|kpi|quarters?|workplace|coworkers?|office|managers?|boss(?:es)?|promotions?|resign)\b/i.test(JSON.stringify({hook:script.hook,topic:script.topic,discussion:script.discussion,scenes:script.scenes})))throw Error('Keep story grounded in everyday human life, not startups or office work');
+    if(words(scene1Speech).length>28)throw Error('Scene 1 exceeds 12s speaking budget (max 28 words)');
+    if(words(scene2Speech).length>20)throw Error('Scene 2 exceeds 10s extension speaking budget (max 20 words)');
+    if(words(dialogue).length<24 || words(dialogue).length>48)throw Error('Talking story length outside tight pacing budget');
   }
   if(/ChatGPT|Replika|Character\s?\.\s?ai/i.test(dialogue+' '+script.hook)) {
     if(script.format!=='split'||!evidence||script.evidenceId!==evidence.id)throw Error('Named comparison requires captured evidence');
@@ -148,7 +152,7 @@ VIRAL RETENTION & SHARE/SAVE RULES (STRICT):
 7. PURE CURIOSITY TITLE: "hook" (<=55 chars) MUST read like an irresistible story curiosity title with ZERO mention of "TwinGenie" or "AI" (unless evidence comparison below). "contextSticker" (<=42 chars, plain text with ZERO emojis so fonts never show missing boxes) is a punchy 5-8 word creator screen caption (e.g. "Send this to your overthinking friend" or "Wait for what she says at the end"). "discussion" (<=140 chars) is a 50/50 comment debate question people want to argue about in comments.
 ${isSplit ? (evidence ? 'Comparison rule: Read EACH verified excerpt once verbatim with source attribution, keeping reaction natural and sharp.' : 'Contrast generic flattering validation vs one piercing, honest reality check without naming any other AI product.') : ''}
 
-Timing & Structure: Exactly two scenes; 2–5 turns per scene; at most 30 words per scene, 28–58 words total. No CTA in dialogue. Each turn is {speaker:"LEFT"|"RIGHT",text:"exact speech"}. Optional source:"competitor"|"twingenie" only for actual evidence excerpts. No stage directions inside speech. topic <=90 chars, featureName <=50 chars.
+Timing & Structure: Exactly two scenes; 2–5 turns per scene; Scene 1 at most 26 words, Scene 2 at most 20 words (punchy twist so TwinGenie never clips inside the 10s extension), 24–46 words total. No CTA in dialogue. Each turn is {speaker:"LEFT"|"RIGHT",text:"exact speech"}. Optional source:"competitor"|"twingenie" only for actual evidence excerpts. No stage directions inside speech. topic <=90 chars, featureName <=50 chars.
 Return strictly JSON: {hook,contextSticker,topic,featureName,discussion,scenes:[{turns:[...]},{turns:[...]}]}.
 Verified app capabilities (only reference accurately at the twist): ordinary chat; Honest/Reflective/Future/Normal perspectives; Guided Life Coach exercises; self-reported mood patterns; earlier conversation memory callbacks. No medical diagnoses, guarantees, testimonials, or statistics.
 Avoid repeating recent story topics: ${JSON.stringify(recentTopics.slice(0,45))}.
