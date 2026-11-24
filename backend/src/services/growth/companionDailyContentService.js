@@ -15,7 +15,7 @@ const identity = date => {
   return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`;
 };
 export function companionPrompt(base, recentTopics=[]) {
-  return `Write a specific, warm, surprising short video for TwinGenie, an AI companion for everyday adults. It is not only for founders or employees.
+  return `Write a specific, warm, surprising short video for TwinGenie, an AI companion for everyday people navigating real life—relationships, friendships, family, late-night overthinking, habits, self-respect, and confidence (never startup, corporate, or office themes).
 Feature today: ${base.featureName}. Feature description: ${base.problem}.
 Fixed illustration: ${base.heroAsset}. Write spoken dialogue and overlay text, never camera directions or actions. Nothing in the illustration changes. Do not describe a new place, a smiling AI, or a user action the image cannot show.
 Avoid these recent topics and close paraphrases: ${JSON.stringify(recentTopics)}.

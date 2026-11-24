@@ -190,7 +190,7 @@ def render_cover_slide(draw, slide_data, cur_y):
     draw.rounded_rectangle([70, card_top, w - 70, card_top + card_h], radius=20, fill=SURFACE_DARK, outline=CARD_BORDER, width=1)
     
     # Dynamic tag inside box
-    box_tag = slide_data.get('box_tag') or slide_data.get('tag') or 'EXECUTIVE SUMMARY'
+    box_tag = slide_data.get('box_tag') or slide_data.get('tag') or 'DAILY INSIGHT'
     font_pill = get_font(18, bold=True)
     bbox_p = draw.textbbox((0, 0), box_tag, font=font_pill)
     pw = bbox_p[2] - bbox_p[0] + 30

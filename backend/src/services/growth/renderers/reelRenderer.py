@@ -1049,7 +1049,7 @@ def render_scene_receipt_check(spec, out_path):
     draw.text((805, 282), "LONGITUDINAL", font=f_bold(18), fill=(56, 189, 248))
 
     # User Proclamation Card (y: 345 to 475)
-    user_excuse = sanitize_text(spec.get("userExcuse") or spec.get("userDilemma") or "I am going to wake up at 5:00 AM every single day and build my startup before work.")
+    user_excuse = sanitize_text(spec.get("userExcuse") or spec.get("userDilemma") or "I am finally going to stop checking my ex's social media and go to sleep early tonight.")
     draw.rounded_rectangle([60, 345, 1020, 475], radius=20, fill=(35, 28, 60), outline=(80, 65, 120), width=2)
     draw.text((90, 360), "You (Making A Dramatic Proclamation):", font=f_black(20), fill=(185, 165, 245))
     draw_wrapped_text(draw, f'"{user_excuse}"', f_bold(26), TEXT_WHITE, 90, 395, 900, 1.25)
@@ -1323,7 +1323,7 @@ def render_scene_year_in_pixels(spec, out_path):
     diag_y1, diag_y2 = 1000, 1235
     draw.rounded_rectangle([60, diag_y1, 1020, diag_y2], radius=22, fill=(45, 18, 28), outline=(244, 63, 94), width=2)
     draw.text((90, diag_y1 + 18), "🔍 RECURRING PATTERN AUDIT:", font=f_black(22), fill=(244, 63, 94))
-    draw_wrapped_text(draw, "\"Every single Tuesday between 2 PM and 5 PM turns Red. It's not bad luck—it's your weekly executive standup meeting triggering subconscious avoidance and procrastination loops.\"", f_bold(22), TEXT_WHITE, 90, diag_y1 + 54, 900, 1.25)
+    draw_wrapped_text(draw, "\"Every single Sunday evening between 7 PM and 10 PM turns Red. It's not bad luck—it's pre-week dread triggering subconscious scrolling and sleep avoidance loops.\"", f_bold(22), TEXT_WHITE, 90, diag_y1 + 54, 900, 1.25)
     draw.text((90, diag_y1 + 175), "• Standard journals store notes. TwinGenie discovers subconscious correlations.", font=f_bold(18), fill=(255, 180, 190))
 
     # LIFE COACH INTERVENTION CARD (y: 1255 to 1540)
@@ -1334,7 +1334,7 @@ def render_scene_year_in_pixels(spec, out_path):
     draw.rounded_rectangle([800, act_y1 + 18, 990, act_y1 + 56], radius=8, fill=(30, 75, 55))
     draw.text((818, act_y1 + 26), "7-DAY RESET", font=f_bold(16), fill=TEXT_WHITE)
 
-    draw_wrapped_text(draw, "\"Enrolled in 2-Minute Pre-Meeting Cognitive Reframing before every Tuesday standup. Tuesday anxiety episodes reduced by 64% after 30 days.\"", f_bold(26), TEXT_WHITE, 90, act_y1 + 80, 900, 1.28)
+    draw_wrapped_text(draw, "\"Enrolled in a 2-Minute Sunday Evening Mind Unwind. Overthinking episodes before bed dropped noticeably after 30 days.\"", f_bold(26), TEXT_WHITE, 90, act_y1 + 80, 900, 1.28)
 
     # Bottom Bio CTA Strip
     b_strip = act_y1 + 200

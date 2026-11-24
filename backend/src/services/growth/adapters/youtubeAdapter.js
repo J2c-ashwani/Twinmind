@@ -118,8 +118,10 @@ class YouTubeAdapter {
                 snippet: {
                     title: postData.title.slice(0, 100),
                     description: postData.description,
-                    tags: ['Shorts', 'TwinGenie', 'AI', 'PersonalGrowth', 'DigitalTwin'],
-                    categoryId: '28' // Science & Technology
+                    tags: Array.isArray(postData.tags) && postData.tags.length > 0
+                        ? postData.tags
+                        : ['Shorts', 'Relatable', 'Overthinking', 'Relationships', 'Storytime', 'SelfAwareness', 'TwinGenie'],
+                    categoryId: postData.categoryId || '22' // People & Blogs — everyday relatable audience
                 },
                 status: {
                     privacyStatus: 'public',

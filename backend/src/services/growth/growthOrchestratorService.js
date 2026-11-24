@@ -1362,13 +1362,8 @@ class GrowthOrchestratorService {
             const reelPkg = dailyPackage.facebook || dailyPackage.instagram || {};
             let renderResult = null;
             if (dailyPackage.creativeVersion === 'talking_reels_v1') {
-                try {
-                    renderResult = await talkingReelService.ensureReady(dailyPackage.istDateStr);
-                } catch (talkingErr) {
-                    logger.warn(`[GROWTH ORCHESTRATOR] YouTube talking reel render failed (${talkingErr.message}). Falling back to 2D reel.`);
-                }
-            }
-            if (!renderResult) {
+                renderResult = await talkingReelService.ensureReady(dailyPackage.istDateStr);
+            } else {
                 const motionPkg = buildSocialPilotPackage(now);
                 renderResult = await mediaRendererService.renderReel({
                     campaignId: `yt_${todayIST}`,
@@ -1383,9 +1378,11 @@ class GrowthOrchestratorService {
 
             const isTalking = renderResult?.renderVersion === 'talking_reels_v1';
             const publishResult = await this.adapters.youtube.publish({
-                title: ((isTalking ? dailyPackage.youtube?.title : null) || dailyPackage.hook || dailyPackage.topic || 'TwinGenie').slice(0, 95),
+                title: ((isTalking ? dailyPackage.youtube?.title : null) || dailyPackage.hook || dailyPackage.topic || 'When your friend stops sugarcoating it').slice(0, 95),
                 description: dailyPackage.youtube?.description || `${reelPkg.caption || dailyPackage.topic}\n\nhttps://twingenie.app/download?utm_source=youtube&utm_medium=shorts`,
                 pinnedComment: dailyPackage.youtube?.pinnedComment || null,
+                tags: dailyPackage.youtube?.tags || undefined,
+                categoryId: dailyPackage.youtube?.categoryId || '22',
                 videoPath: renderResult?.videoPath || renderResult?.localPath,
             });
 

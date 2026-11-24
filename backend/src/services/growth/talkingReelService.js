@@ -79,9 +79,12 @@ export function validateGenerationDate(day,today=istDate(new Date())) {
 export function makeSceneRequest(script,index,reference,archetype=null) {
   const turns=script.scenes[index].turns.map(t=>`${t.speaker}: ${JSON.stringify(t.text)}`).join('\n');
   const arch=archetype || archetypeForDate(script.date);
-  const charDesc=arch?.characters || 'LEFT: shoulder-length dark hair, indigo sweatshirt, holds one unbranded phone with its screen facing away. RIGHT: short curly hair, teal overshirt, empty hands.';
-  const settingDesc=arch?.setting || 'a warm apartment';
-  const moodDesc=arch?.mood || 'curiosity, a little self-recognition, a kind small smile';
+  const charDesc=arch?.characters || 'LEFT: man in grey crewneck holding ceramic mug. RIGHT: woman in mustard sweater holding wooden spoon over steaming pot.';
+  const settingDesc=arch?.setting || 'a dimly lit midnight home kitchen';
+  const moodDesc=arch?.mood || 'late-night tension, caught in the moment, sudden comic clarity';
+  const cameraDirection = index === 0
+    ? 'Lively handheld candid medium two-shot while characters are actively engaged with their props (stirring, holding bottle/phone/basket, gesturing urgently mid-disagreement). Natural micro-movement and leaning in—never stiff talking heads. Slight natural 4% push-in on heated reaction.'
+    : 'Tighter framing (~8% closer intimacy than scene 1) with an unmistakable emotional turnaround: one character pauses mid-motion in surprised realization or wry smirk on the reveal line, holding the eye contact and reaction for the final second.';
   return {
     model:MODEL,
     background:false,
@@ -92,7 +95,7 @@ export function makeSceneRequest(script,index,reference,archetype=null) {
       type:'user_input',
       content:[{
         type:'text',
-        text:`Generate a 12-second photographic live-action-style vertical 9:16 video with native clear spoken American English. Preserve the exact characters, faces, clothes and ${settingDesc} in the reference. ${charDesc} Ordinary relatable adults, not celebrities, customer testimonials or official representatives. Natural skin texture, stable hands and phone, separate bodies. One continuous eye-level medium two-shot, no cuts, at most a gentle 3 percent push-in. Two distinct natural adult voices matching the characters, warm and conversational, never seductive, robotic, angry or salesy. One speaker at a time; the listener's mouth rests. Speech must match lip motion and speaker assignment. Keep the same voices as the other scene. No captions, writing, graphics, logos, music or sound effects. Begin speech by 0.2 seconds, avoid long pauses, finish all words before 10.5 seconds, then a brief silent reaction. Say ONLY the exact dialogue below; no extra words. TwinGenie is pronounced Twin Jee-nee. This is scene ${index+1} of a fictional conversation. Mood: ${moodDesc}. The payoff should feel spontaneous, not performed for an advert.\nExact dialogue:\n${turns}`
+        text:`Generate a 12-second photographic live-action-style vertical 9:16 video with crisp spoken American English. Preserve the exact characters, faces, clothes and ${settingDesc} in the reference. ${charDesc} Everyday relatable people, not glossy actors or ads. Natural skin texture, normal hands, separate bodies. ${cameraDirection} Two distinct natural adult voices matching the characters, conversational and emotionally expressive—never robotic, rehearsed, or salesy. One speaker at a time; the listener reacts naturally with facial expressions while silent. Speech must match lip motion and speaker assignment. Keep the exact same voices as scene ${index===0?'2':'1'}. Zero burned-in captions, text, logos, music, or SFX. Begin speech by 0.2 seconds, crisp natural pacing with zero awkward dead pauses, finish all words by 10.2 seconds, then hold a clear expressive reaction beat. Say ONLY the exact dialogue below; no extra words. TwinGenie is pronounced Twin Jee-nee. Scene ${index+1} vibe: ${moodDesc}.\nExact dialogue:\n${turns}`
       },{
         type:'image',
         mime_type:'image/jpeg',
@@ -160,7 +163,7 @@ export class TalkingReelService {
       const prompt=talkingScriptPrompt(day,recent,evidence)+(last?`\nPrevious draft rejected: ${last}. Correct it.`:'');
       const raw=this.requestJson?await this.requestJson(prompt):await this.writeScript(prompt);
       const candidate={...raw,version:TALKING_VERSION,date:day,format:formatForDate(day),...(evidence?{evidenceId:evidence.id,evidence,comparisonDisclosure:evidence.disclosure}:{})};
-      validateTalkingScript(candidate,{date:day,evidence});
+      validateTalkingScript(candidate,{date:day,evidence,viralGate:true});
       if(recent.some(t=>t.toLowerCase()===candidate.topic.toLowerCase()))throw Error('Repeated recent topic');
       await this.store.create(key,candidate);
       const winner=await this.store.read(key);if(!winner)throw Error('Canonical script was not stored');

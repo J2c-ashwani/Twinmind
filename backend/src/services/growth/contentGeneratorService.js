@@ -196,11 +196,11 @@ class ContentGeneratorService {
 
         // 5 Cognitive Perspectives & Growth Programs
         const MODES = [
-            { id: 'dark', name: 'Honest / Dark Twin', tag: 'ROAST & REALITY CHECK', defaultDilemma: "I've been scrolling for 3 hours and feel completely guilty. Should I just give up on today?", defaultBot: "Rest is so productive! Don't push yourself today—you deserve a break!", defaultReply: "Guilt is just another excuse to avoid the real work. What is the one task you're terrified of facing?" },
-            { id: 'lifecoach', name: 'Life Coach (7-Day Reset)', tag: 'STRUCTURED 7-DAY ACTION', defaultDilemma: "I have so much career anxiety that I am completely frozen and dread starting each morning.", defaultBot: "Everything happens for a reason! Just believe in yourself and make a 10-step plan to stay positive!", defaultReply: "Motivational quotes don't heal anxiety; daily structured action does. Enrolled in Day 1 of the 7-Day Anxiety Reset. Your only task today is a 2-minute trigger audit. Ready?" },
+            { id: 'dark', name: 'Honest / Dark Twin', tag: 'ROAST & REALITY CHECK', defaultDilemma: "I've been scrolling for 3 hours and feel completely guilty. Should I just give up on today?", defaultBot: "Rest is so productive! Don't push yourself today—you deserve a break!", defaultReply: "Guilt is just another excuse to avoid the real step. What is the one conversation or change you're terrified of facing?" },
+            { id: 'lifecoach', name: 'Life Coach (7-Day Reset)', tag: 'STRUCTURED 7-DAY ACTION', defaultDilemma: "I wake up overwhelmed before the day even starts and freeze over basic choices.", defaultBot: "Everything happens for a reason! Just believe in yourself and make a 10-step plan to stay positive!", defaultReply: "Motivational quotes don't heal overwhelm; small grounded action does. Day 1 starts with one honest 2-minute check-in. Ready?" },
             { id: 'future', name: 'Future Self Twin', tag: '5-YEARS-WISER PERSPECTIVE', defaultDilemma: "Left on read for 6 hours. I'm spiraling and about to send a passive-aggressive text.", defaultBot: "That's so disrespectful of them! Send a firm message letting them know your worth!", defaultReply: "In 5 years, this silence won't even matter. What would it feel like to let the silence exist without trying to control their response?" },
             { id: 'reflective', name: 'Reflective Twin', tag: 'EMOTIONAL DECOMPRESSION', defaultDilemma: "I agreed to help someone move this weekend even though I'm completely exhausted and need rest. Why do I do this?", defaultBot: "You're such a kind, generous friend! Just make sure to get some rest when you can!", defaultReply: "You didn't volunteer because you have energy; you volunteered because saying no makes you feel like a burden. Where did you learn that your rest has to be earned?" },
-            { id: 'normal', name: 'Normal Twin', tag: 'GROUNDED ALTER-EGO', defaultDilemma: "I think I should put my main project on hold and start a brand-new idea today.", defaultBot: "That sounds so exciting! Follow your passion! Here are 5 brainstorming ideas!", defaultReply: "Memory check: You said this exact same thing 14 days ago before launch. You aren't inspired—you're avoiding market feedback. Close the new tabs and finish what you started." }
+            { id: 'normal', name: 'Normal Twin', tag: 'GROUNDED ALTER-EGO', defaultDilemma: "I swore I would finally stop over-apologizing and texting people who leave me hanging.", defaultBot: "Maybe they were just busy! Give them one more chance and keep waiting!", defaultReply: "Memory check: You said this exact same thing 14 days ago after tearing up at 1 AM. You aren't keeping the peace—you're just afraid of quiet boundaries." }
         ];
 
         // IST Day of Week: 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
@@ -255,8 +255,8 @@ class ContentGeneratorService {
     async getOrGenerateDailyContent(date = new Date(), options = {}) {
         const schedule = this.getDailySchedule(date);
         const istDateStr = schedule.istDateStr;
-        const launch = !options.specificThemeId ? await talkingReelService.launch(istDateStr) : null;
-        const useTalking = !options.specificThemeId && (isTalkingEnabled() || (process.env.NODE_ENV === 'production' && Boolean(launch)));
+        const launch = !options.specificThemeId && !options._skipExternalLlm ? await talkingReelService.launch(istDateStr) : null;
+        const useTalking = !options.specificThemeId && !options._skipExternalLlm && (isTalkingEnabled() || (process.env.NODE_ENV === 'production' && Boolean(launch)));
         const cacheKey = `${istDateStr}:${options.experimentArm || (options.includeCaptionLink ? 'arm_a' : 'arm_b')}:${useTalking ? 'talking_reels_v1' : process.env.REEL_RENDERER_VERSION || 'motion_v2'}:${options.hookVariant || 'scheduled'}:${options.specificThemeId || 'daily'}:${options._skipExternalLlm ? 'offline' : 'live'}`;
 
         if (this._dailyCache[cacheKey]) {
