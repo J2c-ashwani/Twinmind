@@ -1,29 +1,28 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useRef } from 'react';
-import { useChatStore, useUserStore } from '@/store/useStore';
-import { apiClient } from '@/lib/api/client';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, Paperclip, MoreVertical } from 'lucide-react';
-import VoiceRecorder from '../Voice/VoiceRecorder';
+import { useState, useEffect, useRef } from 'react'
+import { useChatStore } from '@/store/useStore'
+import { apiClient } from '@/lib/api/client'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Send, Mic, Paperclip, MoreVertical } from 'lucide-react'
+import VoiceRecorder from '../Voice/VoiceRecorder'
 
 export default function EnhancedChatInterface() {
-    const { messages, addMessage, setTyping, isTyping, currentConversationId } = useChatStore();
-    const { user } = useUserStore();
-    const [input, setInput] = useState('');
-    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const { messages, addMessage, setTyping, isTyping, currentConversationId } = useChatStore()
+    const [input, setInput] = useState('')
+    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
+    const messagesEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        scrollToBottom()
+    }, [messages])
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
 
     const handleSend = async () => {
-        if (!input.trim() || !currentConversationId) return;
+        if (!input.trim() || !currentConversationId) return
 
         const userMessage = {
             id: Date.now().toString(),
@@ -31,131 +30,121 @@ export default function EnhancedChatInterface() {
             sender_type: 'user' as const,
             created_at: new Date().toISOString(),
             conversation_id: currentConversationId,
-        };
+        }
 
-        addMessage(userMessage);
-        setInput('');
-        setTyping(true);
+        addMessage(userMessage)
+        setInput('')
+        setTyping(true)
 
         try {
-            const response = await apiClient.sendMessage(
-                currentConversationId,
-                input,
-                undefined
-            ) as any;
-
+            const response = (await apiClient.sendMessage(currentConversationId, input, undefined)) as any
             addMessage({
                 id: response?.id || Date.now().toString(),
                 content: response?.content || response?.message || '',
                 sender_type: 'ai',
                 created_at: response?.created_at || new Date().toISOString(),
                 conversation_id: currentConversationId,
-            });
+            })
         } catch (error) {
-            console.error('Failed to send message:', error);
+            console.error('Failed to send message:', error)
         } finally {
-            setTyping(false);
+            setTyping(false)
         }
-    };
+    }
 
-    const handleVoiceSend = async (audioBlob: Blob, duration: number) => {
-        if (!currentConversationId) return;
+    const handleVoiceSend = async (audioBlob: Blob) => {
+        if (!currentConversationId) return
+        setShowVoiceRecorder(false)
 
-        setShowVoiceRecorder(false);
-
-        // Optimistic update
-        const tempId = Date.now().toString();
+        const tempId = Date.now().toString()
         addMessage({
             id: tempId,
-            content: '🎤 Voice Message',
+            content: 'Voice reflection recorded',
             sender_type: 'user',
             created_at: new Date().toISOString(),
             conversation_id: currentConversationId,
-        });
-        setTyping(true);
+        })
+        setTyping(true)
 
         try {
-            const response = await apiClient.sendVoiceMessage(
+            const response = (await apiClient.sendVoiceMessage(
                 currentConversationId,
                 audioBlob,
-                'normal' // mode
-            ) as any;
+                'normal'
+            )) as any
 
-            // Update with real response
             addMessage({
                 id: response?.id || Date.now().toString(),
                 content: response?.content || response?.message || '',
                 sender_type: 'ai',
                 created_at: response?.created_at || new Date().toISOString(),
                 conversation_id: currentConversationId,
-            });
+            })
         } catch (error) {
-            console.error('Failed to send voice message:', error);
-            // Optionally remove optimistic message or show error
+            console.error('Failed to send voice message:', error)
         } finally {
-            setTyping(false);
+            setTyping(false)
         }
-    };
+    }
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+            e.preventDefault()
+            handleSend()
         }
-    };
+    }
 
     return (
-        <div className="flex flex-col h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+        <div className="flex h-screen flex-col bg-[#07080B] text-[#F4F2EC]">
+            <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0B0D12] px-6 py-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                        AI
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D9A760]/40 bg-[#141822] font-mono text-xs font-bold text-[#E7C891]">
+                        TG
                     </div>
                     <div>
-                        <h2 className="font-semibold">TwinGenie AI</h2>
-                        <p className="text-sm text-gray-500">
-                            {isTyping ? 'Typing...' : 'Online'}
+                        <h2 className="text-sm font-semibold text-white">TwinGenie AI</h2>
+                        <p className="font-mono text-[11px] text-neutral-400">
+                            {isTyping ? 'Synthesizing...' : 'Active Session'}
                         </p>
                     </div>
                 </div>
-                <button className="p-2 hover:bg-gray-100 rounded-full">
-                    <MoreVertical className="w-5 h-5" />
-                </button>
-                <button
-                    onClick={() => setShowVoiceRecorder(true)}
-                    className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                    <Mic className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={() => setShowVoiceRecorder(true)}
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    >
+                        <Mic className="h-5 w-5" />
+                    </button>
+                    <button
+                        type="button"
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    >
+                        <MoreVertical className="h-5 w-5" />
+                    </button>
+                </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-6">
                 <AnimatePresence>
                     {messages.map((message, index) => (
                         <motion.div
                             key={message.id}
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={`flex ${message.sender_type === 'user' ? 'justify-end' : 'justify-start'
-                                }`}
+                            transition={{ delay: index * 0.03 }}
+                            className={`flex ${message.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                             <div
-                                className={`max-w-[70%] rounded-2xl px-4 py-3 ${message.sender_type === 'user'
-                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                    : 'bg-white text-gray-900 shadow-md'
-                                    }`}
+                                className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${
+                                    message.sender_type === 'user'
+                                        ? 'border border-[#D9A760]/30 bg-[#181C26] text-[#F4F2EC]'
+                                        : 'border border-white/[0.08] bg-[#0D1016] text-neutral-200'
+                                }`}
                             >
                                 <p className="whitespace-pre-wrap">{message.content}</p>
-                                <p
-                                    className={`text-xs mt-1 ${message.sender_type === 'user'
-                                        ? 'text-white/70'
-                                        : 'text-gray-500'
-                                        }`}
-                                >
+                                <p className="mt-1 font-mono text-[10px] text-neutral-500">
                                     {new Date(message.created_at).toLocaleTimeString([], {
                                         hour: '2-digit',
                                         minute: '2-digit',
@@ -167,32 +156,23 @@ export default function EnhancedChatInterface() {
                 </AnimatePresence>
 
                 {isTyping && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex justify-start"
-                    >
-                        <div className="bg-white rounded-2xl px-4 py-3 shadow-md">
-                            <div className="flex gap-1">
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
-                            </div>
-                        </div>
-                    </motion.div>
+                    <div className="enterprise-panel flex w-fit gap-1.5 px-4 py-3">
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#D9A760]" />
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#D9A760] [animation-delay:0.1s]" />
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#D9A760] [animation-delay:0.2s]" />
+                    </div>
                 )}
 
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Voice Recorder Modal */}
             <AnimatePresence>
                 {showVoiceRecorder && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
                     >
                         <VoiceRecorder
                             onSend={handleVoiceSend}
@@ -202,45 +182,45 @@ export default function EnhancedChatInterface() {
                 )}
             </AnimatePresence>
 
-            {/* Input Area */}
-            <div className="bg-white border-t px-6 py-4">
+            <div className="border-t border-white/[0.08] bg-[#0B0D12] px-6 py-4">
                 <div className="flex items-end gap-3">
-                    <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <Paperclip className="w-5 h-5 text-gray-600" />
+                    <button
+                        type="button"
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    >
+                        <Paperclip className="h-5 w-5" />
                     </button>
 
-                    <div className="flex-1 relative">
+                    <div className="flex-1">
                         <textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Type a message..."
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                            onKeyDown={handleKeyPress}
+                            placeholder="Type a reflection..."
+                            className="w-full resize-none rounded-xl border border-white/[0.12] bg-[#07080B] px-4 py-3 text-sm text-white placeholder-neutral-500 focus:border-[#D9A760]/60 focus:outline-none"
                             rows={1}
-                            style={{ minHeight: '48px', maxHeight: '120px' }}
+                            style={{ minHeight: '46px', maxHeight: '120px' }}
                         />
                     </div>
 
                     <button
+                        type="button"
                         onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
-                        className="p-3 hover:bg-gray-100 rounded-full transition-colors"
+                        className="rounded-lg p-3 text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
                     >
-                        <Mic className="w-5 h-5 text-gray-600" />
+                        <Mic className="h-5 w-5" />
                     </button>
 
                     <button
+                        type="button"
                         onClick={handleSend}
                         disabled={!input.trim()}
-                        className={`p-3 rounded-full transition-all ${input.trim()
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
-                            : 'bg-gray-200 text-gray-400'
-                            }`}
+                        className="btn-primary-ivory p-3 disabled:opacity-40"
                     >
-                        <Send className="w-5 h-5" />
+                        <Send className="h-4 w-4" />
                     </button>
                 </div>
             </div>
         </div>
-    );
+    )
 }
-

@@ -4,64 +4,81 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 220 20% 4%;
+    --foreground: 40 20% 96%;
   }
 
   * {
-    @apply border-gray-200 dark:border-gray-800;
+    @apply border-white/10;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background-color: #07080b;
+    color-scheme: dark;
   }
 
   body {
-    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    @apply bg-[#07080B] text-[#F4F2EC] font-sans antialiased;
+  }
+
+  ::selection {
+    background-color: rgba(217, 167, 96, 0.28);
+    color: #faf9f6;
   }
 }
 
 @layer components {
+  .enterprise-panel {
+    @apply rounded-2xl border border-white/[0.08] bg-[#0D1016] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_20px_50px_-24px_rgba(0,0,0,0.85)];
+  }
+
+  .enterprise-panel-hover {
+    @apply enterprise-panel transition-all duration-300 hover:border-white/[0.16] hover:bg-[#10141D];
+  }
+
   .glass-card {
-    @apply backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl;
+    @apply rounded-2xl border border-white/[0.09] bg-[#0D1016]/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)];
   }
 
   .glass-button {
-    @apply backdrop-blur-md bg-white/10 hover:bg-white/20 border border-white/30 
-           rounded-xl px-6 py-3 font-medium transition-all duration-300 
-           hover:scale-105 hover:shadow-lg;
+    @apply rounded-xl border border-white/[0.12] bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-[#F4F2EC] transition-all duration-200 hover:border-white/25 hover:bg-white/[0.08];
+  }
+
+  .btn-primary-ivory {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4F2EC] px-6 py-3 text-sm font-semibold text-[#07080B] shadow-[0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.12)] transition-all duration-200 hover:bg-white hover:shadow-[0_10px_30px_-10px_rgba(244,242,236,0.3)] active:scale-[0.99];
+  }
+
+  .btn-secondary-obsidian {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.14] bg-white/[0.03] px-6 py-3 text-sm font-medium text-[#E5E1D6] transition-all duration-200 hover:border-white/25 hover:bg-white/[0.07] hover:text-white;
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 
-           bg-clip-text text-transparent;
-  }
-
-  .gradient-border {
-    @apply relative before:absolute before:inset-0 before:rounded-2xl 
-           before:p-[2px] before:bg-gradient-to-r before:from-purple-500 
-           before:via-pink-500 before:to-blue-500 before:-z-10;
+    @apply bg-gradient-to-r from-[#F4F2EC] via-[#E7C891] to-[#D9A760] bg-clip-text text-transparent;
   }
 
   .chat-bubble {
-    @apply rounded-2xl px-6 py-4 max-w-[80%] animate-in slide-in-from-bottom-2 
-           duration-300;
+    @apply rounded-2xl px-5 py-3.5 max-w-[82%] animate-in slide-in-from-bottom-2 duration-300;
   }
 
   .chat-bubble-user {
-    @apply chat-bubble bg-gradient-to-r from-purple-600 to-blue-600 ml-auto;
+    @apply chat-bubble bg-[#1B212E] border border-[#D9A760]/30 text-[#F4F2EC] ml-auto;
   }
 
   .chat-bubble-ai {
-    @apply chat-bubble bg-white/10 backdrop-blur-md border border-white/20;
+    @apply chat-bubble bg-[#0D1016] border border-white/[0.08] text-neutral-200;
   }
 }
 
 @layer utilities {
+  .bg-grid-architectural {
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
   .animate-in {
-    animation-duration: 0.3s;
+    animation-duration: 0.28s;
     animation-fill-mode: both;
   }
 
@@ -78,5 +95,20 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
   }
 }

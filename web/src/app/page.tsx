@@ -1,1233 +1,1258 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import {
-    Brain,
     ArrowRight,
-    Shield,
-    Sparkles,
-    MessageCircle,
+    ArrowUpRight,
     Check,
-    Smartphone,
-    Zap,
-    Users,
-    Lock,
-    Star,
-    Flame,
-    ShieldCheck,
-    Layers,
-    Cpu,
-    BarChart3,
-    RefreshCw,
-    ExternalLink,
-    Send,
     ChevronDown,
-    Eye,
     Compass,
-    Heart
+    Cpu,
+    Database,
+    Eye,
+    Flame,
+    HeartHandshake,
+    Layers,
+    Lock,
+    MessageSquare,
+    Mic,
+    ShieldAlert,
+    ShieldCheck,
+    Smartphone,
+    Sparkles,
+    TrendingUp,
+    X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import SiteHeader from '@/components/Layout/SiteHeader'
+import SiteFooter from '@/components/Layout/SiteFooter'
+
+type TwinPerspectiveId = 'normal' | 'future' | 'honest' | 'therapist'
 
 interface ScenarioOption {
+    id: string
     label: string
+    contextTag: string
     prompt: string
-    responses: {
-        normal: string
-        future: string
-        honest: string
-        therapist: string
-    }
+    memoryCallback: string
+    responses: Record<
+        TwinPerspectiveId,
+        {
+            text: string
+            biasTargeted: string
+            directive: string
+        }
+    >
 }
+
+interface PricingTierResponse {
+    country: string
+    currency: string
+    symbol: string
+    monthly: { amount: number; display: string; usd: number }
+    yearly: { amount: number; display: string; usd: number; savings: string }
+}
+
+const PERSPECTIVES: Array<{
+    id: TwinPerspectiveId
+    name: string
+    shortName: string
+    subtitle: string
+    badge: string
+    accentColor: string
+    borderActive: string
+    pillClass: string
+    dotClass: string
+    icon: typeof Compass
+}> = [
+    {
+        id: 'normal',
+        name: 'Normal Twin',
+        shortName: 'Normal',
+        subtitle: 'Calibrated Self Mirror',
+        badge: 'Core Reflection',
+        accentColor: 'text-sky-300',
+        borderActive: 'border-sky-400/50 bg-sky-500/[0.08] text-white',
+        pillClass: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+        dotClass: 'bg-sky-400',
+        icon: Compass,
+    },
+    {
+        id: 'future',
+        name: 'Future Twin',
+        shortName: 'Future (5Y)',
+        subtitle: 'Long-Horizon Perspective',
+        badge: 'Compounding View',
+        accentColor: 'text-[#E7C891]',
+        borderActive: 'border-[#D9A760]/60 bg-[#D9A760]/[0.10] text-white',
+        pillClass: 'border-[#D9A760]/30 bg-[#D9A760]/10 text-[#E7C891]',
+        dotClass: 'bg-[#D9A760]',
+        icon: TrendingUp,
+    },
+    {
+        id: 'honest',
+        name: 'Honest Twin',
+        shortName: 'Honest',
+        subtitle: 'Zero-Sycophancy Reality Check',
+        badge: 'Anti-Bias Mode',
+        accentColor: 'text-rose-300',
+        borderActive: 'border-rose-400/50 bg-rose-500/[0.10] text-white',
+        pillClass: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+        dotClass: 'bg-rose-400',
+        icon: ShieldAlert,
+    },
+    {
+        id: 'therapist',
+        name: 'Reflective Coach',
+        shortName: 'Reflective',
+        subtitle: 'Socratic Emotional Inquiry',
+        badge: 'Grounded Clarity',
+        accentColor: 'text-emerald-300',
+        borderActive: 'border-emerald-400/50 bg-emerald-500/[0.10] text-white',
+        pillClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+        dotClass: 'bg-emerald-400',
+        icon: HeartHandshake,
+    },
+]
 
 const DEMO_SCENARIOS: ScenarioOption[] = [
     {
-        label: 'Setting Healthy Boundaries',
-        prompt: "A close friend asked me for another big favor that will drain my entire weekend, but I feel guilty saying no because I don't want to disappoint them.",
+        id: 'boundaries',
+        label: 'Boundaries & People-Pleasing',
+        contextTag: 'RELATIONAL CONFLICT',
+        prompt:
+            "Someone close keeps asking for favors that wipe out my entire weekend, and I feel guilty every time I think about saying no.",
+        memoryCallback: 'Vector match: 3 prior entries noting resentment after overcommitting on weekends.',
         responses: {
-            normal: "It's natural to care deeply about friends, but true relationships aren't built on self-sacrifice. Saying yes when your battery is at zero only breeds quiet resentment over time.",
-            future: "Looking back five years from now, you will realize that people respect clear, calm boundaries far more than constant people-pleasing. Protect your peace and recharge with kind honesty.",
-            honest: "Let's be direct: You're not saying yes out of generosity—you're saying yes out of fear of conflict. Sacrificing your own mental health to avoid a moment of mild awkwardness cheats both of you.",
-            therapist: "Notice where that guilt is located in your body right now. Where did you first learn the belief that someone else's comfort is your personal responsibility? What would kind self-preservation look like here?"
-        }
+            normal: {
+                text: "You care about staying reliable, which is why declining feels heavy. Notice the cost pattern: agreeing when depleted doesn't preserve the friendship—it quietly taxes it.",
+                biasTargeted: 'Fairness distortion',
+                directive: 'Hold calm warmth without over-explaining your refusal.',
+            },
+            future: {
+                text: 'Five years out, no durable relationship was ever built on your exhaustion. Set the boundary cleanly this weekend so resentment never settles in underneath.',
+                biasTargeted: 'Short-term approval bias',
+                directive: 'Prioritize compounding trust over momentary comfort.',
+            },
+            honest: {
+                text: "Be direct with yourself: you aren't saying yes out of generosity—you're buying temporary relief from conflict. Trading an entire weekend to avoid two minutes of awkwardness is a losing trade.",
+                biasTargeted: 'Conflict-avoidance rationalization',
+                directive: 'Challenge the excuse directly; propose a single clear refusal line.',
+            },
+            therapist: {
+                text: 'When you imagine sending a firm no, where does the guilt tighten first? What belief taught you that protecting your own rest makes you selfish?',
+                biasTargeted: 'Conditioned guilt reflex',
+                directive: 'Separate care for others from responsibility for their disappointment.',
+            },
+        },
     },
     {
-        label: 'Overcoming Self-Doubt & Fear',
-        prompt: "I've been holding back from pursuing a creative goal I deeply care about because I'm terrified that people will judge me or that I'll fail publicly.",
+        id: 'fear',
+        label: 'Fear of Public Judgment',
+        contextTag: 'EXECUTION PARALYSIS',
+        prompt:
+            "I've kept a creative project in drafts for three months because every time I prepare to publish it, I find one more detail to polish.",
+        memoryCallback: 'Trait signal: High Openness paired with perfectionist avoidance under evaluation.',
         responses: {
-            normal: "Starting something vulnerable is always intimidating. But the quiet ache of wondering 'what if' lasts much longer than the temporary sting of making mistakes while learning.",
-            future: "Decades from now, you won't remember the awkward early attempts—you'll only remember whether you gave yourself permission to try. Give yourself that grace today.",
-            honest: "You're waiting for complete confidence before taking a step, but confidence only comes after action. Stop hiding behind perfectionism—it's just fear in an intellectual mask. Put your work out there.",
-            therapist: "What does failure mean about your identity in your inner narrative? Let's separate the outcome of an experiment from your unconditional self-worth as a person."
-        }
+            normal: {
+                text: 'Your standards are genuine, but polishing past a threshold stops improving the craft and starts insulating your ego from outside feedback.',
+                biasTargeted: 'Standards vs. protection ambiguity',
+                directive: 'Anchor quality bars to shippable milestones.',
+            },
+            future: {
+                text: 'Two years from now you will barely recall who saw version one—only whether you built the discipline to put real work into the world on schedule.',
+                biasTargeted: 'Spotlight effect distortion',
+                directive: 'Compress evaluation horizon from day-one perfection to iteration speed.',
+            },
+            honest: {
+                text: "That isn't craft discipline anymore—it's fear wearing a perfectionist disguise. Waiting until you feel ready guarantees you stay invisible. Ship the draft before tonight.",
+                biasTargeted: 'Procrastination masked as preparation',
+                directive: 'Strip intellectual excuses and name the concrete next ship step.',
+            },
+            therapist: {
+                text: 'What would imperfect public feedback seem to say about your worth? Can we treat version one as neutral data rather than a verdict on who you are?',
+                biasTargeted: 'Identity-outcome fusion',
+                directive: 'Decouple experiment feedback from personal self-worth.',
+            },
+        },
     },
     {
-        label: 'Breaking Evening Doomscrolling',
-        prompt: "Every night I intend to sleep early and take care of my health, but I end up scrolling social media for two hours and waking up exhausted and self-critical.",
+        id: 'doomscrolling',
+        label: 'Late-Night Avoidance Loop',
+        contextTag: 'SLEEP & HABITS',
+        prompt:
+            'Every night I plan to sleep on time, yet I scroll for two hours in the dark and wake up angry at myself.',
+        memoryCallback: 'Weekly pattern: Late-night screen spikes correlate with unaddressed daytime stress.',
         responses: {
-            normal: "Late-night scrolling is often 'revenge bedtime procrastination'—your mind searching for autonomy after a demanding day. Be gentle with yourself, but put the phone in another room tonight.",
-            future: "Your daily vitality and mental clarity compound into the life you build. Trading tomorrow's focus and joy for cheap dopamine tonight is a cost you don't need to keep paying.",
-            honest: "You are escaping into an endless feed because sitting in quiet stillness with your own unedited thoughts feels uncomfortable. Put the phone down 30 minutes before sleep. No excuses.",
-            therapist: "What uncomfortable emotion or restlessness surfaces when the lights go out and the room goes quiet? Let's explore what true emotional rest and nourishment feel like for you tonight."
-        }
-    }
+            normal: {
+                text: 'Late scrolling is rarely about the feed itself—it feels like the first quiet hour nobody owns but you. Replace it intentionally rather than relying on midnight willpower.',
+                biasTargeted: 'Willpower attribution fallacy',
+                directive: 'Design pre-sleep friction outside the bedroom.',
+            },
+            future: {
+                text: 'Compounded sleep debt silently taxes every conversation and decision you make the next afternoon. Protect tomorrow morning more than midnight numbness.',
+                biasTargeted: 'Hyperbolic discounting',
+                directive: 'Contrast tonight’s low-value dopamine against next-day clarity.',
+            },
+            honest: {
+                text: "You're numbing out because sitting quietly with unfiltered thoughts feels uncomfortable after a busy day. Put the charger in another room right now—no negotiating with midnight impulses.",
+                biasTargeted: 'Emotional distraction loop',
+                directive: 'Interrupt bargaining before sleep window closes.',
+            },
+            therapist: {
+                text: 'When the room gets quiet at 11 PM, what unresolved feeling tends to surface? Let’s give that pressure a 3-minute check-in so screens don’t have to carry it.',
+                biasTargeted: 'Unprocessed emotional residue',
+                directive: 'Name the underlying stressor gently before wind-down.',
+            },
+        },
+    },
+]
+
+const COACHING_PROGRAMS = [
+    {
+        badge: '7-DAY GUIDED TRACK',
+        title: '7-Day Anxiety Reset',
+        summary:
+            'Structured daily protocols to map somatic triggers, dismantle catastrophizing loops, and leave with a personalized grounding playbook.',
+        days: [
+            'Day 01: Trigger taxonomy & physiological nervous-system baseline',
+            'Day 03: Cognitive probability testing on worst-case assumptions',
+            'Day 07: Custom rapid-reset response protocol',
+        ],
+        accent: 'border-emerald-500/25 text-emerald-300',
+    },
+    {
+        badge: '5-DAY SPRINT',
+        title: '5-Day Confidence & Assertion',
+        summary:
+            'Targeted drills for high-stakes conversations, disarming impostor narratives, and practicing firm boundaries without over-apologizing.',
+        days: [
+            'Day 01: Evidence inventory vs. internal distortion audit',
+            'Day 03: Spoken assertiveness rehearsals via voice check-ins',
+            'Day 05: Calm boundary scripts for real-world pressure',
+        ],
+        accent: 'border-[#D9A760]/30 text-[#E7C891]',
+    },
+    {
+        badge: '30-DAY PRACTICE',
+        title: 'Daily Clarity & Habit Lock',
+        summary:
+            'Short morning and evening reflections designed to spot recurring energy leaks, track mood shifts, and reinforce compounding habits.',
+        days: [
+            'Day 01: Baseline intention & friction audit',
+            'Day 14: Mid-cycle vector insight pattern review',
+            'Day 30: Longitudinal behavioral trend summary',
+        ],
+        accent: 'border-sky-500/25 text-sky-300',
+    },
+]
+
+const HERO_TRAITS = [
+    { label: 'Analytical Skepticism', value: 84 },
+    { label: 'Conflict Avoidance', value: 62 },
+    { label: 'Long-Horizon Focus', value: 78 },
+    { label: 'Emotional Reactivity', value: 49 },
 ]
 
 export default function Home() {
-    const router = useRouter()
-    const [selectedScenarioIndex, setSelectedScenarioIndex] = useState(0)
-    const [activeTwinMode, setActiveTwinMode] = useState<'normal' | 'future' | 'honest' | 'therapist'>('honest')
-    const [customPrompt, setCustomPrompt] = useState('')
-    const [simulatedCustomResponse, setSimulatedCustomResponse] = useState<string | null>(null)
-    const [isSimulating, setIsSimulating] = useState(false)
-    const [openFaq, setOpenFaq] = useState<number | null>(null)
+    const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0)
+    const [activeMode, setActiveMode] = useState<TwinPerspectiveId>('honest')
+    const [previewProgramIdx, setPreviewProgramIdx] = useState<number | null>(null)
+    const [openFaq, setOpenFaq] = useState<number | null>(0)
+    const [pricing, setPricing] = useState<PricingTierResponse | null>(null)
 
-    const currentScenario = DEMO_SCENARIOS[selectedScenarioIndex]
+    const playStoreUrl =
+        process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
+        'https://play.google.com/store/apps/details?id=com.asmind.app'
 
-    const handleSimulateCustom = () => {
-        if (!customPrompt.trim()) return
-        setIsSimulating(true)
-        setSimulatedCustomResponse(null)
-        setTimeout(() => {
-            let res = ""
-            if (activeTwinMode === 'honest') {
-                res = `[Demonstration Preview — Honest Mode]: Looking closely at "${customPrompt}": You might be overthinking this to avoid the emotional vulnerability of taking action. What is the one truthful step you already know you need to take?`
-            } else if (activeTwinMode === 'future') {
-                res = `[Demonstration Preview — Future Mode]: Looking at "${customPrompt}" five years from now: The temporary awkwardness or discomfort of today won't matter at all. What matters is choosing the path that helps you become the person you respect.`
-            } else if (activeTwinMode === 'therapist') {
-                res = `[Demonstration Preview — Reflective Mode]: Holding space for "${customPrompt}": What deeper feeling or fear is asking for your attention right beneath this thought? Acknowledge it gently before trying to fix it.`
-            } else {
-                res = `[Demonstration Preview — Normal Mode]: Exploring "${customPrompt}" with you: This speaks to your core desire for balance and meaning. Let's break it down into one small, peaceful step for today.`
-            }
-            setSimulatedCustomResponse(res)
-            setIsSimulating(false)
-        }, 600)
-    }
+    useEffect(() => {
+        let mounted = true
+        fetch('/api/pricing')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (mounted && data?.pricing) setPricing(data.pricing)
+            })
+            .catch(() => {})
+        return () => {
+            mounted = false
+        }
+    }, [])
 
-    const playStoreUrl = process.env.NEXT_PUBLIC_PLAY_STORE_URL || 'https://play.google.com/store/apps/details?id=com.asmind.app'
+    const activeScenario = DEMO_SCENARIOS[selectedScenarioIdx]
+    const activePerspective = PERSPECTIVES.find((p) => p.id === activeMode) || PERSPECTIVES[2]
+    const activeResponse = activeScenario.responses[activeMode]
+
+    const proMonthlyDisplay = pricing?.monthly?.display || '$5.99'
+    const proYearlyDisplay = pricing?.yearly?.display || '$47.88'
+    const proSavings = pricing?.yearly?.savings || '33%'
 
     return (
-        <div className="min-h-screen bg-[#0F0F1E] text-white selection:bg-purple-600 selection:text-white">
-            {/* Ambient Background Glows matching Mobile App Palette */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '6s' }} />
-                <div className="absolute top-1/3 right-10 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '8s' }} />
-                <div className="absolute bottom-10 left-10 w-96 h-96 bg-purple-900/15 rounded-full blur-[128px]" />
-            </div>
+        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
+            <SiteHeader />
 
-            {/* Clean Consumer Navigation Bar */}
-            <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0F0F1E]/80 border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-3 group">
-                        <img
-                            src="/logo.png"
-                            alt="TwinGenie"
-                            className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform"
-                        />
-                        <div>
-                            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-gray-100 to-purple-200 bg-clip-text text-transparent">
-                                TwinGenie
-                            </span>
-                            <span className="hidden sm:inline-block ml-2 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
-                                AI Companion
-                            </span>
-                        </div>
-                    </Link>
-
-                    {/* Human-Friendly Navigation Links */}
-                    <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-300">
-                        <a href="#features" className="hover:text-white transition-colors">Features</a>
-                        <a href="#coaching" className="hover:text-white transition-colors">Life Coach</a>
-                        <a href="#modes" className="hover:text-white transition-colors">4 Twin Modes</a>
-                        <a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a>
-                        <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-                        <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-                    </nav>
-
-                    {/* Clean Consumer CTAs */}
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/login"
-                            className="px-3.5 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
-                        >
-                            Sign In
-                        </Link>
-
-                        <Link
-                            href="/onboarding"
-                            className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-105"
-                        >
-                            <Sparkles className="w-4 h-4" />
-                            <span>Create Your Twin</span>
-                        </Link>
-                    </div>
+            <main className="relative">
+                {/* Architectural background field */}
+                <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+                    <div className="absolute inset-0 bg-grid-architectural opacity-60 [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_80%)]" />
+                    <div className="absolute -top-40 left-1/2 h-[420px] w-[780px] -translate-x-1/2 rounded-full bg-[#D9A760]/[0.06] blur-[140px]" />
                 </div>
-            </header>
 
-            {/* Main Content */}
-            <main className="relative z-10">
-                {/* Hero Section */}
-                <section className="pt-20 pb-16 md:pt-28 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center">
-                    <motion.div
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs sm:text-sm font-medium mb-8"
-                    >
-                        <Sparkles className="w-4 h-4 text-purple-400" />
-                        <span>AI Digital Twin & Personal Reflection Companion</span>
-                    </motion.div>
-
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7, delay: 0.1 }}
-                        className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8"
-                    >
-                        The AI that doesn't just agree with you.{' '}
-                        <span className="block mt-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-                            It helps you think clearly.
-                        </span>
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7, delay: 0.2 }}
-                        className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed mb-10"
-                    >
-                        Standard AI chatbots flatter your biases. <strong className="text-white">TwinGenie</strong> builds your psychometric digital twin from a 35-trait assessment, giving you 4 cognitive perspectives, long-term vector memory, and brutally honest reflection to conquer mental blindspots.
-                    </motion.p>
-
-                    {/* Hero CTAs */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7, delay: 0.3 }}
-                        className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-14"
-                    >
-                        <Link
-                            href="/onboarding"
-                            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 font-semibold text-base shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 text-white"
+                {/* HERO */}
+                <section className="relative z-10 mx-auto max-w-7xl px-4 pb-20 pt-14 sm:px-6 md:pt-20 lg:px-8 lg:pb-28">
+                    <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-10">
+                        {/* Hero Copy */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.45 }}
+                            className="lg:col-span-6"
                         >
-                            <Sparkles className="w-5 h-5" />
-                            <span>Create Your Twin (Free)</span>
-                            <ArrowRight className="w-5 h-5" />
-                        </Link>
+                            <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/[0.10] bg-white/[0.03] px-3.5 py-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-neutral-300">
+                                    35-Trait Psychometric Digital Twin
+                                </span>
+                            </div>
 
-                        <a
-                            href={playStoreUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 font-semibold text-base transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 text-white"
+                            <h1 className="text-4xl font-semibold tracking-[-0.03em] text-[#F4F2EC] sm:text-5xl lg:text-[3.65rem] lg:leading-[1.06]">
+                                AI shouldn&apos;t flatter your blindspots.{' '}
+                                <span className="font-serif text-[1.08em] font-normal italic text-[#E7C891]">
+                                    It should help you see clearly.
+                                </span>
+                            </h1>
+
+                            <p className="mt-6 max-w-xl text-base leading-relaxed text-neutral-400 sm:text-lg">
+                                Generic chatbots agree with whatever framing you feed them.{' '}
+                                <strong className="font-semibold text-[#F4F2EC]">TwinGenie</strong> calibrates
+                                your digital twin through a structured 35-question psychometric assessment, retains
+                                semantic vector memory across weeks, and challenges your thinking from four distinct
+                                cognitive angles.
+                            </p>
+
+                            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <Link
+                                    href="/onboarding"
+                                    className="btn-primary-ivory px-6 py-3.5 text-sm sm:text-[15px]"
+                                >
+                                    <span>Create Your 35-Trait Twin</span>
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+
+                                <a
+                                    href={playStoreUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-secondary-obsidian px-5 py-3.5 text-sm sm:text-[15px]"
+                                >
+                                    <Smartphone className="h-4 w-4 text-emerald-400" />
+                                    <span>Android on Google Play</span>
+                                    <ArrowUpRight className="h-3.5 w-3.5 text-neutral-500" />
+                                </a>
+                            </div>
+
+                            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.08] pt-6 text-xs text-neutral-400">
+                                <span className="inline-flex items-center gap-1.5">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                                    RLS-Isolated PostgreSQL Memory
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <Lock className="h-3.5 w-3.5 text-[#D9A760]" />
+                                    Zero Public Model Training
+                                </span>
+                                <Link
+                                    href="/test"
+                                    className="inline-flex items-center gap-1 text-[#E7C891] transition-colors hover:underline"
+                                >
+                                    <span>Quick 3-Step Self Diagnostic</span>
+                                    <ArrowRight className="h-3 w-3" />
+                                </Link>
+                            </div>
+                        </motion.div>
+
+                        {/* Interactive Product Telemetry Showcase */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 18 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.55, delay: 0.08 }}
+                            className="lg:col-span-6"
                         >
-                            <Smartphone className="w-5 h-5 text-emerald-400" />
-                            <span>Get on Google Play</span>
-                            <ExternalLink className="w-4 h-4 text-gray-400" />
-                        </a>
-
-                        <a
-                            href="#demo"
-                            className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-purple-500/30 font-semibold text-base transition-all duration-300 text-purple-200"
-                        >
-                            Try Interactive Demo ↓
-                        </a>
-                    </motion.div>
-
-                    {/* Verification & Trust Badges */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.7, delay: 0.4 }}
-                        className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-white/10 text-left"
-                    >
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                            <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                            <div>
-                                <div className="text-xs font-semibold text-white">Private & Encrypted</div>
-                                <div className="text-[11px] text-gray-400">Strict Data Confidentiality</div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                            <Compass className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                            <div>
-                                <div className="text-xs font-semibold text-white">4 Cognitive Angles</div>
-                                <div className="text-[11px] text-gray-400">Authentic, Future, Honest, Care</div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                            <Zap className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-                            <div>
-                                <div className="text-xs font-semibold text-white">AI Life Coach</div>
-                                <div className="text-[11px] text-gray-400">Multi-Day Guided Tracks</div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                            <Star className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                            <div>
-                                <div className="text-xs font-semibold text-white">Google Play Verified</div>
-                                <div className="text-[11px] text-gray-400">Android & Web Synchronized</div>
-                            </div>
-                        </div>
-                    </motion.div>
-                </section>
-
-                {/* Section: Live Interactive Demo Simulator */}
-                <section id="demo" className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto scroll-mt-24">
-                    <div className="text-center mb-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3">
-                            <Eye className="w-3.5 h-3.5" />
-                            Interactive Product Demonstration • Sample Scenarios
-                        </div>
-                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                            Experience the 4 Perspectives in Action
-                        </h2>
-                        <p className="text-gray-400 mt-2 max-w-2xl mx-auto text-sm sm:text-base">
-                            This preview demonstrates how TwinGenie adapts cognitive framing across 4 perspectives using illustrative dilemma scenarios. For live AI reflection calibrated to your unique 35-trait personality profile with persistent vector memory, create your twin or get the Android app.
-                        </p>
-                    </div>
-
-                    {/* Simulator Card */}
-                    <div className="rounded-3xl border border-white/15 bg-slate-900/90 shadow-2xl backdrop-blur-2xl overflow-hidden">
-                        {/* Scenario Selector Header */}
-                        <div className="p-4 sm:p-6 border-b border-white/10 bg-slate-950/60">
-                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                                1. Select an Everyday Life Dilemma to Explore:
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {DEMO_SCENARIOS.map((sc, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            setSelectedScenarioIndex(idx)
-                                            setSimulatedCustomResponse(null)
-                                        }}
-                                        className={`px-4 py-3 rounded-xl text-left text-xs sm:text-sm font-medium transition-all border ${
-                                            selectedScenarioIndex === idx
-                                                ? 'bg-purple-600/30 border-purple-500 text-white shadow-md'
-                                                : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                                        }`}
-                                    >
-                                        {sc.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* User Input Bubble Display */}
-                        <div className="p-4 sm:p-6 border-b border-white/10 bg-slate-900/40">
-                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                                User Input:
-                            </div>
-                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-sm sm:text-base text-gray-200 italic">
-                                "{currentScenario.prompt}"
-                            </div>
-                        </div>
-
-                        {/* Mode Selector Tabs */}
-                        <div className="p-4 sm:p-6 border-b border-white/10 bg-slate-950/40">
-                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                                2. Switch Perspective to Consult:
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                <button
-                                    onClick={() => setActiveTwinMode('normal')}
-                                    className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all border flex items-center justify-center gap-2 ${
-                                        activeTwinMode === 'normal'
-                                            ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20'
-                                            : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    <span>🪞 Normal Twin</span>
-                                </button>
-
-                                <button
-                                    onClick={() => setActiveTwinMode('future')}
-                                    className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all border flex items-center justify-center gap-2 ${
-                                        activeTwinMode === 'future'
-                                            ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-500/20'
-                                            : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    <span>🔮 Future (5Y) Twin</span>
-                                </button>
-
-                                <button
-                                    onClick={() => setActiveTwinMode('honest')}
-                                    className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all border flex items-center justify-center gap-2 ${
-                                        activeTwinMode === 'honest'
-                                            ? 'bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-500/20'
-                                            : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    <span>⚡ Honest / Dark Twin</span>
-                                </button>
-
-                                <button
-                                    onClick={() => setActiveTwinMode('therapist')}
-                                    className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all border flex items-center justify-center gap-2 ${
-                                        activeTwinMode === 'therapist'
-                                            ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
-                                            : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    <span>🌿 Reflective Coach</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Perspective Response Display */}
-                        <div className="p-6 sm:p-8 min-h-[180px] bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col justify-center">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={activeTwinMode + selectedScenarioIndex}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="space-y-3"
-                                >
+                            <div className="enterprise-panel overflow-hidden">
+                                {/* Top Window Chrome */}
+                                <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#0B0D12] px-4 py-3">
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-2.5 h-2.5 rounded-full ${
-                                            activeTwinMode === 'honest' ? 'bg-rose-400 animate-ping' :
-                                            activeTwinMode === 'future' ? 'bg-purple-400 animate-ping' :
-                                            activeTwinMode === 'therapist' ? 'bg-emerald-400 animate-ping' :
-                                            'bg-blue-400 animate-ping'
-                                        }`} />
-                                        <span className="text-xs uppercase tracking-widest font-bold text-gray-400">
-                                            {activeTwinMode === 'honest' ? 'Unfiltered Reality Check' :
-                                             activeTwinMode === 'future' ? '5-Year Strategic Horizon' :
-                                             activeTwinMode === 'therapist' ? 'Socratic Emotional Inquiry' :
-                                             'Core Self Mirror'}
+                                        <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                                        <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                                        <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                                        <span className="ml-2 font-mono text-[11px] text-neutral-400">
+                                            twin_console // calibration_v4
                                         </span>
                                     </div>
-
-                                    <p className="text-base sm:text-lg text-gray-100 leading-relaxed font-normal">
-                                        {currentScenario.responses[activeTwinMode]}
-                                    </p>
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Custom Prompt Interactive Box */}
-                        <div className="p-4 sm:p-6 bg-slate-950 border-t border-white/10">
-                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                                Or Test Your Own Thought:
-                            </div>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={customPrompt}
-                                    onChange={(e) => setCustomPrompt(e.target.value)}
-                                    placeholder="e.g., How do I stop procrastinating and start living with intention?"
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSimulateCustom()}
-                                />
-                                <button
-                                    onClick={handleSimulateCustom}
-                                    disabled={!customPrompt.trim() || isSimulating}
-                                    className="px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-medium text-sm flex items-center gap-2 transition-all"
-                                >
-                                    <Send className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Reflect</span>
-                                </button>
-                            </div>
-
-                            {simulatedCustomResponse && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    className="mt-4 p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 text-sm text-purple-200"
-                                >
-                                    {simulatedCustomResponse}
-                                </motion.div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: The 4 Cognitive Perspectives Deep Dive */}
-                <section id="modes" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold uppercase tracking-wider mb-3">
-                            Cognitive Diversity
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            One Mind. Four Uncompromising Angles.
-                        </h2>
-                        <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
-                            Different decisions require different lenses. TwinGenie lets you pivot seamlessly between four specialized AI companion personas.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Mode 1 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-blue-500/40 transition-all duration-300 group">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
-                                🪞
-                            </div>
-                            <h3 className="text-2xl font-bold mb-3 text-white flex items-center justify-between">
-                                <span>Normal Twin</span>
-                                <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/20">The Authentic Self</span>
-                            </h3>
-                            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                                Mirrors your calibrated psychological traits, values, and decision instincts. Acts as your everyday sounding board for brainstorming, goal alignment, and cognitive coherence.
-                            </p>
-                            <ul className="space-y-2 text-xs text-gray-300">
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                    <span>Tuned to your Big Five assessment results</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                    <span>Maintains continuity across long-term personal projects</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Mode 2 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-purple-500/40 transition-all duration-300 group">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
-                                🔮
-                            </div>
-                            <h3 className="text-2xl font-bold mb-3 text-white flex items-center justify-between">
-                                <span>Future Twin</span>
-                                <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/20">5-Years Wiser</span>
-                            </h3>
-                            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                                Speaks from your aspirational future state. Evaluates your choices against compound returns, preventing you from sacrificing long-term compounding for short-term gratification.
-                            </p>
-                            <ul className="space-y-2 text-xs text-gray-300">
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                    <span>Long-horizon strategic framing for high-stakes bets</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                    <span>Filters daily urgent noise from true legacy goals</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Mode 3 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-rose-500/40 transition-all duration-300 group">
-                            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
-                                ⚡
-                            </div>
-                            <h3 className="text-2xl font-bold mb-3 text-white flex items-center justify-between">
-                                <span>Honest / Dark Twin</span>
-                                <span className="text-xs px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/20">Zero Sycophancy</span>
-                            </h3>
-                            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                                The antidote to yes-man AI. Directly calls out avoidance, rationalizations, and mental shortcuts. Pinpoints the uncomfortable truths you hide from yourself.
-                            </p>
-                            <ul className="space-y-2 text-xs text-gray-300">
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                                    <span>Catches recursive overthinking and excuse loops</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                                    <span>Forces decisive action when you are procrastinating</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Mode 4 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 transition-all duration-300 group">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
-                                🌿
-                            </div>
-                            <h3 className="text-2xl font-bold mb-3 text-white flex items-center justify-between">
-                                <span>Reflective Twin</span>
-                                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">Therapeutic Inquiry</span>
-                            </h3>
-                            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                                Guides Socratic inquiry into burnout, emotional triggers, and impostor syndrome. Helps you decouple self-worth from external outcomes with grounded self-compassion.
-                            </p>
-                            <ul className="space-y-2 text-xs text-gray-300">
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                    <span>Burnout triage and emotional decompression</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                    <span>Root-cause analysis of stress and relational conflict</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: Flagship AI Life Coach Programs */}
-                <section id="coaching" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs font-semibold uppercase tracking-wider mb-3">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Flagship Coaching Programs
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Personalized AI Life Coach Journeys
-                        </h2>
-                        <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
-                            Move beyond open-ended chats. Embark on structured, multi-day guided programs designed to break anxiety loops, overcome self-doubt, and cultivate lasting peace of mind.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Program 1 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-pink-500/40 transition-all duration-300 flex flex-col justify-between group">
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform">
-                                        <Heart className="w-6 h-6" />
-                                    </div>
-                                    <span className="text-xs px-3 py-1 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/20 font-medium">
-                                        7 Days • Guided
+                                    <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                        CALIBRATED
                                     </span>
                                 </div>
-                                <h3 className="text-2xl font-bold mb-3 text-white">7-Day Anxiety Reset</h3>
-                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                                    A gentle, compassionate journey to recognize anxiety triggers, practice somatic body scans, challenge worst-case scenarios, and build a lasting personal coping toolkit.
-                                </p>
-                                <ul className="space-y-2.5 text-xs text-gray-300 mb-6">
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-pink-400 flex-shrink-0" />
-                                        <span>5-4-3-2-1 Sensory Grounding Techniques</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-pink-400 flex-shrink-0" />
-                                        <span>Gentle Exposure & Self-Compassion Drills</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-pink-400 flex-shrink-0" />
-                                        <span>Personalized Emergency Coping Blueprint</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <Link
-                                href="/life-coach"
-                                className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 hover:border-pink-500/30 text-white font-medium text-xs text-center transition-all flex items-center justify-center gap-2"
-                            >
-                                <span>Explore Anxiety Reset</span>
-                                <ArrowRight className="w-3.5 h-3.5" />
-                            </Link>
-                        </div>
 
-                        {/* Program 2 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-yellow-500/40 transition-all duration-300 flex flex-col justify-between group">
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400 group-hover:scale-110 transition-transform">
-                                        <Zap className="w-6 h-6" />
+                                <div className="grid divide-y divide-white/[0.08] sm:grid-cols-5 sm:divide-x sm:divide-y-0">
+                                    {/* Psychometric Blueprint Column */}
+                                    <div className="bg-[#0B0D12]/60 p-5 sm:col-span-2">
+                                        <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                                            35-Trait Fingerprint
+                                        </div>
+                                        <div className="mt-1 text-sm font-semibold text-[#F4F2EC]">
+                                            Decision Style Matrix
+                                        </div>
+
+                                        <div className="mt-5 space-y-3.5">
+                                            {HERO_TRAITS.map((trait) => (
+                                                <div key={trait.label}>
+                                                    <div className="mb-1 flex justify-between text-[11px]">
+                                                        <span className="text-neutral-300">{trait.label}</span>
+                                                        <span className="font-mono text-neutral-400">
+                                                            {trait.value}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                                                        <div
+                                                            className="h-full rounded-full bg-gradient-to-r from-[#C48B3F] to-[#E7C891]"
+                                                            style={{ width: `${trait.value}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-6 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                                            <div className="flex items-center gap-1.5 font-mono text-[10px] text-[#E7C891]">
+                                                <Database className="h-3 w-3" />
+                                                VECTOR MEMORY INDEX
+                                            </div>
+                                            <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-400">
+                                                1536-dim semantic embeddings link past commitments to today&apos;s
+                                                decisions.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 font-medium">
-                                        5 Days • High Impact
-                                    </span>
-                                </div>
-                                <h3 className="text-2xl font-bold mb-3 text-white">5-Day Confidence Boost</h3>
-                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                                    Quick, actionable psychological exercises to dismantle imposter syndrome, master assertive communication, reframe past mistakes, and visualize your most capable self.
-                                </p>
-                                <ul className="space-y-2.5 text-xs text-gray-300 mb-6">
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                                        <span>Core Strengths & Value Inventory</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                                        <span>Assertiveness Practice & Voice Anchoring</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                                        <span>Failure Reframing & Future Projection</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <Link
-                                href="/life-coach"
-                                className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-500/30 text-white font-medium text-xs text-center transition-all flex items-center justify-center gap-2"
-                            >
-                                <span>Explore Confidence Boost</span>
-                                <ArrowRight className="w-3.5 h-3.5" />
-                            </Link>
-                        </div>
 
-                        {/* Program 3 */}
-                        <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group">
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                                        <Brain className="w-6 h-6 text-emerald-400" />
+                                    {/* Live Switchable Perspective Preview */}
+                                    <div className="flex flex-col justify-between p-5 sm:col-span-3">
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                                                    Active Perspective
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-neutral-400">
+                                                    <Mic className="h-3 w-3 text-[#D9A760]" /> Voice &amp; Text Ready
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-3 grid grid-cols-2 gap-1.5">
+                                                {PERSPECTIVES.map((p) => {
+                                                    const Icon = p.icon
+                                                    const active = activeMode === p.id
+                                                    return (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            onClick={() => setActiveMode(p.id)}
+                                                            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-left text-[11px] font-medium transition-all ${
+                                                                active
+                                                                    ? p.borderActive
+                                                                    : 'border-white/[0.06] bg-white/[0.02] text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200'
+                                                            }`}
+                                                        >
+                                                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                                                            <span className="truncate">{p.shortName}</span>
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+
+                                            <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+                                                <div className="text-[11px] text-neutral-500">Prompt</div>
+                                                <p className="mt-1 text-xs leading-relaxed text-neutral-300">
+                                                    &ldquo;{activeScenario.prompt}&rdquo;
+                                                </p>
+                                            </div>
+
+                                            <AnimatePresence mode="wait">
+                                                <motion.div
+                                                    key={activeMode + activeScenario.id}
+                                                    initial={{ opacity: 0, y: 6 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -6 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="mt-3 rounded-xl border border-white/[0.09] bg-[#12161F] p-4"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span
+                                                            className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${activePerspective.accentColor}`}
+                                                        >
+                                                            <span
+                                                                className={`h-1.5 w-1.5 rounded-full ${activePerspective.dotClass}`}
+                                                            />
+                                                            {activePerspective.name}
+                                                        </span>
+                                                        <span className="font-mono text-[10px] text-neutral-500">
+                                                            {activeResponse.biasTargeted}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-2.5 text-xs leading-relaxed text-[#F4F2EC]">
+                                                        {activeResponse.text}
+                                                    </p>
+                                                </motion.div>
+                                            </AnimatePresence>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-between border-t border-white/[0.07] pt-3 text-[11px]">
+                                            <span className="text-neutral-500">Full 35-trait scoring required</span>
+                                            <Link
+                                                href="/onboarding"
+                                                className="inline-flex items-center gap-1 font-medium text-[#E7C891] hover:underline"
+                                            >
+                                                <span>Calibrate yours</span>
+                                                <ArrowRight className="h-3 w-3" />
+                                            </Link>
+                                        </div>
                                     </div>
-                                    <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 font-medium">
-                                        30 Days • Transformation
-                                    </span>
-                                </div>
-                                <h3 className="text-2xl font-bold mb-3 text-white">Daily Gratitude Habit</h3>
-                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                                    Rewire your mental default from scarcity to abundance. Micro-prompts designed to deepen appreciation for everyday moments, strengthen key relationships, and find silver linings.
-                                </p>
-                                <ul className="space-y-2.5 text-xs text-gray-300 mb-6">
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Daily Positivity Priming & Habit Stacking</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Relationship Appreciation Micro-Actions</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Challenge Transmutation & Resilience Practice</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <Link
-                                href="/life-coach"
-                                className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 text-white font-medium text-xs text-center transition-all flex items-center justify-center gap-2"
-                            >
-                                <span>Explore Gratitude Journey</span>
-                                <ArrowRight className="w-3.5 h-3.5" />
-                            </Link>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: Core Product Features */}
-                <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs font-semibold uppercase tracking-wider mb-3">
-                            Product Capabilities
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Designed for Deep Self-Discovery
-                        </h2>
-                        <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
-                            More than a chatbot. A personalized AI companion designed to understand who you truly are and help you grow every single day.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-purple-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6">
-                                <Brain className="w-6 h-6 text-purple-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">35-Trait Personality Blueprint</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Analyzes your emotional patterns, communication style, decision values, and core strengths to calibrate your Twin before your first reflection.
-                            </p>
-                        </div>
-
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-yellow-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-6">
-                                <Zap className="w-6 h-6 text-yellow-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">AI Life Coach Journeys</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Structured, multi-day guided programs designed to break anxiety loops, overcome self-doubt, build assertiveness, and foster daily gratitude.
-                            </p>
-                        </div>
-
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-pink-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center mb-6">
-                                <Layers className="w-6 h-6 text-pink-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Deep Adaptive Memory</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Never forgets who you are. Seamlessly connects insights, breakthroughs, and reflections across weeks and months into an evolving story of your growth.
-                            </p>
-                        </div>
-
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-emerald-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6">
-                                <Flame className="w-6 h-6 text-emerald-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Daily Mood & Habit Streaks</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Form a grounding daily habit. Track emotional shifts over time, celebrate consistent streaks, and connect stress triggers to actionable lifestyle adjustments.
-                            </p>
-                        </div>
-
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-amber-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6">
-                                <BarChart3 className="w-6 h-6 text-amber-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Cognitive Growth Insights</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Weekly automated summaries uncovering recurring thought loops, celebrating personal wins, and illuminating blindspots with gentle clarity.
-                            </p>
-                        </div>
-
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-blue-500/30 transition-all">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6">
-                                <Users className="w-6 h-6 text-blue-400" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-white">Private Growth Circles</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                                Connect with thoughtful, self-reflective peers. Share milestone reflections anonymously in a safe, supportive space free from social media pressure.
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: Technical & Google Cloud Architecture */}
-                <section id="architecture" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-24 border-t border-white/10">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-3">
-                            <Cpu className="w-3.5 h-3.5" />
-                            Technical Architecture & Cloud Roadmap
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Built for Scalable Cognitive AI
-                        </h2>
-                        <p className="text-gray-400 mt-4 max-w-3xl mx-auto text-base sm:text-lg">
-                            Transparent breakdown of our current production stack, active Google Cloud migration, and long-term infrastructure roadmap.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Currently Running */}
-                        <div className="p-8 rounded-3xl bg-slate-900/80 border border-blue-500/30 flex flex-col justify-between">
-                            <div>
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-300 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-500/20">
-                                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                                    Currently Running (Production)
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Core Application Stack</h3>
-                                <p className="text-xs text-gray-400 leading-relaxed mb-6">
-                                    Live services powering daily user reflections, psychometric profile generation, and mobile app sync:
-                                </p>
-                                <ul className="space-y-3 text-xs text-gray-300">
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Backend API:</strong> Node.js / Express REST microservices with CORS isolation and JWT authentication.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Database & Auth:</strong> Supabase-managed PostgreSQL with Row-Level Security (RLS).</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Vector Memory:</strong> pgvector extension storing 1536-dim semantic embeddings for conversation continuity.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>AI Model Routing:</strong> Google Gemini 1.5 & OpenAI multi-provider inference routing.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Mobile Distribution:</strong> Production Android app on Google Play with In-App Billing.</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Currently Integrating */}
-                        <div className="p-8 rounded-3xl bg-slate-900/80 border border-purple-500/30 flex flex-col justify-between">
-                            <div>
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 text-purple-300 text-xs font-bold uppercase tracking-wider mb-4 border border-purple-500/20">
-                                    <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                                    Active Cloud Migration
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Google Cloud Infrastructure</h3>
-                                <p className="text-xs text-gray-400 leading-relaxed mb-6">
-                                    Target deployment workloads utilizing Google Cloud startup program credits:
-                                </p>
-                                <ul className="space-y-3 text-xs text-gray-300">
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Cloud Run Deployment:</strong> Containerizing the Express microservices for serverless horizontal autoscaling.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Vertex AI Gemini Pipelines:</strong> Consolidating AI inference directly onto Google Vertex AI Gemini 1.5 Pro and Flash endpoints.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Firebase Cloud Messaging:</strong> Reliable push notifications for daily mood check-ins and reflection streaks.</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Architecture Roadmap */}
-                        <div className="p-8 rounded-3xl bg-slate-900/80 border border-emerald-500/30 flex flex-col justify-between">
-                            <div>
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4 border border-emerald-500/20">
-                                    Roadmap (Next Milestones)
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Enterprise Scalability</h3>
-                                <p className="text-xs text-gray-400 leading-relaxed mb-6">
-                                    Planned high-throughput architecture as our active user base scales:
-                                </p>
-                                <ul className="space-y-3 text-xs text-gray-300">
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Cloud SQL Multi-Region:</strong> Automated replication and failover for high availability.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>BigQuery Analytics:</strong> Aggregated, anonymized cognitive telemetry to identify population-level decision trends.</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                                        <span><strong>Fine-Tuned Cognitive Adapters:</strong> Custom LoRA model fine-tuning on Vertex AI for personalized voice and style mimicry.</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: Pricing & Commercial Viability */}
-                <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto scroll-mt-24 border-t border-white/10">
-                    <div className="text-center mb-16">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-3">
-                            Sustainable Economics
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-                            Simple, Transparent Pricing
-                        </h2>
-                        <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">
-                            Start for free. Upgrade to Pro for unlimited memory and all 4 cognitive modes, seamlessly billed through Google Play.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-                        {/* Free Tier */}
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 flex flex-col justify-between">
-                            <div>
-                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Free Starter</div>
-                                <div className="text-4xl font-extrabold text-white mb-4">$0 <span className="text-base text-gray-400 font-normal">/ month</span></div>
-                                <p className="text-sm text-gray-400 mb-6">Perfect for testing your initial personality profile and basic reflection.</p>
-                                <ul className="space-y-3 text-sm text-gray-300 mb-8">
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>35-Trait Personality Assessment</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>10 AI reflection messages / day</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>3 voice messages / day</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>All 4 Cognitive Twin Modes</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Daily mood tracking</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <button
-                                onClick={() => router.push('/onboarding')}
-                                className="w-full py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold text-sm transition-all"
-                            >
-                                Get Started Free
-                            </button>
-                        </div>
-
-                        {/* Pro Tier (Popular) */}
-                        <div className="p-8 rounded-3xl bg-gradient-to-b from-purple-900/40 via-slate-900 to-slate-950 border-2 border-purple-500 shadow-2xl shadow-purple-500/20 flex flex-col justify-between relative">
-                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-xs font-bold uppercase tracking-wider text-white shadow-md">
-                                Most Popular
-                            </div>
-                            <div>
-                                <div className="text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">Pro Companion</div>
-                                <div className="text-4xl font-extrabold text-white mb-4">$5.99 <span className="text-base text-gray-400 font-normal">/ month</span></div>
-                                <div className="text-xs text-purple-300 mb-4 font-medium">₹499 / month in India via Google Play</div>
-                                <p className="text-sm text-gray-300 mb-6">Complete cognitive reflection suite for curious minds, lifelong learners, and anyone seeking daily clarity.</p>
-                                <ul className="space-y-3 text-sm text-gray-200 mb-8">
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                        <strong className="text-white">Unlimited AI reflection messages</strong>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                        <strong className="text-white">All 4 Cognitive Twin Modes</strong>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                        <span>Infinite Vector Semantic Memory</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                        <span>Growth Circles & Private Sharing</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                                        <span>Google Play In-App Billing security</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <a
-                                href={playStoreUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-sm transition-all text-center shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2"
-                            >
-                                <Smartphone className="w-4 h-4" />
-                                <span>Subscribe on Android</span>
-                            </a>
-                        </div>
-
-                        {/* Annual Tier */}
-                        <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 flex flex-col justify-between">
-                            <div>
-                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Annual Pass</div>
-                                <div className="text-4xl font-extrabold text-white mb-4">$47.88 <span className="text-base text-gray-400 font-normal">/ year</span></div>
-                                <div className="text-xs text-emerald-400 mb-4 font-semibold">Save 33% • Equivalent to $3.99/mo ($47.88/yr, or ₹3,999/yr in India via Google Play)</div>
-                                <p className="text-sm text-gray-400 mb-6">For committed individuals tracking full-year personal growth and emotional well-being.</p>
-                                <ul className="space-y-3 text-sm text-gray-300 mb-8">
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Everything in Pro Companion</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Priority model latency</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Exportable cognitive growth reports</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                                        <span>Priority VIP reflection support</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <a
-                                href={playStoreUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full py-3.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold text-sm transition-all text-center flex items-center justify-center gap-2"
-                            >
-                                <span>Get Annual via Google Play</span>
-                            </a>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: Founder & Company Credibility */}
-                <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto border-t border-white/10">
-                    <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-slate-900 to-purple-950/30 border border-white/10">
-                        <div className="flex flex-col md:flex-row items-center gap-8">
-                            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl font-extrabold text-white shadow-xl shadow-purple-500/20 flex-shrink-0">
-                                AK
-                            </div>
-                            <div className="space-y-3 text-center md:text-left">
-                                <div className="text-xs font-bold text-purple-400 uppercase tracking-widest">
-                                    Founder's Note
-                                </div>
-                                <h3 className="text-2xl sm:text-3xl font-bold text-white">
-                                    Why I Built TwinGenie
-                                </h3>
-                                <p className="text-gray-300 text-sm sm:text-base leading-relaxed italic">
-                                    "Most AI products are programmed to be people-pleasers. They confirm your cognitive biases, flatter your half-baked hypotheses, and give you comforting illusions. TwinGenie was born from a fundamental belief: real growth requires intellectual friction. We built an AI that cares enough about your potential to tell you the truth."
-                                </p>
-                                <div className="pt-2 text-sm text-gray-400">
-                                    <strong className="text-white">Ashwani Kumar</strong> — Founder & CEO, TwinGenie • <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Section: Frequently Asked Questions (FAQ) */}
-                <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto scroll-mt-24 border-t border-white/10">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                            Frequently Asked Questions
-                        </h2>
-                        <p className="text-gray-400 mt-2 text-sm sm:text-base">
-                            Everything you need to know about TwinGenie, privacy, and technology.
-                        </p>
+                        </motion.div>
                     </div>
 
-                    <div className="space-y-4">
+                    {/* Metrics Strip */}
+                    <div className="mt-14 grid grid-cols-2 divide-y divide-white/[0.08] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0B0D12] sm:grid-cols-4 sm:divide-x sm:divide-y-0">
                         {[
-                            {
-                                q: "How is TwinGenie different from ChatGPT or generic chatbots?",
-                                a: "Generic chatbots have no persistent memory of your psychological tendencies, and are trained with RLHF to be excessively agreeable (sycophancy). TwinGenie uses a 35-trait psychometric profile, permanent vector memory, and 4 specialized modes (including an Honest Mode that actively challenges your excuses) to provide deep cognitive reflection."
-                            },
-                            {
-                                q: "Is my personal reflection and journal data private?",
-                                a: "Yes. Your thoughts are stored with AES-256 bit encryption and strict Row-Level Security (RLS). We never sell your personal data or use your private reflection sessions to train third-party public models."
-                            },
-                            {
-                                q: "Is the app available on mobile?",
-                                a: "Yes! TwinGenie is live on the Google Play Store (ID: com.asmind.app). You can download it directly to your Android device, and all reflections sync automatically between web and mobile."
-                            },
-                            {
-                                q: "How does the subscription work?",
-                                a: "We offer a Free Starter Tier for basic daily reflection. Upgrading to Pro Companion is handled directly through Google Play Billing for maximum payment security and one-click cancellation management."
-                            },
-                            {
-                                q: "What cloud technology powers TwinGenie?",
-                                a: "TwinGenie is built on modern scalable cloud architecture utilizing Google Gemini LLMs for reasoning, PostgreSQL with pgvector for high-dimensional semantic search, and containerized Cloud Run microservices."
-                            }
-                        ].map((faq, i) => (
-                            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-                                <button
-                                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                                    className="w-full p-5 text-left font-semibold text-white flex items-center justify-between gap-4 hover:bg-white/5 transition-colors"
-                                >
-                                    <span>{faq.q}</span>
-                                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
-                                </button>
-                                {openFaq === i && (
-                                    <div className="px-5 pb-5 text-sm text-gray-300 leading-relaxed border-t border-white/5 pt-3">
-                                        {faq.a}
-                                    </div>
-                                )}
+                            { k: 'PSYCHOMETRICS', v: '35-Item Assessment', d: '5-stage Big Five calibration' },
+                            { k: 'PERSPECTIVES', v: '4 Distinct Angles', d: 'Normal, Future, Honest, Care' },
+                            { k: 'CONTINUITY', v: '1536-Dim Vectors', d: 'PostgreSQL pgvector retrieval' },
+                            { k: 'GOVERNANCE', v: 'Zero Model Training', d: 'TLS 1.3 + Row-Level Security' },
+                        ].map((item) => (
+                            <div key={item.k} className="p-5 sm:p-6">
+                                <div className="font-mono text-[10px] uppercase tracking-wider text-[#D9A760]">
+                                    {item.k}
+                                </div>
+                                <div className="mt-1.5 text-base font-semibold text-[#F4F2EC]">{item.v}</div>
+                                <div className="mt-0.5 text-xs text-neutral-400">{item.d}</div>
                             </div>
                         ))}
                     </div>
                 </section>
 
-                {/* Final Call to Action */}
-                <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center border-t border-white/10">
-                    <div className="p-10 sm:p-16 rounded-3xl bg-gradient-to-r from-purple-900/60 via-slate-900 to-pink-900/60 border border-purple-500/30 shadow-2xl relative overflow-hidden">
-                        <div className="relative z-10 max-w-2xl mx-auto">
-                            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4">
-                                Stop Collecting Opinions. Start Understanding Yourself.
-                            </h2>
-                            <p className="text-gray-300 text-base sm:text-lg mb-8">
-                                Take the 5-minute personality reflection assessment and meet your AI Twin today.
+                {/* 4-PERSPECTIVE DECISION LAB */}
+                <section
+                    id="perspectives"
+                    className="relative z-10 scroll-mt-20 border-t border-white/[0.08] py-20 lg:py-24"
+                >
+                    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                            <div>
+                                <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                                    <Eye className="h-3.5 w-3.5" />
+                                    Cognitive Perspective Architecture
+                                </div>
+                                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
+                                    One dilemma. Four uncompromising angles.
+                                </h2>
+                            </div>
+                            <p className="max-w-md text-sm leading-relaxed text-neutral-400">
+                                Compare how TwinGenie&apos;s perspective router reframes identical human conflicts
+                                instead of producing one generic agreeable paragraph.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <button
-                                    onClick={() => router.push('/onboarding')}
-                                    className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-base shadow-xl shadow-purple-500/25 transition-all hover:scale-105 flex items-center justify-center gap-2"
+                        </div>
+
+                        <div className="enterprise-panel mt-10 overflow-hidden">
+                            {/* Scenario Selector */}
+                            <div className="border-b border-white/[0.08] bg-[#0B0D12] p-5 sm:p-6">
+                                <div className="mb-3 font-mono text-[11px] uppercase tracking-wider text-neutral-500">
+                                    01 / Select Dilemma Scenario
+                                </div>
+                                <div className="grid gap-2.5 sm:grid-cols-3">
+                                    {DEMO_SCENARIOS.map((scenario, idx) => (
+                                        <button
+                                            key={scenario.id}
+                                            type="button"
+                                            onClick={() => setSelectedScenarioIdx(idx)}
+                                            className={`rounded-xl border p-3.5 text-left transition-all ${
+                                                selectedScenarioIdx === idx
+                                                    ? 'border-[#D9A760]/60 bg-[#D9A760]/[0.09] text-white'
+                                                    : 'border-white/[0.07] bg-white/[0.02] text-neutral-400 hover:border-white/15 hover:text-neutral-200'
+                                            }`}
+                                        >
+                                            <div className="font-mono text-[10px] text-neutral-500">
+                                                {scenario.contextTag}
+                                            </div>
+                                            <div className="mt-1 text-sm font-medium">{scenario.label}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Perspective Tabs + Detailed Output */}
+                            <div className="grid lg:grid-cols-12">
+                                <div className="border-b border-white/[0.08] p-5 sm:p-6 lg:col-span-5 lg:border-b-0 lg:border-r">
+                                    <div className="font-mono text-[11px] uppercase tracking-wider text-neutral-500">
+                                        02 / User Reflection Input
+                                    </div>
+                                    <blockquote className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm leading-relaxed text-neutral-200">
+                                        &ldquo;{activeScenario.prompt}&rdquo;
+                                    </blockquote>
+
+                                    <div className="mt-4 rounded-xl border border-white/[0.06] bg-[#090B10] px-3.5 py-2.5 font-mono text-[11px] text-neutral-400">
+                                        {activeScenario.memoryCallback}
+                                    </div>
+
+                                    <div className="mt-6 font-mono text-[11px] uppercase tracking-wider text-neutral-500">
+                                        03 / Pivot Perspective
+                                    </div>
+                                    <div className="mt-2.5 grid grid-cols-2 gap-2">
+                                        {PERSPECTIVES.map((p) => {
+                                            const Icon = p.icon
+                                            const isSelected = activeMode === p.id
+                                            return (
+                                                <button
+                                                    key={p.id}
+                                                    type="button"
+                                                    onClick={() => setActiveMode(p.id)}
+                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-medium transition-all ${
+                                                        isSelected
+                                                            ? p.borderActive
+                                                            : 'border-white/[0.07] bg-white/[0.02] text-neutral-400 hover:border-white/15 hover:text-white'
+                                                    }`}
+                                                >
+                                                    <Icon className="h-4 w-4 shrink-0" />
+                                                    <span>{p.name}</span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col justify-between bg-[#0B0D12]/60 p-6 sm:p-8 lg:col-span-7">
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={activeMode + activeScenario.id}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -8 }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <span
+                                                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-medium ${activePerspective.pillClass}`}
+                                                >
+                                                    <span
+                                                        className={`h-1.5 w-1.5 rounded-full ${activePerspective.dotClass}`}
+                                                    />
+                                                    {activePerspective.name} — {activePerspective.subtitle}
+                                                </span>
+                                                <span className="font-mono text-[11px] text-neutral-500">
+                                                    {activePerspective.badge}
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-6 text-lg leading-relaxed text-[#F4F2EC] sm:text-xl">
+                                                {activeResponse.text}
+                                            </p>
+
+                                            <div className="mt-8 grid gap-3 border-t border-white/[0.08] pt-5 sm:grid-cols-2">
+                                                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+                                                    <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                                                        Cognitive Bias Countered
+                                                    </div>
+                                                    <div className="mt-1 text-xs font-medium text-neutral-200">
+                                                        {activeResponse.biasTargeted}
+                                                    </div>
+                                                </div>
+                                                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+                                                    <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                                                        System Style Directive
+                                                    </div>
+                                                    <div className="mt-1 text-xs font-medium text-neutral-200">
+                                                        {activeResponse.directive}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </AnimatePresence>
+
+                                    <div className="mt-8 flex flex-col justify-between gap-3 border-t border-white/[0.08] pt-5 sm:flex-row sm:items-center">
+                                        <span className="text-xs text-neutral-400">
+                                            Live Twin responses adapt strictly to your 35 psychometric answers.
+                                        </span>
+                                        <Link
+                                            href="/onboarding"
+                                            className="btn-primary-ivory px-4 py-2.5 text-xs"
+                                        >
+                                            <span>Calibrate Your 35 Traits</span>
+                                            <ArrowRight className="h-3.5 w-3.5" />
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 35-TRAIT PSYCHOMETRIC ENGINE PIPELINE */}
+                <section
+                    id="engine"
+                    className="relative z-10 scroll-mt-20 border-t border-white/[0.08] py-20 lg:py-24"
+                >
+                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <div className="max-w-2xl">
+                            <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                                <Cpu className="h-3.5 w-3.5" />
+                                Psychometric &amp; Memory Core
+                            </div>
+                            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
+                                Calibrated before your first message. Smarter every week.
+                            </h2>
+                            <p className="mt-4 text-sm leading-relaxed text-neutral-400 sm:text-base">
+                                Most AI companions start from a blank prompt. TwinGenie initializes an explicit
+                                personality model from your 35 responses, then updates context over time through
+                                semantic vector recall and mood telemetry.
+                            </p>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 md:grid-cols-3">
+                            {[
+                                {
+                                    step: 'STAGE 01',
+                                    title: '35-Question Behavioral Assessment',
+                                    desc: 'Five structured screens capture Openness, Conscientiousness, Extraversion, Stress Reactivity, Decision Speed, and Relational Trust—scoring numeric trait weights directly into your style layer.',
+                                    icon: Layers,
+                                    tag: 'Required Onboarding Core',
+                                },
+                                {
+                                    step: 'STAGE 02',
+                                    title: '1536-Dim Episodic Vector Memory',
+                                    desc: 'Conversations and reflections are embedded and stored in isolated PostgreSQL pgvector namespaces so your Twin recalls past promises, contradictions, and breakthroughs across months.',
+                                    icon: Database,
+                                    tag: 'Persistent Context',
+                                },
+                                {
+                                    step: 'STAGE 03',
+                                    title: 'Voice, Mood & Growth Telemetry',
+                                    desc: 'Full voice reflection support, daily emotional check-ins, Year-in-Pixels heatmaps, and anonymous Growth Circles keep behavioral momentum measurable.',
+                                    icon: Flame,
+                                    tag: 'Longitudinal Feedback',
+                                },
+                            ].map((item) => {
+                                const Icon = item.icon
+                                return (
+                                    <div key={item.step} className="enterprise-panel-hover p-7">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono text-[11px] font-semibold text-[#D9A760]">
+                                                {item.step}
+                                            </span>
+                                            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-neutral-300">
+                                                <Icon className="h-4 w-4" />
+                                            </div>
+                                        </div>
+                                        <h3 className="mt-5 text-lg font-semibold text-[#F4F2EC]">{item.title}</h3>
+                                        <p className="mt-2.5 text-sm leading-relaxed text-neutral-400">{item.desc}</p>
+                                        <div className="mt-5 inline-flex rounded-md border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-neutral-400">
+                                            {item.tag}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </section>
+
+                {/* GUIDED COACHING TRACKS */}
+                <section
+                    id="programs"
+                    className="relative z-10 scroll-mt-20 border-t border-white/[0.08] py-20 lg:py-24"
+                >
+                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                            <div>
+                                <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    Structured Life Coach Tracks
+                                </div>
+                                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
+                                    Multi-day guided clarity sprints.
+                                </h2>
+                            </div>
+                            <p className="max-w-md text-sm text-neutral-400">
+                                Beyond free-form chat, follow sequenced coaching curricula with interactive exercises
+                                and reflection milestones.
+                            </p>
+                        </div>
+
+                        <div className="mt-10 grid gap-6 md:grid-cols-3">
+                            {COACHING_PROGRAMS.map((prog, idx) => (
+                                <div
+                                    key={prog.title}
+                                    className="enterprise-panel-hover flex flex-col justify-between p-7"
                                 >
-                                    <Sparkles className="w-5 h-5" />
-                                    <span>Start Free Assessment</span>
-                                    <ArrowRight className="w-4 h-4" />
-                                </button>
+                                    <div>
+                                        <span
+                                            className={`inline-flex rounded-md border bg-white/[0.02] px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-wider ${prog.accent}`}
+                                        >
+                                            {prog.badge}
+                                        </span>
+                                        <h3 className="mt-4 text-xl font-semibold text-[#F4F2EC]">{prog.title}</h3>
+                                        <p className="mt-2.5 text-sm leading-relaxed text-neutral-400">
+                                            {prog.summary}
+                                        </p>
+
+                                        <ul className="mt-6 space-y-2.5 border-t border-white/[0.07] pt-5 text-xs text-neutral-300">
+                                            {prog.days.map((d) => (
+                                                <li key={d} className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D9A760]" />
+                                                    <span>{d}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <div className="mt-7 flex gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewProgramIdx(idx)}
+                                            className="btn-secondary-obsidian flex-1 py-2.5 text-xs"
+                                        >
+                                            Preview Curriculum
+                                        </button>
+                                        <Link
+                                            href="/onboarding"
+                                            className="btn-primary-ivory px-4 py-2.5 text-xs"
+                                        >
+                                            Start
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* ARCHITECTURE, SECURITY & GOVERNANCE */}
+                <section
+                    id="architecture"
+                    className="relative z-10 scroll-mt-20 border-t border-white/[0.08] py-20 lg:py-24"
+                >
+                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <div className="max-w-2xl">
+                            <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-emerald-400">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Security, Infrastructure &amp; Data Sovereignty
+                            </div>
+                            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
+                                Built for private personal introspection at scale.
+                            </h2>
+                            <p className="mt-4 text-sm leading-relaxed text-neutral-400 sm:text-base">
+                                Designed from day one around isolated tenant storage, commercial zero-training AI
+                                agreements, and verifiable user control over every stored memory.
+                            </p>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 md:grid-cols-3">
+                            <div className="enterprise-panel p-7">
+                                <div className="font-mono text-[11px] uppercase tracking-wider text-sky-300">
+                                    Production Runtime
+                                </div>
+                                <h3 className="mt-2 text-lg font-semibold text-[#F4F2EC]">
+                                    Full-Stack Synchronized Platform
+                                </h3>
+                                <ul className="mt-5 space-y-3 text-xs leading-relaxed text-neutral-300">
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-400" />
+                                        <span>
+                                            <strong className="text-white">API Microservices:</strong> Node.js/Express
+                                            architecture with JWT auth, quota fencing, and SSE response streaming.
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-400" />
+                                        <span>
+                                            <strong className="text-white">Cross-Platform Sync:</strong> Next.js Web
+                                            Workspace synchronized seamlessly with Android on Google Play (
+                                            <code className="font-mono text-neutral-200">com.asmind.app</code>).
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-400" />
+                                        <span>
+                                            <strong className="text-white">Resilient AI Routing:</strong> Multi-model
+                                            orchestration backed by Vertex AI &amp; Gemini reasoning pipelines.
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="enterprise-panel p-7">
+                                <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-300">
+                                    Data Isolation
+                                </div>
+                                <h3 className="mt-2 text-lg font-semibold text-[#F4F2EC]">
+                                    Zero Public Model Training
+                                </h3>
+                                <ul className="mt-5 space-y-3 text-xs leading-relaxed text-neutral-300">
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                                        <span>
+                                            <strong className="text-white">Transport &amp; Storage:</strong> HTTPS /
+                                            TLS 1.3 in transit paired with Supabase PostgreSQL volume encryption.
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                                        <span>
+                                            <strong className="text-white">Row-Level Security (RLS):</strong> Strict
+                                            per-user database policies scope chats, trait vectors, and audio logs.
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                                        <span>
+                                            <strong className="text-white">No Data Brokerage:</strong> Personal
+                                            reflection entries are never sold or used to train public base models.
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="enterprise-panel p-7">
+                                <div className="font-mono text-[11px] uppercase tracking-wider text-[#E7C891]">
+                                    User Governance
+                                </div>
+                                <h3 className="mt-2 text-lg font-semibold text-[#F4F2EC]">
+                                    Self-Serve Compliance &amp; Safety
+                                </h3>
+                                <ul className="mt-5 space-y-3 text-xs leading-relaxed text-neutral-300">
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D9A760]" />
+                                        <span>
+                                            <strong className="text-white">Granular Erasure:</strong> Delete individual
+                                            data scopes (chat, memories, voice, profile) anytime on{' '}
+                                            <Link href="/delete-data" className="text-[#E7C891] hover:underline">
+                                                Data Deletion
+                                            </Link>
+                                            .
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D9A760]" />
+                                        <span>
+                                            <strong className="text-white">Immediate Account Removal:</strong>{' '}
+                                            Self-serve deletion verified on{' '}
+                                            <Link href="/delete-account" className="text-[#E7C891] hover:underline">
+                                                Account Deletion
+                                            </Link>
+                                            .
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-2.5">
+                                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D9A760]" />
+                                        <span>
+                                            <strong className="text-white">Non-Clinical Guardrails:</strong> Explicit
+                                            crisis-safety routing and clear non-medical boundaries.
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* PRICING */}
+                <section
+                    id="pricing"
+                    className="relative z-10 scroll-mt-20 border-t border-white/[0.08] py-20 lg:py-24"
+                >
+                    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+                        <div className="text-center">
+                            <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                                Commercial Model
+                            </div>
+                            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
+                                Start free. Upgrade seamlessly on Android.
+                            </h2>
+                            <p className="mx-auto mt-3 max-w-2xl text-sm text-neutral-400 sm:text-base">
+                                Launch includes full free access to all 4 Twin perspectives on Web and Android, with
+                                unlimited memory &amp; voice synchronized via Google Play Billing.
+                            </p>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+                            {/* Free */}
+                            <div className="enterprise-panel flex flex-col justify-between p-8">
+                                <div>
+                                    <div className="font-mono text-xs uppercase tracking-wider text-neutral-400">
+                                        Free Starter
+                                    </div>
+                                    <div className="mt-4 flex items-baseline gap-1.5">
+                                        <span className="text-4xl font-semibold text-[#F4F2EC]">
+                                            {pricing?.symbol || '$'}0
+                                        </span>
+                                        <span className="text-sm text-neutral-500">/ forever</span>
+                                    </div>
+                                    <p className="mt-3 text-xs leading-relaxed text-neutral-400">
+                                        Full 35-trait calibration and daily reflection across Web &amp; Mobile.
+                                    </p>
+                                    <ul className="mt-7 space-y-3 text-sm text-neutral-300">
+                                        {[
+                                            'Complete 35-Question Assessment',
+                                            'All 4 Cognitive Perspectives',
+                                            '10 daily text reflections + 3 voice',
+                                            'Daily mood check-ins & streaks',
+                                        ].map((f) => (
+                                            <li key={f} className="flex items-center gap-2.5 text-xs">
+                                                <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <Link
+                                    href="/onboarding"
+                                    className="btn-secondary-obsidian mt-8 w-full py-3 text-xs font-semibold"
+                                >
+                                    Start 35-Trait Assessment
+                                </Link>
+                            </div>
+
+                            {/* Pro Monthly */}
+                            <div className="enterprise-panel relative flex flex-col justify-between border-[#D9A760]/45 bg-[#10131C] p-8 shadow-[0_0_60px_-24px_rgba(217,167,96,0.3)]">
+                                <span className="absolute -top-3 left-6 rounded-full border border-[#D9A760]/40 bg-[#1B1710] px-3 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#E7C891]">
+                                    Most Popular
+                                </span>
+                                <div>
+                                    <div className="font-mono text-xs uppercase tracking-wider text-[#E7C891]">
+                                        Pro Companion
+                                    </div>
+                                    <div className="mt-4 flex items-baseline gap-1.5">
+                                        <span className="text-4xl font-semibold text-[#F4F2EC]">
+                                            {proMonthlyDisplay}
+                                        </span>
+                                        <span className="text-sm text-neutral-400">/ month</span>
+                                    </div>
+                                    <p className="mt-3 text-xs leading-relaxed text-neutral-400">
+                                        Unlimited text, voice, vector continuity, and guided programs synced across
+                                        devices.
+                                    </p>
+                                    <ul className="mt-7 space-y-3 text-sm text-neutral-200">
+                                        {[
+                                            'Unlimited AI & voice reflections',
+                                            'Unlimited semantic vector memory',
+                                            'All Guided Life Coach tracks',
+                                            'Growth Circles & cognitive insights',
+                                        ].map((f) => (
+                                            <li key={f} className="flex items-center gap-2.5 text-xs">
+                                                <Check className="h-4 w-4 shrink-0 text-[#D9A760]" />
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                                 <a
                                     href={playStoreUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-8 py-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-semibold text-base transition-all flex items-center justify-center gap-2"
+                                    className="btn-primary-ivory mt-8 w-full py-3 text-xs font-semibold"
                                 >
-                                    <Smartphone className="w-5 h-5 text-emerald-400" />
-                                    <span>Download on Google Play</span>
+                                    <Smartphone className="h-4 w-4" />
+                                    <span>Subscribe via Google Play</span>
                                 </a>
+                            </div>
+
+                            {/* Annual */}
+                            <div className="enterprise-panel flex flex-col justify-between p-8">
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-mono text-xs uppercase tracking-wider text-neutral-400">
+                                            Annual Pass
+                                        </span>
+                                        <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                                            Save {proSavings}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 flex items-baseline gap-1.5">
+                                        <span className="text-4xl font-semibold text-[#F4F2EC]">
+                                            {proYearlyDisplay}
+                                        </span>
+                                        <span className="text-sm text-neutral-500">/ year</span>
+                                    </div>
+                                    <p className="mt-3 text-xs leading-relaxed text-neutral-400">
+                                        Full-year longitudinal memory, cognitive analytics, and VIP support.
+                                    </p>
+                                    <ul className="mt-7 space-y-3 text-sm text-neutral-300">
+                                        {[
+                                            'Everything in Pro Companion',
+                                            'Year-in-Pixels behavioral telemetry',
+                                            'Priority inference routing',
+                                            'Billed securely via Google Play',
+                                        ].map((f) => (
+                                            <li key={f} className="flex items-center gap-2.5 text-xs">
+                                                <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <Link
+                                    href="/subscription"
+                                    className="btn-secondary-obsidian mt-8 w-full py-3 text-xs font-semibold"
+                                >
+                                    Compare Regional Plans
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* FOUNDER NOTE & FAQ */}
+                <section className="relative z-10 border-t border-white/[0.08] py-20 lg:py-24">
+                    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                        {/* Founder Thesis */}
+                        <div className="enterprise-panel p-8 sm:p-10">
+                            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[#D9A760]/40 bg-[#141822] font-serif text-2xl italic text-[#E7C891]">
+                                    AK
+                                </div>
+                                <div>
+                                    <div className="font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                                        Founder&apos;s Thesis
+                                    </div>
+                                    <p className="mt-2 font-serif text-xl leading-relaxed text-[#F4F2EC] sm:text-2xl">
+                                        &ldquo;Most AI assistants are trained to please you in the moment. Growth
+                                        requires intellectual friction—an AI calibrated enough to remember your
+                                        commitments and honest enough to challenge your blindspots.&rdquo;
+                                    </p>
+                                    <div className="mt-4 text-xs text-neutral-400">
+                                        <strong className="text-white">Ashwani Kumar</strong> — Founder, TwinGenie •{' '}
+                                        <a
+                                            href="mailto:ashwani@twingenie.app"
+                                            className="text-[#E7C891] hover:underline"
+                                        >
+                                            ashwani@twingenie.app
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* FAQ */}
+                        <div id="faq" className="mt-16 scroll-mt-24">
+                            <h2 className="text-2xl font-semibold tracking-tight text-[#F4F2EC] sm:text-3xl">
+                                Frequently Asked Questions
+                            </h2>
+                            <div className="mt-6 space-y-3">
+                                {[
+                                    {
+                                        q: 'Why does onboarding start with a 35-question assessment?',
+                                        a: 'Generic AI defaults to polite approval because it lacks behavioral baseline data. Our 35-question Big Five assessment scores your decision style, conflict triggers, and emotional framing so your Twin responds accurately from your very first message.',
+                                    },
+                                    {
+                                        q: 'How is TwinGenie different from general chatbots?',
+                                        a: 'TwinGenie pairs psychometric trait calibration with PostgreSQL pgvector memory and four explicit cognitive modes—including an Honest mode designed to surface avoidance rather than validate excuses.',
+                                    },
+                                    {
+                                        q: 'Is my private journal or reflection data used to train AI models?',
+                                        a: 'Never. Conversations are isolated by Row-Level Security (RLS), transmitted over TLS 1.3, processed under commercial API terms that prohibit model training, and can be selectively erased at any time.',
+                                    },
+                                    {
+                                        q: 'Can I use both the Web app and Android app with one account?',
+                                        a: 'Yes. Your Supabase identity, 35-trait profile, conversation threads, and vector memories stay synchronized between twingenie.app and the Google Play Android application (com.asmind.app).',
+                                    },
+                                ].map((item, idx) => (
+                                    <div key={item.q} className="enterprise-panel overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                                            className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-[#F4F2EC] transition-colors hover:bg-white/[0.02]"
+                                        >
+                                            <span>{item.q}</span>
+                                            <ChevronDown
+                                                className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${
+                                                    openFaq === idx ? 'rotate-180' : ''
+                                                }`}
+                                            />
+                                        </button>
+                                        {openFaq === idx && (
+                                            <div className="border-t border-white/[0.06] px-5 py-4 text-xs leading-relaxed text-neutral-400 sm:text-sm">
+                                                {item.a}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
                 </section>
             </main>
 
-            {/* Comprehensive Footer */}
-            <footer className="border-t border-white/10 bg-slate-950 py-14 px-4 sm:px-6 lg:px-8 relative z-10 text-sm">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
-                    {/* Brand column */}
-                    <div className="space-y-4">
-                        <Link href="/" className="flex items-center gap-3">
-                            <img
-                                src="/logo.png"
-                                alt="TwinGenie Logo"
-                                className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20"
-                            />
-                            <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
-                        </Link>
-                        <p className="text-gray-400 text-xs leading-relaxed">
-                            Personalized AI companion for daily reflection, emotional clarity, and lifelong personal growth.
+            <SiteFooter />
+
+            {/* Coaching Curriculum Modal Preview */}
+            {previewProgramIdx !== null && (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={COACHING_PROGRAMS[previewProgramIdx].title}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                >
+                    <div className="enterprise-panel w-full max-w-lg p-6 sm:p-7">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <div className="font-mono text-[10px] uppercase tracking-wider text-[#D9A760]">
+                                    {COACHING_PROGRAMS[previewProgramIdx].badge}
+                                </div>
+                                <h3 className="mt-1 text-xl font-semibold text-[#F4F2EC]">
+                                    {COACHING_PROGRAMS[previewProgramIdx].title}
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewProgramIdx(null)}
+                                aria-label="Close preview"
+                                className="rounded-lg border border-white/10 p-1.5 text-neutral-400 hover:bg-white/[0.06] hover:text-white"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+                            {COACHING_PROGRAMS[previewProgramIdx].summary}
                         </p>
-                    </div>
 
-                    {/* Product */}
-                    <div className="space-y-3">
-                        <div className="text-xs font-bold uppercase tracking-wider text-white">Product</div>
-                        <ul className="space-y-2 text-xs text-gray-400">
-                            <li><a href="#coaching" className="hover:text-white transition-colors">Life Coach Programs</a></li>
-                            <li><a href="#demo" className="hover:text-white transition-colors">Interactive Demo</a></li>
-                            <li><a href="#modes" className="hover:text-white transition-colors">4 Cognitive Modes</a></li>
-                            <li><a href="#features" className="hover:text-white transition-colors">Core Features</a></li>
-                            <li><a href="#architecture" className="hover:text-white transition-colors">Cloud Architecture</a></li>
-                            <li><a href="#pricing" className="hover:text-white transition-colors">Pricing Plans</a></li>
-                        </ul>
-                    </div>
+                        <div className="mt-5 space-y-2.5">
+                            {COACHING_PROGRAMS[previewProgramIdx].days.map((step) => (
+                                <div
+                                    key={step}
+                                    className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3 text-xs text-neutral-200"
+                                >
+                                    <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D9A760]" />
+                                    <span>{step}</span>
+                                </div>
+                            ))}
+                        </div>
 
-                    {/* Applications */}
-                    <div className="space-y-3">
-                        <div className="text-xs font-bold uppercase tracking-wider text-white">Platforms</div>
-                        <ul className="space-y-2 text-xs text-gray-400">
-                            <li>
-                                <Link href="/onboarding" className="hover:text-purple-300 transition-colors">
-                                    Create Your Twin
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/login" className="hover:text-purple-300 transition-colors">
-                                    Sign In
-                                </Link>
-                            </li>
-                            <li>
-                                <a href={playStoreUrl} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                                    <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>Android (Google Play)</span>
-                                </a>
-                            </li>
-                            <li>
-                                <Link href="/life-coach" className="hover:text-purple-300 transition-colors">
-                                    Life Coach Programs
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/subscription" className="hover:text-white transition-colors">
-                                    Membership & Subscriptions
-                                </Link>
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Legal & Contact */}
-                    <div className="space-y-3">
-                        <div className="text-xs font-bold uppercase tracking-wider text-white">Legal & Support</div>
-                        <ul className="space-y-2 text-xs text-gray-400">
-                            <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-                            <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
-                            <li>
-                                <a href="mailto:founder@twingenie.app" className="hover:text-purple-300 transition-colors">
-                                    founder@twingenie.app
-                                </a>
-                            </li>
-                            <li>
-                                <a href="mailto:ashwani@twingenie.app" className="hover:text-purple-300 transition-colors">
-                                    ashwani@twingenie.app
-                                </a>
-                            </li>
-                            <li>
-                                <a href="mailto:support@twingenie.app" className="hover:text-purple-300 transition-colors">
-                                    support@twingenie.app
-                                </a>
-                            </li>
-                            <li className="text-[11px] text-gray-500 pt-1">
-                                Founder & CEO: Ashwani Kumar
-                            </li>
-                        </ul>
+                        <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+                            <Link
+                                href="/onboarding"
+                                className="btn-primary-ivory flex-1 py-2.5 text-xs"
+                            >
+                                Calibrate Your Twin &amp; Begin
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewProgramIdx(null)}
+                                className="btn-secondary-obsidian py-2.5 text-xs"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-                    <p>© {new Date().getFullYear()} TwinGenie. All rights reserved.</p>
-                    <p className="text-xs text-gray-400">
-                        Empowering personal reflection, emotional clarity, and intentional growth worldwide.
-                    </p>
-                </div>
-            </footer>
+            )}
         </div>
     )
 }

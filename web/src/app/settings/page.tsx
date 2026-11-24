@@ -1,225 +1,177 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useUserStore } from '@/store/useStore';
-import { motion } from 'framer-motion';
-import { User, Bell, Lock, Palette, LogOut, ChevronLeft, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api/client';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState } from 'react'
+import { useUserStore } from '@/store/useStore'
+import { User, Bell, Lock, Palette, LogOut, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api/client'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import WorkspaceHeader from '@/components/Layout/WorkspaceHeader'
 
 export default function SettingsPage() {
-    const router = useRouter();
-    const supabase = createClientComponentClient();
-    const { user, logout } = useUserStore();
-    const [notifications, setNotifications] = useState(true);
-    const [aiMode, setAiMode] = useState('normal');
+    const router = useRouter()
+    const supabase = createClientComponentClient()
+    const { user, logout } = useUserStore()
+    const [notifications, setNotifications] = useState(true)
+    const [aiMode, setAiMode] = useState('normal')
 
     const handleLogout = async () => {
-        // Sign out from Supabase (clears session cookie)
-        await supabase.auth.signOut();
-        // Clear cached API client auth token
-        apiClient.clearToken();
-        // Clear local state
-        logout();
-        // Refresh router to update middleware state
-        router.refresh();
-        // Redirect to login
-        router.push('/login');
-    };
+        await supabase.auth.signOut()
+        apiClient.clearToken()
+        logout()
+        router.refresh()
+        router.push('/login')
+    }
 
     const aiModes = [
-        { value: 'normal', label: 'Normal Twin', description: 'Balanced and empathetic' },
-        { value: 'future', label: 'Future Twin', description: 'Wise and visionary' },
-        { value: 'dark', label: 'Dark Twin', description: 'Brutally honest' },
-        { value: 'therapist', label: 'Therapist Twin', description: 'Professional support' },
-    ];
+        { value: 'normal', label: 'Normal Twin', description: 'Balanced reflection tuned to your traits' },
+        { value: 'future', label: 'Future Twin', description: 'Long-horizon 5-year clarity perspective' },
+        { value: 'dark', label: 'Honest Twin', description: 'Zero-sycophancy direct accountability' },
+        { value: 'therapist', label: 'Reflective Coach', description: 'Socratic emotional inquiry' },
+    ]
 
     return (
-        <div className="min-h-screen p-6">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <button
-                        onClick={() => router.back()}
-                        className="glass-button p-2"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <h1 className="text-3xl font-bold text-white">Settings</h1>
+        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
+            <WorkspaceHeader />
+
+            <main className="mx-auto max-w-4xl space-y-6 px-4 py-10 sm:px-6">
+                <div className="border-b border-white/[0.08] pb-6">
+                    <div className="font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                        Workspace Preferences
+                    </div>
+                    <h1 className="mt-1 text-3xl font-semibold text-[#F4F2EC]">Settings</h1>
                 </div>
 
-                {/* Profile Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="glass-card p-6 mb-6"
-                >
-                    <div className="flex items-center gap-3 mb-6">
-                        <User className="w-6 h-6 text-purple-400" />
-                        <h2 className="text-xl font-semibold text-white">Profile</h2>
+                <section className="enterprise-panel space-y-4 p-6">
+                    <div className="flex items-center gap-2.5">
+                        <User className="h-4 w-4 text-[#D9A760]" />
+                        <h2 className="text-base font-semibold text-white">Identity</h2>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Name
-                            </label>
+                            <label className="mb-1.5 block text-xs font-medium text-neutral-400">Name</label>
                             <input
                                 type="text"
-                                value={user?.name || ''}
-                                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl 
-                                         focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 
-                                         outline-none transition-all text-white"
+                                defaultValue={user?.name || ''}
+                                className="w-full rounded-xl border border-white/[0.12] bg-[#07080B] px-4 py-2.5 text-sm text-white focus:border-[#D9A760]/60 focus:outline-none"
                                 placeholder="Your name"
                             />
                         </div>
-
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Email
-                            </label>
+                            <label className="mb-1.5 block text-xs font-medium text-neutral-400">Email</label>
                             <input
                                 type="email"
                                 value={user?.email || ''}
                                 disabled
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-gray-400"
+                                className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-sm text-neutral-400"
                             />
                         </div>
                     </div>
-                </motion.div>
+                </section>
 
-                {/* AI Personality */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="glass-card p-6 mb-6"
-                >
-                    <div className="flex items-center gap-3 mb-6">
-                        <Palette className="w-6 h-6 text-purple-400" />
-                        <h2 className="text-xl font-semibold text-white">AI Personality</h2>
+                <section className="enterprise-panel space-y-4 p-6">
+                    <div className="flex items-center gap-2.5">
+                        <Palette className="h-4 w-4 text-[#D9A760]" />
+                        <h2 className="text-base font-semibold text-white">Default Twin Perspective</h2>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                         {aiModes.map((mode) => (
                             <button
                                 key={mode.value}
+                                type="button"
                                 onClick={() => setAiMode(mode.value)}
-                                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${aiMode === mode.value
-                                    ? 'border-purple-500 bg-purple-500/20'
-                                    : 'border-white/10 bg-white/5 hover:border-white/20'
-                                    }`}
+                                className={`rounded-xl border p-4 text-left transition-all ${
+                                    aiMode === mode.value
+                                        ? 'border-[#D9A760]/70 bg-[#D9A760]/[0.09] text-white'
+                                        : 'border-white/[0.08] bg-white/[0.02] text-neutral-300 hover:border-white/20'
+                                }`}
                             >
-                                <div className="font-semibold text-white">{mode.label}</div>
-                                <div className="text-sm text-gray-400">{mode.description}</div>
+                                <div className="text-sm font-semibold">{mode.label}</div>
+                                <div className="mt-1 text-xs text-neutral-400">{mode.description}</div>
                             </button>
                         ))}
                     </div>
-                </motion.div>
+                </section>
 
-                {/* Notifications */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="glass-card p-6 mb-6"
-                >
-                    <div className="flex items-center gap-3 mb-6">
-                        <Bell className="w-6 h-6 text-purple-400" />
-                        <h2 className="text-xl font-semibold text-white">Notifications</h2>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                <section className="enterprise-panel p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Bell className="h-4 w-4 text-[#D9A760]" />
                             <div>
-                                <div className="font-medium text-white">Push Notifications</div>
-                                <div className="text-sm text-gray-400">
-                                    Receive proactive check-ins and reminders
+                                <div className="text-sm font-semibold text-white">Proactive Check-Ins</div>
+                                <div className="text-xs text-neutral-400">
+                                    Receive scheduled emotional reminders and reflection prompts
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setNotifications(!notifications)}
-                                className={`relative w-14 h-8 rounded-full transition-colors ${notifications ? 'bg-purple-500' : 'bg-gray-600'
-                                    }`}
-                            >
-                                <div
-                                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${notifications ? 'translate-x-6' : ''
-                                        }`}
-                                />
-                            </button>
                         </div>
-                    </div>
-                </motion.div>
-
-                {/* Privacy */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="glass-card p-6 mb-6"
-                >
-                    <div className="flex items-center gap-3 mb-6">
-                        <Lock className="w-6 h-6 text-purple-400" />
-                        <h2 className="text-xl font-semibold text-white">Privacy & Security</h2>
-                    </div>
-
-                    <div className="space-y-3">
-                        <button className="w-full p-4 rounded-xl border border-white/10 bg-white/5 
-                                         hover:border-white/20 transition-all text-left">
-                            <div className="font-medium text-white">Change Password</div>
-                        </button>
-                        <button className="w-full p-4 rounded-xl border border-white/10 bg-white/5 
-                                         hover:border-white/20 transition-all text-left">
-                            <div className="font-medium text-white">Export Data</div>
-                        </button>
-
                         <button
-                            onClick={async () => {
-                                if (confirm('Are you sure you want to clear your chat history? This cannot be undone.')) {
-                                    try {
-                                        await apiClient.clearChatHistory();
-                                        alert('Chat history cleared successfully');
-                                    } catch (error) {
-                                        alert('Failed to clear history');
-                                    }
+                            type="button"
+                            onClick={() => setNotifications(!notifications)}
+                            className={`relative h-7 w-12 rounded-full transition-colors ${
+                                notifications ? 'bg-[#D9A760]' : 'bg-white/15'
+                            }`}
+                        >
+                            <span
+                                className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-[#07080B] transition-transform ${
+                                    notifications ? 'translate-x-5' : ''
+                                }`}
+                            />
+                        </button>
+                    </div>
+                </section>
+
+                <section className="enterprise-panel space-y-3 p-6">
+                    <div className="mb-2 flex items-center gap-2.5">
+                        <Lock className="h-4 w-4 text-[#D9A760]" />
+                        <h2 className="text-base font-semibold text-white">Privacy &amp; Data Governance</h2>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            if (confirm('Clear your entire chat history? This cannot be undone.')) {
+                                try {
+                                    await apiClient.clearChatHistory()
+                                    alert('Chat history cleared successfully')
+                                } catch {
+                                    alert('Failed to clear history')
                                 }
-                            }}
-                            className="w-full p-4 rounded-xl border border-red-500/30 bg-red-500/10 
-                                         hover:border-red-500/50 transition-all text-left flex items-center gap-3"
-                        >
-                            <Trash2 className="w-5 h-5 text-red-400" />
-                            <div className="font-medium text-red-400">Clear Chat History</div>
-                        </button>
+                            }
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-left text-sm font-medium text-rose-300 transition-colors hover:bg-rose-500/15"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Clear Chat History</span>
+                    </button>
 
-                        <button
-                            onClick={() => router.push('/delete-data')}
-                            className="w-full p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 
-                                         hover:border-amber-500/50 transition-all text-left"
-                        >
-                            <div className="font-medium text-amber-300">Delete Specific Data</div>
-                        </button>
+                    <button
+                        type="button"
+                        onClick={() => router.push('/delete-data')}
+                        className="w-full rounded-xl border border-[#D9A760]/30 bg-[#D9A760]/10 p-4 text-left text-sm font-medium text-[#E7C891] transition-colors hover:bg-[#D9A760]/15"
+                    >
+                        Delete Specific Data Categories
+                    </button>
 
-                        <button
-                            onClick={() => router.push('/delete-account')}
-                            className="w-full p-4 rounded-xl border border-red-500/30 bg-red-500/10 
-                                         hover:border-red-500/50 transition-all text-left">
-                            <div className="font-medium text-red-400">Delete Account</div>
-                        </button>
-                    </div>
-                </motion.div>
+                    <button
+                        type="button"
+                        onClick={() => router.push('/delete-account')}
+                        className="w-full rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-left text-sm font-medium text-rose-300 transition-colors hover:bg-rose-500/15"
+                    >
+                        Permanently Delete Account
+                    </button>
+                </section>
 
-                {/* Logout */}
                 <button
+                    type="button"
                     onClick={handleLogout}
-                    className="w-full p-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white 
-                             rounded-xl font-semibold hover:shadow-lg hover:scale-105 
-                             transition-all flex items-center justify-center gap-2"
+                    className="btn-secondary-obsidian w-full py-3.5 text-sm"
                 >
-                    <LogOut className="w-5 h-5" />
-                    Logout
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign Out</span>
                 </button>
-            </div>
+            </main>
         </div>
-    );
+    )
 }

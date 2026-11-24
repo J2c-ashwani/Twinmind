@@ -1,45 +1,48 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { motion } from 'framer-motion'
+import { Lock, Mail, User } from 'lucide-react'
 import {
     captureAttributionFromLocation,
     clearPendingAttribution,
     getPendingAttribution,
-} from '@/lib/attribution';
+} from '@/lib/attribution'
+import SiteHeader from '@/components/Layout/SiteHeader'
+import SiteFooter from '@/components/Layout/SiteFooter'
+import { BrandEmblem } from '@/components/Layout/BrandMark'
 
 export default function SignupPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [fullName, setFullName] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [infoMessage, setInfoMessage] = useState('');
-    const [referralCode, setReferralCode] = useState('');
-    const router = useRouter();
-    const supabase = createClientComponentClient();
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [fullName, setFullName] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const [infoMessage, setInfoMessage] = useState('')
+    const [referralCode, setReferralCode] = useState('')
+    const router = useRouter()
+    const supabase = createClientComponentClient()
 
     useEffect(() => {
-        const captured = captureAttributionFromLocation();
+        const captured = captureAttributionFromLocation()
         if (captured.referralCode) {
-            setReferralCode(captured.referralCode);
+            setReferralCode(captured.referralCode)
         }
-    }, []);
+    }, [])
 
     const handleSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        setInfoMessage('');
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+        setInfoMessage('')
 
-        const attribution = getPendingAttribution();
-        const activeRef = (referralCode || attribution.referralCode || '').trim().toUpperCase() || undefined;
+        const attribution = getPendingAttribution()
+        const activeRef = (referralCode || attribution.referralCode || '').trim().toUpperCase() || undefined
 
         try {
-            // Sign up with Supabase and store referral/UTM metadata for confirmation flows
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -48,11 +51,11 @@ export default function SignupPage() {
                         full_name: fullName,
                         ...(activeRef ? { referral_code: activeRef } : {}),
                         ...(Object.keys(attribution).length > 0 ? { attribution } : {}),
-                    }
-                }
-            });
+                    },
+                },
+            })
 
-            if (signUpError) throw signUpError;
+            if (signUpError) throw signUpError
 
             if (data.user && data.session?.access_token) {
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/signup`, {
@@ -67,135 +70,157 @@ export default function SignupPage() {
                         fullName: fullName,
                         referralCode: activeRef,
                         attribution,
-                    })
-                });
+                    }),
+                })
 
                 if (response.ok) {
-                    clearPendingAttribution();
+                    clearPendingAttribution()
                 } else {
-                    console.warn('Backend signup setup returned non-200; deferred attribution preserved for next login');
+                    console.warn('Backend signup setup returned non-200; deferred attribution preserved for next login')
                 }
 
-                router.refresh();
-                router.push('/onboarding');
+                router.refresh()
+                router.push('/onboarding')
             } else if (data.user) {
-                // Email confirmation is enabled; keep pending attribution in localStorage + auth user_metadata
-                setInfoMessage('Check your email to confirm your account, then sign in. Your invite code and progress will be linked automatically.');
+                setInfoMessage(
+                    'Check your email to confirm your account, then sign in. Your invite code and onboarding progress are preserved.'
+                )
             }
         } catch (err: any) {
-            setError(err.message || 'Failed to sign up');
+            setError(err.message || 'Failed to sign up')
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black flex items-center justify-center p-4">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md"
-            >
-                <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
-                    <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                            🧠 TwinGenie
-                        </h1>
-                        <p className="text-gray-300 mt-2">Create your account</p>
-                    </div>
+        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC] flex flex-col">
+            <SiteHeader minimal />
 
-                    <form onSubmit={handleSignup} className="space-y-5">
-                        {referralCode && (
-                            <div className="rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
-                                Invite code applied: {referralCode}
+            <main className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 bg-grid-architectural opacity-40 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+
+                <motion.div
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative z-10 w-full max-w-md"
+                >
+                    <div className="enterprise-panel p-8">
+                        <div className="mb-8 text-center">
+                            <div className="mb-4 flex justify-center">
+                                <BrandEmblem size="lg" />
                             </div>
-                        )}
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Full Name
-                            </label>
-                            <input
-                                type="text"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                                placeholder="John Doe"
-                                required
-                            />
+                            <h1 className="text-2xl font-semibold tracking-tight text-[#F4F2EC]">
+                                Create your TwinGenie account
+                            </h1>
+                            <p className="mt-1.5 text-sm text-neutral-400">
+                                Proceed directly to your 35-question twin calibration
+                            </p>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                                placeholder="you@example.com"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Password
-                            </label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                                placeholder="••••••••"
-                                minLength={6}
-                                required
-                            />
-                        </div>
-
-                        {error && (
-                            <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl text-sm">
-                                {error}
-                            </div>
-                        )}
-
-                        {infoMessage && (
-                            <div className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-xl text-sm">
-                                {infoMessage}
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30"
-                        >
-                            {loading ? (
-                                <div className="flex items-center justify-center gap-2">
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Creating account...
+                        <form onSubmit={handleSignup} className="space-y-4">
+                            {referralCode && (
+                                <div className="rounded-xl border border-[#D9A760]/30 bg-[#D9A760]/10 px-4 py-2.5 text-xs text-[#E7C891]">
+                                    Invite code applied: <strong className="font-mono">{referralCode}</strong>
                                 </div>
-                            ) : (
-                                'Sign Up'
                             )}
-                        </button>
-                    </form>
 
-                    <p className="text-center text-gray-400 mt-6">
-                        Already have an account?{' '}
-                        <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium">
-                            Sign in
-                        </Link>
-                    </p>
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                                    Full Name
+                                </label>
+                                <div className="relative">
+                                    <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                                    <input
+                                        type="text"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        className="w-full rounded-xl border border-white/[0.12] bg-[#07080B] py-3 pl-10 pr-4 text-sm text-white placeholder-neutral-500 focus:border-[#D9A760]/60 focus:outline-none"
+                                        placeholder="Jane Doe"
+                                        required
+                                    />
+                                </div>
+                            </div>
 
-                    <p className="text-center text-gray-500 text-xs mt-6">
-                        By signing up, you agree to our{' '}
-                        <Link href="/terms" className="text-purple-400 hover:text-purple-300">Terms</Link> and{' '}
-                        <Link href="/privacy" className="text-purple-400 hover:text-purple-300">Privacy Policy</Link>
-                    </p>
-                </div>
-            </motion.div>
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                                    Email
+                                </label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full rounded-xl border border-white/[0.12] bg-[#07080B] py-3 pl-10 pr-4 text-sm text-white placeholder-neutral-500 focus:border-[#D9A760]/60 focus:outline-none"
+                                        placeholder="you@domain.com"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full rounded-xl border border-white/[0.12] bg-[#07080B] py-3 pl-10 pr-4 text-sm text-white placeholder-neutral-500 focus:border-[#D9A760]/60 focus:outline-none"
+                                        placeholder="Minimum 6 characters"
+                                        minLength={6}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-300">
+                                    {error}
+                                </div>
+                            )}
+
+                            {infoMessage && (
+                                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
+                                    {infoMessage}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="btn-primary-ivory mt-2 w-full py-3.5 text-sm disabled:opacity-50"
+                            >
+                                {loading ? 'Creating account...' : 'Continue to 35-Trait Assessment'}
+                            </button>
+                        </form>
+
+                        <p className="mt-6 text-center text-xs text-neutral-400">
+                            Already have an account?{' '}
+                            <Link href="/login" className="font-medium text-[#E7C891] hover:underline">
+                                Sign in
+                            </Link>
+                        </p>
+
+                        <p className="mt-4 text-center text-[11px] text-neutral-500">
+                            By signing up, you agree to our{' '}
+                            <Link href="/terms" className="text-neutral-300 hover:underline">
+                                Terms
+                            </Link>{' '}
+                            and{' '}
+                            <Link href="/privacy" className="text-neutral-300 hover:underline">
+                                Privacy Policy
+                            </Link>
+                            .
+                        </p>
+                    </div>
+                </motion.div>
+            </main>
+
+            <SiteFooter />
         </div>
-    );
+    )
 }

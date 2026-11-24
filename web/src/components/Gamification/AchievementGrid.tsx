@@ -1,147 +1,98 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useGamificationStore } from '@/store/useStore';
-import { apiClient } from '@/lib/api/client';
-import { motion } from 'framer-motion';
-import { Trophy, Lock, Sparkles } from 'lucide-react';
+import { useEffect } from 'react'
+import { useGamificationStore } from '@/store/useStore'
+import { apiClient } from '@/lib/api/client'
+import { motion } from 'framer-motion'
+import { Trophy, Lock, Award } from 'lucide-react'
 
 export default function AchievementGrid() {
-    const { achievements, setAchievements } = useGamificationStore();
+    const { achievements, setAchievements } = useGamificationStore()
 
     useEffect(() => {
-        loadAchievements();
-    }, []);
+        loadAchievements()
+    }, [])
 
     const loadAchievements = async () => {
         try {
-            const data = await apiClient.getAchievements() as any;
-            setAchievements(data || []);
+            const data = (await apiClient.getAchievements()) as any
+            setAchievements(data || [])
         } catch (error) {
-            console.error('Failed to load achievements:', error);
+            console.error('Failed to load achievements:', error)
         }
-    };
+    }
 
-    const getRarityColor = (rarity: string) => {
-        const colors: Record<string, string> = {
-            common: 'from-gray-400 to-gray-600',
-            rare: 'from-blue-400 to-blue-600',
-            epic: 'from-purple-400 to-purple-600',
-            legendary: 'from-yellow-400 to-yellow-600',
-        };
-        return colors[rarity] || colors.common;
-    };
-
-    const getRarityGlow = (rarity: string) => {
-        const glows: Record<string, string> = {
-            common: 'shadow-gray-500/50',
-            rare: 'shadow-blue-500/50',
-            epic: 'shadow-purple-500/50',
-            legendary: 'shadow-yellow-500/50',
-        };
-        return glows[rarity] || glows.common;
-    };
+    const rarityPill = (rarity: string) => {
+        switch (rarity) {
+            case 'legendary':
+                return 'border-[#D9A760]/40 bg-[#D9A760]/15 text-[#E7C891]'
+            case 'epic':
+                return 'border-rose-500/35 bg-rose-500/10 text-rose-300'
+            case 'rare':
+                return 'border-sky-500/35 bg-sky-500/10 text-sky-300'
+            default:
+                return 'border-white/15 bg-white/[0.04] text-neutral-400'
+        }
+    }
 
     return (
-        <div className="max-w-6xl mx-auto p-6">
-            {/* Header */}
+        <div className="mx-auto max-w-6xl p-6 text-[#F4F2EC]">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                    <Trophy className="w-8 h-8 text-yellow-500" />
-                    Achievements
+                <h1 className="flex items-center gap-3 text-2xl font-semibold">
+                    <Trophy className="h-6 w-6 text-[#D9A760]" />
+                    <span>Achievements</span>
                 </h1>
-                <p className="text-gray-600">
-                    {achievements.length} achievements unlocked
+                <p className="mt-1 font-mono text-xs text-neutral-400">
+                    {achievements.length} achievements tracked
                 </p>
             </div>
 
-            {/* Achievement grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {achievements.map((achievement, index) => (
                     <motion.div
                         key={achievement.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="relative group"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04 }}
+                        className={`enterprise-panel relative flex flex-col justify-between p-6 ${
+                            achievement.unlocked_at ? 'border-[#D9A760]/35' : 'opacity-75'
+                        }`}
                     >
-                        <div
-                            className={`bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all cursor-pointer overflow-hidden ${achievement.unlocked_at ? getRarityGlow(achievement.rarity) : ''
-                                }`}
-                        >
-                            {/* Rarity badge */}
-                            <div className="absolute top-4 right-4">
+                        <div>
+                            <div className="mb-4 flex items-center justify-between">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#07080B]">
+                                    {achievement.unlocked_at ? (
+                                        <Award className="h-5 w-5 text-[#E7C891]" />
+                                    ) : (
+                                        <Lock className="h-4 w-4 text-neutral-500" />
+                                    )}
+                                </div>
                                 <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r ${getRarityColor(
+                                    className={`rounded-md border px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase ${rarityPill(
                                         achievement.rarity
                                     )}`}
                                 >
-                                    {achievement.rarity.toUpperCase()}
+                                    {achievement.rarity}
                                 </span>
                             </div>
 
-                            {/* Icon */}
-                            <div className="mb-4">
-                                {achievement.unlocked_at ? (
-                                    <div className="relative">
-                                        <div className="text-6xl mb-2">{achievement.icon}</div>
-                                        {achievement.rarity === 'legendary' && (
-                                            <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-500 animate-pulse" />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="relative">
-                                        <div className="text-6xl mb-2 grayscale opacity-30">{achievement.icon}</div>
-                                        <Lock className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-gray-400" />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Content */}
-                            <h3
-                                className={`text-lg font-bold mb-2 ${achievement.unlocked_at ? 'text-gray-900' : 'text-gray-400'
-                                    }`}
-                            >
+                            <h3 className="text-base font-semibold text-white">
                                 {achievement.achievement_name}
                             </h3>
-                            <p
-                                className={`text-sm mb-4 ${achievement.unlocked_at ? 'text-gray-600' : 'text-gray-400'
-                                    }`}
-                            >
-                                {achievement.description}
-                            </p>
+                            <p className="mt-1.5 text-xs text-neutral-400">{achievement.description}</p>
+                        </div>
 
-                            {/* Footer */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
-                                        {achievement.points}
-                                    </div>
-                                    <span className="text-sm text-gray-500">XP</span>
-                                </div>
-
-                                {achievement.unlocked_at && (
-                                    <span className="text-xs text-gray-500">
-                                        {new Date(achievement.unlocked_at).toLocaleDateString()}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Unlock animation overlay */}
-                            {achievement.unlocked_at && achievement.rarity === 'legendary' && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 pointer-events-none"></div>
+                        <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-3.5 font-mono text-xs">
+                            <span className="text-[#E7C891]">{achievement.points} XP</span>
+                            {achievement.unlocked_at && (
+                                <span className="text-neutral-500">
+                                    {new Date(achievement.unlocked_at).toLocaleDateString()}
+                                </span>
                             )}
                         </div>
                     </motion.div>
                 ))}
             </div>
-
-            {achievements.length === 0 && (
-                <div className="text-center py-12">
-                    <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Start chatting to unlock achievements!</p>
-                </div>
-            )}
         </div>
-    );
+    )
 }

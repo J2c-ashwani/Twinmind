@@ -1,60 +1,71 @@
 import type { Metadata } from 'next'
+import { Plus_Jakarta_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+
+const plusJakarta = Plus_Jakarta_Sans({
+    subsets: ['latin'],
+    variable: '--font-sans',
+    display: 'swap',
+})
+
+const instrumentSerif = Instrument_Serif({
+    subsets: ['latin'],
+    weight: '400',
+    style: ['normal', 'italic'],
+    variable: '--font-serif',
+    display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    variable: '--font-mono',
+    display: 'swap',
+})
 
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://twingenie.app'),
-    // Basic SEO
     title: {
-        default: 'TwinGenie - AI Personal Digital Twin for Reflection & Growth',
-        template: '%s | TwinGenie'
+        default: 'TwinGenie — Psychometric Digital Twin & Cognitive Reflection Platform',
+        template: '%s | TwinGenie',
     },
-    description: 'TwinGenie is an AI-powered personal digital twin companion that helps you examine assumptions, challenge cognitive blindspots, and track personal growth across 4 distinct cognitive perspectives.',
+    description:
+        'TwinGenie calibrates a 35-trait psychometric digital twin with persistent vector memory to deliver structured cognitive reflection across four distinct decision perspectives.',
     keywords: [
         'AI digital twin',
-        'personal growth AI',
-        'AI companion app',
-        'cognitive reflection',
-        'mental wellness',
-        'self-improvement AI',
+        'psychometric AI',
+        'personal cognitive intelligence',
         'Big Five personality assessment',
-        'AI life coach',
-        'daily journaling',
-        'mood tracking',
-        'vector memory AI',
-        'TwinGenie'
+        'vector memory AI companion',
+        'decision reflection platform',
+        'TwinGenie',
     ],
     authors: [{ name: 'Ashwani Kumar', url: 'https://twingenie.app' }],
     creator: 'TwinGenie',
-    publisher: 'TwinGenie Inc.',
-
-    // Open Graph (Facebook, LinkedIn, Google crawlers)
+    publisher: 'TwinGenie',
     openGraph: {
         type: 'website',
         locale: 'en_US',
         url: 'https://twingenie.app',
         siteName: 'TwinGenie',
-        title: 'TwinGenie - AI Personal Digital Twin for Reflection & Growth',
-        description: 'An AI companion that does not just validate you. Explore 4 cognitive perspectives, examine your assumptions, and achieve true personal growth.',
+        title: 'TwinGenie — Psychometric Digital Twin & Cognitive Reflection Platform',
+        description:
+            'Calibrate your 35-trait digital twin and examine complex life decisions across four calibrated perspectives.',
         images: [
             {
                 url: '/og-image.png',
                 width: 1200,
                 height: 630,
-                alt: 'TwinGenie - AI Personal Digital Twin'
-            }
-        ]
+                alt: 'TwinGenie Cognitive Digital Twin Platform',
+            },
+        ],
     },
-
-    // Twitter Card
     twitter: {
         card: 'summary_large_image',
-        title: 'TwinGenie - AI Personal Digital Twin',
-        description: 'Less validation. More self-understanding. Chat, reflect, and grow with your AI twin.',
+        title: 'TwinGenie — Psychometric Digital Twin',
+        description: 'Four calibrated perspectives backed by a 35-trait personality engine and semantic vector memory.',
         images: ['/og-image.png'],
-        creator: '@twingenieapp'
+        creator: '@twingenieapp',
     },
-
-    // Robots
     robots: {
         index: true,
         follow: true,
@@ -66,27 +77,18 @@ export const metadata: Metadata = {
             'max-snippet': -1,
         },
     },
-
-    // Alternates
     alternates: {
         canonical: 'https://twingenie.app',
     },
-
-    // App metadata
     applicationName: 'TwinGenie',
-    category: 'Productivity & Lifestyle',
-
-    // Icons
+    category: 'Lifestyle & Productivity',
     icons: {
         icon: '/logo.png',
         apple: '/logo.png',
     },
-
-    // Manifest
     manifest: '/manifest.json',
 }
 
-// JSON-LD Structured Data
 const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -99,44 +101,40 @@ const jsonLd = {
             founder: {
                 '@type': 'Person',
                 name: 'Ashwani Kumar',
-                email: 'ashwani@twingenie.app'
+                email: 'ashwani@twingenie.app',
             },
             contactPoint: {
                 '@type': 'ContactPoint',
-                email: 'ashwani@twingenie.app',
-                contactType: 'customer support'
-            }
+                email: 'support@twingenie.app',
+                contactType: 'customer support',
+            },
         },
         {
             '@type': 'SoftwareApplication',
             '@id': 'https://twingenie.app/#application',
             name: 'TwinGenie',
-            applicationCategory: 'HealthAndFitnessApplication, ProductivityApplication',
+            applicationCategory: 'LifestyleApplication, ProductivityApplication',
             operatingSystem: 'Web, Android (Google Play)',
-            description: 'AI-powered digital twin companion for self-reflection, cognitive growth, and personal development.',
+            description:
+                'Psychometric AI digital twin platform built on a 35-trait personality assessment, semantic vector memory, and four calibrated reflection perspectives.',
             url: 'https://twingenie.app',
             installUrl: 'https://play.google.com/store/apps/details?id=com.asmind.app',
             offers: [
                 {
                     '@type': 'Offer',
-                    name: 'Free Tier',
+                    name: 'Free Starter',
                     price: '0',
-                    priceCurrency: 'USD'
+                    priceCurrency: 'USD',
                 },
                 {
                     '@type': 'Offer',
                     name: 'Pro Companion',
                     price: '5.99',
-                    priceCurrency: 'USD'
-                }
+                    priceCurrency: 'USD',
+                },
             ],
-            aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: '4.8',
-                ratingCount: '1240'
-            }
-        }
-    ]
+        },
+    ],
 }
 
 export default function RootLayout({
@@ -145,22 +143,22 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="en">
+        <html
+            lang="en"
+            className={`${plusJakarta.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
+        >
             <head>
-                {/* JSON-LD Structured Data */}
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
-
-                {/* PWA */}
                 <link rel="manifest" href="/manifest.json" />
                 <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-                <meta name="theme-color" content="#9333EA" />
+                <meta name="theme-color" content="#07080B" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
             </head>
-            <body>
+            <body className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
                 {children}
             </body>
         </html>

@@ -1,194 +1,178 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Users, UserPlus, LogIn, ArrowRight } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
-import GrowthCircleWidget from '@/components/Circles/GrowthCircleWidget';
-import CircleInviteModal from '@/components/Circles/CircleInviteModal';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { Users, LogIn, ArrowRight, Flame, Trophy, Brain } from 'lucide-react'
+import { apiClient } from '@/lib/api/client'
+import GrowthCircleWidget from '@/components/Circles/GrowthCircleWidget'
+import CircleInviteModal from '@/components/Circles/CircleInviteModal'
+import WorkspaceHeader from '@/components/Layout/WorkspaceHeader'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function GrowthCirclesPage() {
-    const [hasCircle, setHasCircle] = useState<boolean | null>(null);
-    const [showInviteModal, setShowInviteModal] = useState(false);
-    const [activeCircle, setActiveCircle] = useState<{ id: string; name: string } | null>(null);
-    const [joinCode, setJoinCode] = useState('');
-    const [isJoining, setIsJoining] = useState(false);
-    const [joinError, setJoinError] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
+    const [hasCircle, setHasCircle] = useState<boolean | null>(null)
+    const [showInviteModal, setShowInviteModal] = useState(false)
+    const [activeCircle, setActiveCircle] = useState<{ id: string; name: string } | null>(null)
+    const [joinCode, setJoinCode] = useState('')
+    const [isJoining, setIsJoining] = useState(false)
+    const [joinError, setJoinError] = useState('')
+    const [isLoading, setIsLoading] = useState(true)
 
-    const supabase = createClientComponentClient();
+    const supabase = createClientComponentClient()
 
     useEffect(() => {
-        const invite = new URLSearchParams(window.location.search).get('invite');
-        if (invite) setJoinCode(invite.toUpperCase());
-        checkCircleStatus();
-    }, []);
+        const invite = new URLSearchParams(window.location.search).get('invite')
+        if (invite) setJoinCode(invite.toUpperCase())
+        checkCircleStatus()
+    }, [])
 
     const checkCircleStatus = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const {
+                data: { session },
+            } = await supabase.auth.getSession()
             if (session) {
-                apiClient.setToken(session.access_token);
-                // The widget handles its own loading, but we need to know if we even have a circle 
-                // to toggle the "Join" UI vs "Dashboard" UI
-                const data = await apiClient.getMyCircle() as any;
-                setHasCircle(!!data?.circle);
+                apiClient.setToken(session.access_token)
+                const data = (await apiClient.getMyCircle()) as any
+                setHasCircle(!!data?.circle)
                 if (data?.circle) {
-                    setActiveCircle({ id: data.circle.id, name: data.circle.name });
+                    setActiveCircle({ id: data.circle.id, name: data.circle.name })
                 }
             }
         } catch (error) {
-            console.error('Failed to check status:', error);
-            setHasCircle(false);
+            console.error('Failed to check status:', error)
+            setHasCircle(false)
         } finally {
-            setIsLoading(false);
+            setIsLoading(false)
         }
-    };
+    }
 
     const handleJoinCircle = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!joinCode.trim()) return;
+        e.preventDefault()
+        if (!joinCode.trim()) return
 
-        setIsJoining(true);
-        setJoinError('');
+        setIsJoining(true)
+        setJoinError('')
 
         try {
-            await apiClient.joinCircle(joinCode);
-            // Success! Reload to show the dashboard
-            window.location.reload();
+            await apiClient.joinCircle(joinCode)
+            window.location.reload()
         } catch (error: any) {
-            setJoinError(error.message || 'Failed to join circle. Check code and try again.');
+            setJoinError(error.message || 'Failed to join circle. Check code and try again.')
         } finally {
-            setIsJoining(false);
+            setIsJoining(false)
         }
-    };
+    }
 
     const handleInviteClick = (circleId: string, circleName: string) => {
-        setActiveCircle({ id: circleId, name: circleName });
-        setShowInviteModal(true);
-    };
-
-    if (isLoading) {
-        return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-        </div>;
+        setActiveCircle({ id: circleId, name: circleName })
+        setShowInviteModal(true)
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
-            {/* Spotlight Header */}
-            <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900 text-white pt-20 pb-32 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
+        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
+            <WorkspaceHeader />
 
-                <div className="max-w-4xl mx-auto px-6 relative z-10 text-center">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-                            <Users className="w-4 h-4 text-purple-300" />
-                            <span className="text-purple-100">Beta Feature</span>
+            {isLoading ? (
+                <div className="flex min-h-[70vh] items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#D9A760] border-t-transparent" />
+                </div>
+            ) : (
+                <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+                    <div className="mb-10 border-b border-white/[0.08] pb-6">
+                        <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                            <Users className="h-3.5 w-3.5" />
+                            Private Accountability Pods
                         </div>
-                        <h1 className="text-5xl font-bold mb-6 tracking-tight">
+                        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#F4F2EC]">
                             Growth Circles
                         </h1>
-                        <p className="text-xl text-purple-100 max-w-2xl mx-auto leading-relaxed">
-                            Join forces with up to 5 friends. Build streaks, unlock milestones, and keep each other accountable.
+                        <p className="mt-2 max-w-2xl text-sm text-neutral-400">
+                            Join up to 5 trusted peers to track collective consistency streaks without public social
+                            feeds.
                         </p>
-                    </motion.div>
-                </div>
-            </div>
+                    </div>
 
-            <div className="max-w-4xl mx-auto px-6 -mt-24 relative z-20">
-                {/* Main Content Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8"
-                >
-                    <GrowthCircleWidget onInviteClick={handleInviteClick} />
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="enterprise-panel p-6 sm:p-8"
+                    >
+                        <GrowthCircleWidget onInviteClick={handleInviteClick} />
 
-                    {/* Show Join Form ONLY if user has no circle (Widget shows 'Create' state by default if null, but we want 'Join' option too) */}
-                    {!hasCircle && (
-                        <div className="mt-12 pt-12 border-t border-gray-100">
-                            <div className="text-center mb-8">
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Have an invite code?</h3>
-                                <p className="text-gray-500">Enter the code shared by your friend to join their circle</p>
-                            </div>
-
-                            <form onSubmit={handleJoinCircle} className="max-w-md mx-auto">
-                                <div className="flex gap-3">
-                                    <div className="relative flex-1">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <LogIn className="w-5 h-5 text-gray-400" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={joinCode}
-                                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                                            placeholder="ENTER-CODE"
-                                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-mono text-center tracking-widest uppercase"
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={isJoining || !joinCode}
-                                        className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {isJoining ? 'Joining...' : 'Join'}
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                {joinError && (
-                                    <p className="mt-3 text-red-500 text-sm text-center bg-red-50 py-2 rounded-lg">
-                                        {joinError}
+                        {!hasCircle && (
+                            <div className="mt-10 border-t border-white/[0.08] pt-8">
+                                <div className="mb-6 text-center">
+                                    <h2 className="text-lg font-semibold text-[#F4F2EC]">Have an invite code?</h2>
+                                    <p className="mt-1 text-xs text-neutral-400">
+                                        Enter the code shared by your circle host to connect.
                                     </p>
-                                )}
-                            </form>
+                                </div>
+
+                                <form onSubmit={handleJoinCircle} className="mx-auto max-w-md">
+                                    <div className="flex gap-2.5">
+                                        <div className="relative flex-1">
+                                            <LogIn className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                                            <input
+                                                type="text"
+                                                value={joinCode}
+                                                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                                placeholder="ENTER-CODE"
+                                                className="w-full rounded-xl border border-white/[0.12] bg-[#07080B] py-3 pl-10 pr-3 text-center font-mono text-xs tracking-widest uppercase text-white focus:border-[#D9A760]/60 focus:outline-none"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={isJoining || !joinCode}
+                                            className="btn-primary-ivory px-5 py-3 text-xs disabled:opacity-40"
+                                        >
+                                            <span>{isJoining ? 'Joining...' : 'Join'}</span>
+                                            <ArrowRight className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                    {joinError && (
+                                        <p className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2 text-center text-xs text-rose-300">
+                                            {joinError}
+                                        </p>
+                                    )}
+                                </form>
+                            </div>
+                        )}
+                    </motion.div>
+
+                    {!hasCircle && (
+                        <div className="mt-8 grid gap-4 md:grid-cols-3">
+                            {[
+                                {
+                                    icon: Flame,
+                                    title: 'Collective Streaks',
+                                    desc: 'Combine daily reflection momentum across members.',
+                                },
+                                {
+                                    icon: Trophy,
+                                    title: 'Shared Milestones',
+                                    desc: 'Reach weekly accountability benchmarks together.',
+                                },
+                                {
+                                    icon: Brain,
+                                    title: 'Privacy First',
+                                    desc: 'Reflections stay private—only streaks and wins sync.',
+                                },
+                            ].map((item) => {
+                                const Icon = item.icon
+                                return (
+                                    <div key={item.title} className="enterprise-panel p-6">
+                                        <Icon className="mb-3 h-5 w-5 text-[#D9A760]" />
+                                        <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+                                        <p className="mt-1 text-xs text-neutral-400">{item.desc}</p>
+                                    </div>
+                                )
+                            })}
                         </div>
                     )}
-                </motion.div>
+                </main>
+            )}
 
-                {/* Features Grid */}
-                {!hasCircle && (
-                    <div className="grid md:grid-cols-3 gap-6 mt-12">
-                        {[
-                            {
-                                icon: "🔥",
-                                title: "Collective Streaks",
-                                desc: "Combine your daily streaks to unlock higher tiers."
-                            },
-                            {
-                                icon: "🏆",
-                                title: "Group Milestones",
-                                desc: "Hit goals together to earn exclusive badges."
-                            },
-                            {
-                                icon: "🧠",
-                                title: "AI Insights",
-                                desc: "Get group-level insights on your collective growth."
-                            }
-                        ].map((feature, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 + (i * 0.1) }}
-                                className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center"
-                            >
-                                <div className="text-4xl mb-4">{feature.icon}</div>
-                                <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
-                                <p className="text-sm text-gray-500">{feature.desc}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Invite Modal */}
             {activeCircle && (
                 <CircleInviteModal
                     isOpen={showInviteModal}
@@ -198,5 +182,5 @@ export default function GrowthCirclesPage() {
                 />
             )}
         </div>
-    );
+    )
 }

@@ -1,268 +1,261 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Users, Search, Sparkles, Check, X, UserPlus, Heart, Share2 } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Users, Search, Sparkles, Check, UserPlus } from 'lucide-react'
+import { apiClient } from '@/lib/api/client'
+import { motion } from 'framer-motion'
+import WorkspaceHeader from '@/components/Layout/WorkspaceHeader'
 
 interface MatchInvitation {
-    id: string;
-    direction: 'incoming' | 'outgoing';
-    partner_twin_name: string;
-    status: 'pending' | 'accepted' | 'declined' | 'revoked';
+    id: string
+    direction: 'incoming' | 'outgoing'
+    partner_twin_name: string
+    status: 'pending' | 'accepted' | 'declined' | 'revoked'
 }
 
 export default function TwinMatchPage() {
-    const router = useRouter();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [matchResult, setMatchResult] = useState<any>(null);
-    const [error, setError] = useState('');
-    const [statusMessage, setStatusMessage] = useState('');
-    const [invitations, setInvitations] = useState<MatchInvitation[]>([]);
+    const router = useRouter()
+    const [searchQuery, setSearchQuery] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [actionLoading, setActionLoading] = useState(false)
+    const [matchResult, setMatchResult] = useState<any>(null)
+    const [error, setError] = useState('')
+    const [statusMessage, setStatusMessage] = useState('')
+    const [invitations, setInvitations] = useState<MatchInvitation[]>([])
 
     useEffect(() => {
-        loadInvitations();
-    }, []);
+        loadInvitations()
+    }, [])
 
     const loadInvitations = async () => {
         try {
-            const res = (await apiClient.getTwinMatchInvitations()) as any;
-            setInvitations(res?.invitations || []);
-        } catch {
-            // Non-blocking on initial load
-        }
-    };
+            const res = (await apiClient.getTwinMatchInvitations()) as any
+            setInvitations(res?.invitations || [])
+        } catch {}
+    }
 
     const handleSearchOrInvite = async () => {
-        if (!searchQuery.trim()) return;
-
-        setLoading(true);
-        setError('');
-        setStatusMessage('');
-        setMatchResult(null);
+        if (!searchQuery.trim()) return
+        setLoading(true)
+        setError('')
+        setStatusMessage('')
+        setMatchResult(null)
 
         try {
-            // First attempt direct compare (succeeds if mutual consent exists)
-            const comparison = await apiClient.compareTwins(searchQuery);
-            setMatchResult(comparison);
+            const comparison = await apiClient.compareTwins(searchQuery)
+            setMatchResult(comparison)
         } catch (err: any) {
-            // If mutual consent does not exist yet, send a consent invitation
             try {
-                const inviteRes = (await apiClient.inviteTwinMatch(searchQuery)) as any;
+                const inviteRes = (await apiClient.inviteTwinMatch(searchQuery)) as any
                 setStatusMessage(
                     inviteRes?.message ||
-                    'Match invitation sent! You can view full compatibility once your friend accepts.'
-                );
-                await loadInvitations();
+                        'Match invitation sent! Full compatibility activates once accepted.'
+                )
+                await loadInvitations()
             } catch (inviteErr: any) {
-                setError(inviteErr?.message || err?.message || 'User not found or comparison failed');
+                setError(inviteErr?.message || err?.message || 'User not found or comparison failed')
             }
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     const handleRespondInvite = async (invitationId: string, accept: boolean) => {
-        setActionLoading(true);
-        setError('');
-        setStatusMessage('');
+        setActionLoading(true)
+        setError('')
+        setStatusMessage('')
         try {
             const res = accept
                 ? ((await apiClient.acceptTwinMatchInvitation(invitationId)) as any)
-                : ((await apiClient.declineTwinMatchInvitation(invitationId)) as any);
+                : ((await apiClient.declineTwinMatchInvitation(invitationId)) as any)
 
             if (accept && res?.comparison) {
-                setMatchResult(res.comparison);
-                setStatusMessage('Invitation accepted! Compatibility profile generated.');
+                setMatchResult(res.comparison)
+                setStatusMessage('Invitation accepted! Compatibility profile generated.')
             } else if (accept) {
-                setStatusMessage('Invitation accepted.');
+                setStatusMessage('Invitation accepted.')
             } else {
-                setStatusMessage('Invitation declined.');
+                setStatusMessage('Invitation declined.')
             }
-            await loadInvitations();
+            await loadInvitations()
         } catch (err: any) {
-            setError(err.message || 'Failed to update invitation');
+            setError(err.message || 'Failed to update invitation')
         } finally {
-            setActionLoading(false);
+            setActionLoading(false)
         }
-    };
+    }
 
-    const pendingIncoming = invitations.filter((i) => i.direction === 'incoming' && i.status === 'pending');
-    const pendingOutgoing = invitations.filter((i) => i.direction === 'outgoing' && i.status === 'pending');
+    const pendingIncoming = invitations.filter((i) => i.direction === 'incoming' && i.status === 'pending')
+    const pendingOutgoing = invitations.filter((i) => i.direction === 'outgoing' && i.status === 'pending')
 
     return (
-        <div className="min-h-screen p-6">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
+        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
+            <WorkspaceHeader />
+
+            <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+                <div className="mb-8 flex items-center gap-4 border-b border-white/[0.08] pb-6">
                     <button
+                        type="button"
                         onClick={() => router.back()}
-                        className="glass-button p-2 hover:bg-white/10 rounded-xl transition-colors"
+                        className="rounded-xl border border-white/10 p-2 text-neutral-400 hover:bg-white/[0.06] hover:text-white"
                         aria-label="Back"
                     >
-                        <ArrowLeft className="w-5 h-5 text-white" />
+                        <ArrowLeft className="h-4 w-4" />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                            Twin Match
-                        </h1>
-                        <p className="text-sm text-gray-400">
-                            Discover personality harmony with mutual consent
-                        </p>
+                        <div className="font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                            Mutual-Consent Compatibility
+                        </div>
+                        <h1 className="text-2xl font-semibold text-[#F4F2EC] sm:text-3xl">Twin Match</h1>
                     </div>
                 </div>
 
-                {/* Search & Invite Section */}
-                <div className="glass-card p-6 mb-8">
-                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
-                        <Users className="w-5 h-5 text-purple-400" />
-                        Find or Invite a Twin
+                <div className="enterprise-panel mb-6 p-6">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                        <Users className="h-4 w-4 text-[#D9A760]" />
+                        <span>Find or Invite a Twin</span>
                     </h2>
-                    <p className="text-sm text-gray-400 mb-4">
-                        Enter a friend's email or referral code to compare AI twins or send a match invitation.
+                    <p className="mt-1 text-xs text-neutral-400">
+                        Enter a friend&apos;s email or referral code to request a psychometric compatibility check.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                         <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="friend@email.com or TWIN-CODE"
-                                className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                                placeholder="friend@domain.com or TWIN-CODE"
+                                className="w-full rounded-xl border border-white/[0.12] bg-[#07080B] py-3 pl-10 pr-4 text-sm text-white placeholder-neutral-500 focus:border-[#D9A760]/60 focus:outline-none"
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearchOrInvite()}
                             />
                         </div>
                         <button
+                            type="button"
                             onClick={handleSearchOrInvite}
                             disabled={loading || !searchQuery.trim()}
-                            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                            className="btn-primary-ivory px-5 py-3 text-xs disabled:opacity-40"
                         >
-                            {loading ? 'Checking...' : 'Match / Invite'}
-                            {!loading && <Sparkles className="w-4 h-4" />}
+                            <span>{loading ? 'Checking...' : 'Match / Invite'}</span>
+                            {!loading && <Sparkles className="h-3.5 w-3.5" />}
                         </button>
                     </div>
 
                     {statusMessage && (
-                        <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm">
+                        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
                             {statusMessage}
                         </div>
                     )}
-
                     {error && (
-                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                        <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
                             {error}
                         </div>
                     )}
                 </div>
 
-                {/* Pending Invitations Section */}
                 {(pendingIncoming.length > 0 || pendingOutgoing.length > 0) && (
-                    <div className="glass-card p-6 mb-8">
-                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                            <UserPlus className="w-5 h-5 text-pink-400" />
-                            Match Invitations
+                    <div className="enterprise-panel mb-6 p-6">
+                        <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-white">
+                            <UserPlus className="h-4 w-4 text-[#D9A760]" />
+                            <span>Match Invitations</span>
                         </h3>
 
                         {pendingIncoming.length > 0 && (
-                            <div className="mb-4">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-purple-300 mb-2">
-                                    Incoming Requests ({pendingIncoming.length})
+                            <div className="mb-4 space-y-2">
+                                <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                                    Incoming ({pendingIncoming.length})
                                 </div>
-                                <div className="space-y-2">
-                                    {pendingIncoming.map((inv) => (
-                                        <div
-                                            key={inv.id}
-                                            className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3"
-                                        >
-                                            <span className="text-sm font-medium text-white">
-                                                {inv.partner_twin_name || 'A user'} wants to match with your Twin
-                                            </span>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleRespondInvite(inv.id, true)}
-                                                    disabled={actionLoading}
-                                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center gap-1 transition-colors"
-                                                >
-                                                    <Check className="w-3.5 h-3.5" /> Accept
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRespondInvite(inv.id, false)}
-                                                    disabled={actionLoading}
-                                                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 text-xs transition-colors"
-                                                >
-                                                    Decline
-                                                </button>
-                                            </div>
+                                {pendingIncoming.map((inv) => (
+                                    <div
+                                        key={inv.id}
+                                        className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"
+                                    >
+                                        <span className="text-xs font-medium text-white">
+                                            {inv.partner_twin_name || 'A user'} invited you to compare Twins
+                                        </span>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRespondInvite(inv.id, true)}
+                                                disabled={actionLoading}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-[#07080B] hover:bg-emerald-400"
+                                            >
+                                                <Check className="h-3 w-3" /> Accept
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRespondInvite(inv.id, false)}
+                                                disabled={actionLoading}
+                                                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/[0.06]"
+                                            >
+                                                Decline
+                                            </button>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
                         {pendingOutgoing.length > 0 && (
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                                    Sent Requests ({pendingOutgoing.length})
+                            <div className="space-y-2">
+                                <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                                    Sent ({pendingOutgoing.length})
                                 </div>
-                                <div className="space-y-2">
-                                    {pendingOutgoing.map((inv) => (
-                                        <div
-                                            key={inv.id}
-                                            className="flex items-center justify-between bg-white/5 border border-white/5 rounded-xl p-3 text-sm text-gray-300"
-                                        >
-                                            <span>
-                                                Invitation sent to {inv.partner_twin_name || 'friend'}
-                                            </span>
-                                            <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded">
-                                                Awaiting acceptance
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
+                                {pendingOutgoing.map((inv) => (
+                                    <div
+                                        key={inv.id}
+                                        className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-xs text-neutral-300"
+                                    >
+                                        <span>Sent to {inv.partner_twin_name || 'friend'}</span>
+                                        <span className="rounded bg-[#D9A760]/15 px-2 py-0.5 font-mono text-[10px] text-[#E7C891]">
+                                            Pending
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Match Results Section */}
                 {matchResult && (
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="glass-card p-6"
+                        className="enterprise-panel p-6 sm:p-8"
                     >
-                        <div className="text-center mb-8">
-                            <div className="inline-block p-4 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 mb-4">
-                                <div className="text-4xl font-bold text-white">
+                        <div className="mb-8 text-center">
+                            <div className="mx-auto inline-flex flex-col items-center rounded-2xl border border-[#D9A760]/35 bg-[#D9A760]/10 px-8 py-5">
+                                <div className="text-4xl font-semibold text-[#F4F2EC]">
                                     {matchResult.compatibility_score || matchResult.compatibility}%
                                 </div>
-                                <div className="text-sm text-purple-300">Compatibility Score</div>
+                                <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-[#E7C891]">
+                                    Compatibility Index
+                                </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">
+                            <h3 className="mt-4 text-xl font-semibold text-white">
                                 {(matchResult.compatibility_score || matchResult.compatibility) > 80
-                                    ? 'Great Harmony!'
+                                    ? 'High Alignment'
                                     : (matchResult.compatibility_score || matchResult.compatibility) > 50
-                                    ? 'Good Dynamic!'
+                                    ? 'Constructive Dynamic'
                                     : 'Complementary Perspectives'}
                             </h3>
                             {matchResult.user2?.twin_name && (
-                                <p className="text-sm text-gray-400">
-                                    Matched with {matchResult.user2.twin_name}'s Twin
+                                <p className="mt-1 text-xs text-neutral-400">
+                                    Compared with {matchResult.user2.twin_name}&apos;s Twin
                                 </p>
                             )}
                         </div>
 
-                        {matchResult.insights && matchResult.insights.length > 0 && (
-                            <div className="mb-6 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                                <h4 className="font-semibold text-purple-300 mb-2">Compatibility Insights</h4>
-                                <ul className="space-y-1.5 text-sm text-gray-300">
+                        {matchResult.insights?.length > 0 && (
+                            <div className="mb-6 rounded-xl border border-white/[0.08] bg-[#0B0D12] p-4">
+                                <h4 className="mb-2 font-mono text-xs uppercase tracking-wider text-[#D9A760]">
+                                    Key Insights
+                                </h4>
+                                <ul className="space-y-1.5 text-xs text-neutral-300 sm:text-sm">
                                     {matchResult.insights.map((insight: string, i: number) => (
                                         <li key={i} className="flex items-start gap-2">
-                                            <span className="text-purple-400 mt-0.5">•</span>
+                                            <span className="mt-1 text-[#D9A760]">•</span>
                                             <span>{insight}</span>
                                         </li>
                                     ))}
@@ -270,42 +263,48 @@ export default function TwinMatchPage() {
                             </div>
                         )}
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                <h4 className="font-semibold text-green-400 mb-3">Shared Strengths</h4>
-                                <ul className="space-y-2">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+                                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                                    Shared Strengths
+                                </h4>
+                                <ul className="space-y-2 text-xs text-neutral-300">
                                     {(matchResult.shared_traits || []).length > 0 ? (
                                         matchResult.shared_traits.map((trait: string, i: number) => (
-                                            <li key={i} className="flex items-center gap-2 text-gray-300">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                                            <li key={i} className="flex items-center gap-2">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                                                 {trait}
                                             </li>
                                         ))
                                     ) : (
-                                        <li className="text-sm text-gray-400">Mutual core values and curiosity</li>
+                                        <li className="text-neutral-400">Mutual core values and reflection drive</li>
                                     )}
                                 </ul>
                             </div>
 
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                <h4 className="font-semibold text-yellow-400 mb-3">Growth Areas</h4>
-                                <ul className="space-y-2">
+                            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+                                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#E7C891]">
+                                    Growth Contrast
+                                </h4>
+                                <ul className="space-y-2 text-xs text-neutral-300">
                                     {(matchResult.differences || []).length > 0 ? (
                                         matchResult.differences.map((diff: string, i: number) => (
-                                            <li key={i} className="flex items-center gap-2 text-gray-300">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                            <li key={i} className="flex items-center gap-2">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-[#D9A760]" />
                                                 {diff}
                                             </li>
                                         ))
                                     ) : (
-                                        <li className="text-sm text-gray-400">Balancing reflection with spontaneous action</li>
+                                        <li className="text-neutral-400">
+                                            Balancing deliberation with direct action
+                                        </li>
                                     )}
                                 </ul>
                             </div>
                         </div>
                     </motion.div>
                 )}
-            </div>
+            </main>
         </div>
-    );
+    )
 }

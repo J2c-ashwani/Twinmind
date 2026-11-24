@@ -3,34 +3,36 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { ArrowLeft, Database, Shield, Mail, CheckCircle2, AlertTriangle, LogIn } from 'lucide-react'
+import { Database, Shield, Mail, CheckCircle2, AlertTriangle, LogIn } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
+import SiteHeader from '@/components/Layout/SiteHeader'
+import SiteFooter from '@/components/Layout/SiteFooter'
 
 const DATA_OPTIONS = [
     {
         id: 'chat',
         label: 'Conversations & Chat History',
-        description: 'All conversation threads, chat history messages, summaries, and topic caches.',
+        description: 'All conversation threads, chat messages, summaries, and topic caches.',
     },
     {
         id: 'memories',
         label: 'Saved Memories & Vector Embeddings',
-        description: 'Timeline memories, memory anniversaries, life context notes, and semantic embeddings.',
+        description: 'Timeline memories, life context notes, and 1536-dim semantic embeddings.',
     },
     {
         id: 'voice',
         label: 'Voice Recordings',
-        description: 'All stored voice audio files in your private TwinGenie voice storage.',
+        description: 'All stored voice audio files in your private TwinGenie storage.',
     },
     {
         id: 'personality',
-        label: 'Personality Assessment & Twin Profile',
-        description: 'Questionnaire answers, calculated Big Five traits, and generated Twin profile summary.',
+        label: '35-Trait Assessment & Twin Profile',
+        description: 'Questionnaire responses, computed Big Five traits, and Twin summary.',
     },
     {
         id: 'insights',
         label: 'Emotional Metrics & Insights History',
-        description: 'Mood scores, emotional history logs, and personal tracking events.',
+        description: 'Mood scores, emotional trend logs, and personal tracking events.',
     },
 ]
 
@@ -63,9 +65,7 @@ export default function DataDeletionView() {
 
     const toggleCategory = (id: string) => {
         setDeletedResult(null)
-        setSelected((prev) =>
-            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-        )
+        setSelected((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
     }
 
     const handleInlineSignIn = async (e: React.FormEvent) => {
@@ -103,111 +103,94 @@ export default function DataDeletionView() {
             const res = await apiClient.deleteUserData(selected)
             setDeletedResult(res?.deletedCategories || selected)
         } catch (err: any) {
-            setError(err?.message || 'Could not delete the selected data. Please try again or email support@twingenie.app.')
+            setError(
+                err?.message || 'Could not delete the selected data. Please try again or email support@twingenie.app.'
+            )
         } finally {
             setSubmitting(false)
         }
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-gray-200">
-            <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
-                <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-3">
-                        <img
-                            src="/logo.png"
-                            alt="TwinGenie"
-                            className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20"
-                        />
-                        <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
-                    </Link>
+        <div className="min-h-screen bg-[#07080B] text-neutral-200 flex flex-col">
+            <SiteHeader minimal />
 
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/delete-account"
-                            className="text-sm text-red-300 hover:text-red-200 transition-colors px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10"
-                        >
-                            Delete Entire Account
-                        </Link>
-                        <Link
-                            href="/"
-                            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Home
-                        </Link>
+            <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-14 sm:px-6 space-y-10">
+                <div className="space-y-4 border-b border-white/[0.08] pb-8">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[#D9A760]/30 bg-[#D9A760]/10 px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-wider text-[#E7C891]">
+                        <Shield className="h-3.5 w-3.5" />
+                        Google Play Data Safety • com.asmind.app
                     </div>
-                </div>
-            </header>
-
-            <main className="max-w-4xl mx-auto px-6 py-12 space-y-10">
-                <div className="space-y-4 border-b border-white/10 pb-8">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium">
-                        <Shield className="w-3.5 h-3.5" />
-                        TwinGenie (com.asmind.app) • Google Play Data Safety
-                    </div>
-                    <h1 className="text-4xl font-extrabold text-white tracking-tight">
+                    <h1 className="text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
                         TwinGenie Data Deletion Request
                     </h1>
-                    <p className="text-gray-300 leading-relaxed">
-                        You can permanently delete specific categories of your personal data stored in <strong className="text-white">TwinGenie</strong> (operated by TwinGenie / Ashwani Kumar) while keeping your account and any active subscription intact.
+                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
+                        Permanently erase specific categories of stored data inside{' '}
+                        <strong className="text-white">TwinGenie</strong> while keeping your account and any active
+                        subscription intact.{' '}
+                        <Link href="/delete-account" className="text-rose-300 hover:underline">
+                            Delete entire account instead →
+                        </Link>
                     </p>
                 </div>
 
-                <section className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 md:p-8 space-y-6">
+                <section className="enterprise-panel space-y-6 p-6 md:p-8">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-purple-500/15 text-purple-300">
-                            <Database className="w-6 h-6" />
+                        <div className="rounded-xl border border-[#D9A760]/25 bg-[#D9A760]/10 p-2.5 text-[#E7C891]">
+                            <Database className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Delete Specific Data Without Deleting Your Account</h2>
-                            <p className="text-sm text-gray-400">
-                                Sign in below and select the exact data categories you want permanently erased.
+                            <h2 className="text-lg font-semibold text-white">
+                                Select Data Scopes to Permanently Erase
+                            </h2>
+                            <p className="text-xs text-neutral-400">
+                                Sign in below and choose the exact scopes to purge.
                             </p>
                         </div>
                     </div>
 
                     {error && (
-                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                        <div className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                             <span>{error}</span>
                         </div>
                     )}
 
                     {deletedResult && (
-                        <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 space-y-1">
+                        <div className="space-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-emerald-100">
                             <div className="flex items-center gap-2 font-semibold text-white">
-                                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                                 Selected Data Permanently Deleted
                             </div>
                             <p className="text-sm text-emerald-100/90">
-                                Removed categories: <span className="font-mono">{deletedResult.join(', ')}</span>. Your TwinGenie login account remains active.
+                                Removed scopes: <span className="font-mono">{deletedResult.join(', ')}</span>. Your
+                                TwinGenie login remains active.
                             </p>
                         </div>
                     )}
 
                     {checkingSession ? (
-                        <p className="text-sm text-gray-400">Checking current sign-in session...</p>
+                        <p className="text-sm text-neutral-400">Checking current session...</p>
                     ) : sessionEmail ? (
                         <form onSubmit={handleDeleteSelectedData} className="space-y-4">
-                            <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300">
+                            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm text-neutral-300">
                                 Signed in as <strong className="text-white">{sessionEmail}</strong>
                             </div>
                             <div className="space-y-3">
                                 {DATA_OPTIONS.map((opt) => (
                                     <label
                                         key={opt.id}
-                                        className="flex items-start gap-3 p-4 rounded-xl bg-slate-950/70 border border-white/10 hover:border-purple-500/40 cursor-pointer transition-colors"
+                                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.08] bg-[#0B0D12] p-4 transition-colors hover:border-[#D9A760]/45"
                                     >
                                         <input
                                             type="checkbox"
                                             checked={selected.includes(opt.id)}
                                             onChange={() => toggleCategory(opt.id)}
-                                            className="mt-1 h-4 w-4 accent-purple-500"
+                                            className="mt-1 h-4 w-4 accent-[#D9A760]"
                                         />
                                         <div>
-                                            <div className="font-medium text-white">{opt.label}</div>
-                                            <div className="text-sm text-gray-400">{opt.description}</div>
+                                            <div className="text-sm font-medium text-white">{opt.label}</div>
+                                            <div className="text-xs text-neutral-400">{opt.description}</div>
                                         </div>
                                     </label>
                                 ))}
@@ -215,14 +198,14 @@ export default function DataDeletionView() {
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold transition-colors"
+                                className="btn-primary-ivory px-5 py-3 text-sm disabled:opacity-50"
                             >
-                                <Database className="w-4 h-4" />
-                                {submitting ? 'Deleting Selected Data...' : 'Delete Selected Data'}
+                                <Database className="h-4 w-4" />
+                                <span>{submitting ? 'Deleting Selected Data...' : 'Delete Selected Data'}</span>
                             </button>
                         </form>
                     ) : (
-                        <form onSubmit={handleInlineSignIn} className="space-y-4 max-w-md">
+                        <form onSubmit={handleInlineSignIn} className="max-w-md space-y-4">
                             <div className="grid gap-3">
                                 <input
                                     type="email"
@@ -230,7 +213,7 @@ export default function DataDeletionView() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="TwinGenie account email"
                                     required
-                                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white focus:outline-none focus:border-purple-400"
+                                    className="w-full rounded-xl border border-white/15 bg-[#07080B] px-4 py-2.5 text-sm text-white focus:border-[#D9A760]/60 focus:outline-none"
                                 />
                                 <input
                                     type="password"
@@ -238,54 +221,42 @@ export default function DataDeletionView() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Password"
                                     required
-                                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white focus:outline-none focus:border-purple-400"
+                                    className="w-full rounded-xl border border-white/15 bg-[#07080B] px-4 py-2.5 text-sm text-white focus:border-[#D9A760]/60 focus:outline-none"
                                 />
                             </div>
                             <button
                                 type="submit"
                                 disabled={signingIn}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold transition-colors"
+                                className="btn-primary-ivory px-5 py-2.5 text-sm disabled:opacity-50"
                             >
-                                <LogIn className="w-4 h-4" />
-                                {signingIn ? 'Signing In...' : 'Sign In to Manage & Delete Data'}
+                                <LogIn className="h-4 w-4" />
+                                <span>{signingIn ? 'Signing In...' : 'Sign In to Manage Data'}</span>
                             </button>
                         </form>
                     )}
                 </section>
 
-                <section className="space-y-4">
-                    <h2 className="text-xl font-bold text-white">Alternative Ways to Request Data Deletion</h2>
-                    <ol className="list-decimal pl-6 space-y-2 text-gray-300">
-                        <li>
-                            <strong className="text-white">In-App:</strong> Open TwinGenie &gt; <strong>Settings &gt; Privacy &amp; Data &gt; Clear Chat History</strong>.
-                        </li>
-                        <li>
-                            <strong className="text-white">Email Request:</strong> Email{' '}
-                            <a href="mailto:support@twingenie.app?subject=Data%20Deletion%20Request%20-%20TwinGenie" className="text-purple-400 hover:underline">
-                                support@twingenie.app
-                            </a>{' '}
-                            or{' '}
-                            <a href="mailto:founder@twingenie.app?subject=Data%20Deletion%20Request%20-%20TwinGenie" className="text-purple-400 hover:underline">
-                                founder@twingenie.app
-                            </a>{' '}
-                            from your registered email specifying which data categories to remove. Email requests are processed within <strong>30 days</strong>.
-                        </li>
-                    </ol>
-                </section>
-
-                <section className="p-5 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 space-y-2">
-                    <div className="font-semibold text-white flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-purple-400" />
+                <section className="enterprise-panel space-y-2 p-5 text-sm text-neutral-300">
+                    <div className="flex items-center gap-2 font-semibold text-white">
+                        <Mail className="h-4 w-4 text-[#D9A760]" />
                         What Remains After Partial Data Deletion
                     </div>
-                    <p>
-                        Your TwinGenie login credentials, email address, and Google Play subscription status remain intact unless you request full account deletion on the{' '}
-                        <Link href="/delete-account" className="text-purple-400 hover:underline">
-                            Account Deletion page
-                        </Link>. Encrypted disaster-recovery backups expire automatically within 90 days.
+                    <p className="text-xs leading-relaxed text-neutral-400">
+                        Login credentials, email address, and Google Play subscription status stay active unless you
+                        request full removal on{' '}
+                        <Link href="/delete-account" className="text-[#E7C891] hover:underline">
+                            Account Deletion
+                        </Link>{' '}
+                        or email{' '}
+                        <a href="mailto:support@twingenie.app" className="text-[#E7C891] hover:underline">
+                            support@twingenie.app
+                        </a>
+                        . Backups rotate within 90 days.
                     </p>
                 </section>
             </main>
+
+            <SiteFooter />
         </div>
     )
 }

@@ -1,91 +1,88 @@
-import React, { useEffect, useState } from 'react';
-import api from '@/lib/api';
+import React, { useEffect, useState } from 'react'
+import api from '@/lib/api'
 
 interface MoodEntry {
-    id: string;
-    mood: number;
-    note: string;
-    created_at: string;
+    id: string
+    mood: number
+    note: string
+    created_at: string
 }
 
 export default function MoodHistory() {
-    const [history, setHistory] = useState<MoodEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    // Assuming 'days' is meant to be a constant or prop,
-    // and the user intends to introduce it.
-    // For now, we'll define it as a constant to make the code syntactically correct.
-    // If 'days' was meant to be a prop, it would need to be added to the function signature.
-    // If 'days' was meant to be state, it would need useState.
-    // Given the original code used '7', we'll assume 'days' is intended to be '7'.
-    const days = 7;
+    const [history, setHistory] = useState<MoodEntry[]>([])
+    const [loading, setLoading] = useState(true)
+    const days = 7
 
     useEffect(() => {
-        loadHistory();
-    }, []);
+        loadHistory()
+    }, [])
 
     const loadHistory = async () => {
         try {
-            const data = await api.getMoodHistory(days.toString()) as any; // Get last 7 days
-            setHistory(data.reverse()); // Show oldest to newest
+            const data = (await api.getMoodHistory(days.toString())) as any
+            setHistory(Array.isArray(data) ? data.reverse() : [])
         } catch (error) {
-            console.error('Failed to load mood history:', error);
+            console.error('Failed to load mood history:', error)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
-    if (loading) return <div className="glass-card p-6 animate-pulse h-48"></div>;
+    if (loading) return <div className="enterprise-panel h-48 animate-pulse p-6" />
 
     return (
-        <div className="glass-card p-6">
-            <h3 className="text-xl font-semibold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Mood History
-            </h3>
+        <div className="enterprise-panel p-6">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-[#D9A760]">
+                7-Day Telemetry
+            </div>
+            <h3 className="mt-1 mb-5 text-lg font-semibold text-[#F4F2EC]">Mood Cadence</h3>
 
-            <div className="h-32 flex items-end justify-between gap-2">
-                {history.map((entry, index) => (
-                    <div key={entry.id} className="flex flex-col items-center flex-1 group relative">
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-xs p-2 rounded whitespace-nowrap z-10 pointer-events-none">
+            <div className="flex h-32 items-end justify-between gap-2">
+                {history.map((entry) => (
+                    <div key={entry.id} className="group relative flex flex-1 flex-col items-center">
+                        <div className="pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0B0D12] p-2 text-[11px] text-neutral-200 opacity-0 transition-opacity group-hover:opacity-100">
                             <p>{new Date(entry.created_at).toLocaleDateString()}</p>
                             <p>Mood: {entry.mood}/5</p>
-                            {entry.note && <p className="italic">"{entry.note}"</p>}
+                            {entry.note && <p className="italic text-neutral-400">&ldquo;{entry.note}&rdquo;</p>}
                         </div>
 
-                        {/* Bar */}
                         <div
-                            className="w-full max-w-[20px] rounded-t-lg transition-all duration-500 hover:brightness-110 cursor-pointer"
+                            className="w-full max-w-[20px] cursor-pointer rounded-t-md transition-all duration-300 hover:brightness-110"
                             style={{
-                                height: `${(entry.mood / 5) * 100}%`,
-                                backgroundColor: getMoodColor(entry.mood)
+                                height: `${Math.max(12, (entry.mood / 5) * 100)}%`,
+                                backgroundColor: getMoodColor(entry.mood),
                             }}
                         />
 
-                        {/* Label */}
-                        <span className="text-xs text-gray-400 mt-2">
+                        <span className="mt-2 font-mono text-[10px] text-neutral-500">
                             {new Date(entry.created_at).toLocaleDateString(undefined, { weekday: 'narrow' })}
                         </span>
                     </div>
                 ))}
 
                 {history.length === 0 && (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
-                        No mood data yet
+                    <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">
+                        No mood entries logged yet
                     </div>
                 )}
             </div>
         </div>
-    );
+    )
 }
 
 function getMoodColor(mood: number): string {
     switch (mood) {
-        case 1: return '#ef4444'; // Red
-        case 2: return '#f97316'; // Orange
-        case 3: return '#eab308'; // Yellow
-        case 4: return '#84cc16'; // Lime
-        case 5: return '#22c55e'; // Green
-        default: return '#6b7280';
+        case 1:
+            return '#F7768E'
+        case 2:
+            return '#E0AF68'
+        case 3:
+            return '#D9A760'
+        case 4:
+            return '#7AA2F7'
+        case 5:
+            return '#56B886'
+        default:
+            return '#6B7280'
     }
 }

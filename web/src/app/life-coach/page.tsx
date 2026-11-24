@@ -1,126 +1,138 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { apiClient } from '@/lib/api/client';
-import { motion } from 'framer-motion';
-import { Sparkles, Lock, ArrowRight, Heart, Brain, Zap } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { apiClient } from '@/lib/api/client'
+import { motion } from 'framer-motion'
+import { Lock, ArrowRight, Heart, Brain, Zap } from 'lucide-react'
+import Link from 'next/link'
+import WorkspaceHeader from '@/components/Layout/WorkspaceHeader'
 
 export default function LifeCoachPage() {
-    const router = useRouter();
-    const [programs, setPrograms] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const router = useRouter()
+    const [programs, setPrograms] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
 
     useEffect(() => {
-        loadPrograms();
-    }, []);
+        loadPrograms()
+    }, [])
 
     const loadPrograms = async () => {
         try {
-            const supabase = createClientComponentClient();
-            const { data: { session } } = await supabase.auth.getSession();
+            const supabase = createClientComponentClient()
+            const {
+                data: { session },
+            } = await supabase.auth.getSession()
             if (!session?.access_token) {
-                router.push('/login');
-                return;
+                router.push('/login')
+                return
             }
-            apiClient.setToken(session.access_token);
+            apiClient.setToken(session.access_token)
 
-            const data = await apiClient.getLifeCoachPrograms();
-            setPrograms(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.error('Failed to load programs:', error);
-            setPrograms([]);
-            setError('Life Coach programs are unavailable right now. Please try again later.');
+            const data = await apiClient.getLifeCoachPrograms()
+            setPrograms(Array.isArray(data) ? data : [])
+        } catch (err) {
+            console.error('Failed to load programs:', err)
+            setPrograms([])
+            setError('Life Coach programs are unavailable right now. Please try again later.')
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     const getIcon = (category: string) => {
         switch (category) {
-            case 'anxiety': return <Heart className="w-6 h-6 text-pink-500" />;
-            case 'growth': return <Zap className="w-6 h-6 text-yellow-500" />;
-            default: return <Brain className="w-6 h-6 text-purple-500" />;
+            case 'anxiety':
+                return <Heart className="h-5 w-5 text-emerald-400" />
+            case 'growth':
+                return <Zap className="h-5 w-5 text-[#E7C891]" />
+            default:
+                return <Brain className="h-5 w-5 text-sky-400" />
         }
-    };
-
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-            </div>
-        );
     }
 
     return (
-        <div className="max-w-6xl mx-auto p-6 space-y-8">
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-                    Life Coach Programs
-                </h1>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Structured, AI-guided journeys to help you grow, heal, and thrive.
-                </p>
-            </div>
+        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
+            <WorkspaceHeader />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {error && (
-                    <div className="col-span-full rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-                        {error}
+            <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+                <div className="mb-10 border-b border-white/[0.08] pb-6">
+                    <div className="font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
+                        Structured Coaching Sprints
                     </div>
-                )}
+                    <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#F4F2EC]">
+                        AI Life Coach Programs
+                    </h1>
+                    <p className="mt-2 max-w-2xl text-sm text-neutral-400">
+                        Multi-day guided clarity exercises grounded in your calibrated psychometric baseline.
+                    </p>
+                </div>
 
-                {!error && programs.length === 0 && (
-                    <div className="col-span-full rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-600">
-                        No Life Coach programs are available yet.
+                {loading ? (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="enterprise-panel h-64 animate-pulse p-6" />
+                        ))}
                     </div>
-                )}
-
-                {programs.map((program, index) => (
-                    <motion.div
-                        key={program.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow border border-gray-100"
-                    >
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-gray-50 rounded-xl">
-                                    {getIcon(program.category)}
-                                </div>
-                                {program.is_premium && (
-                                    <div className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
-                                        <Lock className="w-3 h-3" /> Premium
-                                    </div>
-                                )}
+                ) : (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {error && (
+                            <div className="col-span-full rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+                                {error}
                             </div>
+                        )}
 
-                            <h3 className="text-xl font-bold mb-2 text-gray-900">
-                                {program.title}
-                            </h3>
-                            <p className="text-gray-600 mb-4 line-clamp-2">
-                                {program.description}
-                            </p>
-
-                            <div className="flex items-center justify-between text-sm text-gray-500 mb-6">
-                                <span>{program.duration_days} Days</span>
-                                <span className="capitalize">{program.category}</span>
+                        {!error && programs.length === 0 && (
+                            <div className="enterprise-panel col-span-full p-10 text-center text-sm text-neutral-400">
+                                No Life Coach programs are available yet.
                             </div>
+                        )}
 
-                            <Link
-                                href={`/life-coach/${program.id}`}
-                                className="block w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                        {programs.map((program, index) => (
+                            <motion.div
+                                key={program.id}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.06 }}
+                                className="enterprise-panel-hover flex flex-col justify-between p-6"
                             >
-                                Start Journey <ArrowRight className="w-4 h-4" />
-                            </Link>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+                                <div>
+                                    <div className="mb-5 flex items-start justify-between">
+                                        <div className="rounded-xl border border-white/10 bg-[#07080B] p-3">
+                                            {getIcon(program.category)}
+                                        </div>
+                                        {program.is_premium && (
+                                            <span className="inline-flex items-center gap-1 rounded-full border border-[#D9A760]/30 bg-[#D9A760]/10 px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase text-[#E7C891]">
+                                                <Lock className="h-3 w-3" /> Pro
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <h2 className="text-lg font-semibold text-[#F4F2EC]">{program.title}</h2>
+                                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-neutral-400 sm:text-sm">
+                                        {program.description}
+                                    </p>
+
+                                    <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-4 font-mono text-[11px] text-neutral-400">
+                                        <span>{program.duration_days} Days</span>
+                                        <span className="uppercase">{program.category}</span>
+                                    </div>
+                                </div>
+
+                                <Link
+                                    href={`/life-coach/${program.id}`}
+                                    className="btn-primary-ivory mt-6 w-full py-2.5 text-xs"
+                                >
+                                    <span>Start Session</span>
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
+            </main>
         </div>
-    );
+    )
 }
