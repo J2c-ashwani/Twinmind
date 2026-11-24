@@ -53,6 +53,21 @@ export default function SiteFooter() {
                                     Pricing &amp; Plans
                                 </Link>
                             </li>
+                            <li>
+                                <Link href="/methodology" className="transition-colors hover:text-[#F4F2EC]">
+                                    35-Trait Methodology
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/compare" className="transition-colors hover:text-[#F4F2EC]">
+                                    TwinGenie vs ChatGPT
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href="/faq" className="transition-colors hover:text-[#F4F2EC]">
+                                    Knowledge Base &amp; FAQ
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 
@@ -125,10 +140,18 @@ export default function SiteFooter() {
                             </li>
                             <li>
                                 <a
-                                    href="mailto:founder@twingenie.app"
+                                    href="mailto:ashwani@twingenie.app"
                                     className="transition-colors hover:text-[#E7C891]"
                                 >
-                                    founder@twingenie.app
+                                    ashwani@twingenie.app
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    href="/llms.txt"
+                                    className="transition-colors hover:text-[#E7C891]"
+                                >
+                                    llms.txt (AI Spec)
                                 </a>
                             </li>
                         </ul>

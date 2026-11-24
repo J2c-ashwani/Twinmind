@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import { PLAY_STORE_URL, SITE_URL } from '@/lib/seo'
 
 const plusJakarta = Plus_Jakarta_Sans({
     subsets: ['latin'],
@@ -23,47 +24,49 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://twingenie.app'),
+    metadataBase: new URL(SITE_URL),
     title: {
         default: 'TwinGenie — Psychometric Digital Twin & Cognitive Reflection Platform',
         template: '%s | TwinGenie',
     },
     description:
-        'TwinGenie calibrates a 35-trait psychometric digital twin with persistent vector memory to deliver structured cognitive reflection across four distinct decision perspectives.',
+        'TwinGenie calibrates a 35-trait psychometric digital twin with 1536-dim pgvector memory to deliver non-sycophantic cognitive reflection across Normal, Future, Honest, and Reflective modes.',
     keywords: [
         'AI digital twin',
-        'psychometric AI',
+        'psychometric AI digital twin',
         'personal cognitive intelligence',
-        'Big Five personality assessment',
-        'vector memory AI companion',
+        'Big Five personality AI',
+        'non-sycophantic AI companion',
+        'vector memory AI journal',
         'decision reflection platform',
         'TwinGenie',
     ],
-    authors: [{ name: 'Ashwani Kumar', url: 'https://twingenie.app' }],
+    authors: [{ name: 'Ashwani Kumar', url: SITE_URL }],
     creator: 'TwinGenie',
     publisher: 'TwinGenie',
     openGraph: {
         type: 'website',
         locale: 'en_US',
-        url: 'https://twingenie.app',
+        url: SITE_URL,
         siteName: 'TwinGenie',
         title: 'TwinGenie — Psychometric Digital Twin & Cognitive Reflection Platform',
         description:
             'Calibrate your 35-trait digital twin and examine complex life decisions across four calibrated perspectives.',
         images: [
             {
-                url: '/og-image.png',
+                url: `${SITE_URL}/og-image.png`,
                 width: 1200,
                 height: 630,
-                alt: 'TwinGenie Cognitive Digital Twin Platform',
+                alt: 'TwinGenie — 35-Trait Psychometric Digital Twin Platform',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
         title: 'TwinGenie — Psychometric Digital Twin',
-        description: 'Four calibrated perspectives backed by a 35-trait personality engine and semantic vector memory.',
-        images: ['/og-image.png'],
+        description:
+            'Four calibrated perspectives backed by a 35-trait personality engine and 1536-dim pgvector memory.',
+        images: [`${SITE_URL}/og-image.png`],
         creator: '@twingenieapp',
     },
     robots: {
@@ -77,14 +80,11 @@ export const metadata: Metadata = {
             'max-snippet': -1,
         },
     },
-    alternates: {
-        canonical: 'https://twingenie.app',
-    },
     applicationName: 'TwinGenie',
     category: 'Lifestyle & Productivity',
     icons: {
         icon: '/logo.png',
-        apple: '/logo.png',
+        apple: '/icons/icon-192x192.png',
     },
     manifest: '/manifest.json',
 }
@@ -94,10 +94,13 @@ const jsonLd = {
     '@graph': [
         {
             '@type': 'Organization',
-            '@id': 'https://twingenie.app/#organization',
+            '@id': `${SITE_URL}/#organization`,
             name: 'TwinGenie',
-            url: 'https://twingenie.app',
-            logo: 'https://twingenie.app/logo.png',
+            url: SITE_URL,
+            logo: {
+                '@type': 'ImageObject',
+                url: `${SITE_URL}/logo.png`,
+            },
             founder: {
                 '@type': 'Person',
                 name: 'Ashwani Kumar',
@@ -107,30 +110,67 @@ const jsonLd = {
                 '@type': 'ContactPoint',
                 email: 'support@twingenie.app',
                 contactType: 'customer support',
+                availableLanguage: ['English'],
+            },
+            publishingPrinciples: `${SITE_URL}/privacy`,
+            sameAs: [PLAY_STORE_URL],
+        },
+        {
+            '@type': 'WebSite',
+            '@id': `${SITE_URL}/#website`,
+            url: SITE_URL,
+            name: 'TwinGenie',
+            description:
+                '35-trait psychometric AI digital twin platform for structured cognitive reflection and personal clarity.',
+            inLanguage: 'en-US',
+            publisher: {
+                '@id': `${SITE_URL}/#organization`,
             },
         },
         {
             '@type': 'SoftwareApplication',
-            '@id': 'https://twingenie.app/#application',
+            '@id': `${SITE_URL}/#application`,
             name: 'TwinGenie',
-            applicationCategory: 'LifestyleApplication, ProductivityApplication',
+            applicationCategory: 'LifestyleApplication',
             operatingSystem: 'Web, Android (Google Play)',
             description:
-                'Psychometric AI digital twin platform built on a 35-trait personality assessment, semantic vector memory, and four calibrated reflection perspectives.',
-            url: 'https://twingenie.app',
-            installUrl: 'https://play.google.com/store/apps/details?id=com.asmind.app',
+                'Psychometric AI digital twin platform built on a 35-trait personality assessment, 1536-dim pgvector memory, and four calibrated reflection perspectives (Normal, Future, Honest, Reflective Coach).',
+            url: SITE_URL,
+            downloadUrl: `${SITE_URL}/download`,
+            installUrl: PLAY_STORE_URL,
+            screenshot: `${SITE_URL}/og-image.png`,
+            featureList: [
+                '35-Question 5-Stage Psychometric Calibration',
+                'Four Cognitive Perspectives (Normal Twin, Future Twin, Honest Twin, Reflective Coach)',
+                '1536-Dimensional PostgreSQL pgvector Episodic Memory',
+                'Voice and Text Cognitive Reflection',
+                'Multi-Day Guided Life Coach Tracks',
+                'Row-Level Security (RLS) with Zero Public Model Training',
+            ],
+            publisher: {
+                '@id': `${SITE_URL}/#organization`,
+            },
             offers: [
                 {
                     '@type': 'Offer',
                     name: 'Free Starter',
                     price: '0',
                     priceCurrency: 'USD',
+                    url: `${SITE_URL}/onboarding`,
                 },
                 {
                     '@type': 'Offer',
-                    name: 'Pro Companion',
+                    name: 'Pro Companion Monthly',
                     price: '5.99',
                     priceCurrency: 'USD',
+                    url: `${SITE_URL}/subscription`,
+                },
+                {
+                    '@type': 'Offer',
+                    name: 'Annual Pass',
+                    price: '47.88',
+                    priceCurrency: 'USD',
+                    url: `${SITE_URL}/subscription`,
                 },
             ],
         },
@@ -154,6 +194,7 @@ export default function RootLayout({
                 />
                 <link rel="manifest" href="/manifest.json" />
                 <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+                <link rel="alternate" type="text/plain" title="LLM Summary" href="/llms.txt" />
                 <meta name="theme-color" content="#07080B" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

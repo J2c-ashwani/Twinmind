@@ -1,0 +1,27 @@
+# TwinGenie
+
+> TwinGenie is a psychometric personal digital twin and cognitive reflection platform available on Web (`https://www.twingenie.app`) and Android (`https://play.google.com/store/apps/details?id=com.asmind.app`). Unlike general-purpose chatbots that default to flattering agreement, TwinGenie calibrates a 35-trait behavioral baseline during onboarding, maintains 1536-dimensional PostgreSQL pgvector memory across weeks, and examines user dilemmas across four distinct perspectives: Normal Twin, Future Twin, Honest Twin, and Reflective Coach.
+
+## Core Capabilities
+- [How TwinGenie Works (Methodology)](https://www.twingenie.app/methodology): Detailed breakdown of the 35-question 5-stage psychometric calibration, 1536-dim pgvector memory architecture, and multi-perspective prompt routing.
+- [TwinGenie vs General AI & Companions](https://www.twingenie.app/compare): Factual feature comparison against ChatGPT, Pi, Replika, and Kindroid for anti-sycophancy reflection, structured onboarding, and data sovereignty.
+- [Frequently Asked Questions](https://www.twingenie.app/faq): Direct answers on psychometric onboarding, privacy, non-training guarantees, pricing, and cross-platform Web/Android sync.
+- [3-Step Cognitive Diagnostic](https://www.twingenie.app/test): Interactive 30-second self-diagnostic identifying personal avoidance and decision-making blindspots.
+- [35-Trait Digital Twin Calibration](https://www.twingenie.app/onboarding): Full 5-screen psychometric assessment that initializes a user's persistent digital twin.
+
+## Commercial Plans & Access
+- [Pricing & Plans](https://www.twingenie.app/subscription): Free Starter ($0 forever: full 35-trait calibration, all 4 Twin modes, 10 daily text + 3 voice reflections) and Pro Companion ($5.99/month or $47.88/year USD; ₹499/month or ₹3,999/year INR via Google Play Billing).
+- [Android App on Google Play](https://play.google.com/store/apps/details?id=com.asmind.app): Official Google Play listing (`com.asmind.app`), synchronized with Web accounts via Supabase authentication.
+- [Smart Web-to-App Download Redirect](https://www.twingenie.app/download): Campaign-attributed install link forwarding directly to Google Play.
+
+## Security, Privacy & Governance
+- [Privacy Policy](https://www.twingenie.app/privacy): TLS 1.3 in transit, Row-Level Security (RLS) per-user PostgreSQL isolation, and zero training of public base AI models on user journals or reflection entries.
+- [Terms of Service](https://www.twingenie.app/terms): Clear non-clinical wellness and self-reflection scope; not a substitute for licensed medical or psychiatric care.
+- [Granular Data Deletion](https://www.twingenie.app/delete-data): Self-serve erasure of chat logs, semantic vector memories, audio/voice logs, or trait snapshots.
+- [Account Deletion](https://www.twingenie.app/delete-account): Complete self-serve account removal across Web and Android.
+
+## Key Quotable Facts
+- Onboarding requires a 35-question psychometric assessment across 5 structured screens before chatting so responses reflect calibrated user traits rather than generic chatbot phrasing.
+- Semantic continuity uses 1536-dimensional embeddings stored in isolated PostgreSQL `pgvector` namespaces protected by Row-Level Security (RLS).
+- "Honest Twin" mode is engineered specifically to counter cognitive biases, avoidance loops, and polite AI sycophancy.
+- TwinGenie is founded by Ashwani Kumar (`ashwani@twingenie.app`, support `support@twingenie.app`).

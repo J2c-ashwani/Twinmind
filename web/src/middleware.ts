@@ -41,10 +41,15 @@ export async function middleware(req: NextRequest) {
         '/subscription',
         '/try',
         '/test',
+        '/methodology',
+        '/compare',
+        '/faq',
         '/pricing',
         '/coaching',
         '/robots.txt',
         '/sitemap.xml',
+        '/llms.txt',
+        '/llms-full.txt',
         '/manifest.json',
         '/sw.js'
     ]
@@ -88,6 +93,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public (public files)
          */
-        '/((?!subscription$|subscription/|try$|try/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).*)',
+        '/((?!subscription$|subscription/|try$|try/|methodology$|methodology/|compare$|compare/|faq$|faq/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|llms.txt|llms-full.txt|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).*)',
     ],
 }

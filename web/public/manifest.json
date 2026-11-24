@@ -1,11 +1,11 @@
 {
-    "name": "TwinGenie",
+    "name": "TwinGenie — Psychometric Digital Twin",
     "short_name": "TwinGenie",
-    "description": "Your AI companion for personal growth and emotional wellness",
+    "description": "35-trait psychometric digital twin platform for non-sycophantic cognitive reflection, persistent pgvector memory, and guided coaching.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0F0F1E",
-    "theme_color": "#9333EA",
+    "background_color": "#07080B",
+    "theme_color": "#D9A760",
     "orientation": "portrait-primary",
     "scope": "/",
     "icons": [
@@ -30,14 +30,19 @@
     ],
     "shortcuts": [
         {
-            "name": "Chat",
+            "name": "Chat with Twin",
             "url": "/chat",
-            "description": "Start chatting with your AI twin"
+            "description": "Reflect across Normal, Future, Honest, and Reflective modes"
+        },
+        {
+            "name": "35-Trait Assessment",
+            "url": "/onboarding",
+            "description": "Calibrate your psychometric digital twin"
         },
         {
             "name": "Life Coach",
             "url": "/life-coach",
-            "description": "Access your coaching programs"
+            "description": "Access multi-day guided clarity sprints"
         }
     ]
 }

@@ -1,9 +1,16 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { FileCheck, CreditCard, Mail } from 'lucide-react'
 import SiteHeader from '@/components/Layout/SiteHeader'
 import SiteFooter from '@/components/Layout/SiteFooter'
+import { buildPageMetadata } from '@/lib/seo'
+
+export const metadata: Metadata = buildPageMetadata({
+    title: 'Terms of Service & Non-Clinical Notice',
+    description:
+        'Official TwinGenie Terms of Service covering Google Play subscriptions, user content ownership, non-clinical wellness scope, and acceptable usage.',
+    path: '/terms',
+})
 
 export default function TermsOfService() {
     return (

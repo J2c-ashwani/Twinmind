@@ -1,9 +1,16 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Shield, Lock, FileText, Mail } from 'lucide-react'
 import SiteHeader from '@/components/Layout/SiteHeader'
 import SiteFooter from '@/components/Layout/SiteFooter'
+import { buildPageMetadata } from '@/lib/seo'
+
+export const metadata: Metadata = buildPageMetadata({
+    title: 'Privacy Policy & Data Governance',
+    description:
+        'How TwinGenie safeguards private reflection data with TLS 1.3 encryption, Supabase Row-Level Security (RLS), zero public AI model training, and self-serve erasure.',
+    path: '/privacy',
+})
 
 export default function PrivacyPolicy() {
     return (
