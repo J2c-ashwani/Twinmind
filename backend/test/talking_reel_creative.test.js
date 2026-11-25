@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {formatForDate,archetypeForDate,ARCHETYPES,validateTalkingScript,talkingScriptPrompt,buildTalkingPackage} from '../src/services/growth/talkingReelCreativeService.js';
+import {formatForDate,archetypeForDate,ARCHETYPES,SUPERNOVA_ARCHETYPES,SUPERNOVA_START_DATE,validateTalkingScript,talkingScriptPrompt,buildTalkingPackage} from '../src/services/growth/talkingReelCreativeService.js';
 import {validateTranscript,makeSceneRequest,TalkingReelService} from '../src/services/growth/talkingReelService.js';
 
 const legacyScript={version:'talking_reels_v1',date:'2026-11-16',format:'story',hook:'A message can wait ten minutes',topic:'Overthinking a reply',featureName:'Everyday chat',discussion:'What story would you check before replying?',scenes:[
@@ -184,4 +184,41 @@ test('TalkingReelService polls async background Vertex interactions and slices c
   assert.equal(calls.find(c=>c.payload?.labels?.scene==='2').payload.previous_interaction_id,'int_scene_1');
   assert.equal(slicedTargets.length,1);
   assert.equal(slicedTargets[0].offset,12.0);
+});
+
+test('Supernova 80/20 playbook activates strictly on 2026-11-27+ with Indian multi-generation casts and keeps 2026-11-26 intact',()=>{
+  assert.equal(SUPERNOVA_START_DATE, '2026-11-27');
+  // 2026-11-26 stays on legacy cast
+  assert.equal(archetypeForDate('2026-11-26').id, 'genz_supermarket_debate');
+  // 2026-11-27 (Friday) launches Father & Son Confrontation with warm natural Indian English
+  const fri = archetypeForDate('2026-11-27');
+  assert.equal(fri.id, 'supernova_dad_son_table');
+  assert.match(fri.characters, /52-year-old Indian father/i);
+  assert.equal(fri.voiceStyle, 'warm natural Indian English');
+
+  // Saturday -> Mother & Daughter, Sunday -> Head-to-Head Split (~20%)
+  const sat = archetypeForDate('2026-11-28');
+  assert.equal(sat.id, 'supernova_mom_daughter_hallway');
+  const sun = archetypeForDate('2026-11-29');
+  assert.equal(formatForDate('2026-11-29'), 'split');
+  assert.equal(sun.id, 'supernova_park_split_proof');
+
+  // Verify makeSceneRequest injects warm Indian English + frame-0.1s tension instead of American English lock
+  const dadScript = {...viralStoryScript, date: '2026-11-27', format: 'story'};
+  const scene1 = makeSceneRequest(dadScript, 0);
+  const scene2 = makeSceneRequest(dadScript, 1, { previousInteractionId: 'int_dad_1' });
+  assert.match(scene1.input[0].content[0].text, /warm natural Indian English/);
+  assert.doesNotMatch(scene1.input[0].content[0].text, /American English/);
+  assert.match(scene1.input[0].content[0].text, /IMMEDIATE visual tension at frame 0\.1s/);
+  assert.match(scene2.input[0].content[0].text, /warm natural Indian English/);
+
+  // Verify prompt & packaging on 2026-11-27 include Supernova openers, Indian discovery tags, and non-robotic LinkedIn copy
+  const prompt = talkingScriptPrompt('2026-11-27');
+  assert.match(prompt, /SUPERNOVA 80\/20 VIRAL PLAYBOOK/);
+  assert.match(prompt, /PARENT CONFRONTATION/);
+  const pkg = buildTalkingPackage(dadScript);
+  assert.ok(pkg.youtube.tags.includes('RelatableIndia'));
+  assert.ok(pkg.youtube.tags.includes('IndianParents'));
+  assert.doesNotMatch(pkg.linkedin.caption, /In this fictional scene, two friends/);
+  assert.equal(Object.keys(SUPERNOVA_ARCHETYPES).length, 7);
 });

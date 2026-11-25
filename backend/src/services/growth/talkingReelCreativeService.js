@@ -90,10 +90,99 @@ export const ARCHETYPES = Object.freeze({
   })
 });
 
+export const SUPERNOVA_START_DATE = '2026-11-27';
+
+// Flagship Supernova-style multi-generational & high-tension casts active from 2026-11-27+
+// Friday (5 = 2026-11-27) launches first with Father & Son Confrontation.
+export const SUPERNOVA_ARCHETYPES = Object.freeze({
+  0: Object.freeze({
+    id: 'supernova_park_split_proof',
+    format: 'split',
+    name: 'Park Walk Reality-Check Split',
+    referenceFile: 'ref_park_afternoon.jpg',
+    setting: 'a sunlit neighborhood park path beside a stone wall and leafy trees',
+    characters: 'LEFT: 25-year-old South Asian man in an olive utility jacket holding an unbranded iced coffee cup and a matte phone facing away, looking defensive. RIGHT: 25-year-old woman in a cream knit sweater crossing her arms with a sharp, knowing half-smirk.',
+    speakers: { LEFT: 'olive jacket', RIGHT: 'cream sweater' },
+    voiceStyle: 'crisp conversational English',
+    mood: 'playful skepticism turning into an undeniable reality-check punchline'
+  }),
+  1: Object.freeze({
+    id: 'supernova_couple_midnight_phone',
+    format: 'story',
+    name: 'Midnight Bedside Phone Catch',
+    referenceFile: 'ref_parked_car_night.jpg',
+    setting: 'a dimly lit apartment living room sofa at 1:30 AM under one warm amber table lamp',
+    characters: 'LEFT: 27-year-old woman in an oversized sweatshirt sitting forward with narrowed suspicious eyes pointing at a phone. RIGHT: 28-year-old man in a grey t-shirt freezing mid-reach holding a face-down matte phone in startled panic.',
+    speakers: { LEFT: 'oversized sweatshirt', RIGHT: 'grey t-shirt' },
+    voiceStyle: 'crisp conversational English',
+    mood: 'caught-red-handed midnight suspicion flipping into relieved comic honesty'
+  }),
+  2: Object.freeze({
+    id: 'supernova_roommate_eavesdrop',
+    format: 'archetype',
+    name: 'Roommate Doorway Eavesdrop Bust',
+    referenceFile: 'ref_gym_friends.jpg',
+    setting: 'a cluttered college flat/bedroom doorway beside a study desk and open laptop at night',
+    characters: 'LEFT: 21-year-old Indian man in a faded slate t-shirt standing stunned in the bedroom doorway holding dangling earphones. RIGHT: 22-year-old Indian man in a mustard hoodie spun around in his desk chair mid-sentence beside a face-down phone.',
+    speakers: { LEFT: 'slate t-shirt', RIGHT: 'mustard hoodie' },
+    voiceStyle: 'warm natural Indian English',
+    mood: 'hilarious caught-talking-to-yourself hostel bust and sharp ego roast'
+  }),
+  3: Object.freeze({
+    id: 'supernova_kitchen_2am_mask',
+    format: 'council',
+    name: '2 AM Kitchen Broken-Promise Confrontation',
+    referenceFile: 'ref_midnight_kitchen.jpg',
+    setting: 'a quiet midnight family kitchen counter under warm range light with two stainless cups',
+    characters: 'LEFT: 24-year-old Indian man in a rolled-sleeve checkered shirt leaning tensely against the counter looking exhausted. RIGHT: 28-year-old Indian woman (older sister) in a soft sage knit cardigan catching him wide awake with raised eyebrows and fierce honesty.',
+    speakers: { LEFT: 'checkered shirt', RIGHT: 'sage cardigan' },
+    voiceStyle: 'warm natural Indian English',
+    mood: 'late-night sibling truth bomb breaking through fake confidence'
+  }),
+  4: Object.freeze({
+    id: 'supernova_car_breakup_misdirection',
+    format: 'genz',
+    name: 'Parked Car Shock Misdirection',
+    referenceFile: 'ref_parked_car_night.jpg',
+    setting: 'the front seats of a parked car at night under warm amber streetlights and light rain',
+    characters: 'LEFT: 26-year-old woman in the driver seat wearing a burgundy jacket, gripping the steering wheel in sharp disbelief. RIGHT: 27-year-old man in the passenger seat in a dark green overshirt holding a matte phone face-down with a guilty half-grin.',
+    speakers: { LEFT: 'burgundy jacket', RIGHT: 'green overshirt' },
+    voiceStyle: 'crisp conversational English',
+    mood: 'sounds like a breakup accusation for 10 seconds -> sudden comedic accountability flip'
+  }),
+  5: Object.freeze({
+    id: 'supernova_dad_son_table',
+    format: 'story',
+    name: 'Father & Son 2 AM Confrontation',
+    referenceFile: 'ref_living_floor_laundry.jpg',
+    setting: 'a warm middle-class Indian family dining room at night beside half-empty chai cups on a wooden table',
+    characters: 'LEFT: 52-year-old Indian father with silver-templed hair in a crisp striped cotton shirt leaning forward intently across the dining table. RIGHT: 22-year-old Indian adult son in a dark crewneck sweatshirt freezing mid-step holding keys and an unbranded phone.',
+    speakers: { LEFT: 'striped shirt (Dad)', RIGHT: 'dark crewneck (Son)' },
+    voiceStyle: 'warm natural Indian English',
+    mood: 'tense Indian dad interrogation flipping into an emotional reality-check and respect'
+  }),
+  6: Object.freeze({
+    id: 'supernova_mom_daughter_hallway',
+    format: 'receipt',
+    name: 'Mother & Daughter Before Heading Out',
+    referenceFile: 'ref_hallway_getting_ready.jpg',
+    setting: 'a sunlit Indian apartment hallway near a doorway mirror while grabbing shoes and keys',
+    characters: 'LEFT: 48-year-old Indian mother in a cotton pastel kurti holding a mug, pausing abruptly with sharp maternal intuition. RIGHT: 23-year-old Indian adult daughter in a camel coat over black holding a tote bag, caught dropping her fake cheerful smile.',
+    speakers: { LEFT: 'pastel kurti (Mom)', RIGHT: 'camel coat (Daughter)' },
+    voiceStyle: 'warm natural Indian English',
+    mood: 'sharp Indian mom catch-out turning into raw honesty and an unforgettable comeback line'
+  })
+});
+
 export const istDate = date => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata'}).format(date);
 export const dateObject = day => new Date(day+'T12:00:00+05:30');
 export const formatForDate = day => FORMAT_CALENDAR[dateObject(day).getUTCDay()];
-export const archetypeForDate = day => ARCHETYPES[dateObject(day).getUTCDay()] || ARCHETYPES[5];
+export const isSupernovaDate = day => typeof day === 'string' && day >= SUPERNOVA_START_DATE;
+export const archetypeForDate = day => {
+  const dow = dateObject(day).getUTCDay();
+  if (isSupernovaDate(day)) return SUPERNOVA_ARCHETYPES[dow] || SUPERNOVA_ARCHETYPES[5];
+  return ARCHETYPES[dow] || ARCHETYPES[5];
+};
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const hasVertexCredential=()=>Boolean(process.env.GOOGLE_TTS_SERVICE_ACCOUNT_JSON||process.env.GOOGLE_TTS_SERVICE_ACCOUNT_BASE64||process.env.GOOGLE_APPLICATION_CREDENTIALS||existsSync(path.join(HERE,'../../../google-tts-service-account.json')));
 export const isTalkingEnabled = () => process.env.REEL_RENDERER_VERSION !== 'legacy' && process.env.TALKING_REELS_ENABLED !== 'false' && (process.env.TALKING_REELS_ENABLED === 'true' || (process.env.NODE_ENV === 'production' && hasVertexCredential()));
@@ -134,10 +223,48 @@ export function validateTalkingScript(script, {date, evidence=null, viralGate=fa
   return script;
 }
 
+export const SUPERNOVA_OPENERS = Object.freeze({
+  1: 'SHOCK MISDIRECTION: Sound for the first 10 seconds like someone got caught hiding a partner, breaking trust, or sneaking out—then flip in Scene 2 into TwinGenie exposing an emotional habit or rehearsed apology.',
+  2: 'OVERHEARD EAVESDROP: Character A bursts in mid-argument thinking Character B was fighting with a friend/crush behind a closed door—flipping in Scene 2 into Character B arguing with TwinGenie Honest mode.',
+  3: 'BROKEN-PROMISE RECEIPT: Catch the character red-handed repeating the exact habit or late-night spiral they swore on Tuesday they quit—revealing TwinGenie kept the receipt in Scene 2.',
+  4: 'SHOCK MISDIRECTION: Open in intense car tension that sounds like a sudden breakup or betrayal for 10 seconds—then flip in Scene 2 into TwinGenie calling out self-sabotage or mixed signals.',
+  5: 'PARENT CONFRONTATION: Dad confronts adult Son immediately ("Sit down. Who were you whispering/arguing with at 2 AM?!") with maximum household tension—flipping in Scene 2 into Son confessing he used TwinGenie Honest/Future mode before making a huge life decision.',
+  6: 'MATERNAL CATCH-OUT: Mom stops adult Daughter right at the front door ("Stop lying. Look at me—why have you been smiling like nothing happened all week?")—flipping in Scene 2 into TwinGenie naming the pattern she kept hiding.',
+  0: 'REALITY-CHECK CONFRONTATION: High-contrast split proving why generic flattery enables a bad decision while one piercing TwinGenie Honest line forces instant clarity.'
+});
+
 export function talkingScriptPrompt(day, recentTopics=[], evidence=null) {
   const format=formatForDate(day);
   const archetype=archetypeForDate(day);
   const isSplit=format==='split';
+  const dow=dateObject(day).getUTCDay();
+  const supernova=isSupernovaDate(day);
+  const openerDirective=SUPERNOVA_OPENERS[dow] || SUPERNOVA_OPENERS[5];
+
+  if (supernova) {
+    return `Write an ultra-high-retention 2026 YouTube Shorts & Instagram Reels vertical story script engineered to freeze the thumb inside 0.5 seconds across India and global English audiences. Format: ${format}. ${FORMAT_NOTES[format]}
+Setting & Characters: In ${archetype.setting}: ${archetype.characters}
+Emotional Vibe: ${archetype.mood}. Voice delivery: ${archetype.voiceStyle || 'crisp conversational English'}. Speak crisp, natural everyday English words ONLY (never write non-ASCII/Devanagari script or untranscribable local spelling—warm Indian-English cadence using standard English words keeps speech recognition & kinetic subtitles 100% accurate).
+
+SUPERNOVA 80/20 VIRAL PLAYBOOK (MANDATORY):
+1. ZERO AD SCENT & ZERO POLITE OPENERS IN SCENE 1: Scene 1 MUST NOT mention TwinGenie, an app, or AI (unless captured comparison evidence is supplied below). Ban greetings ("Hey", "So...", "Good morning") and ban mild chit-chat. Open at second 0.2 inside high-stakes social friction using this exact hook pattern -> ${openerDirective}
+2. UNRESOLVED OPEN LOOP (SECONDS 0-12): Keep the viewer desperate for closure on WHY the parent/partner/roommate is furious or shocked until Scene 2.
+3. DOUBLE-TAKE FLIP + LATE TWIST REVEAL (FINAL 1-2 TURNS OF SCENE 2): Only in the final 1-2 lines of Scene 2, flip the misunderstanding cleanly onto TwinGenie (e.g. "I asked TwinGenie Honest mode because everyone else just lies to make me feel better." or "That wasn't a girl—TwinGenie pulled what I swore Tuesday.") paired with 1 screenshot-worthy 1-sentence boundary/truth viewers want to SAVE.
+4. EVERYDAY HUMAN STAKES ONLY: Zero startups, zero CEOs/bosses/coworkers/office jargon. Focus strictly on Indian & universal family pressure, late-night overthinking, secret broken promises, relationships, texting regrets, hostel/roommate drama, or self-respect.
+5. ANTI-CLICHÉ BAN: Never write brochure lines like "TwinGenie can suggest a small habit", "no fluff", "enjoy the sip", "whisper the truth", "find calm", "fresh angle", or "let's try the Normal view". Write sharp words real people snap aloud during tension.
+6. OPEN-LOOP STICKER, TITLE & 50/50 COMMENT WAR:
+   - "hook" (<=55 chars): Pure unresolved-conflict title with ZERO mention of "TwinGenie" or "AI" (unless evidence comparison below). Example energy: "Dad heard one line through the door" or "Wait—why was she wide awake at 2 AM?".
+   - "contextSticker" (<=42 chars, plain ASCII English, ZERO emojis): Open-loop suspense caption or DM share trigger (e.g. "Dad only heard the worst sentence...", "She checked his phone at 1:30 AM...", "Send to someone hiding how they feel").
+   - "discussion" (<=140 chars): Polarizing 50/50 comment question so viewers immediately argue in replies (e.g. "Was Dad wrong for checking up at 2 AM or right to call it out?").
+${isSplit ? (evidence ? 'Comparison rule: Read EACH verified excerpt once verbatim with source attribution, keeping reaction natural and sharp.' : 'Contrast generic flattering validation vs one piercing, honest reality check without naming any other AI product.') : ''}
+
+Timing & Structure: Exactly two scenes; 2–5 turns per scene; Scene 1 at most 26 words, Scene 2 at most 20 words (tight 22s pacing + clean loop ending back into the opening line), 24–46 words total. No CTA in dialogue. Each turn is {speaker:"LEFT"|"RIGHT",text:"exact speech"}. Optional source:"competitor"|"twingenie" only for actual evidence excerpts. No stage directions inside speech. topic <=90 chars, featureName <=50 chars.
+Return strictly JSON: {hook,contextSticker,topic,featureName,discussion,scenes:[{turns:[...]},{turns:[...]}]}.
+Verified app capabilities (only reference accurately at the twist): ordinary chat; Honest/Reflective/Future/Normal perspectives; Guided Life Coach exercises; self-reported mood patterns; earlier conversation memory callbacks. No medical diagnoses, guarantees, testimonials, or statistics.
+Avoid repeating recent story topics: ${JSON.stringify(recentTopics.slice(0,45))}.
+${evidence ? `Comparison evidence ID ${evidence.id}: ${JSON.stringify(evidence)}. Read EACH excerpt verbatim once with source on that turn; do not omit setup context from captions.` : 'No competitor evidence supplied: never name ChatGPT, Replika, Character.ai, or any other AI brand.'}`;
+  }
+
   return `Write a gripping, fast-paced, English-only short film for YouTube Shorts and Instagram Reels that hooks regular everyday people (friends, couples, students, roommates, siblings, family) immediately. Format: ${format}. ${FORMAT_NOTES[format]}
 Setting & Characters: In ${archetype.setting}: ${archetype.characters}
 Emotional Vibe: ${archetype.mood}. Characters must feel like real humans actively caught in a moment—NOT actors reading an advertisement.
@@ -162,26 +289,39 @@ ${evidence ? `Comparison evidence ID ${evidence.id}: ${JSON.stringify(evidence)}
 export function buildTalkingPackage(script, options={}) {
   const turns=script.scenes.flatMap(s=>s.turns),question=turns[0].text;
   const direct=turns.find(t=>t.source==='twingenie')?.text || turns.at(-1).text;
-  const limits=script.comparisonDisclosure || 'AI-generated fictional scene. Illustrative conversation; responses vary.';
+  const limits=script.comparisonDisclosure || 'Dramatised AI-generated scene. Illustrative conversation; responses vary.';
   const link=n=>`https://www.twingenie.app/download?utm_source=${n}&utm_medium=organic&utm_campaign=talking_${script.date}_${script.format}`;
   const playStoreLink = link('youtube_shorts');
-  const igLead = `${script.hook}\n\n${script.discussion}`;
-  const caption=script.captions?.instagram || `${igLead}\n\n(Wait for the end 👀)\nDownload TwinGenie on Google Play — link in bio. On iPhone? Comment iOS.\n\n${limits}\n#relatable #overthinking #relationships #mindset #TwinGenie`;
+  const dow = dateObject(script.date).getUTCDay();
+  const isIndiaParentDay = isSupernovaDate(script.date) && [5, 6].includes(dow);
+  const isIndiaYouthDay = isSupernovaDate(script.date) && [2, 3].includes(dow);
+  const igTags = isIndiaParentDay
+    ? '#RelatableIndia #IndianParents #FamilyDrama #Overthinking #TwinGenie'
+    : isIndiaYouthDay
+      ? '#RelatableIndia #LateNightThoughts #Overthinking #Storytime #TwinGenie'
+      : '#relatable #overthinking #relationships #mindset #TwinGenie';
+  const igLead = `${script.discussion}`;
+  const caption=script.captions?.instagram || `${igLead}\n\n(Wait for the twist at the end 👀)\nDownload TwinGenie on Google Play — link in bio. On iPhone? Comment iOS or visit twingenie.app.\n\n${limits}\n${igTags}`;
   const linkedinFormat=getLinkedInFormat(dateObject(script.date));
   const slides=[
     {type:'cover',title:script.hook,subtitle:script.topic,tag:script.featureName.toUpperCase(),takeaways:[question,direct,script.discussion]},
-    {type:'insight',title:'A familiar moment',subtitle:question,content:direct,tag:'ILLUSTRATIVE EXAMPLE'},
-    {type:'insight',title:'A conversation worth starting',subtitle:`Explore ${script.featureName.toLowerCase()} in TwinGenie.`,content:`TwinGenie is an AI companion for everyday conversations and reflection. ${script.discussion}`,tag:'TWINGENIE'},
-    {type:'discussion',title:'Your perspective',question:script.discussion,tag:'TWINGENIE'}
+    {type:'insight',title:'What happened first',subtitle:question,content:direct,tag:'ILLUSTRATIVE EXAMPLE'},
+    {type:'insight',title:'The shift in perspective',subtitle:`${script.featureName}: honest clarity without empty flattery.`,content:script.discussion,tag:'TWINGENIE'},
+    {type:'discussion',title:'Where do you stand?',question:script.discussion,tag:'TWINGENIE'}
   ];
   const linkedinCaption=script.captions?.linkedin || (
     linkedinFormat==='video'
-      ? `${script.hook}\n\n${script.topic}\n\nIn this fictional scene, two friends explore an everyday dilemma using TwinGenie. ${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n${limits}\n\n#TwinGenie #AICompanion`
+      ? `${script.hook}\n\nMost AI tools nod along when we rationalize a tough moment—which feels good for 10 seconds and solves nothing.\n\n${script.discussion}\n\n${limits}\n\n#Psychology #SelfAwareness #TwinGenie`
       : linkedinFormat==='carousel_pdf'
-        ? `${script.hook}\n\n${script.topic}\n\nSwipe through this quick breakdown on how ${script.featureName.toLowerCase()} helps turn everyday overthinking into clarity.\n\n${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n#TwinGenie #AICompanion`
-        : `${script.hook}\n\n${script.topic}\n\nAn illustrative reflection:\n“${question}”\n“${direct}”\n\n${script.discussion}\n\nTwinGenie is an AI companion for everyday conversations and reflection.\n\n#TwinGenie #AICompanion`
+        ? `${script.hook}\n\n${script.topic}\n\nSwipe through how ${script.featureName.toLowerCase()} breaks circular rationalizations.\n\n${script.discussion}\n\n#SelfReflection #TwinGenie`
+        : `${script.hook}\n\n“${question}”\n“${direct}”\n\n${script.discussion}\n\n#SelfAwareness #TwinGenie`
   );
-  const ytDescription = `${script.hook}\n\n${script.discussion} Drop your answer in the comments 👇\n\n📲 Download TwinGenie on Google Play: ${playStoreLink}\n(On iPhone? Visit twingenie.app)\n\n${limits}\n\n#Shorts #Relatable #Overthinking #Relationships #TwinGenie`;
+  const ytTags = isIndiaParentDay
+    ? ['Shorts', 'RelatableIndia', 'IndianParents', 'FamilyDrama', 'Overthinking', 'Storytime', 'TwinGenie']
+    : isIndiaYouthDay
+      ? ['Shorts', 'RelatableIndia', 'HostelLife', 'LateNightThoughts', 'Overthinking', 'Storytime', 'TwinGenie']
+      : ['Shorts', 'Relatable', 'Overthinking', 'Relationships', 'Storytime', 'SelfAwareness', 'TwinGenie'];
+  const ytDescription = `${script.discussion} Drop your take below 👇\n\nDownload TwinGenie on Google Play: ${playStoreLink}\n(On iPhone? Try it on twingenie.app)\n\n${limits}\n\n${ytTags.slice(0, 5).map(t => `#${t}`).join(' ')}`;
   const creative={...script};
   return {
     topic:script.topic,
@@ -200,12 +340,12 @@ export function buildTalkingPackage(script, options={}) {
     linkedin:{title:script.hook,caption:linkedinCaption,slides,format:linkedinFormat,contentVersion:'linkedin_talking_v1'},
     facebook:{title:script.hook,caption,slides,creative,firstComment:null},
     instagram:{caption,creative,firstComment:null},
-    threads:{text:script.captions?.threads || `${script.hook}\n\n${script.discussion}\n\nTwinGenie: honest conversations for everyday life.`},
+    threads:{text:script.captions?.threads || `${script.hook}\n\n${script.discussion}`},
     youtube:{
       title:script.captions?.youtubeTitle || script.hook,
       description:script.captions?.youtube || ytDescription,
-      pinnedComment:`Wait—are they right or overreacting? 👇 Drop your take below!\n\nDownload TwinGenie on Google Play: ${playStoreLink}`,
-      tags:['Shorts','Relatable','Overthinking','Relationships','Storytime','SelfAwareness','TwinGenie'],
+      pinnedComment:`${script.discussion} Drop your side below 👇\n\nDownload TwinGenie on Google Play: ${playStoreLink}`,
+      tags:ytTags,
       categoryId:'22',
       creative
     }
