@@ -29,7 +29,9 @@ import {
 } from '../services/personalityStyleLayer.js';
 import {
     getUserStyleMode,
-    adjustModifiersForStyle
+    adjustModifiersForStyle,
+    generateStyleDirectives,
+    mapTwinModeToStyleMode
 } from '../services/emotionalStyleAdapter.js';
 import { storeMessageWithEmbedding } from '../services/conversationMemoryService.js';
 import logger from '../config/logger.js';
@@ -94,29 +96,29 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
                 getEmotionalMetrics(userId),
                 getUserPersonalizationContext(userId),
                 getUserPersonalityProfile(userId),
-                getUserStyleMode(userId)
+                getUserStyleMode(userId, mode)
             ]);
             const T3 = Date.now();
             logger.info(`⏱ [LATENCY] T2→T3 parallel_db_fetches: ${T3 - T3start}ms`);
 
             // Get behavioral modifiers based on user's psychological state
-            const behavioralModifiers = getBehavioralModifiers(engagementState);
+            const behavioralModifiers = getBehavioralModifiers(engagementState) + generateStyleDirectives(mapTwinModeToStyleMode(mode));
 
             // Detect emotional events from message (before generating response)
             const detectedEvents = detectEmotionalEvents(message);
             const detectedIntensity = detectEmotionalIntensity(message);
 
             // Get emotional behavior modifiers with detected events, intensity, and personalization
-            let emotionalModifiers = getEmotionalBehaviorModifiers(emotionalMetrics, detectedEvents, detectedIntensity, userContext);
+            let emotionalModifiers = getEmotionalBehaviorModifiers(emotionalMetrics, detectedEvents, detectedIntensity, userContext, mode);
 
             // Apply personality style layer
             const emotionalState = detectEmotionalState(detectedEvents);
             const intensityLevel = getIntensityLevel(detectedIntensity);
-            const personalityDirectives = generatePersonalityDirectives(personalityProfile, emotionalState, intensityLevel, emotionalMetrics.trust_level);
+            const personalityDirectives = generatePersonalityDirectives(personalityProfile, emotionalState, intensityLevel, emotionalMetrics.trust_level, mode);
 
             emotionalModifiers += personalityDirectives;
 
-            // Apply emotional style adapter
+            // Apply emotional style adapter aligned with active twin mode
             emotionalModifiers = adjustModifiersForStyle(emotionalModifiers, styleMode);
 
             // Combine both behavioral and emotional modifiers
@@ -442,7 +444,7 @@ router.post('/stream', authenticateUser, checkSubscription, checkUsageLimits, as
         const hasGoals = detectGoalContent(message);
         trackMessage(userId, message, isEmotional, hasGoals).catch(() => {});
 
-        const behavioralModifiers = getBehavioralModifiers(engagementState);
+        const behavioralModifiers = getBehavioralModifiers(engagementState) + generateStyleDirectives(mapTwinModeToStyleMode(mode));
 
         // SSE Headers
         res.writeHead(200, {

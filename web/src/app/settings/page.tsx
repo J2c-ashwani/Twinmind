@@ -7,6 +7,7 @@ import { User, Bell, Lock, Palette, LogOut, ChevronLeft, Trash2, Check, Download
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import SubpageHeader from '@/components/Navigation/SubpageHeader';
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -259,14 +260,9 @@ export default function SettingsPage() {
     return (
         <div className="min-h-screen bg-[#0F0F1E] text-white p-6">
             <div className="max-w-4xl mx-auto">
+                <SubpageHeader className="mb-6" />
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <button
-                        onClick={() => router.back()}
-                        className="glass-button p-2"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
                     <h1 className="text-3xl font-bold text-white">Settings</h1>
                 </div>
 

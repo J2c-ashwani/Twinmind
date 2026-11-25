@@ -169,6 +169,24 @@ function detectEmotion(message = "") {
    MAIN CHAT ENGINE
 --------------------------------------- */
 
+export const MODE_TO_TASK_TYPE = {
+    normal: 'personality_core',
+    future: 'deep_reasoning',
+    therapist: 'emotional_support',
+    dark: 'creative_writing',
+};
+
+export function formatHistoryWithModeContext(recentChatsData = [], activeMode = 'normal') {
+    return [...recentChatsData]
+        .reverse()
+        .map(m => ({
+            sender_type: m.sender,
+            content: (m.sender === 'ai' && m.mode && m.mode !== activeMode)
+                ? `[Earlier reply in ${m.mode} mode]: ${m.message}`
+                : m.message,
+        }));
+}
+
 export async function generateChatResponse(
     userId,
     userMessage,
@@ -255,7 +273,7 @@ export async function generateChatResponse(
             supabaseAdmin.from("users").select("full_name").eq("id", userId).single(),
             // INTENTIONAL: reads last 6 messages across ALL conversations (continuity model).
             // The AI twin retains cross-session context by design. Do NOT scope this to conversation_id.
-            supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
+            supabaseAdmin.from("chat_history").select("message, sender, mode").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
             getContextForPrompt(userId, 10).catch(() => ""),
             getEvolutionSummaryForPrompt(userId).catch(() => "")
         ]);
@@ -263,9 +281,7 @@ export async function generateChatResponse(
         if (!personality) throw new Error("Chat Engine Fatal: Personality not found. User onboarding may be incomplete.");
         const userName = userData?.data?.full_name || "User";
 
-        const conversationHistory = (recentChats?.data || [])
-            .reverse()
-            .map(m => ({ sender_type: m.sender, content: m.message }));
+        const conversationHistory = formatHistoryWithModeContext(recentChats?.data || [], mode);
 
         /* 2. GEN Z DETECTION */
         const genZ = detectGenZUsage(userMessage);
@@ -328,13 +344,14 @@ Mirror lightly: "bro", "fr", "ngl", emojis — but avoid slang if user is sad/an
 
         let aiMessage;
         /* 8. AI CALL (Only if not a simple greeting) */
+        const taskType = MODE_TO_TASK_TYPE[mode] || 'default';
         try {
             const aiResponse = await withTimeout(
                 aiService.generateChatResponse(
                     userMessage,
                     optimized.history,
                     compressed, // Use clean system prompt, NOT the mashed one
-                    mode
+                    taskType
                 ),
                 12000
             );
@@ -501,7 +518,7 @@ export async function* generateStreamingChatResponse(
         let [personality, userData, recentChats, contextPrompt, evolutionPrompt] = await Promise.all([
             getPersonality(userId),
             supabaseAdmin.from("users").select("full_name").eq("id", userId).single(),
-            supabaseAdmin.from("chat_history").select("message, sender").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
+            supabaseAdmin.from("chat_history").select("message, sender, mode").eq("user_id", userId).order("created_at", { ascending: false }).limit(6),
             getContextForPrompt(userId, 10).catch(() => ""),
             getEvolutionSummaryForPrompt(userId).catch(() => "")
         ]);
@@ -509,9 +526,7 @@ export async function* generateStreamingChatResponse(
         if (!personality) throw new Error("Chat Engine Fatal: Personality not found.");
         const userName = userData?.data?.full_name || "User";
 
-        const conversationHistory = (recentChats?.data || [])
-            .reverse()
-            .map(m => ({ sender_type: m.sender, content: m.message }));
+        const conversationHistory = formatHistoryWithModeContext(recentChats?.data || [], mode);
 
         const genZ = detectGenZUsage(userMessage);
 
@@ -563,12 +578,13 @@ export async function* generateStreamingChatResponse(
         const optimized = promptOptimizer.optimizePrompt(compressed, userMessage, conversationHistory);
 
         let accumulated = '';
+        const streamTaskType = MODE_TO_TASK_TYPE[mode] || 'default';
         try {
             const stream = aiService.generateStreamingResponse(
                 userMessage,
                 optimized.history,
                 compressed,
-                mode
+                streamTaskType
             );
 
             for await (const chunk of stream) {

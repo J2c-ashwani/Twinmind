@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { motion } from 'framer-motion';
 import { Copy, Share2, Users, Gift, Check } from 'lucide-react';
+import SubpageHeader from '@/components/Navigation/SubpageHeader';
 
 export default function ReferralPage() {
     const [referralCode, setReferralCode] = useState('');
@@ -49,11 +50,12 @@ export default function ReferralPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+            <SubpageHeader />
             {/* Header */}
             <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold mb-2">Invite Friends</h1>
-                <p className="text-gray-600">Share TwinGenie and earn rewards together!</p>
+                <h1 className="text-4xl font-bold mb-2 text-white">Invite Friends</h1>
+                <p className="text-gray-300">Share TwinGenie and earn rewards together!</p>
             </div>
 
             {/* Referral Card */}

@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import api from '@/lib/api'
 import { Loader2, CheckCircle2, Circle, Clock, Gift, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import SubpageHeader from '@/components/Navigation/SubpageHeader'
 
 interface DailyChallenge {
     id: string
@@ -105,6 +106,7 @@ export default function DailyChallengesPage() {
             {/* Header with Progress */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-b-[32px] p-8 mb-6">
                 <div className="max-w-4xl mx-auto">
+                    <SubpageHeader variant="banner" className="mb-6" />
                     <div className="flex items-center gap-3 mb-6">
                         <Sparkles className="w-8 h-8" />
                         <h1 className="text-3xl font-bold">Daily Challenges</h1>

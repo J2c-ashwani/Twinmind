@@ -311,26 +311,31 @@ export function getIntensityLevel(intensity) {
  * Pure function: Receives normalized profile and returns XML-delimited directives.
  * ============================================================
  */
-export function generatePersonalityDirectives(personalityProfile, emotionalState = 'neutral', intensityLevel = 'low', trustLevel = 50) {
+export function generatePersonalityDirectives(personalityProfile, emotionalState = 'neutral', intensityLevel = 'low', trustLevel = 50, mode = 'normal') {
     // Feature Flag Check
     if (process.env.PERSONALITY_STYLE_LAYER_ENABLED === 'false') {
         return '';
     }
 
     const profile = personalityProfile || getDefaultPersonalityProfile();
+    const isBluntOrDetachedMode = mode === 'dark' || mode === 'future';
 
     let directives = `\n<user_personality_profile>\n`;
     directives += `NOTICE TO MODEL: The following profile describes the user's personality tendencies, core values, and style preferences.\n`;
     directives += `5-TIER HIERARCHY RULES:\n`;
     directives += `1. System Safety Requirements (ALWAYS HIGHEST PRIORITY)\n`;
-    directives += `2. Current Explicit User Request (Directives yield to what user asks RIGHT NOW)\n`;
-    directives += `3. Current Emotional State (De-escalation and emotional support)\n`;
-    directives += `4. Stable Personality Preferences (Tone, structure, framing context below)\n`;
+    directives += `2. Current Explicit User Request & Active Mode Voice (${String(mode || 'normal').toUpperCase()})\n`;
+    if (!isBluntOrDetachedMode) {
+        directives += `3. Current Emotional State (De-escalation and emotional support)\n`;
+        directives += `4. Stable Personality Preferences (Tone, structure, framing context below)\n`;
+    } else {
+        directives += `3. Stable Personality Background (Use as context without softening ${String(mode).toUpperCase()} voice)\n`;
+    }
     directives += `5. Default Conversational Baseline\n\n`;
 
-    // 1. Emotional State Modifiers
+    // 1. Emotional State Modifiers (skip softening overrides in dark/future modes)
     const stateModifier = EMOTIONAL_STATE_MODIFIERS[emotionalState];
-    if (stateModifier && emotionalState !== 'neutral') {
+    if (!isBluntOrDetachedMode && stateModifier && emotionalState !== 'neutral') {
         directives += `EMOTIONAL STATE (${emotionalState.toUpperCase()}):\n`;
         directives += `- Tone: ${stateModifier.tone}\n`;
         directives += `- Behavior: ${stateModifier.behavior}\n\n`;
@@ -341,10 +346,14 @@ export function generatePersonalityDirectives(personalityProfile, emotionalState
     for (const [trait, score] of Object.entries(profile.big_five)) {
         if (score >= 0.60) {
             const mod = BIG_FIVE_MODIFIERS[trait]?.high;
-            if (mod) activeTraits.push(`- High ${trait.toUpperCase()}: ${mod.behavior} (${mod.response_style})`);
+            if (mod && !(isBluntOrDetachedMode && (trait === 'agreeableness' || trait === 'neuroticism'))) {
+                activeTraits.push(`- High ${trait.toUpperCase()}: ${mod.behavior} (${mod.response_style})`);
+            }
         } else if (score <= 0.40) {
             const mod = BIG_FIVE_MODIFIERS[trait]?.low;
-            if (mod) activeTraits.push(`- Low ${trait.toUpperCase()}: ${mod.behavior} (${mod.response_style})`);
+            if (mod && !(isBluntOrDetachedMode && (trait === 'agreeableness' || trait === 'neuroticism'))) {
+                activeTraits.push(`- Low ${trait.toUpperCase()}: ${mod.behavior} (${mod.response_style})`);
+            }
         }
     }
 
@@ -364,7 +373,9 @@ export function generatePersonalityDirectives(personalityProfile, emotionalState
     // 4. Communication & Decision Style Context
     directives += `COMMUNICATION PREFERENCES:\n`;
     directives += `- Decision Style: ${profile.decisionStyle}\n`;
-    directives += `- Style Tendency: ${profile.communicationStyle}\n`;
+    if (!isBluntOrDetachedMode) {
+        directives += `- Style Tendency: ${profile.communicationStyle}\n`;
+    }
     directives += `</user_personality_profile>\n`;
 
     return directives;

@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import api from '@/lib/api'
 import { Loader2, Trophy, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
+import SubpageHeader from '@/components/Navigation/SubpageHeader'
 
 interface Achievement {
     id: string
@@ -88,6 +89,7 @@ export default function AchievementsPage() {
             {/* Header with Stats */}
             <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-b-[32px] p-8 mb-6">
                 <div className="max-w-6xl mx-auto">
+                    <SubpageHeader variant="banner" className="mb-6" />
                     <div className="flex items-center gap-3 mb-6">
                         <Trophy className="w-8 h-8" />
                         <h1 className="text-3xl font-bold">Achievements</h1>

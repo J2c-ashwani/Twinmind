@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { apiClient } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, CheckCircle, ChevronLeft, BookOpen } from 'lucide-react';
+import { Send, CheckCircle, ChevronLeft, BookOpen, LayoutDashboard, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -159,7 +159,23 @@ export default function CoachingSessionPage() {
                         <p className="text-sm text-purple-300 font-medium">Goal: {session.content.goal}</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/dashboard"
+                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg border border-white/10 transition-colors"
+                        title="Back to Dashboard"
+                    >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Dashboard</span>
+                    </Link>
+                    <Link
+                        href="/chat"
+                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg border border-white/10 transition-colors"
+                        title="Back to Chat"
+                    >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Chat</span>
+                    </Link>
                     <button
                         onClick={() => setShowExercise(!showExercise)}
                         className={`p-2 rounded-full transition-colors ${showExercise

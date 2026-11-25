@@ -5,6 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { apiClient } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Check, Trash2, Lightbulb, Trophy, User } from 'lucide-react';
+import SubpageHeader from '@/components/Navigation/SubpageHeader';
 
 function timeAgo(dateString: string) {
     const date = new Date(dateString);
@@ -74,6 +75,7 @@ export default function NotificationsPage() {
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
+            <SubpageHeader />
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white">Notifications</h1>
                 <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">

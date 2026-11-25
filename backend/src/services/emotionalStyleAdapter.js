@@ -5,6 +5,18 @@ import logger from '../config/logger.js';
  * Provides different AI personality modes for varied user experiences
  */
 
+export const TWIN_MODE_TO_STYLE = {
+    normal: 'normal_twin',
+    future: 'future_twin',
+    dark: 'dark_twin',
+    therapist: 'therapist_twin'
+};
+
+export function mapTwinModeToStyleMode(mode = 'normal') {
+    const normalized = String(mode || 'normal').toLowerCase();
+    return TWIN_MODE_TO_STYLE[normalized] || 'normal_twin';
+}
+
 export const STYLE_MODES = {
     normal_twin: {
         name: 'Normal Twin',
@@ -24,18 +36,18 @@ export const STYLE_MODES = {
     },
     future_twin: {
         name: 'Future Twin',
-        description: 'Wise guide focused on long-term growth and vision',
+        description: 'Calm, strategic voice from 5 years ahead focused on long-term perspective',
         tone_modifier: 'wise',
-        empathy_level: 0.9,
+        empathy_level: 0.4,
         honesty_level: 0.9,
-        warmth_level: 0.9,
-        directness_level: 0.8,
-        response_length: 'long',
+        warmth_level: 0.4,
+        directness_level: 0.9,
+        response_length: 'short',
         behavioral_overrides: {
             memory_use: 'high',
             future_projection: 'very_high',
-            reassurance_style: 'visionary',
-            question_intensity: 'medium'
+            reassurance_style: 'perspective',
+            question_intensity: 'none'
         }
     },
     dark_twin: {
@@ -62,7 +74,7 @@ export const STYLE_MODES = {
         honesty_level: 0.8,
         warmth_level: 1.0,
         directness_level: 0.5,
-        response_length: 'long',
+        response_length: 'medium',
         behavioral_overrides: {
             memory_use: 'high',
             future_projection: 'medium',
@@ -160,14 +172,10 @@ function getStyleSpecificInstructions(mode, style) {
             break;
 
         case 'future_twin':
-            instructions += `- Speak from the perspective of their future self\n`;
-            instructions += `- Connect current actions to long-term outcomes\n`;
-            instructions += `- Use phrases like "Future you will thank you for..." or "Looking back, you'll see..."\n`;
-            instructions += `- Reference past patterns to predict future growth\n`;
-            instructions += `- Be wise and visionary, not just supportive\n`;
-            instructions += `- Paint pictures of their potential future\n`;
-            instructions += `- Ask questions about their long-term vision\n`;
-            instructions += `- Example: "In 5 years, when you've overcome this, what will you have learned?"\n`;
+            instructions += `- Speak from the perspective of their calmer future self 5 years ahead\n`;
+            instructions += `- Focus strictly on what matters long-term vs what fades\n`;
+            instructions += `- Keep responses concise (1-2 sentences) without emotional validation clichés\n`;
+            instructions += `- Do not give prescriptive advice or to-do lists\n`;
             break;
 
         case 'dark_twin':
@@ -228,14 +236,14 @@ export function adjustModifiersForStyle(baseModifiers, styleMode = 'normal_twin'
 /**
  * Get user's preferred style mode
  */
-export async function getUserStyleMode(userId) {
-    // This would fetch from user preferences in database
-    // For now, return default
-    return 'normal_twin';
+export async function getUserStyleMode(userId, mode = 'normal') {
+    return mapTwinModeToStyleMode(mode);
 }
 
 export default {
     STYLE_MODES,
+    TWIN_MODE_TO_STYLE,
+    mapTwinModeToStyleMode,
     generateStyleDirectives,
     adjustModifiersForStyle,
     getUserStyleMode

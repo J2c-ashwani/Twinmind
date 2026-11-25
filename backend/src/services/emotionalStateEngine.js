@@ -560,16 +560,25 @@ export function generateFollowUpGuidance(detectedEvents) {
     return guidance;
 }
 
+const INTENSITY_REGEX_CACHE = {};
+
+function getIntensityRegex(marker) {
+    if (!INTENSITY_REGEX_CACHE[marker]) {
+        INTENSITY_REGEX_CACHE[marker] = new RegExp(`\\b${escapeRegExp(marker.toLowerCase())}\\b`, 'i');
+    }
+    return INTENSITY_REGEX_CACHE[marker];
+}
+
 /**
  * Detect emotional intensity in message
- * Returns multiplier based on intensity markers found
+ * Returns multiplier based on intensity markers found (whole words/phrases only)
  */
 export function detectEmotionalIntensity(message) {
-    const lowerMessage = message.toLowerCase();
+    const text = String(message || '');
 
     // Check for very strong intensity first
     for (const marker of INTENSITY_MARKERS.very_strong.markers) {
-        if (lowerMessage.includes(marker)) {
+        if (getIntensityRegex(marker).test(text)) {
             return {
                 level: 'very_strong',
                 multiplier: INTENSITY_MARKERS.very_strong.multiplier,
@@ -580,7 +589,7 @@ export function detectEmotionalIntensity(message) {
 
     // Check for strong intensity
     for (const marker of INTENSITY_MARKERS.strong.markers) {
-        if (lowerMessage.includes(marker)) {
+        if (getIntensityRegex(marker).test(text)) {
             return {
                 level: 'strong',
                 multiplier: INTENSITY_MARKERS.strong.multiplier,
@@ -1067,18 +1076,19 @@ function determineEmotionalState(metrics, currentState = 'new_user') {
  * @param {Object} intensity - Detected emotional intensity
  * @param {Object} userContext - User personalization context (name, preferences)
  */
-export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], intensity = null, userContext = null) {
+export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], intensity = null, userContext = null, mode = 'normal') {
     const state = metrics.emotional_state || 'new_user';
     const behaviors = STATE_BEHAVIORS[state] || STATE_BEHAVIORS.new_user;
+    const isBluntOrDetachedMode = mode === 'dark' || mode === 'future';
 
     let modifiers = `\n\n## EMOTIONAL INTELLIGENCE LAYER\n`;
     modifiers += `## PRIORITY ORDER FOR INSTRUCTIONS\n`;
-    modifiers += `1. Emotional Events (HIGHEST)\n`;
-    modifiers += `2. Intensity\n`;
-    modifiers += `3. State Behavior\n`;
-    modifiers += `4. Personalization\n`;
-    modifiers += `5. Memory Callbacks\n`;
-    modifiers += `6. General Tone\n\n`;
+    modifiers += `1. Active Twin Mode Rules (${String(mode || 'normal').toUpperCase()} — HIGHEST VOICE PRIORITY)\n`;
+    modifiers += `2. Emotional Events Awareness\n`;
+    modifiers += `3. Intensity\n`;
+    modifiers += `4. State Behavior\n`;
+    modifiers += `5. Personalization\n`;
+    modifiers += `6. Memory Callbacks\n\n`;
 
     modifiers += `Emotional State: ${state.toUpperCase()}\n`;
     modifiers += `Weighted Score: ${metrics.weighted_score || 0}/100\n\n`;
@@ -1093,19 +1103,21 @@ export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], inte
     modifiers += `- Emotional Valence: ${metrics.emotional_valence || 50}/100 (${getValenceLabel(metrics.emotional_valence)})\n`;
     modifiers += `- Relationship Depth: ${metrics.relationship_depth || 0}/100\n\n`;
 
-    modifiers += `### Behavioral Directives for ${state.replace('_', ' ').toUpperCase()}:\n`;
-    for (const [behavior, instruction] of Object.entries(behaviors)) {
-        if (behavior !== 'example_phrases') {
-            modifiers += `- ${behavior.toUpperCase()}: ${instruction}\n`;
+    if (!isBluntOrDetachedMode) {
+        modifiers += `### Behavioral Directives for ${state.replace('_', ' ').toUpperCase()}:\n`;
+        for (const [behavior, instruction] of Object.entries(behaviors)) {
+            if (behavior !== 'example_phrases') {
+                modifiers += `- ${behavior.toUpperCase()}: ${instruction}\n`;
+            }
         }
-    }
 
-    // Add example phrases
-    if (behaviors.example_phrases) {
-        modifiers += `\n### Example Phrases to Use:\n`;
-        behaviors.example_phrases.forEach(phrase => {
-            modifiers += `- "${phrase}"\n`;
-        });
+        // Add example phrases
+        if (behaviors.example_phrases) {
+            modifiers += `\n### Example Phrases to Use:\n`;
+            behaviors.example_phrases.forEach(phrase => {
+                modifiers += `- "${phrase}"\n`;
+            });
+        }
     }
 
     // Add emotional event triggers (CRITICAL)
@@ -1121,32 +1133,30 @@ export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], inte
         detectedEvents.forEach(event => {
             modifiers += `\n**${event.name.toUpperCase()}** (Score: ${event.score})\n`;
             modifiers += `AI Trigger: ${event.ai_trigger}\n`;
-            modifiers += `Directive: ${event.ai_directive}\n`;
-            if (event.example_response) {
-                modifiers += `Example Response: "${event.example_response}"\n`;
+            if (!isBluntOrDetachedMode) {
+                modifiers += `Directive: ${event.ai_directive}\n`;
             }
         });
 
-        // Add structured response guidance
-        // Note: getMultiEmotionResponseGuidance imported at top of file
-        // Add structured response guidance
-        // Note: getMultiEmotionResponseGuidance imported at top of file
-        const responseGuidance = getMultiEmotionResponseGuidance(detectedEvents, intensity);
-        if (responseGuidance) {
-            modifiers += responseGuidance;
-        }
+        if (!isBluntOrDetachedMode) {
+            const responseGuidance = getMultiEmotionResponseGuidance(detectedEvents, intensity);
+            if (responseGuidance) {
+                modifiers += responseGuidance;
+            }
 
-        // Add follow-up question guidance (CRITICAL FOR ENGAGEMENT)
-        const followupGuidance = generateFollowUpGuidance(detectedEvents);
-        if (followupGuidance) {
-            modifiers += followupGuidance;
-        }
+            const followupGuidance = generateFollowUpGuidance(detectedEvents);
+            if (followupGuidance) {
+                modifiers += followupGuidance;
+            }
 
-        modifiers += `\n⚠️ PRIORITIZE responding to these emotional events`;
-        if (intensity && intensity.level === 'very_strong') {
-            modifiers += ` with URGENT emotional support`;
+            modifiers += `\n⚠️ PRIORITIZE responding to these emotional events`;
+            if (intensity && intensity.level === 'very_strong') {
+                modifiers += ` with URGENT emotional support`;
+            }
+            modifiers += `!\n`;
+        } else {
+            modifiers += `\n⚠️ Acknowledge this emotion strictly in ${mode.toUpperCase()} mode's voice (do NOT soften, coddle, or break ${mode} constraints).\n`;
         }
-        modifiers += `!\n`;
     }
 
     // ========== PERSONALIZATION LAYER ==========
@@ -1160,16 +1170,16 @@ export function getEmotionalBehaviorModifiers(metrics, detectedEvents = [], inte
     }
 
     // ========== INTENSITY-BASED ADJUSTMENTS ==========
-    if (intensity && intensity.level !== 'normal') {
+    if (!isBluntOrDetachedMode && intensity && intensity.level !== 'normal') {
         modifiers += generateIntensityGuidance(intensity);
     }
 
     // Add specific warnings
-    if (state === 'detaching') {
+    if (!isBluntOrDetachedMode && state === 'detaching') {
         modifiers += `\n⚠️ CRITICAL: User is detaching. Use re-engagement tactics gently.\n`;
     }
 
-    if (state === 'emotionally_dependent') {
+    if (!isBluntOrDetachedMode && state === 'emotionally_dependent') {
         modifiers += `\n💙 User is deeply attached. Be their primary emotional support.\n`;
     }
 

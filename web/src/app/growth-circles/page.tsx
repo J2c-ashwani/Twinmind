@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api/client';
 import GrowthCircleWidget from '@/components/Circles/GrowthCircleWidget';
 import CircleInviteModal from '@/components/Circles/CircleInviteModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import SubpageHeader from '@/components/Navigation/SubpageHeader';
 
 export default function GrowthCirclesPage() {
     const [hasCircle, setHasCircle] = useState<boolean | null>(null);
@@ -78,11 +79,12 @@ export default function GrowthCirclesPage() {
     return (
         <div className="min-h-screen bg-[#0F0F1E] text-white pb-20">
             {/* Spotlight Header */}
-            <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900 text-white pt-20 pb-32 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900 text-white pt-8 pb-32 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
 
                 <div className="max-w-4xl mx-auto px-6 relative z-10 text-center">
+                    <SubpageHeader variant="banner" className="mb-8 text-left" />
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}

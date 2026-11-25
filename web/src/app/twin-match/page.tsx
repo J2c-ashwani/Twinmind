@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Users, Search, Sparkles, Check, X, UserPlus, Heart, Share2 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import SubpageHeader from '@/components/Navigation/SubpageHeader';
 
 interface MatchInvitation {
     id: string;
@@ -96,15 +97,9 @@ export default function TwinMatchPage() {
     return (
         <div className="min-h-screen p-6">
             <div className="max-w-4xl mx-auto">
+                <SubpageHeader className="mb-6" />
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <button
-                        onClick={() => router.back()}
-                        className="glass-button p-2 hover:bg-white/10 rounded-xl transition-colors"
-                        aria-label="Back"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-white" />
-                    </button>
                     <div>
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                             Twin Match
