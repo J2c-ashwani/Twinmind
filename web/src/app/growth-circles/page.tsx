@@ -70,13 +70,13 @@ export default function GrowthCirclesPage() {
     };
 
     if (isLoading) {
-        return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        return <div className="min-h-screen bg-[#0F0F1E] flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
         </div>;
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen bg-[#0F0F1E] text-white pb-20">
             {/* Spotlight Header */}
             <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900 text-white pt-20 pb-32 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
@@ -107,16 +107,16 @@ export default function GrowthCirclesPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8"
+                    className="bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl border border-white/15 p-8 text-white"
                 >
                     <GrowthCircleWidget onInviteClick={handleInviteClick} />
 
                     {/* Show Join Form ONLY if user has no circle (Widget shows 'Create' state by default if null, but we want 'Join' option too) */}
                     {!hasCircle && (
-                        <div className="mt-12 pt-12 border-t border-gray-100">
+                        <div className="mt-12 pt-12 border-t border-white/10">
                             <div className="text-center mb-8">
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Have an invite code?</h3>
-                                <p className="text-gray-500">Enter the code shared by your friend to join their circle</p>
+                                <h3 className="text-xl font-bold text-white mb-2">Have an invite code?</h3>
+                                <p className="text-gray-300">Enter the code shared by your friend to join their circle</p>
                             </div>
 
                             <form onSubmit={handleJoinCircle} className="max-w-md mx-auto">
@@ -130,20 +130,20 @@ export default function GrowthCirclesPage() {
                                             value={joinCode}
                                             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                                             placeholder="ENTER-CODE"
-                                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-mono text-center tracking-widest uppercase"
+                                            className="block w-full pl-10 pr-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 caret-white focus:ring-2 focus:ring-purple-500 focus:border-purple-400 focus:outline-none transition-all font-mono text-center tracking-widest uppercase"
                                         />
                                     </div>
                                     <button
                                         type="submit"
                                         disabled={isJoining || !joinCode}
-                                        className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        className="bg-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
                                         {isJoining ? 'Joining...' : 'Join'}
                                         <ArrowRight className="w-4 h-4" />
                                     </button>
                                 </div>
                                 {joinError && (
-                                    <p className="mt-3 text-red-500 text-sm text-center bg-red-50 py-2 rounded-lg">
+                                    <p className="mt-3 text-red-200 text-sm text-center bg-red-500/20 border border-red-500/30 py-2 rounded-lg">
                                         {joinError}
                                     </p>
                                 )}
@@ -177,11 +177,11 @@ export default function GrowthCirclesPage() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.2 + (i * 0.1) }}
-                                className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 text-center"
+                                className="bg-slate-900/80 p-6 rounded-xl shadow-sm border border-white/10 text-center"
                             >
                                 <div className="text-4xl mb-4">{feature.icon}</div>
-                                <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
-                                <p className="text-sm text-gray-500">{feature.desc}</p>
+                                <h3 className="font-bold text-white mb-2">{feature.title}</h3>
+                                <p className="text-sm text-gray-300">{feature.desc}</p>
                             </motion.div>
                         ))}
                     </div>

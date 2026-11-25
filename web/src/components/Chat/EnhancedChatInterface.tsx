@@ -113,13 +113,13 @@ export default function EnhancedChatInterface() {
                         AI
                     </div>
                     <div>
-                        <h2 className="font-semibold">TwinGenie AI</h2>
+                        <h2 className="font-semibold text-gray-900">TwinGenie AI</h2>
                         <p className="text-sm text-gray-500">
                             {isTyping ? 'Typing...' : 'Online'}
                         </p>
                     </div>
                 </div>
-                <button className="p-2 hover:bg-gray-100 rounded-full">
+                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
                     <MoreVertical className="w-5 h-5" />
                 </button>
                 <button
@@ -215,7 +215,7 @@ export default function EnhancedChatInterface() {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={handleKeyPress}
                             placeholder="Type a message..."
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                            className="w-full px-4 py-3 pr-12 bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                             rows={1}
                             style={{ minHeight: '48px', maxHeight: '120px' }}
                         />

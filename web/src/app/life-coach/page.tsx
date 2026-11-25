@@ -61,7 +61,7 @@ export default function LifeCoachPage() {
                 <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
                     Life Coach Programs
                 </h1>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                     Structured, AI-guided journeys to help you grow, heal, and thrive.
                 </p>
             </div>

@@ -442,10 +442,10 @@ function ChatContent() {
                             onChange={(e) => setCurrentMode(e.target.value)}
                             className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm text-white focus:outline-none focus:border-purple-500"
                         >
-                            <option value="normal">Normal Twin</option>
-                            <option value="future">Future Twin</option>
-                            <option value="therapist">Therapist Twin</option>
-                            <option value="dark">Dark Twin</option>
+                            <option value="normal" className="bg-slate-900 text-white">Normal Twin</option>
+                            <option value="future" className="bg-slate-900 text-white">Future Twin</option>
+                            <option value="therapist" className="bg-slate-900 text-white">Therapist Twin</option>
+                            <option value="dark" className="bg-slate-900 text-white">Dark Twin</option>
                         </select>
 
                         <button
