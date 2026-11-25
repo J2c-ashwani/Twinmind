@@ -1,7 +1,7 @@
 // Web Push Notifications Service
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 class NotificationService {
     private registration: ServiceWorkerRegistration | null = null;

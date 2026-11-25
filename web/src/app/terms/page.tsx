@@ -1,143 +1,139 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { FileCheck, CreditCard, Mail } from 'lucide-react'
-import SiteHeader from '@/components/Layout/SiteHeader'
-import SiteFooter from '@/components/Layout/SiteFooter'
+import { Brain, ArrowLeft, Shield, FileCheck, CreditCard, Mail } from 'lucide-react'
 import { buildPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = buildPageMetadata({
-    title: 'Terms of Service & Non-Clinical Notice',
+    title: 'Terms of Service',
     description:
-        'Official TwinGenie Terms of Service covering Google Play subscriptions, user content ownership, non-clinical wellness scope, and acceptable usage.',
+        'Official TwinGenie Terms of Service covering personal wellness scope, Google Play subscriptions, user content ownership, and acceptable usage.',
     path: '/terms',
 })
 
 export default function TermsOfService() {
     return (
-        <div className="min-h-screen bg-[#07080B] text-neutral-200 flex flex-col">
-            <SiteHeader />
+        <div className="min-h-screen bg-slate-950 text-gray-200">
+            {/* Header */}
+            <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+                <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-3 group">
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie"
+                            className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform"
+                        />
+                        <span className="font-bold text-xl tracking-tight text-white group-hover:text-purple-300 transition-colors">
+                            TwinGenie
+                        </span>
+                    </Link>
 
-            <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-14 sm:px-6 space-y-10">
-                <div className="space-y-4 border-b border-white/[0.08] pb-8">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-wider text-sky-300">
-                        <FileCheck className="h-3.5 w-3.5" />
-                        Terms of Service &amp; User Agreement
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Home
+                    </Link>
+                </div>
+            </header>
+
+            {/* Content */}
+            <main className="max-w-4xl mx-auto px-6 py-12 space-y-10">
+                <div className="space-y-4 border-b border-white/10 pb-8">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium">
+                        <FileCheck className="w-3.5 h-3.5" />
+                        Terms of Service & User Agreement
                     </div>
-                    <h1 className="text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-4xl">
-                        Terms of Service
-                    </h1>
-                    <p className="font-mono text-xs text-neutral-500">
+                    <h1 className="text-4xl font-extrabold text-white tracking-tight">Terms of Service</h1>
+                    <p className="text-gray-400 text-sm">
                         Effective Date: November 2, 2026 • Last Reviewed: November 2026
                     </p>
                 </div>
 
-                <section className="space-y-3">
-                    <h2 className="text-lg font-semibold text-[#F4F2EC]">1. Acceptance of Terms</h2>
-                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        By accessing or using TwinGenie (<span className="text-[#E7C891]">https://twingenie.app</span>),
-                        the web application, or the TwinGenie mobile application on Google Play, you agree to be bound
-                        by these Terms of Service. If you do not agree, do not access or use the service.
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white">1. Acceptance of Agreement</h2>
+                    <p className="text-gray-300 leading-relaxed">
+                        By accessing or using the TwinGenie website (<span className="text-purple-300">https://twingenie.app</span>), web applications, or the TwinGenie mobile application on Google Play, you agree to be bound by these Terms of Service. If you do not agree to all terms, you may not access or use the service.
                     </p>
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="text-lg font-semibold text-[#F4F2EC]">
-                        2. Nature of Service &amp; Non-Clinical Notice
-                    </h2>
-                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        TwinGenie provides an AI-powered platform for structured self-reflection, psychometric exploration,
-                        habit tracking, and personal clarity.
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white">2. Nature of Service (AI Reflection & Coaching Disclaimer)</h2>
+                    <p className="text-gray-300 leading-relaxed">
+                        TwinGenie provides an AI-powered conversational platform intended for self-reflection, thought examination, habit tracking, and personal growth.
                     </p>
-                    <div className="enterprise-panel border-amber-500/30 bg-amber-500/[0.06] p-4 text-sm text-amber-100">
-                        <strong className="text-amber-300">Important Medical Notice:</strong> TwinGenie is not a
-                        licensed mental health provider, clinical healthcare entity, or medical diagnostic device.
-                        Reflective and Coaching modes are conversational reflection tools and do not replace licensed
-                        psychiatric therapy or medical crisis care. If you face an emergency, contact local emergency
-                        services or crisis hotlines immediately.
+                    <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-200 text-sm">
+                        <strong>Important Mental Health Notice:</strong> TwinGenie is not a certified mental health provider, clinical healthcare entity, or medical diagnostic tool. The Reflective Twin and Life Coach modes are AI-guided conversational tools designed for personal mindfulness. They do not constitute licensed psychiatric therapy, psychological counseling, or medical crisis intervention. If you are experiencing a mental health emergency, please contact local emergency medical services or national crisis helplines immediately.
                     </div>
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="text-lg font-semibold text-[#F4F2EC]">3. Accounts &amp; Responsibilities</h2>
-                    <ul className="list-disc space-y-2 pl-6 text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        <li>Provide accurate registration credentials and protect account access.</li>
-                        <li>Comply with applicable local, national, and international laws.</li>
-                        <li>Notify us promptly if you suspect unauthorized access to your account.</li>
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white">3. User Accounts & Responsibilities</h2>
+                    <p className="text-gray-300 leading-relaxed">
+                        To access certain features of TwinGenie, you must create an account. You agree to:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-300">
+                        <li>Provide accurate and complete registration information.</li>
+                        <li>Safeguard your authentication credentials and notify us immediately of any unauthorized access.</li>
+                        <li>Maintain compliance with all applicable local, national, and international laws when using the platform.</li>
                     </ul>
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="flex items-center gap-2 text-lg font-semibold text-[#F4F2EC]">
-                        <CreditCard className="h-4 w-4 text-emerald-400" />
-                        4. Subscriptions &amp; Billing
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-emerald-400" />
+                        4. Subscriptions, Payments & Billing
                     </h2>
-                    <ul className="list-disc space-y-2 pl-6 text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        <li>
-                            <strong className="text-white">Google Play Billing:</strong> Premium subscriptions on launch
-                            are processed through Google Play Billing (<code className="font-mono text-xs">com.asmind.app</code>).
-                        </li>
-                        <li>
-                            <strong className="text-white">Renewal:</strong> Paid plans renew automatically unless
-                            cancelled at least 24 hours prior to renewal inside Google Play settings.
-                        </li>
-                        <li>
-                            <strong className="text-white">Cancellations &amp; Refunds:</strong> Manage plans or
-                            request refunds directly under Google Play&apos;s billing policies.
-                        </li>
+                    <p className="text-gray-300 leading-relaxed">
+                        TwinGenie offers a Free Starter Tier and optional Premium Subscriptions (Monthly and Yearly Pro Companion tiers):
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-300">
+                        <li><strong>In-App Purchases & Subscriptions:</strong> All mobile subscriptions and digital purchases are processed securely through Google Play Billing in compliance with Google Play Developer Policies.</li>
+                        <li><strong>Billing Cycles & Renewal:</strong> Subscriptions renew automatically unless cancelled at least 24 hours prior to the end of the current billing cycle.</li>
+                        <li><strong>Cancellations & Refunds:</strong> You can manage or cancel your subscription at any time directly through your Google Play account settings. Refunds are handled in accordance with Google Play's standard refund policy.</li>
                     </ul>
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="text-lg font-semibold text-[#F4F2EC]">5. Intellectual Property &amp; User Content</h2>
-                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        <strong className="text-white">Your Content:</strong> You retain full ownership of journal
-                        entries, voice inputs, and reflections you submit, granting TwinGenie strictly the operational
-                        license necessary to store and display your workspace back to you.
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white">5. Intellectual Property & User Content</h2>
+                    <p className="text-gray-300 leading-relaxed">
+                        <strong className="text-white">Your Content:</strong> You retain complete ownership of the personal reflections, journal entries, and thoughts you input into TwinGenie. You grant TwinGenie only the limited, non-exclusive license strictly necessary to process, store, and display your content to you.
                     </p>
-                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        <strong className="text-white">Platform IP:</strong> TwinGenie codebases, scoring architectures,
-                        user interfaces, and trademarks remain the exclusive intellectual property of TwinGenie.
+                    <p className="text-gray-300 leading-relaxed">
+                        <strong className="text-white">TwinGenie Property:</strong> The TwinGenie software code, algorithms, user interfaces, branding, trademarks, logos, and proprietary AI synthesis engines are the exclusive intellectual property of TwinGenie and its founder.
                     </p>
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="text-lg font-semibold text-[#F4F2EC]">6. Prohibited Conduct</h2>
-                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        Users may not reverse engineer platform systems, bypass authentication or quota controls,
-                        attempt unauthorized extraction of model prompts or database vectors, or upload unlawful content.
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white">6. Prohibited Activities</h2>
+                    <p className="text-gray-300 leading-relaxed">
+                        You agree not to reverse engineer the application, inject malicious payloads, conduct denial-of-service attacks, attempt unauthorized extraction of model prompts or system vectors, or use the service to generate illegal, abusive, or harmful material.
                     </p>
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="flex items-center gap-2 text-lg font-semibold text-[#F4F2EC]">
-                        <Mail className="h-4 w-4 text-[#D9A760]" />
-                        7. Contact &amp; Notices
+                <section className="space-y-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Mail className="w-5 h-5 text-purple-400" />
+                        7. Contact Information
                     </h2>
-                    <div className="enterprise-panel space-y-2 p-5 text-sm text-neutral-300">
-                        <p>
-                            <strong className="text-white">Organization:</strong> TwinGenie (Founder: Ashwani Kumar)
-                        </p>
-                        <p>
-                            <strong className="text-white">Legal &amp; Support:</strong>{' '}
-                            <a href="mailto:founder@twingenie.app" className="text-[#E7C891] hover:underline">
-                                founder@twingenie.app
-                            </a>{' '}
-                            •{' '}
-                            <a href="mailto:support@twingenie.app" className="text-[#E7C891] hover:underline">
-                                support@twingenie.app
-                            </a>
-                        </p>
-                        <p>
-                            <strong className="text-white">Privacy Policy:</strong>{' '}
-                            <Link href="/privacy" className="text-[#E7C891] hover:underline">
-                                https://twingenie.app/privacy
-                            </Link>
-                        </p>
+                    <p className="text-gray-300 leading-relaxed">
+                        For questions regarding these Terms or legal notices:
+                    </p>
+                    <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-2 text-sm text-gray-300">
+                        <p><strong className="text-white">Organization:</strong> TwinGenie</p>
+                        <p><strong className="text-white">Founder & CEO:</strong> Ashwani Kumar</p>
+                        <p><strong className="text-white">Official Domain:</strong> <a href="https://twingenie.app" className="text-purple-400 hover:underline">https://twingenie.app</a></p>
+                        <p><strong className="text-white">Legal & Founder Desk:</strong> <a href="mailto:founder@twingenie.app" className="text-purple-400 hover:underline">founder@twingenie.app</a></p>
+                        <p><strong className="text-white">Direct Email:</strong> <a href="mailto:ashwani@twingenie.app" className="text-purple-400 hover:underline">ashwani@twingenie.app</a></p>
+                        <p><strong className="text-white">Customer Support:</strong> <a href="mailto:support@twingenie.app" className="text-purple-400 hover:underline">support@twingenie.app</a></p>
                     </div>
                 </section>
             </main>
 
-            <SiteFooter />
+            {/* Footer */}
+            <footer className="border-t border-white/10 bg-slate-900/40 py-8 text-center text-sm text-gray-500">
+                <p>© {new Date().getFullYear()} TwinGenie. All rights reserved.</p>
+            </footer>
         </div>
     )
 }

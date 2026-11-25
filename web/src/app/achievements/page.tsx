@@ -4,83 +4,38 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import api from '@/lib/api'
-import { Loader2, Trophy, Lock, Award } from 'lucide-react'
+import { Loader2, Trophy, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
-import WorkspaceHeader from '@/components/Layout/WorkspaceHeader'
 
 interface Achievement {
     id: string
+    achievement_type?: string
     achievement_name: string
     description: string
     icon: string
     points: number
     rarity: 'common' | 'rare' | 'epic' | 'legendary'
-    is_unlocked: boolean
+    is_unlocked?: boolean
+    unlocked_at?: string | null
 }
 
 export default function AchievementsPage() {
     const router = useRouter()
     const supabase = createClientComponentClient()
 
+    // Fallback achievements for when API is unavailable
     const fallbackAchievements: Achievement[] = [
-        {
-            id: '1',
-            achievement_name: 'First Steps',
-            description: 'Initialize your TwinGenie journey',
-            icon: '01',
-            points: 50,
-            rarity: 'common',
-            is_unlocked: true,
-        },
-        {
-            id: '2',
-            achievement_name: 'Deep Thinker',
-            description: 'Complete 10 meaningful conversations',
-            icon: '02',
-            points: 100,
-            rarity: 'common',
-            is_unlocked: false,
-        },
-        {
-            id: '3',
-            achievement_name: 'Week Warrior',
-            description: 'Maintain a 7-day reflection streak',
-            icon: '03',
-            points: 200,
-            rarity: 'rare',
-            is_unlocked: false,
-        },
-        {
-            id: '4',
-            achievement_name: 'Mindfulness Master',
-            description: 'Complete a guided life coach track',
-            icon: '04',
-            points: 300,
-            rarity: 'rare',
-            is_unlocked: false,
-        },
-        {
-            id: '5',
-            achievement_name: 'Emotion Explorer',
-            description: 'Log 30 emotional mood check-ins',
-            icon: '05',
-            points: 500,
-            rarity: 'epic',
-            is_unlocked: false,
-        },
-        {
-            id: '6',
-            achievement_name: 'Twin Legend',
-            description: 'Achieve a 100-day continuous streak',
-            icon: '06',
-            points: 1000,
-            rarity: 'legendary',
-            is_unlocked: false,
-        },
+        { id: '1', achievement_name: 'First Steps', description: 'Start your TwinGenie journey', icon: '🚀', points: 50, rarity: 'common', is_unlocked: true },
+        { id: '2', achievement_name: 'Deep Thinker', description: 'Complete 10 meaningful conversations', icon: '🧠', points: 100, rarity: 'common', is_unlocked: false },
+        { id: '3', achievement_name: 'Week Warrior', description: 'Maintain a 7-day streak', icon: '🔥', points: 200, rarity: 'rare', is_unlocked: false },
+        { id: '4', achievement_name: 'Mindfulness Master', description: 'Complete a life coach program', icon: '🧘', points: 300, rarity: 'rare', is_unlocked: false },
+        { id: '5', achievement_name: 'Emotion Explorer', description: 'Log 30 mood check-ins', icon: '💜', points: 500, rarity: 'epic', is_unlocked: false },
+        { id: '6', achievement_name: 'Twin Legend', description: 'Achieve 100-day streak', icon: '👑', points: 1000, rarity: 'legendary', is_unlocked: false }
     ]
 
     const [achievements, setAchievements] = useState<Achievement[]>(fallbackAchievements)
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         loadAchievements()
@@ -88,117 +43,179 @@ export default function AchievementsPage() {
 
     async function loadAchievements() {
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
+            const { data: { session } } = await supabase.auth.getSession()
             if (!session) {
                 router.push('/login')
                 return
             }
 
-            const response = await api.getAchievements(session.access_token)
-            if (response.achievements && response.achievements.length > 0) {
-                setAchievements(response.achievements)
+            const response = await api.getAchievements(session.access_token) as any
+            const loaded = Array.isArray(response) ? response : (response?.achievements || [])
+            if (loaded.length > 0) {
+                setAchievements(loaded)
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load achievements, using fallback:', err)
+            // Keep using fallback achievements
         } finally {
             setLoading(false)
         }
     }
 
-    const unlockedCount = achievements.filter((a) => a.is_unlocked).length
+    const unlockedCount = achievements.filter(a => Boolean(a.unlocked_at || a.is_unlocked)).length
     const totalCount = achievements.length
 
+    function getRarityColors(rarity: string): string[] {
+        const colorMap = {
+            legendary: ['#FBBF24', '#F59E0B'], // Golden
+            epic: ['#8B5CF6', '#7C3AED'],       // Purple
+            rare: ['#3B82F6', '#2563EB'],       // Blue
+            common: ['#6B7280', '#4B5563']      // Gray
+        }
+        return colorMap[rarity as keyof typeof colorMap] || colorMap.common
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] via-[#1A0B2E] to-[#0F0F1E] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+            </div>
+        )
+    }
+
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
-            <WorkspaceHeader />
-
-            {loading ? (
-                <div className="flex min-h-[70vh] items-center justify-center">
-                    <Loader2 className="h-7 w-7 animate-spin text-[#D9A760]" />
+        <div className="min-h-screen bg-gradient-to-br from-[#0F0F1E] via-[#1A0B2E] to-[#0F0F1E] text-white">
+            {/* Header with Stats */}
+            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-b-[32px] p-8 mb-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="flex items-center gap-3 mb-6">
+                        <Trophy className="w-8 h-8" />
+                        <h1 className="text-3xl font-bold">Achievements</h1>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-5xl font-bold mb-2">
+                            {unlockedCount} / {totalCount}
+                        </div>
+                        <div className="text-lg opacity-90">
+                            Achievements Unlocked
+                        </div>
+                    </div>
                 </div>
-            ) : (
-                <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-                    <div className="mb-8 flex flex-col justify-between gap-4 border-b border-white/[0.08] pb-6 sm:flex-row sm:items-end">
-                        <div>
-                            <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
-                                <Trophy className="h-3.5 w-3.5" />
-                                Cognitive Milestones
-                            </div>
-                            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#F4F2EC]">
-                                Achievements
-                            </h1>
-                        </div>
-                        <div className="enterprise-panel px-5 py-3 text-right">
-                            <div className="font-mono text-2xl font-semibold text-[#E7C891]">
-                                {unlockedCount} / {totalCount}
-                            </div>
-                            <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-                                Unlocked Milestones
-                            </div>
-                        </div>
-                    </div>
+            </div>
 
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                        {achievements.map((achievement, index) => (
-                            <AchievementCard key={achievement.id} achievement={achievement} index={index} />
-                        ))}
+            {/* Achievement Grid */}
+            <div className="max-w-6xl mx-auto px-4 pb-12">
+                {error && (
+                    <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-6">
+                        <p className="text-red-300">{error}</p>
                     </div>
-                </main>
-            )}
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {achievements.map((achievement, index) => (
+                        <AchievementCard
+                            key={achievement.id}
+                            achievement={achievement}
+                            index={index}
+                        />
+                    ))}
+                </div>
+
+                {achievements.length === 0 && !loading && (
+                    <div className="text-center py-12">
+                        <Trophy className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                        <p className="text-gray-400 text-lg">No achievements yet</p>
+                        <p className="text-gray-500 text-sm mt-2">
+                            Keep using TwinGenie to unlock achievements!
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
 
 function AchievementCard({ achievement, index }: { achievement: Achievement; index: number }) {
-    const isUnlocked = achievement.is_unlocked
+    const [colors0, colors1] = getRarityColors(achievement.rarity)
+    const isUnlocked = Boolean(achievement.unlocked_at || achievement.is_unlocked)
 
-    const rarityStyle =
-        achievement.rarity === 'legendary'
-            ? 'border-[#D9A760]/40 bg-[#D9A760]/15 text-[#E7C891]'
-            : achievement.rarity === 'epic'
-            ? 'border-rose-500/35 bg-rose-500/10 text-rose-300'
-            : achievement.rarity === 'rare'
-            ? 'border-sky-500/35 bg-sky-500/10 text-sky-300'
-            : 'border-white/15 bg-white/[0.04] text-neutral-400'
+    function getRarityColors(rarity: string): [string, string] {
+        const colorMap = {
+            legendary: ['#FBBF24', '#F59E0B'] as [string, string],
+            epic: ['#8B5CF6', '#7C3AED'] as [string, string],
+            rare: ['#3B82F6', '#2563EB'] as [string, string],
+            common: ['#6B7280', '#4B5563'] as [string, string]
+        }
+        return colorMap[rarity as keyof typeof colorMap] || colorMap.common
+    }
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.04 }}
-            className={`enterprise-panel flex flex-col justify-between p-6 ${
-                isUnlocked ? 'border-[#D9A760]/35' : 'opacity-75'
-            }`}
+            transition={{ delay: index * 0.05 }}
+            className={`relative bg-white/10 backdrop-blur-sm rounded-2xl p-6 border-2 ${isUnlocked ? 'border-white/20' : 'border-white/5'
+                }`}
+            style={{
+                boxShadow: isUnlocked
+                    ? `0 4px 12px ${colors0}50`
+                    : '0 2px 8px rgba(0,0,0,0.2)'
+            }}
         >
-            <div>
-                <div className="mb-5 flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#07080B]">
-                        {isUnlocked ? (
-                            <Award className="h-5 w-5 text-[#E7C891]" />
-                        ) : (
-                            <Lock className="h-4 w-4 text-neutral-500" />
-                        )}
-                    </div>
-                    <span
-                        className={`rounded-md border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${rarityStyle}`}
-                    >
-                        {achievement.rarity}
-                    </span>
-                </div>
-
-                <h3 className={`text-base font-semibold ${isUnlocked ? 'text-[#F4F2EC]' : 'text-neutral-300'}`}>
-                    {achievement.achievement_name}
-                </h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">
-                    {achievement.description}
-                </p>
+            {/* Rarity Badge */}
+            <div
+                className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold text-white"
+                style={{
+                    background: `linear-gradient(135deg, ${colors0}, ${colors1})`
+                }}
+            >
+                {achievement.rarity.toUpperCase()}
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-white/[0.06] pt-4 font-mono text-xs">
-                <span className="text-neutral-500">{isUnlocked ? 'UNLOCKED' : 'LOCKED'}</span>
-                <span className="font-semibold text-[#E7C891]">{achievement.points} XP</span>
+            {/* Icon */}
+            <div className="flex items-center justify-center mb-4 relative">
+                <span
+                    className="text-5xl"
+                    style={{
+                        opacity: isUnlocked ? 1 : 0.3,
+                        filter: isUnlocked ? 'none' : 'grayscale(100%)'
+                    }}
+                >
+                    {achievement.icon}
+                </span>
+                {!isUnlocked && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <Lock className="w-8 h-8 text-gray-400" />
+                    </div>
+                )}
+            </div>
+
+            {/* Name */}
+            <h3
+                className={`text-center text-lg font-semibold mb-2 ${isUnlocked ? 'text-white' : 'text-gray-400'
+                    }`}
+            >
+                {achievement.achievement_name}
+            </h3>
+
+            {/* Description */}
+            <p
+                className={`text-center text-sm mb-4 line-clamp-2 ${isUnlocked ? 'text-gray-300' : 'text-gray-500'
+                    }`}
+            >
+                {achievement.description}
+            </p>
+
+            {/* XP Badge */}
+            <div className="flex justify-center">
+                <div
+                    className="px-4 py-2 rounded-full text-white text-sm font-bold"
+                    style={{
+                        background: 'linear-gradient(135deg, #8B5CF6, #EC4899)'
+                    }}
+                >
+                    {achievement.points} XP
+                </div>
             </div>
         </motion.div>
     )

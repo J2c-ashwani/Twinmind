@@ -5,17 +5,51 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import api from '@/lib/api'
 import { apiClient } from '@/lib/api/client'
-import { Send, Menu, User as UserIcon, Smile, LayoutDashboard, Mic } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { flushPendingAttribution } from '@/lib/attribution'
+import { Send, Loader2, Menu, User as UserIcon, Crown, Smile, LayoutDashboard, Mic, Bot } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { ChatMessage, TwinMode } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import VoiceRecorder from '@/components/Voice/VoiceRecorder'
 import { Theme } from 'emoji-picker-react'
 import ChatSidebar from '@/components/Chat/ChatSidebar'
 import ReactMarkdown from 'react-markdown'
-import { BrandEmblem } from '@/components/Layout/BrandMark'
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
+
+function normalizeMessageText(raw: any): string {
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (parsed?.message || parsed?.text || parsed?.content || parsed?.response) {
+                    return normalizeMessageText(
+                        parsed.message ?? parsed.text ?? parsed.content ?? parsed.response
+                    );
+                }
+            } catch {
+                // Return raw string when not valid JSON
+            }
+        }
+        return raw;
+    }
+    if (!raw) return '';
+    if (raw.text) return normalizeMessageText(raw.text);
+    if (raw.content) return normalizeMessageText(raw.content);
+    if (raw.response) return normalizeMessageText(raw.response);
+    if (raw.message) return normalizeMessageText(raw.message);
+    if (raw.reply) return normalizeMessageText(raw.reply);
+    const str = String(raw);
+    return str === '[object Object]' ? JSON.stringify(raw) : str;
+}
+
+function normalizeHistoryList(history: ChatMessage[] = []): ChatMessage[] {
+    return history.map((msg) => ({
+        ...msg,
+        message: normalizeMessageText(msg.message),
+    }));
+}
 
 function ChatContent() {
     const router = useRouter()
@@ -32,8 +66,10 @@ function ChatContent() {
     const [isProcessingVoice, setIsProcessingVoice] = useState(false)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+    const hasInitializedRef = useRef(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
+    // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, loading])
@@ -42,26 +78,35 @@ function ChatContent() {
         loadData()
     }, [])
 
+    // Sync URL with conversation ID only after initial load resolves URL / latest mobile conversation
     useEffect(() => {
+        if (!hasInitializedRef.current) return
+        const currentUrlId = searchParams.get('id')
         if (currentConversationId) {
+            if (currentUrlId === currentConversationId) return
             const params = new URLSearchParams(searchParams.toString())
             params.set('id', currentConversationId)
             router.replace(`/chat?${params.toString()}`)
-        } else {
+        } else if (currentUrlId) {
             router.replace('/chat')
         }
     }, [currentConversationId, router, searchParams])
 
     async function loadData() {
         try {
-            let token = ''
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
+            let token = '';
+            const { data: { session } } = await supabase.auth.getSession()
 
             if (session) {
                 token = session.access_token
-                apiClient.setToken(token)
+                apiClient.setToken(token) // Set token for Sidebar and other widgets
+                flushPendingAttribution({
+                    accessToken: token,
+                    userId: session.user.id,
+                    email: session.user.email,
+                    fullName: session.user.user_metadata?.full_name,
+                    userMetadata: session.user.user_metadata,
+                }).catch(() => {})
             }
 
             if (!token) {
@@ -69,47 +114,94 @@ function ChatContent() {
                 return
             }
 
+            // Apply user's saved default AI mode preference if present before history overrides it
+            if (typeof window !== 'undefined') {
+                const savedMode = localStorage.getItem('twingenie_pref_ai_mode')
+                if (savedMode && ['normal', 'future', 'dark', 'therapist'].includes(savedMode)) {
+                    setCurrentMode(savedMode)
+                }
+            }
+
+            // Load personality profile
             try {
                 const { personality } = await api.getPersonalityProfile(token)
                 setTwinName(personality.twin_name || 'Your Twin')
-            } catch {
+            } catch (error) {
+                console.log('Using default twin name')
                 setTwinName('Your Twin')
             }
 
+            // Load available modes
             try {
                 const { modes: availableModes } = await api.getModes(token)
                 setModes(availableModes)
-            } catch {
-                setModes([
+            } catch (error) {
+                console.log('Using fallback modes')
+                const fallbackModes = [
                     { id: 'normal', name: 'Normal Twin', description: 'Your authentic digital twin', available: true },
                     { id: 'future', name: 'Future Twin', description: '5 years wiser', available: true, requiresPro: true },
-                    { id: 'dark', name: 'Honest Twin', description: 'Zero sycophancy', available: true, requiresPro: true },
-                    { id: 'therapist', name: 'Reflective Coach', description: 'Socratic emotional clarity', available: true },
-                ])
+                    { id: 'dark', name: 'Dark Twin', description: 'Brutally honest', available: true, requiresPro: true },
+                    { id: 'therapist', name: 'Therapist Twin', description: 'Compassionate healing', available: true }
+                ]
+                setModes(fallbackModes)
             }
 
+            // Check URL for conversation ID; otherwise auto-load latest conversation (mobile parity)
             const urlId = searchParams.get('id')
-            if (urlId) {
-                setCurrentConversationId(urlId)
+            let targetConversationId: string | null = urlId
+
+            if (!targetConversationId) {
                 try {
-                    const { history } = await api.getChatHistory(token, undefined, urlId)
-                    setMessages(history)
-                    if (history && history.length > 0) {
-                        const lastMsg = history[history.length - 1]
+                    const convData = await apiClient.getConversations() as { conversations?: Array<{ id: string }> }
+                    if (convData?.conversations && convData.conversations.length > 0) {
+                        targetConversationId = convData.conversations[0].id
+                    }
+                } catch (convErr) {
+                    console.log('Could not auto-select latest conversation:', convErr)
+                }
+            }
+
+            if (targetConversationId) {
+                setCurrentConversationId(targetConversationId)
+                try {
+                    const { history } = await api.getChatHistory(token, undefined, targetConversationId)
+                    const normalized = normalizeHistoryList(history)
+                    setMessages(normalized)
+
+                    // Auto-detect mode from last message to restore context
+                    if (normalized.length > 0) {
+                        const lastMsg = normalized[normalized.length - 1];
                         if (lastMsg.mode && ['normal', 'future', 'dark', 'therapist'].includes(lastMsg.mode)) {
-                            setCurrentMode(lastMsg.mode)
+                            setCurrentMode(lastMsg.mode);
+                        }
+                    }
+                } catch (error) {
+                    console.log('Failed to load conversation from URL')
+                    setMessages([])
+                    if (urlId) setCurrentConversationId(null)
+                }
+            } else {
+                // Fallback for legacy pre-conversation messages without conversation_id
+                try {
+                    const { history } = await api.getChatHistory(token)
+                    const normalized = normalizeHistoryList(history)
+                    setMessages(normalized)
+                    if (normalized.length > 0) {
+                        const lastMsg = normalized[normalized.length - 1];
+                        if (lastMsg.mode && ['normal', 'future', 'dark', 'therapist'].includes(lastMsg.mode)) {
+                            setCurrentMode(lastMsg.mode);
                         }
                     }
                 } catch {
                     setMessages([])
-                    setCurrentConversationId(null)
                 }
-            } else {
-                setMessages([])
                 setCurrentConversationId(null)
             }
+
         } catch (error) {
             console.error('Error loading data:', error)
+        } finally {
+            hasInitializedRef.current = true
         }
     }
 
@@ -118,225 +210,203 @@ function ChatContent() {
 
         const userMessage: ChatMessage = {
             id: Date.now().toString(),
-            user_id: '',
+            user_id: '', // Will be set by backend
             message: input,
             sender: 'user',
             mode: currentMode,
-            created_at: new Date().toISOString(),
+            created_at: new Date().toISOString()
         }
 
-        setMessages((prev) => [...prev, userMessage])
+        setMessages(prev => [...prev, userMessage])
         setInput('')
         setLoading(true)
         setShowEmojiPicker(false)
 
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
-            const token = session?.access_token || ''
-            if (!token) {
-                router.push('/login')
-                return
+            let token = '';
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                token = session.access_token;
+            } else {
+                // No valid session, redirect to login
+                router.push('/login');
+                return;
             }
 
-            const response = await api.sendMessage(
-                userMessage.message,
-                currentMode,
-                token,
-                currentConversationId || undefined
-            )
+            const response = await api.sendMessage(userMessage.message, currentMode, token, currentConversationId || undefined)
 
             if (response.conversation_id) {
                 setCurrentConversationId(response.conversation_id)
             }
 
-            const extractMessage = (obj: any): string => {
-                if (typeof obj === 'string') return obj
-                if (!obj) return ''
-                if (obj.text) return extractMessage(obj.text)
-                if (obj.content) return extractMessage(obj.content)
-                if (obj.response) return extractMessage(obj.response)
-                if (obj.message) return extractMessage(obj.message)
-                if (obj.reply) return extractMessage(obj.reply)
-                const str = String(obj)
-                return str === '[object Object]' ? JSON.stringify(obj) : str
-            }
+            // Normalize potentially nested/JSON-encoded response text
+            const messageText = normalizeMessageText(response);
 
             const aiMessage: ChatMessage = {
                 id: Date.now().toString(),
                 user_id: '',
-                message: extractMessage(response),
+                message: messageText,
                 sender: 'ai',
                 mode: currentMode,
-                created_at: new Date().toISOString(),
+                created_at: new Date().toISOString()
             }
 
-            setMessages((prev) => [...prev, aiMessage])
+            setMessages(prev => [...prev, aiMessage])
         } catch (error: any) {
-            console.error('Failed to send message:', error)
-            const errorMessage = error?.message || String(error)
-            const isLimitError = errorMessage.includes('limit reached') || errorMessage.includes('429')
+            console.error('Failed to send message:', error);
 
-            let resetTimeMessage = ''
-            try {
-                const res = await fetch(error?.config?.url || '')
-                const data = await res.json().catch(() => ({}))
-                if (data.resetTime) {
-                    const hoursLeft = Math.ceil((new Date(data.resetTime).getTime() - Date.now()) / 3600000)
-                    resetTimeMessage = `\n\nLimit resets in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''}.`
-                }
-            } catch {
-                resetTimeMessage = '\n\nLimit resets at midnight.'
-            }
+            // Check if it's a limit error
+            const errorMessage = error?.message || String(error);
+            const isLimitError = errorMessage.includes('limit reached') || errorMessage.includes('429');
+
+            const now = new Date();
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+            const hoursLeft = Math.ceil((midnight.getTime() - now.getTime()) / (1000 * 60 * 60));
+            const resetTimeMessage = `\n\n⏰ Limit resets in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} at midnight`;
 
             const errorAiMessage: ChatMessage = {
                 id: Date.now().toString(),
                 user_id: '',
                 message: isLimitError
-                    ? `**Daily message limit reached.**\n\nYou have used your free daily allowance.${resetTimeMessage}\n\n[View Upgrade Options →](/subscription)`
+                    ? `🚫 **Daily message limit reached!**\n\nYou've used all 10 free messages today. Come back tomorrow or upgrade to Pro for unlimited messages!${resetTimeMessage}\n\n[Upgrade to Pro →](/subscription)`
                     : "Sorry, I couldn't process that message. Please try again.",
                 sender: 'ai',
                 mode: currentMode,
-                created_at: new Date().toISOString(),
-            }
-            setMessages((prev) => [...prev, errorAiMessage])
+                created_at: new Date().toISOString()
+            };
+
+            setMessages(prev => [...prev, errorAiMessage]);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
     const onEmojiClick = (emojiData: any) => {
-        setInput((prev) => prev + emojiData.emoji)
-    }
+        setInput(prev => prev + emojiData.emoji);
+    };
 
     const handleVoiceSend = async (audioBlob: Blob, duration: number) => {
-        setIsProcessingVoice(true)
-        setShowVoiceRecorder(false)
+        setIsProcessingVoice(true);
+        setShowVoiceRecorder(false);
 
-        const optimisticId = Date.now().toString()
+        const optimisticId = Date.now().toString();
         const voiceMessage: ChatMessage = {
             id: optimisticId,
             user_id: '',
-            message: `Voice reflection (${Math.floor(duration / 60)}:${(duration % 60)
-                .toString()
-                .padStart(2, '0')})`,
+            message: `🎤 Voice message (${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')})`,
             sender: 'user',
             mode: currentMode,
-            created_at: new Date().toISOString(),
-        }
+            created_at: new Date().toISOString()
+        };
 
-        setMessages((prev) => [...prev, voiceMessage])
-        setLoading(true)
+        setMessages(prev => [...prev, voiceMessage]);
+        setLoading(true);
 
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
-            const token = session?.access_token || ''
-            if (!token) {
-                router.push('/login')
-                return
+            let token = '';
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                token = session.access_token;
+            } else {
+                router.push('/login');
+                return;
             }
 
-            const response = await api.sendVoiceMessage(currentConversationId, audioBlob, currentMode, token)
+            const response = await api.sendVoiceMessage(
+                currentConversationId,
+                audioBlob,
+                currentMode,
+                token
+            );
 
             if (response.conversationId || response.conversation_id) {
-                setCurrentConversationId(response.conversationId || response.conversation_id)
+                setCurrentConversationId(response.conversationId || response.conversation_id);
             }
 
+            // Update user message with transcription and audio URL
             if (response.userMessage || response.userAudioUrl) {
-                setMessages((prev) =>
-                    prev.map((msg) =>
-                        msg.id === optimisticId
-                            ? {
-                                  ...msg,
-                                  message: response.userMessage || msg.message,
-                                  audio_url: response.userAudioUrl,
-                              }
-                            : msg
-                    )
-                )
+                setMessages(prev => prev.map(msg =>
+                    msg.id === optimisticId
+                        ? { ...msg, message: response.userMessage || msg.message, audio_url: response.userAudioUrl }
+                        : msg
+                ));
             }
 
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: (Date.now() + 1).toString(),
-                    user_id: '',
-                    message: response.aiResponse,
-                    sender: 'ai',
-                    mode: currentMode,
-                    created_at: new Date().toISOString(),
-                    audio_url: response.audioUrl,
-                },
-            ])
+            const aiMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                user_id: '',
+                message: response.aiResponse,
+                sender: 'ai',
+                mode: currentMode,
+                created_at: new Date().toISOString(),
+                audio_url: response.audioUrl
+            };
+
+            setMessages(prev => [...prev, aiMessage]);
         } catch (error: any) {
-            console.error('Failed to send voice message:', error)
-            const errorMessage = error?.message || String(error)
-            const isLimitError = errorMessage.includes('limit reached') || errorMessage.includes('429')
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: Date.now().toString(),
-                    user_id: '',
-                    message: isLimitError
-                        ? '**Daily voice limit reached.** Upgrade for unlimited voice sessions.\n\n[View Plans →](/subscription)'
-                        : "Sorry, I couldn't process that voice message.",
-                    sender: 'ai',
-                    mode: currentMode,
-                    created_at: new Date().toISOString(),
-                },
-            ])
+            console.error('Failed to send voice message:', error);
+
+            const errorMessage = error?.message || String(error);
+            const isLimitError = errorMessage.includes('limit reached') || errorMessage.includes('429');
+
+            // Calculate reset time
+            const now = new Date();
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+            const hoursLeft = Math.ceil((midnight.getTime() - now.getTime()) / (1000 * 60 * 60));
+            const resetTimeMessage = `\n\n⏰ Limit resets in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} at midnight`;
+
+            const errorAiMessage: ChatMessage = {
+                id: Date.now().toString(),
+                user_id: '',
+                message: isLimitError
+                    ? `🚫 **Daily message limit reached!**\n\nYou've used all 10 free messages today. Come back tomorrow or upgrade to Pro for unlimited messages!${resetTimeMessage}\n\n[Upgrade to Pro →](/subscription)`
+                    : "Sorry, I couldn't process that voice message.",
+                sender: 'ai',
+                mode: currentMode,
+                created_at: new Date().toISOString()
+            };
+            setMessages(prev => [...prev, errorAiMessage]);
         } finally {
-            setLoading(false)
-            setIsProcessingVoice(false)
+            setLoading(false);
+            setIsProcessingVoice(false);
         }
-    }
+    };
 
     const handleNewChat = () => {
-        setMessages([])
-        setCurrentConversationId(null)
-        if (window.innerWidth < 768) setIsSidebarOpen(false)
-    }
+        setMessages([]);
+        setCurrentConversationId(null);
+        if (window.innerWidth < 768) setIsSidebarOpen(false);
+    };
 
     const selectConversation = async (id: string) => {
-        setCurrentConversationId(id)
-        if (window.innerWidth < 768) setIsSidebarOpen(false)
+        setCurrentConversationId(id);
+        if (window.innerWidth < 768) setIsSidebarOpen(false);
 
         try {
-            setLoading(true)
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
+            setLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                const { history } = await api.getChatHistory(session.access_token, undefined, id)
-                setMessages(history)
-                if (history && history.length > 0) {
-                    const lastMsg = history[history.length - 1]
+                const { history } = await api.getChatHistory(session.access_token, undefined, id);
+                const normalized = normalizeHistoryList(history);
+                setMessages(normalized);
+
+                if (normalized.length > 0) {
+                    const lastMsg = normalized[normalized.length - 1];
                     if (lastMsg.mode && ['normal', 'future', 'dark', 'therapist'].includes(lastMsg.mode)) {
-                        setCurrentMode(lastMsg.mode)
+                        setCurrentMode(lastMsg.mode);
                     }
                 }
             }
         } catch (error) {
-            console.error('Failed to load conversation history:', error)
+            console.error('Failed to load conversation history:', error);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
-
-    const modeBadgeColor =
-        currentMode === 'normal'
-            ? 'bg-sky-400'
-            : currentMode === 'future'
-            ? 'bg-[#D9A760]'
-            : currentMode === 'therapist'
-            ? 'bg-emerald-400'
-            : 'bg-rose-400'
+    };
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[#07080B] text-[#F4F2EC]">
+        <div className="flex h-screen bg-[#0F0F1E] overflow-hidden">
+            {/* Sidebar */}
             <ChatSidebar
                 currentConversationId={currentConversationId}
                 onSelectConversation={selectConversation}
@@ -345,220 +415,186 @@ function ChatContent() {
                 onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
             />
 
-            <div className="relative flex h-full flex-1 flex-col">
-                <header className="z-10 flex h-16 items-center justify-between border-b border-white/[0.08] bg-[#0B0D12]/90 px-4 backdrop-blur-xl sm:px-6">
-                    <div className="flex items-center gap-3">
+            {/* Main Chat Area */}
+            <div className="flex-1 flex flex-col h-full relative">
+                {/* Header */}
+                <div className="h-16 border-b border-white/10 bg-black/20 backdrop-blur-md flex items-center justify-between px-6 z-10">
+                    <div className="flex items-center gap-4">
                         <button
-                            type="button"
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
                             title="Toggle History"
                         >
-                            <Menu className="h-4 w-4" />
+                            <Menu className="w-5 h-5" />
                         </button>
-                        <div className="flex items-center gap-2.5">
-                            <span className={`h-2.5 w-2.5 rounded-full ${modeBadgeColor}`} />
-                            <span className="text-sm font-semibold text-[#F4F2EC]">
-                                {twinName}
-                            </span>
-                            <span className="hidden rounded border border-white/10 bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] uppercase text-neutral-400 sm:inline">
-                                {currentMode} mode
-                            </span>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${currentMode === 'normal' ? 'bg-green-500' :
+                                currentMode === 'future' ? 'bg-blue-500' :
+                                    currentMode === 'therapist' ? 'bg-purple-500' : 'bg-red-500'
+                                }`} />
+                            <span className="text-white font-medium capitalize">{currentMode} Twin</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-4">
                         <select
                             value={currentMode}
                             onChange={(e) => setCurrentMode(e.target.value)}
-                            className="rounded-lg border border-white/[0.12] bg-[#10131A] px-3 py-1.5 text-xs font-medium text-[#F4F2EC] focus:border-[#D9A760]/60 focus:outline-none"
+                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm text-white focus:outline-none focus:border-purple-500"
                         >
-                            {modes.length > 0 ? (
-                                modes.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                        {m.name}
-                                    </option>
-                                ))
-                            ) : (
-                                <>
-                                    <option value="normal">Normal Twin</option>
-                                    <option value="future">Future Twin</option>
-                                    <option value="therapist">Reflective Coach</option>
-                                    <option value="dark">Honest Twin</option>
-                                </>
-                            )}
+                            <option value="normal">Normal Twin</option>
+                            <option value="future">Future Twin</option>
+                            <option value="therapist">Therapist Twin</option>
+                            <option value="dark">Dark Twin</option>
                         </select>
 
                         <button
-                            type="button"
                             onClick={() => router.push('/dashboard')}
-                            className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-neutral-400 transition-colors hover:text-white"
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
                             title="Dashboard"
                         >
-                            <LayoutDashboard className="h-4 w-4" />
+                            <LayoutDashboard className="w-5 h-5" />
                         </button>
 
                         <button
-                            type="button"
                             onClick={() => router.push('/profile')}
-                            className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-neutral-400 transition-colors hover:text-white"
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
                             title="Profile"
                         >
-                            <UserIcon className="h-4 w-4" />
+                            <UserIcon className="w-5 h-5" />
                         </button>
-                    </div>
-                </header>
-
-                <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto px-4 py-6 sm:px-6">
-                    {messages.length === 0 && !loading && (
-                        <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
-                            <BrandEmblem size="lg" />
-                            <h2 className="mt-5 text-lg font-semibold text-[#F4F2EC]">
-                                Calibrated Reflection Console
-                            </h2>
-                            <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-                                Select one of your four perspectives above—Normal, Future, Honest, or Reflective
-                                Coach—and begin your session.
-                            </p>
-                        </div>
-                    )}
-
-                    <div className="mx-auto max-w-4xl space-y-5">
-                        {messages.map((msg) => (
-                            <motion.div
-                                key={msg.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                <div
-                                    className={`flex max-w-[84%] gap-3 ${
-                                        msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                                    }`}
-                                >
-                                    <div
-                                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
-                                            msg.sender === 'user'
-                                                ? 'border-[#D9A760]/40 bg-[#D9A760]/15 text-[#E7C891]'
-                                                : 'border-white/10 bg-[#10131A] text-neutral-300'
-                                        }`}
-                                    >
-                                        {msg.sender === 'user' ? (
-                                            <UserIcon className="h-3.5 w-3.5" />
-                                        ) : (
-                                            <span className="font-mono text-[10px] font-bold">TG</span>
-                                        )}
-                                    </div>
-                                    <div
-                                        className={`rounded-2xl px-4 py-3 text-sm ${
-                                            msg.sender === 'user'
-                                                ? 'border border-[#D9A760]/30 bg-[#181C26] text-[#F4F2EC]'
-                                                : 'border border-white/[0.08] bg-[#0D1016] text-neutral-200'
-                                        }`}
-                                    >
-                                        <div className="prose prose-invert max-w-none text-sm leading-relaxed">
-                                            <ReactMarkdown>
-                                                {(() => {
-                                                    try {
-                                                        if (
-                                                            msg.message.trim().startsWith('{') &&
-                                                            msg.message.trim().endsWith('}')
-                                                        ) {
-                                                            const parsed = JSON.parse(msg.message)
-                                                            return parsed.message || msg.message
-                                                        }
-                                                    } catch {}
-                                                    return msg.message
-                                                })()}
-                                            </ReactMarkdown>
-                                        </div>
-                                        {msg.audio_url && (
-                                            <div className="my-2">
-                                                <audio controls src={msg.audio_url} className="h-8 w-full" />
-                                            </div>
-                                        )}
-                                        <div className="mt-2 font-mono text-[10px] text-neutral-500">
-                                            {new Date(msg.created_at).toLocaleTimeString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-
-                        {isProcessingVoice && (
-                            <div className="enterprise-panel flex w-fit items-center gap-3 px-4 py-3 text-xs text-neutral-300">
-                                <span className="h-2 w-2 animate-ping rounded-full bg-rose-400" />
-                                <span>Transcribing and processing voice reflection...</span>
-                            </div>
-                        )}
-
-                        {!isProcessingVoice && loading && (
-                            <div className="enterprise-panel flex w-fit items-center gap-1.5 px-4 py-3">
-                                <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#D9A760] [animation-delay:-0.3s]" />
-                                <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#D9A760] [animation-delay:-0.15s]" />
-                                <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#D9A760]" />
-                            </div>
-                        )}
-
-                        <div ref={messagesEndRef} />
                     </div>
                 </div>
 
-                <div className="border-t border-white/[0.08] bg-[#0B0D12]/90 p-4 backdrop-blur-xl">
-                    <div className="relative mx-auto max-w-4xl">
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                    {messages.length === 0 && !loading && (
+                        <div className="flex flex-col items-center justify-center h-full text-white/30">
+                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                                <Bot className="w-8 h-8 opacity-50" />
+                            </div>
+                            <p>Start a conversation with your AI Twin</p>
+                        </div>
+                    )}
+
+                    {messages.map((msg) => (
+                        <motion.div
+                            key={msg.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                            <div className={`flex gap-3 max-w-[80%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.sender === 'user' ? 'bg-purple-600' : 'bg-blue-600'
+                                    }`}>
+                                    {msg.sender === 'user' ? <UserIcon size={14} /> : <Bot size={14} />}
+                                </div>
+                                <div className={`p-4 rounded-2xl ${msg.sender === 'user'
+                                    ? 'bg-purple-600/20 border border-purple-500/30 text-white'
+                                    : 'bg-white/5 border border-white/10 text-gray-200'
+                                    }`}>
+                                    <div className="prose prose-invert max-w-none text-sm">
+                                        <ReactMarkdown>
+                                            {(() => {
+                                                try {
+                                                    if (msg.message.trim().startsWith('{') && msg.message.trim().endsWith('}')) {
+                                                        const parsed = JSON.parse(msg.message);
+                                                        return parsed.message || msg.message;
+                                                    }
+                                                } catch (e) { }
+                                                return msg.message;
+                                            })()}
+                                        </ReactMarkdown>
+                                    </div>
+                                    {msg.audio_url && (
+                                        <div className="mt-2 mb-2">
+                                            <audio controls src={msg.audio_url} className="w-full h-8" />
+                                        </div>
+                                    )}
+                                    <div className="text-[10px] opacity-50 mt-2">
+                                        {new Date(msg.created_at).toLocaleTimeString()}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                    {/* Voice Processing Indicator */}
+                    {isProcessingVoice && (
+                        <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl w-fit mb-4">
+                            <div className="relative flex items-center justify-center">
+                                <div className="absolute w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></div>
+                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            </div>
+                            <span className="text-sm text-purple-200">Processing voice message...</span>
+                        </div>
+                    )}
+
+                    {/* Text Typing Indicator */}
+                    {!isProcessingVoice && loading && (
+                        <div className="flex items-center gap-1 p-4 bg-white/5 border border-white/10 rounded-2xl w-fit mb-4">
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                        </div>
+                    )}
+
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input Area */}
+                <div className="border-t border-white/10 p-4 bg-gray-900/50 backdrop-blur-md">
+                    <div className="max-w-4xl mx-auto relative">
                         {showEmojiPicker && (
-                            <div className="absolute bottom-16 left-0 z-50">
+                            <div className="absolute bottom-20 left-0 z-50">
                                 <EmojiPicker
                                     onEmojiClick={onEmojiClick}
                                     theme={Theme.DARK}
                                     width={300}
-                                    height={380}
+                                    height={400}
                                 />
                             </div>
                         )}
 
-                        <div className="flex items-center gap-2 rounded-xl border border-white/[0.12] bg-[#07080B] p-2">
+                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-2">
                             <button
-                                type="button"
                                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-white/[0.06] hover:text-white"
+                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/50 hover:text-white"
                             >
-                                <Smile className="h-4 w-4" />
+                                <Smile className="w-5 h-5" />
                             </button>
 
                             <input
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Reflect on a decision, pattern, or thought..."
-                                className="flex-1 border-none bg-transparent px-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-0"
+                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                placeholder="Type a message..."
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-white/30"
                                 disabled={loading}
                             />
 
                             <button
-                                type="button"
                                 onClick={() => setShowVoiceRecorder(true)}
-                                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-white/[0.06] hover:text-white"
+                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/50 hover:text-white"
                             >
-                                <Mic className="h-4 w-4" />
+                                <Mic className="w-5 h-5" />
                             </button>
 
                             <button
-                                type="button"
                                 onClick={handleSend}
                                 disabled={!input.trim() || loading}
-                                className="btn-primary-ivory rounded-lg px-3.5 py-2 text-xs disabled:opacity-40"
+                                className="p-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <Send className="h-4 w-4" />
+                                <Send className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
                 </div>
 
+                {/* Voice Recorder Modal */}
                 {showVoiceRecorder && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-                        <div className="w-full max-w-md">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="max-w-md w-full">
                             <VoiceRecorder
                                 onSend={handleVoiceSend}
                                 onCancel={() => setShowVoiceRecorder(false)}
@@ -573,13 +609,7 @@ function ChatContent() {
 
 export default function ChatPage() {
     return (
-        <Suspense
-            fallback={
-                <div className="flex h-screen items-center justify-center bg-[#07080B] font-mono text-xs text-neutral-400">
-                    Loading Twin Console...
-                </div>
-            }
-        >
+        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-black text-white">Loading chat...</div>}>
             <ChatContent />
         </Suspense>
     )

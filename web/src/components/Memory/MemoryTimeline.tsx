@@ -66,8 +66,8 @@ export default function MemoryTimeline() {
         <div className="max-w-4xl mx-auto p-6">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">Memory Timeline</h1>
-                <p className="text-gray-600">Our shared journey together ✨</p>
+                <h1 className="text-3xl font-bold text-white mb-2">Memory Timeline</h1>
+                <p className="text-gray-400">Our shared journey together ✨</p>
             </div>
 
             {/* Filters */}
@@ -78,7 +78,7 @@ export default function MemoryTimeline() {
                         onClick={() => setFilter(type)}
                         className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${filter === type
                             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-white/10 text-gray-300 hover:bg-white/15'
                             }`}
                     >
                         {type === 'all' ? 'All' : type.replace('_', ' ')}
@@ -112,7 +112,7 @@ export default function MemoryTimeline() {
                                 {/* Memory card */}
                                 <div
                                     onClick={() => setSelectedMemory(memory)}
-                                    className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden group"
+                                    className="glass-card rounded-2xl hover:border-purple-500/40 transition-all cursor-pointer overflow-hidden group text-white"
                                 >
                                     {/* Gradient header */}
                                     <div className={`h-2 bg-gradient-to-r ${getSignificanceColor(memory.emotional_significance)}`}></div>
@@ -123,10 +123,10 @@ export default function MemoryTimeline() {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-3xl">{getMemoryIcon(memory.memory_type)}</span>
                                                 <div>
-                                                    <h3 className="text-lg font-semibold group-hover:text-purple-600 transition-colors">
+                                                    <h3 className="text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
                                                         {memory.title}
                                                     </h3>
-                                                    <p className="text-sm text-gray-500 flex items-center gap-2">
+                                                    <p className="text-sm text-gray-400 flex items-center gap-2">
                                                         <Calendar className="w-4 h-4" />
                                                         {new Date(memory.created_at).toLocaleDateString('en-US', {
                                                             month: 'long',
@@ -142,7 +142,7 @@ export default function MemoryTimeline() {
                                                     e.stopPropagation();
                                                     toggleFavorite(memory.id);
                                                 }}
-                                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
                                             >
                                                 <Heart
                                                     className={`w-5 h-5 ${memory.is_favorite ? 'fill-red-500 text-red-500' : 'text-gray-400'
@@ -152,7 +152,7 @@ export default function MemoryTimeline() {
                                         </div>
 
                                         {/* Description */}
-                                        <p className="text-gray-700 mb-4 line-clamp-2">{memory.description}</p>
+                                        <p className="text-gray-300 mb-4 line-clamp-2">{memory.description}</p>
 
                                         {/* Footer */}
                                         <div className="flex items-center justify-between">
@@ -161,7 +161,7 @@ export default function MemoryTimeline() {
                                                 {memory.tags.slice(0, 3).map((tag) => (
                                                     <span
                                                         key={tag}
-                                                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium flex items-center gap-1"
+                                                        className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 text-purple-200 rounded-full text-xs font-medium flex items-center gap-1"
                                                     >
                                                         <Tag className="w-3 h-3" />
                                                         {tag}
@@ -171,7 +171,7 @@ export default function MemoryTimeline() {
 
                                             {/* Referenced count */}
                                             {memory.referenced_count > 0 && (
-                                                <div className="flex items-center gap-1 text-sm text-gray-500">
+                                                <div className="flex items-center gap-1 text-sm text-gray-400">
                                                     <TrendingUp className="w-4 h-4" />
                                                     <span>Referenced {memory.referenced_count}x</span>
                                                 </div>
@@ -180,14 +180,14 @@ export default function MemoryTimeline() {
 
                                         {/* Significance indicator */}
                                         <div className="mt-4 flex items-center gap-2">
-                                            <span className="text-xs text-gray-500">Emotional significance:</span>
+                                            <span className="text-xs text-gray-400">Emotional significance:</span>
                                             <div className="flex gap-1">
                                                 {[...Array(10)].map((_, i) => (
                                                     <div
                                                         key={i}
                                                         className={`w-2 h-2 rounded-full ${i < memory.emotional_significance
                                                             ? `bg-gradient-to-r ${getSignificanceColor(memory.emotional_significance)}`
-                                                            : 'bg-gray-200'
+                                                            : 'bg-white/15'
                                                             }`}
                                                     ></div>
                                                 ))}

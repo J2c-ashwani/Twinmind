@@ -1,281 +1,284 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { Check, Download, ExternalLink, ShieldCheck, Smartphone, ArrowRight } from 'lucide-react'
-import SiteHeader from '@/components/Layout/SiteHeader'
-import SiteFooter from '@/components/Layout/SiteFooter'
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { Check, Download, ExternalLink, ShieldCheck, Smartphone, Sparkles, ArrowLeft, Brain } from 'lucide-react';
 
 interface Pricing {
-    country: string
-    currency: string
-    symbol: string
+    country: string;
+    currency: string;
+    symbol: string;
     monthly: {
-        amount: number
-        display: string
-        usd: number
-    }
+        amount: number;
+        display: string;
+        usd: number;
+    };
     yearly: {
-        amount: number
-        display: string
-        usd: number
-        savings: string
-    }
+        amount: number;
+        display: string;
+        usd: number;
+        savings: string;
+    };
 }
 
 export default function GeoPricingPage() {
     const playStoreUrl =
         process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
-        'https://play.google.com/store/apps/details?id=com.asmind.app'
+        'https://play.google.com/store/apps/details?id=com.asmind.app';
 
+    // Fallback pricing in case API fails
     const fallbackPricing: Pricing = {
-        country: 'Global',
-        currency: 'USD',
-        symbol: '$',
+        country: 'India',
+        currency: 'INR',
+        symbol: '₹',
         monthly: {
-            amount: 5.99,
-            display: '$5.99',
-            usd: 5.99,
+            amount: 199,
+            display: '₹199',
+            usd: 2.40
         },
         yearly: {
-            amount: 47.88,
-            display: '$47.88',
-            usd: 47.88,
-            savings: '33%',
-        },
-    }
+            amount: 1999,
+            display: '₹1,999',
+            usd: 24.00,
+            savings: '16%'
+        }
+    };
 
-    const [pricing, setPricing] = useState<Pricing>(fallbackPricing)
-    const [isYearly, setIsYearly] = useState(true)
-    const [loading, setLoading] = useState(true)
+    const [pricing, setPricing] = useState<Pricing>(fallbackPricing);
+    const [isYearly, setIsYearly] = useState(true);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchPricing()
-    }, [])
+        fetchPricing();
+    }, []);
 
     const fetchPricing = async () => {
         try {
-            const res = await fetch('/api/pricing')
+            const res = await fetch('/api/pricing');
             if (res.ok) {
-                const data = await res.json()
+                const data = await res.json();
                 if (data.pricing) {
-                    setPricing(data.pricing)
+                    setPricing(data.pricing);
                 }
             }
         } catch (error) {
-            console.error('Failed to fetch pricing, using fallback:', error)
+            console.error('Failed to fetch pricing, using fallback:', error);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+            </div>
+        );
     }
 
-    const selectedPlan = isYearly ? pricing.yearly : pricing.monthly
+    const selectedPlan = isYearly ? pricing.yearly : pricing.monthly;
+    const openPlayStore = () => {
+        window.location.href = playStoreUrl;
+    };
 
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC] flex flex-col">
-            <SiteHeader />
+        <div className="min-h-screen px-4 py-8">
+            <div className="mx-auto max-w-5xl mb-8 flex items-center justify-between">
+                <Link href="/" className="flex items-center gap-3">
+                    <img
+                        src="/logo.png"
+                        alt="TwinGenie"
+                        className="w-8 h-8 rounded-xl object-cover shadow-md shadow-purple-500/20"
+                    />
+                    <span className="font-bold text-lg text-white">TwinGenie</span>
+                </Link>
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-all"
+                >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back to Home
+                </Link>
+            </div>
+            <div className="mx-auto max-w-5xl">
+                <div className="mb-10 grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+                    <div>
+                        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">
+                            <Smartphone className="h-4 w-4" />
+                            Subscriptions are handled by Google Play
+                        </div>
+                        <h1 className="mb-4 text-4xl font-bold leading-tight text-white md:text-6xl">
+                            Subscribe from the Android app.
+                        </h1>
+                        <p className="max-w-2xl text-lg leading-8 text-gray-300">
+                            For launch, Premium payments are processed through Google Play.
+                            Web users can keep using TwinGenie for free, and can upgrade after installing the Android app.
+                        </p>
+                    </div>
 
-            <main className="flex-1 px-4 py-14 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-5xl">
-                    <div className="mb-12 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
-                        <div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider text-emerald-300">
-                                <Smartphone className="h-3.5 w-3.5" />
-                                Google Play Billing • Cross-Platform Sync
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/20 backdrop-blur">
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-950">
+                                <Download className="h-5 w-5" />
                             </div>
-                            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-[#F4F2EC] sm:text-5xl">
-                                Plans aligned for{' '}
-                                <span className="font-serif italic text-[#E7C891]">daily clarity.</span>
-                            </h1>
-                            <p className="mt-4 max-w-2xl text-base leading-relaxed text-neutral-400">
-                                Begin your 35-trait psychometric calibration free on Web or Android. Launch
-                                subscriptions are processed exclusively through Google Play Billing and unlock
-                                unlimited access everywhere you sign in.
+                            <div>
+                                <p className="font-semibold text-white">Upgrade path for web users</p>
+                                <p className="text-sm text-gray-400">Install the app, sign in, then subscribe with Google Play.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={openPlayStore}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-slate-950 transition hover:bg-gray-100"
+                        >
+                            Open Google Play
+                            <ExternalLink className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Billing Toggle */}
+                <div className="mb-10 flex justify-center">
+                    <div className="inline-flex rounded-2xl border border-white/10 bg-white/[0.06] p-1">
+                        <button
+                            onClick={() => setIsYearly(false)}
+                            className={`rounded-xl px-8 py-3 font-semibold transition-all ${!isYearly
+                                ? 'bg-white text-slate-950'
+                                : 'text-gray-300'
+                                }`}
+                        >
+                            Monthly
+                        </button>
+                        <button
+                            onClick={() => setIsYearly(true)}
+                            className={`relative rounded-xl px-8 py-3 font-semibold transition-all ${isYearly
+                                ? 'bg-white text-slate-950'
+                                : 'text-gray-300'
+                                }`}
+                        >
+                            Yearly
+                            <span className="absolute -right-2 -top-2 rounded-full bg-emerald-500 px-2 py-1 text-xs text-white">
+                                Save {pricing.yearly.savings}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Pricing Cards */}
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* Free Plan */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-white/10 bg-white/[0.06] p-8 shadow-2xl shadow-black/20"
+                    >
+                        <h3 className="text-2xl font-bold mb-2">Free</h3>
+                        <p className="text-gray-400 mb-6">Start reflecting without adding payment details.</p>
+
+                        <div className="mb-6">
+                            <span className="text-5xl font-bold">{pricing.symbol}0</span>
+                            <span className="text-gray-400">/forever</span>
+                        </div>
+
+                        <ul className="space-y-4 mb-8">
+                            {[
+                                'All 4 AI personality modes',
+                                '10 text messages per day',
+                                '3 voice messages per day',
+                                'Daily challenges',
+                                'Mood tracking',
+                                'Memory timeline',
+                                'Achievements & streaks',
+                            ].map((feature, i) => (
+                                <li key={i} className="flex items-center gap-3">
+                                    <Check className="w-5 h-5 text-green-400" />
+                                    <span className={i === 0 ? 'font-semibold' : 'text-gray-300'}>{feature}</span>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <p className="text-sm text-gray-400 mb-6 text-center">
+                            Try all features with daily limit
+                        </p>
+                        <button className="w-full rounded-xl bg-white/10 py-3 font-semibold text-gray-300 transition-colors hover:bg-white/20">
+                            Current Plan
+                        </button>
+                    </motion.div>
+
+                    {/* Premium Plan */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="relative overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-slate-100 to-emerald-100 p-8 text-slate-950 shadow-2xl shadow-emerald-950/20"
+                    >
+                        <div className="absolute top-4 right-4">
+                            <Sparkles className="h-6 w-6 text-emerald-700" />
+                        </div>
+
+                        <h3 className="text-2xl font-bold mb-2">Premium</h3>
+                        <p className="mb-6 text-slate-600">Unlimited support, purchased through Google Play.</p>
+
+                        <div className="mb-6">
+                            <span className="text-5xl font-bold">{selectedPlan.display}</span>
+                            <span className="text-slate-600">/{isYearly ? 'year' : 'month'}</span>
+                            {!isYearly && (
+                                <div className="mt-2 text-sm text-slate-600">
+                                    Approx. ${pricing.monthly.usd.toFixed(2)} USD
+                                </div>
+                            )}
+                        </div>
+
+                        <ul className="space-y-4 mb-8">
+                            {[
+                                'Unlimited messages/day',
+                                'All 4 AI personality modes',
+                                'Unlimited voice messages',
+                                'Priority response speed',
+                                'Advanced insights',
+                                'Proactive check-ins',
+                                'Weekly reports',
+                                'Priority support',
+                            ].map((feature, i) => (
+                                <li key={i} className="flex items-center gap-3">
+                                    <Check className="w-5 h-5 text-emerald-700" />
+                                    <span className={i === 0 ? 'font-bold' : ''}>{feature}</span>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="mb-6 rounded-xl border border-emerald-700/10 bg-emerald-700/10 p-4">
+                            <p className="text-center text-sm text-emerald-950">
+                                Use the same account on web after upgrading in the Android app.
                             </p>
                         </div>
 
-                        <div className="enterprise-panel p-6">
-                            <div className="flex items-center gap-3.5">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[#E7C891]">
-                                    <Download className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-white">Seamless Cross-Device Entitlement</p>
-                                    <p className="text-xs text-neutral-400">
-                                        Subscribe in the Android app; sign in on twingenie.app with the same account.
-                                    </p>
-                                </div>
-                            </div>
-                            <a
-                                href={playStoreUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn-primary-ivory mt-5 w-full py-2.5 text-xs"
-                            >
-                                <span>Open Google Play Store</span>
-                                <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                        </div>
-                    </div>
+                        <button
+                            onClick={openPlayStore}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3 font-semibold text-white transition-all hover:bg-slate-800"
+                        >
+                            Install Android App
+                            <ExternalLink className="h-4 w-4" />
+                        </button>
 
-                    {/* Billing Toggle */}
-                    <div className="mb-10 flex justify-center">
-                        <div className="inline-flex items-center rounded-xl border border-white/[0.08] bg-[#0D1016] p-1">
-                            <button
-                                type="button"
-                                onClick={() => setIsYearly(false)}
-                                className={`rounded-lg px-6 py-2.5 text-xs font-semibold transition-all ${
-                                    !isYearly ? 'bg-[#F4F2EC] text-[#07080B]' : 'text-neutral-400 hover:text-white'
-                                }`}
-                            >
-                                Monthly
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsYearly(true)}
-                                className={`inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-xs font-semibold transition-all ${
-                                    isYearly ? 'bg-[#F4F2EC] text-[#07080B]' : 'text-neutral-400 hover:text-white'
-                                }`}
-                            >
-                                <span>Yearly</span>
-                                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[10px] text-emerald-700">
-                                    Save {pricing.yearly.savings}
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {loading ? (
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="enterprise-panel h-96 animate-pulse p-8" />
-                            <div className="enterprise-panel h-96 animate-pulse p-8" />
-                        </div>
-                    ) : (
-                        <div className="grid gap-6 md:grid-cols-2">
-                            {/* Free Plan */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="enterprise-panel flex flex-col justify-between p-8"
-                            >
-                                <div>
-                                    <div className="font-mono text-xs uppercase tracking-wider text-neutral-400">
-                                        Starter Tier
-                                    </div>
-                                    <h2 className="mt-2 text-2xl font-semibold text-[#F4F2EC]">Free Companion</h2>
-                                    <p className="mt-2 text-sm text-neutral-400">
-                                        Calibrate your 35-trait digital twin with zero payment details required.
-                                    </p>
-
-                                    <div className="mt-6 flex items-baseline gap-1.5">
-                                        <span className="text-4xl font-semibold text-white">{pricing.symbol}0</span>
-                                        <span className="text-sm text-neutral-500">/ forever</span>
-                                    </div>
-
-                                    <ul className="mt-8 space-y-3 text-sm text-neutral-300">
-                                        {[
-                                            'Full 35-Question Personality Assessment',
-                                            'All 4 AI personality modes',
-                                            '10 text messages & 3 voice messages / day',
-                                            'Daily challenges & mood tracking',
-                                            'Memory timeline & streaks',
-                                        ].map((feature, i) => (
-                                            <li key={i} className="flex items-center gap-3 text-xs sm:text-sm">
-                                                <Check className="h-4 w-4 shrink-0 text-emerald-400" />
-                                                <span className={i === 0 ? 'font-medium text-white' : ''}>{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                <Link href="/onboarding" className="btn-secondary-obsidian mt-8 w-full py-3.5 text-sm">
-                                    <span>Start Free 35-Question Assessment</span>
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </motion.div>
-
-                            {/* Premium Plan */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.06 }}
-                                className="enterprise-panel relative flex flex-col justify-between border-[#D9A760]/45 bg-[#10131C] p-8 shadow-[0_0_60px_-24px_rgba(217,167,96,0.28)]"
-                            >
-                                <div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-mono text-xs uppercase tracking-wider text-[#E7C891]">
-                                            Pro Companion
-                                        </span>
-                                        <span className="rounded-full border border-[#D9A760]/40 bg-[#D9A760]/10 px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#E7C891]">
-                                            Full Access
-                                        </span>
-                                    </div>
-                                    <h2 className="mt-2 text-2xl font-semibold text-[#F4F2EC]">Unlimited Growth</h2>
-                                    <p className="mt-2 text-sm text-neutral-400">
-                                        Unlimited messages, infinite vector recall, and all guided coach sprints.
-                                    </p>
-
-                                    <div className="mt-6">
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-4xl font-semibold text-white">
-                                                {selectedPlan.display}
-                                            </span>
-                                            <span className="text-sm text-neutral-400">
-                                                /{isYearly ? 'year' : 'month'}
-                                            </span>
-                                        </div>
-                                        {!isYearly && (
-                                            <div className="mt-1 font-mono text-xs text-neutral-500">
-                                                Approx. ${pricing.monthly.usd.toFixed(2)} USD
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <ul className="mt-8 space-y-3 text-sm text-neutral-200">
-                                        {[
-                                            'Unlimited text & voice reflections',
-                                            'All 4 calibrated cognitive perspectives',
-                                            'Unbounded semantic vector memory',
-                                            'All Multi-Day Life Coach tracks',
-                                            'Cognitive insights & proactive check-ins',
-                                            'Priority model latency & support',
-                                        ].map((feature, i) => (
-                                            <li key={i} className="flex items-center gap-3 text-xs sm:text-sm">
-                                                <Check className="h-4 w-4 shrink-0 text-[#D9A760]" />
-                                                <span className={i === 0 ? 'font-semibold text-white' : ''}>
-                                                    {feature}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                <a
-                                    href={playStoreUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn-primary-ivory mt-8 w-full py-3.5 text-sm"
-                                >
-                                    <span>Install Android App to Upgrade</span>
-                                    <ExternalLink className="h-4 w-4" />
-                                </a>
-                            </motion.div>
-                        </div>
-                    )}
-
-                    <div className="mt-10 flex flex-wrap items-center justify-center gap-6 font-mono text-[11px] text-neutral-500">
-                        <span className="inline-flex items-center gap-1.5 text-neutral-300">
-                            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                            Verified Google Play Billing
-                        </span>
-                        <span>Cancel anytime inside Google Play</span>
-                        <span>Region: {pricing.country}</span>
-                    </div>
+                        {isYearly && (
+                            <p className="mt-4 text-center text-sm text-slate-600">
+                                Save {pricing.yearly.savings} with yearly billing
+                            </p>
+                        )}
+                    </motion.div>
                 </div>
-            </main>
 
-            <SiteFooter />
+                {/* Features Comparison */}
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-5 text-sm text-gray-400">
+                    <span className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                        Google Play billing
+                    </span>
+                    <span>Cancel anytime in Play Store</span>
+                    <span>Detected region: {pricing.country}</span>
+                </div>
+            </div>
         </div>
-    )
+    );
 }

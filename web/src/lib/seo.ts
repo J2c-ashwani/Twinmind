@@ -1,9 +1,5 @@
 import type { Metadata } from 'next'
 
-/**
- * Canonical origin must match the live HTTPS 308 destination (www.twingenie.app)
- * so canonicals, sitemaps, OpenGraph tags, and JSON-LD align with HTTP 200 URLs.
- */
 function resolveCanonicalOrigin(): string {
     const raw = (process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://www.twingenie.app').trim()
     if (raw === 'https://twingenie.app' || raw === 'https://twingenie.app/') {
@@ -23,61 +19,57 @@ export const INDEXNOW_KEY = '55df36df77a03c5f81101db8459d16d3'
 export interface FaqEntry {
     question: string
     answer: string
-    category: 'Methodology' | 'Architecture' | 'Privacy & Governance' | 'Access & Pricing'
+    category: 'Getting Started' | 'How It Works' | 'Privacy & Safety' | 'Pricing & Access'
 }
 
-/**
- * Shared AEO knowledge-base entries embedded in both visible SSR DOM
- * and schema.org FAQPage JSON-LD across `/` and `/faq`.
- */
 export const CORE_FAQS: FaqEntry[] = [
     {
-        category: 'Methodology',
-        question: 'Why does TwinGenie onboarding start with a 35-question assessment?',
+        category: 'Getting Started',
+        question: 'Why does TwinGenie start with a 35-question personality check?',
         answer:
-            'Generic AI defaults to polite approval because it lacks behavioral baseline data. TwinGenie scores 35 psychometric questions across five structured screens covering Big Five dimensions, stress reactivity, decision speed, and conflict triggers before your first chat so responses reflect your actual temperament from day one.',
+            'Regular AI chatbots start from zero and tend to agree with whatever you say. Answering 35 quick questions across 5 short screens teaches TwinGenie your mindset, stress triggers, and communication style before your very first chat so it truly sounds and thinks like a personal twin.',
     },
     {
-        category: 'Architecture',
-        question: 'How is TwinGenie different from ChatGPT, Replika, or Pi?',
+        category: 'How It Works',
+        question: 'How is TwinGenie different from ChatGPT, Replika, or Character.ai?',
         answer:
-            'General chatbots start from a blank prompt and optimize for agreeable conversational flow. TwinGenie pairs a required 35-trait personality calibration with isolated 1536-dimensional PostgreSQL pgvector memory and four explicit cognitive modes—Normal Twin, Future Twin, Honest Twin, and Reflective Coach—designed to counter cognitive blindspots rather than flatter excuses.',
+            'ChatGPT is built as a general productivity assistant, while Replika and Character.ai center on companion bonding and character roleplay. TwinGenie calibrates a personal digital twin through 35 onboarding questions, remembers your ongoing goals and past chats, and lets you switch between Normal, Future, Honest, and Reflective modes for real-life clarity without flattery.',
     },
     {
-        category: 'Privacy & Governance',
-        question: 'Is my private journal or reflection data used to train AI models?',
+        category: 'How It Works',
+        question: 'What are the 4 Twin perspectives inside TwinGenie chat?',
         answer:
-            'Never. User conversations, vector embeddings, and voice reflections are isolated per user via Supabase PostgreSQL Row-Level Security (RLS), encrypted over TLS 1.3, processed under zero-training commercial API terms, and never sold or used to train public AI foundation models.',
+            'While chatting with your Twin, you can switch between Normal Twin (a balanced everyday mirror), Future Twin (your wiser self looking back 5 years from now), Honest Twin (direct reality checks with zero sugarcoating), and Reflective Twin (gentle emotional guidance and clarity).',
     },
     {
-        category: 'Access & Pricing',
-        question: 'Can I use both the Web app and the Google Play Android app with one account?',
+        category: 'Privacy & Safety',
+        question: 'Are my private chats or voice notes used to train public AI models?',
         answer:
-            'Yes. Your account, 35-trait psychometric profile, 1536-dim episodic memory, coaching progress, and Google Play Pro subscription stay synchronized across www.twingenie.app and the Android app (com.asmind.app).',
+            'Never. Your reflections, personality profile, and voice messages belong strictly to your private account. TwinGenie never sells personal entries or uses your private chats to train public AI models.',
     },
     {
-        category: 'Methodology',
-        question: 'What are the 4 Twin perspectives in TwinGenie?',
+        category: 'Pricing & Access',
+        question: 'Can I chat on both the Web app and the Android mobile app?',
         answer:
-            'Every dilemma can be inspected through Normal Twin (calibrated everyday reflection), Future Twin (5-year long-horizon consequence lens), Honest Twin (zero-sycophancy reality check calling out avoidance), and Reflective Coach (calm Socratic emotional inquiry).',
+            'Yes. Sign in once with the same account and your Twin profile, chat history, voice reflections, Life Coach tracks, and Pro subscription stay synchronized across www.twingenie.app and the Google Play Android app (com.asmind.app).',
     },
     {
-        category: 'Access & Pricing',
-        question: 'How much does TwinGenie cost?',
+        category: 'Pricing & Access',
+        question: 'Is TwinGenie free to start, and what does Pro cost?',
         answer:
-            'TwinGenie Free Starter costs $0 forever and includes the complete 35-question calibration, all four cognitive perspectives, 10 daily text reflections, 3 daily voice reflections, and mood tracking. Pro Companion unlocks unlimited reflections, unlimited vector memory, and all guided Life Coach tracks for $5.99/month or $47.88/year USD (localized on Google Play, e.g. ₹499/month or ₹3,999/year in India).',
+            'Yes, you can create your Twin and start chatting for free ($0 forever), including the full 35-question setup, all 4 Twin perspectives, 10 daily text reflections, and 3 daily voice reflections. Pro Companion unlocks unlimited chat, voice, memory, and guided coaching for $5.99/month or $47.88/year USD (localized on Google Play, e.g. ₹499/month or ₹3,999/year in India).',
     },
     {
-        category: 'Privacy & Governance',
-        question: 'Can I delete specific chat memories or my entire account?',
+        category: 'Privacy & Safety',
+        question: 'Can I delete my chat history or entire account anytime?',
         answer:
-            'Yes. TwinGenie provides two self-serve governance portals: granular deletion of chat logs, semantic vector memories, voice logs, or profile data at www.twingenie.app/delete-data, and immediate full account removal at www.twingenie.app/delete-account.',
+            'Yes. You stay in complete control: clear specific chats, memories, or voice logs at www.twingenie.app/delete-data, or permanently delete your entire account at www.twingenie.app/delete-account.',
     },
     {
-        category: 'Privacy & Governance',
-        question: 'Is TwinGenie a medical or clinical therapy service?',
+        category: 'Privacy & Safety',
+        question: 'Is TwinGenie a medical or therapy replacement?',
         answer:
-            'No. TwinGenie is an AI personal reflection, clarity, and structured self-coaching companion. It is not a medical device, clinical healthcare provider, or substitute for licensed therapy, and includes non-clinical crisis-safety guardrails.',
+            'No. TwinGenie is a personal reflection, clarity, and self-growth companion. It is not a substitute for licensed therapy, psychiatric care, or medical emergency services.',
     },
 ]
 
@@ -139,7 +131,7 @@ export function buildPageMetadata({
                     url: `${SITE_URL}/og-image.png`,
                     width: 1200,
                     height: 630,
-                    alt: `${title} — TwinGenie Psychometric Digital Twin`,
+                    alt: `${title} — TwinGenie AI Personal Digital Twin`,
                 },
             ],
         },

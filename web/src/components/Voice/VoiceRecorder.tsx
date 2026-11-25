@@ -173,7 +173,7 @@ export default function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) 
     };
 
     return (
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-[#161224] border border-white/15 rounded-2xl shadow-lg p-6 text-white">
             <AnimatePresence mode="wait">
                 {!isRecording && !audioBlob && (
                     <motion.div

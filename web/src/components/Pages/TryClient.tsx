@@ -1,18 +1,25 @@
 'use client'
 
 import { useEffect } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { Brain, ArrowRight, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
-import SiteHeader from '@/components/Layout/SiteHeader'
-import SiteFooter from '@/components/Layout/SiteFooter'
-import { BrandEmblem } from '@/components/Layout/BrandMark'
 
+/**
+ * /try — Smart redirect page for shared messages.
+ * 
+ * When someone receives a shared TwinGenie message, the link
+ * brings them here. This page:
+ * 1. Detects their platform (iOS / Android / Desktop)
+ * 2. Shows a quick emotional hook
+ * 3. Redirects to the right store or web app
+ */
 export default function TryPage() {
     const playStoreUrl =
         process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
         'https://play.google.com/store/apps/details?id=com.asmind.app'
 
     useEffect(() => {
+        // Auto-redirect after 3 seconds
         const timer = setTimeout(() => {
             redirectToApp()
         }, 3000)
@@ -23,57 +30,62 @@ export default function TryPage() {
         const ua = navigator.userAgent.toLowerCase()
 
         if (/iphone|ipad|ipod/.test(ua)) {
+            // iOS launch is not active yet; keep users in the web onboarding flow.
             window.location.href = '/onboarding'
         } else if (/android/.test(ua)) {
+            // Android → Play Store
             window.location.href = playStoreUrl
         } else {
+            // Desktop → Web app
             window.location.href = '/onboarding'
         }
     }
 
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC] flex flex-col">
-            <SiteHeader minimal />
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            {/* Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+                <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+            </div>
 
-            <main className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-grid-architectural opacity-40 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="z-10 max-w-md text-center"
+            >
+                {/* Original Logo */}
+                <img
+                    src="/logo.png"
+                    alt="TwinGenie Logo"
+                    className="w-16 h-16 mx-auto mb-6 rounded-2xl object-cover shadow-2xl shadow-purple-500/30 border border-white/15"
+                />
 
-                <motion.div
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="relative z-10 w-full max-w-md enterprise-panel p-8 text-center"
+                <h1 className="text-3xl md:text-4xl font-bold mb-4">
+                    Someone shared a{' '}
+                    <span className="gradient-text">moment</span>{' '}
+                    with you
+                </h1>
+
+                <p className="text-gray-400 mb-8 text-lg">
+                    TwinGenie — the AI that actually knows you.
+                    Try it yourself.
+                </p>
+
+                <button
+                    onClick={redirectToApp}
+                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-lg shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-3 mx-auto"
                 >
-                    <div className="mb-6 flex justify-center">
-                        <BrandEmblem size="lg" />
-                    </div>
+                    <Sparkles className="w-5 h-5" />
+                    Try TwinGenie Free
+                    <ArrowRight className="w-5 h-5" />
+                </button>
 
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-[#D9A760]">
-                        Shared Reflection Invite
-                    </div>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#F4F2EC]">
-                        Someone shared a <span className="font-serif italic text-[#E7C891]">moment</span> with you
-                    </h1>
-
-                    <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-                        TwinGenie calibrates a 35-trait digital twin that helps you think clearly instead of telling you
-                        what you want to hear.
-                    </p>
-
-                    <button
-                        type="button"
-                        onClick={redirectToApp}
-                        className="btn-primary-ivory mt-7 w-full py-3.5 text-sm"
-                    >
-                        <span>Calibrate Your Twin Free</span>
-                        <ArrowRight className="h-4 w-4" />
-                    </button>
-
-                    <p className="mt-4 font-mono text-[11px] text-neutral-500">Redirecting automatically...</p>
-                </motion.div>
-            </main>
-
-            <SiteFooter />
+                <p className="mt-6 text-gray-500 text-sm">
+                    Redirecting automatically...
+                </p>
+            </motion.div>
         </div>
     )
 }

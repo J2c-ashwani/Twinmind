@@ -1,19 +1,17 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, HelpCircle, Smartphone } from 'lucide-react'
-import SiteHeader from '@/components/Layout/SiteHeader'
-import SiteFooter from '@/components/Layout/SiteFooter'
+import { ArrowLeft, ArrowRight, HelpCircle, Smartphone } from 'lucide-react'
 import { CORE_FAQS, PLAY_STORE_URL, SITE_URL, buildFaqJsonLd, buildPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = buildPageMetadata({
     title: 'Frequently Asked Questions (FAQ)',
     description:
-        'Answers on TwinGenie’s 35-question psychometric onboarding, four Twin perspectives, 1536-dim pgvector memory privacy, zero model training, pricing, and Android sync.',
+        'Answers about creating your TwinGenie digital twin, the 35-question setup, four chat perspectives, privacy guarantees, pricing, and Web + Android sync.',
     path: '/faq',
     keywords: [
         'TwinGenie FAQ',
-        'how psychometric digital twin works',
-        'AI journal privacy row level security',
+        'how AI digital twin works',
+        'AI reflection app privacy',
         'TwinGenie pricing Web Android',
     ],
 })
@@ -31,66 +29,88 @@ export default function FaqPage() {
     const faqJsonLd = buildFaqJsonLd(CORE_FAQS)
 
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC] flex flex-col">
+        <div className="min-h-screen text-white flex flex-col">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify([breadcrumbJsonLd, faqJsonLd]) }}
             />
-            <SiteHeader />
 
-            <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-14 sm:px-6 space-y-12">
-                <header className="space-y-4 border-b border-white/[0.08] pb-8">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#D9A760]/30 bg-[#D9A760]/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-[#E7C891]">
-                        <HelpCircle className="h-3.5 w-3.5" />
-                        Knowledge Base
-                    </div>
-                    <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+                <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-3">
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie"
+                            className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20"
+                        />
+                        <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
+                    </Link>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back</span>
+                    </Link>
+                </div>
+            </header>
+
+            <main className="flex-1 mx-auto w-full max-w-4xl px-6 py-12 space-y-10">
+                <header className="space-y-3 border-b border-white/10 pb-8">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/15 px-3 py-1 text-xs font-medium text-purple-200">
+                        <HelpCircle className="h-3.5 w-3.5 text-purple-300" />
                         Frequently Asked Questions
+                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                        Everything about TwinGenie
                     </h1>
-                    <p className="text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        Direct technical and product answers on how TwinGenie works, how data is protected,
-                        and how Web and Google Play subscriptions stay synchronized.
+                    <p className="text-sm text-gray-300 sm:text-base">
+                        Clear answers on getting started, how your Twin remembers you, privacy, and plans.
                     </p>
                 </header>
 
                 <section className="space-y-4">
                     {CORE_FAQS.map((item) => (
-                        <article key={item.question} className="enterprise-panel p-6 space-y-2.5">
-                            <div className="font-mono text-[10px] uppercase tracking-wider text-[#D9A760]">
+                        <article key={item.question} className="glass-card p-6 space-y-2">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-purple-300">
                                 {item.category}
                             </div>
-                            <h2 className="text-lg font-semibold text-[#F4F2EC]">{item.question}</h2>
-                            <p className="text-sm leading-relaxed text-neutral-300">{item.answer}</p>
+                            <h2 className="text-lg font-bold text-white">{item.question}</h2>
+                            <p className="text-sm leading-relaxed text-gray-300">{item.answer}</p>
                         </article>
                     ))}
                 </section>
 
-                <section className="enterprise-panel p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <section className="glass-card p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold">Ready to calibrate your digital twin?</h2>
-                        <p className="mt-1 text-xs text-neutral-400">
-                            Free Starter includes the full 35-question calibration and all 4 cognitive modes.
+                        <h2 className="text-lg font-bold">Ready to meet your AI Twin?</h2>
+                        <p className="mt-1 text-xs text-gray-300">
+                            Start free on Web or Android with your 35-question profile.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <Link href="/onboarding" className="btn-primary-ivory px-5 py-2.5 text-xs">
+                        <Link
+                            href="/onboarding"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-xs font-semibold text-white"
+                        >
                             <span>Create Your Twin</span>
                             <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                        <Link href="/login" className="glass-button px-4 py-2 text-xs">
+                            Sign In
                         </Link>
                         <a
                             href={PLAY_STORE_URL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="btn-secondary-obsidian px-4 py-2.5 text-xs"
+                            className="inline-flex items-center gap-1.5 text-xs text-purple-300 hover:text-white px-2 py-2"
                         >
-                            <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                            <Smartphone className="h-3.5 w-3.5" />
                             <span>Android App</span>
                         </a>
                     </div>
                 </section>
             </main>
-
-            <SiteFooter />
         </div>
     )
 }

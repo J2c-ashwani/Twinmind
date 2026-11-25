@@ -1,92 +1,109 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useGamificationStore } from '@/store/useStore'
-import { apiClient } from '@/lib/api/client'
-import { Flame, TrendingUp } from 'lucide-react'
+import { useEffect } from 'react';
+import { useGamificationStore } from '@/store/useStore';
+import { apiClient } from '@/lib/api/client';
+import { Flame, TrendingUp } from 'lucide-react';
 
 export default function StreakCounter() {
-    const { streaks, setStreaks } = useGamificationStore()
+    const { streaks, setStreaks } = useGamificationStore();
 
     useEffect(() => {
-        loadStreaks()
-    }, [])
+        loadStreaks();
+    }, []);
 
     const loadStreaks = async () => {
         try {
-            const data = (await apiClient.getStreaks()) as any
-            setStreaks(data || [])
+            const data = await apiClient.getStreaks() as any;
+            setStreaks(data || []);
         } catch (error) {
-            console.error('Failed to load streaks:', error)
+            console.error('Failed to load streaks:', error);
         }
-    }
+    };
 
-    const dailyStreak = streaks.find((s) => s.streak_type === 'daily_checkin')
-    if (!dailyStreak) return null
+    const dailyStreak = streaks.find((s) => s.streak_type === 'daily_checkin');
+
+    if (!dailyStreak) return null;
+
+    const getStreakColor = (streak: number) => {
+        if (streak >= 30) return 'from-yellow-500 to-orange-500';
+        if (streak >= 7) return 'from-orange-500 to-red-500';
+        return 'from-red-500 to-pink-500';
+    };
 
     const getStreakMessage = (streak: number) => {
-        if (streak >= 90) return 'Sustained longitudinal discipline.'
-        if (streak >= 30) return 'Strong 30-day behavioral habit.'
-        if (streak >= 7) return 'Consistent weekly cadence.'
-        if (streak >= 3) return 'Building steady momentum.'
-        return 'Begin your reflection streak.'
-    }
+        if (streak >= 90) return "Legendary! You're unstoppable! 👑";
+        if (streak >= 30) return "Amazing! Keep it going! 🔥";
+        if (streak >= 7) return "You're on fire! 🚀";
+        if (streak >= 3) return "Great start! Keep going! 💪";
+        return "Start your journey! ✨";
+    };
 
     return (
-        <div className="enterprise-panel p-6">
-            <div className="mb-5 text-center">
-                <div className="inline-flex items-center gap-3 rounded-2xl border border-[#D9A760]/40 bg-[#D9A760]/10 px-6 py-3.5 text-[#E7C891]">
-                    <Flame className="h-6 w-6" />
-                    <div className="text-left">
-                        <div className="text-3xl font-semibold text-[#F4F2EC]">
-                            {dailyStreak.current_streak}
-                        </div>
-                        <div className="font-mono text-[10px] uppercase tracking-wider text-[#E7C891]">
-                            Day Streak
-                        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+            {/* Main streak display */}
+            <div className="text-center mb-6">
+                <div className={`inline-flex items-center gap-3 px-6 py-4 rounded-full bg-gradient-to-r ${getStreakColor(dailyStreak.current_streak)} text-white shadow-lg`}>
+                    <Flame className="w-8 h-8" />
+                    <div>
+                        <div className="text-4xl font-bold">{dailyStreak.current_streak}</div>
+                        <div className="text-sm opacity-90">Day Streak</div>
                     </div>
                 </div>
             </div>
 
-            <p className="mb-6 text-center text-xs font-medium text-neutral-300">
+            {/* Message */}
+            <p className="text-center text-gray-700 font-medium mb-6">
                 {getStreakMessage(dailyStreak.current_streak)}
             </p>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/[0.07] bg-[#0B0D12] p-4">
-                    <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase text-neutral-500">
-                        <TrendingUp className="h-3.5 w-3.5 text-[#D9A760]" />
-                        <span>Longest</span>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                        <span className="text-sm text-gray-600">Longest Streak</span>
                     </div>
-                    <div className="text-xl font-semibold text-white">{dailyStreak.longest_streak} days</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                        {dailyStreak.longest_streak} days
+                    </div>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.07] bg-[#0B0D12] p-4">
-                    <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase text-neutral-500">
-                        <Flame className="h-3.5 w-3.5 text-emerald-400" />
-                        <span>Current</span>
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Flame className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm text-gray-600">Current</span>
                     </div>
-                    <div className="text-xl font-semibold text-white">{dailyStreak.current_streak} days</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                        {dailyStreak.current_streak} days
+                    </div>
                 </div>
             </div>
 
-            <div className="mt-5">
-                <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-                    Last 7 Days
+            {/* Warning if streak might break */}
+            {dailyStreak.current_streak > 0 && (
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                    <p className="text-sm text-yellow-800 text-center">
+                        💡 Don't break your streak! Check in today to keep it going.
+                    </p>
                 </div>
-                <div className="flex gap-1.5">
+            )}
+
+            {/* Calendar heatmap (simplified) */}
+            <div className="mt-6">
+                <div className="text-sm text-gray-600 mb-3">Last 7 days</div>
+                <div className="flex gap-2">
                     {[...Array(7)].map((_, i) => (
                         <div
                             key={i}
-                            className={`h-8 flex-1 rounded-md ${
-                                i < dailyStreak.current_streak
-                                    ? 'bg-[#D9A760]'
-                                    : 'border border-white/[0.06] bg-white/[0.02]'
-                            }`}
-                        />
+                            className={`flex-1 h-12 rounded-lg ${i < dailyStreak.current_streak
+                                ? `bg-gradient-to-br ${getStreakColor(dailyStreak.current_streak)}`
+                                : 'bg-gray-100'
+                                }`}
+                        ></div>
                     ))}
                 </div>
             </div>
         </div>
-    )
+    );
 }

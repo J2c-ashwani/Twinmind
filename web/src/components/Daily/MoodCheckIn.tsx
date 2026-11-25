@@ -1,131 +1,164 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useDailyStore } from '@/store/useStore'
-import { apiClient } from '@/lib/api/client'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useDailyStore } from '@/store/useStore';
+import { apiClient } from '@/lib/api/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 
 interface MoodCheckInProps {
-    isOpen: boolean
-    onClose: () => void
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess?: () => void;
 }
 
+// 1-5 scale matching Mobile MoodCheckInDialog, YearInPixels, and growthStoryService
 const MOODS = [
-    { value: 2, label: 'Energized & Clear', dot: 'bg-emerald-400' },
-    { value: 1, label: 'Calm & Steady', dot: 'bg-sky-400' },
-    { value: 0, label: 'Neutral', dot: 'bg-neutral-400' },
-    { value: -1, label: 'Heavy or Tense', dot: 'bg-amber-400' },
-    { value: -2, label: 'Overwhelmed', dot: 'bg-rose-400' },
-]
+    { value: 5, emoji: '😊', label: 'Great', color: 'from-green-500 to-emerald-500' },
+    { value: 4, emoji: '😌', label: 'Good', color: 'from-blue-500 to-cyan-500' },
+    { value: 3, emoji: '😐', label: 'Okay', color: 'from-slate-500 to-gray-600' },
+    { value: 2, emoji: '😔', label: 'Down', color: 'from-orange-500 to-amber-500' },
+    { value: 1, emoji: '😢', label: 'Struggling', color: 'from-red-500 to-rose-500' },
+];
 
-export default function MoodCheckIn({ isOpen, onClose }: MoodCheckInProps) {
-    const [selectedMood, setSelectedMood] = useState<number | null>(null)
-    const [note, setNote] = useState('')
-    const [submitting, setSubmitting] = useState(false)
-    const { addMoodEntry } = useDailyStore()
+export default function MoodCheckIn({ isOpen, onClose, onSuccess }: MoodCheckInProps) {
+    const supabase = createClientComponentClient();
+    const [selectedMood, setSelectedMood] = useState<number | null>(null);
+    const [note, setNote] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const { addMoodEntry } = useDailyStore();
 
     const handleSubmit = async () => {
-        if (selectedMood === null) return
+        if (selectedMood === null) return;
 
         try {
-            setSubmitting(true)
-            const data = (await apiClient.submitMoodCheckIn(selectedMood, note || undefined)) as any
-            addMoodEntry(data)
-            onClose()
-            setSelectedMood(null)
-            setNote('')
-        } catch (error) {
-            console.error('Failed to submit mood:', error)
+            setSubmitting(true);
+            setError('');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                setError('Please sign in again to save your check-in.');
+                return;
+            }
+            apiClient.setToken(session.access_token);
+
+            const data = await apiClient.submitMoodCheckIn(selectedMood, note || undefined) as any;
+            const entry = data?.event
+                ? { id: data.event.id, mood: selectedMood, note: note || undefined, created_at: data.event.created_at }
+                : { id: Date.now().toString(), mood: selectedMood, note: note || undefined, created_at: new Date().toISOString() };
+            addMoodEntry(entry);
+            onSuccess?.();
+            onClose();
+            setSelectedMood(null);
+            setNote('');
+        } catch (err: any) {
+            console.error('Failed to submit mood:', err);
+            setError(err?.message || 'Failed to save your mood check-in. Please try again.');
         } finally {
-            setSubmitting(false)
+            setSubmitting(false);
         }
-    }
+    };
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
+                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
                     />
 
+                    {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.96, y: 12 }}
-                        className="enterprise-panel fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6"
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md bg-[#161224] border border-white/15 text-white rounded-2xl shadow-2xl z-50 p-6"
                     >
-                        <div className="mb-5 flex items-center justify-between">
-                            <div>
-                                <div className="font-mono text-[10px] uppercase tracking-wider text-[#D9A760]">
-                                    Emotional Baseline
-                                </div>
-                                <h2 className="mt-1 text-xl font-semibold text-[#F4F2EC]">
-                                    How are you feeling right now?
-                                </h2>
-                            </div>
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white">How are you feeling?</h2>
                             <button
-                                type="button"
                                 onClick={onClose}
-                                className="rounded-lg border border-white/10 p-1.5 text-neutral-400 hover:bg-white/[0.06] hover:text-white"
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300"
                             >
-                                <X className="h-4 w-4" />
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="mb-5 space-y-2">
+                        {/* Mood selector */}
+                        <div className="space-y-3 mb-6">
                             {MOODS.map((mood) => (
                                 <button
                                     key={mood.value}
-                                    type="button"
                                     onClick={() => setSelectedMood(mood.value)}
-                                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
-                                        selectedMood === mood.value
-                                            ? 'border-[#D9A760]/70 bg-[#D9A760]/10 text-white'
-                                            : 'border-white/[0.08] bg-white/[0.02] text-neutral-300 hover:border-white/20'
-                                    }`}
+                                    className={`w-full p-4 rounded-xl border transition-all ${selectedMood === mood.value
+                                        ? `border-transparent bg-gradient-to-r ${mood.color} text-white shadow-lg`
+                                        : 'border-white/10 hover:border-white/25 bg-white/5 text-white'
+                                        }`}
                                 >
-                                    <span className={`h-2.5 w-2.5 rounded-full ${mood.dot}`} />
-                                    <span className="text-sm font-medium">{mood.label}</span>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-4xl">{mood.emoji}</span>
+                                        <div className="flex-1 text-left">
+                                            <div className="font-semibold text-white">
+                                                {mood.label}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </button>
                             ))}
                         </div>
 
+                        {/* Optional note */}
                         {selectedMood !== null && (
                             <motion.div
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
-                                className="mb-5"
+                                className="mb-6"
                             >
-                                <label className="mb-1.5 block text-xs font-medium text-neutral-300">
-                                    Context note (optional)
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Want to share more? (optional)
                                 </label>
                                 <textarea
                                     value={note}
                                     onChange={(e) => setNote(e.target.value)}
-                                    placeholder="What is influencing your state right now?"
-                                    className="w-full resize-none rounded-xl border border-white/[0.12] bg-[#07080B] p-3 text-sm text-white placeholder-neutral-500 focus:border-[#D9A760]/60 focus:outline-none"
+                                    placeholder="What's on your mind?"
+                                    className="w-full p-3 bg-white/5 border border-white/15 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none outline-none"
                                     rows={3}
                                 />
                             </motion.div>
                         )}
 
+                        {error && (
+                            <div className="mb-4 rounded-xl bg-red-500/20 border border-red-500/40 px-3 py-2 text-sm text-red-200">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Submit button */}
                         <button
-                            type="button"
                             onClick={handleSubmit}
                             disabled={selectedMood === null || submitting}
-                            className="btn-primary-ivory w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+                            className={`w-full py-3 rounded-xl font-semibold transition-all ${selectedMood === null || submitting
+                                ? 'bg-white/10 text-gray-500 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
+                                }`}
                         >
-                            {submitting ? 'Logging Check-In...' : 'Log Check-In'}
+                            {submitting ? 'Submitting...' : 'Submit Check-In'}
                         </button>
+
+                        {/* Streak info */}
+                        <p className="text-center text-sm text-gray-400 mt-4">
+                            ✨ Daily check-ins help track your emotional journey
+                        </p>
                     </motion.div>
                 </>
             )}
         </AnimatePresence>
-    )
+    );
 }

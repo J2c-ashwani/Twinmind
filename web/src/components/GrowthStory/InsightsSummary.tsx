@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion } from 'framer-motion';
-import { TrendingUp, Sparkles, Share2 } from 'lucide-react';
+import { Sparkles, Share2 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
 interface Insights {
@@ -23,6 +24,11 @@ export default function InsightsSummary() {
 
     const loadInsights = async () => {
         try {
+            const supabase = createClientComponentClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+                apiClient.setToken(session.access_token);
+            }
             const data = await apiClient.getGrowthInsights('year') as any;
             setInsights(data || {});
         } catch (error) {
@@ -35,7 +41,8 @@ export default function InsightsSummary() {
     const shareInsights = async () => {
         if (!insights) return;
 
-        const text = `My ${insights.period} in review:\n\n${insights.insights.join('\n\n')}\n\nTrack your emotional journey with TwinGenie`;
+        const list = Array.isArray(insights.insights) ? insights.insights : [];
+        const text = `My ${insights.period || 'year'} in review:\n\n${list.join('\n\n')}\n\nTrack your emotional journey with TwinGenie`;
 
         try {
             if (navigator.share) {
@@ -122,23 +129,31 @@ export default function InsightsSummary() {
 
             {/* AI Insights */}
             <div className="space-y-3">
-                {insights.insights.map((insight, index) => (
-                    <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-white/5 rounded-lg p-4 border-l-2 border-purple-400"
-                    >
-                        <p className="text-sm text-white leading-relaxed">{insight}</p>
-                    </motion.div>
-                ))}
+                {Array.isArray(insights.insights) && insights.insights.length > 0 ? (
+                    insights.insights.map((insight, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white/5 rounded-lg p-4 border-l-2 border-purple-400"
+                        >
+                            <p className="text-sm text-white leading-relaxed">{insight}</p>
+                        </motion.div>
+                    ))
+                ) : (
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10 text-sm text-white/60">
+                        Check in with your mood over a few days to unlock personalized AI growth reflections.
+                    </div>
+                )}
             </div>
 
             {/* Most Active Time */}
-            <div className="mt-4 text-xs text-white/40 text-center">
-                You're most active at {insights.mostActiveTime}
-            </div>
+            {insights.mostActiveTime && (
+                <div className="mt-4 text-xs text-white/40 text-center">
+                    You&apos;re most active at {insights.mostActiveTime}
+                </div>
+            )}
         </motion.div>
     );
 }

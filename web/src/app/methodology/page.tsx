@@ -1,21 +1,19 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, Cpu, Database, Eye, Layers, Lock, ShieldCheck, Smartphone } from 'lucide-react'
-import SiteHeader from '@/components/Layout/SiteHeader'
-import SiteFooter from '@/components/Layout/SiteFooter'
+import { ArrowLeft, ArrowRight, Eye, Layers, MessageCircle, ShieldCheck, Smartphone, Sparkles } from 'lucide-react'
 import { PLAY_STORE_URL, SITE_URL, buildPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = buildPageMetadata({
-    title: '35-Trait Psychometric & pgvector Memory Methodology',
+    title: 'How TwinGenie Works',
     description:
-        'Technical overview of TwinGenie’s 5-stage 35-question behavioral assessment, 1536-dimensional PostgreSQL pgvector memory, Row-Level Security isolation, and 4-perspective router.',
+        'See how TwinGenie calibrates your personal AI digital twin across 35 questions, remembers your ongoing story, and reflects through Normal, Future, Honest, and Reflective modes.',
     path: '/methodology',
     type: 'article',
     keywords: [
-        'psychometric digital twin methodology',
-        '35 trait personality calibration',
-        'pgvector AI memory architecture',
-        'anti sycophancy AI prompt routing',
+        'how TwinGenie works',
+        '35 question personality digital twin',
+        'AI chat with long term memory',
+        'honest AI companion',
     ],
 })
 
@@ -24,16 +22,16 @@ const breadcrumbJsonLd = {
     '@type': 'BreadcrumbList',
     itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'TwinGenie', item: `${SITE_URL}/` },
-        { '@type': 'ListItem', position: 2, name: 'Methodology', item: `${SITE_URL}/methodology` },
+        { '@type': 'ListItem', position: 2, name: 'How It Works', item: `${SITE_URL}/methodology` },
     ],
 }
 
 const articleJsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'TechArticle',
-    headline: 'How TwinGenie Calibrates a 35-Trait Psychometric Digital Twin',
+    '@type': 'Article',
+    headline: 'How TwinGenie Calibrates Your Personal AI Digital Twin',
     description:
-        'Architecture detailing TwinGenie’s 35-question assessment, 1536-dim pgvector semantic retrieval, and four-perspective anti-sycophancy reasoning pipeline.',
+        'Overview of TwinGenie’s 35-question onboarding profile, continuous memory, and four distinct reflection perspectives.',
     url: `${SITE_URL}/methodology`,
     author: { '@type': 'Person', name: 'Ashwani Kumar' },
     publisher: { '@type': 'Organization', name: 'TwinGenie', url: SITE_URL },
@@ -42,178 +40,151 @@ const articleJsonLd = {
 
 export default function MethodologyPage() {
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC] flex flex-col">
+        <div className="min-h-screen text-white flex flex-col">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify([breadcrumbJsonLd, articleJsonLd]) }}
             />
-            <SiteHeader />
 
-            <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 lg:px-8 space-y-14">
-                <header className="space-y-4 border-b border-white/[0.08] pb-10">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#D9A760]/30 bg-[#D9A760]/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-[#E7C891]">
-                        <Cpu className="h-3.5 w-3.5" />
-                        Architecture &amp; Psychometric Specification
+            <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+                <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-3 group">
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie"
+                            className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20"
+                        />
+                        <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
+                    </Link>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back</span>
+                    </Link>
+                </div>
+            </header>
+
+            <main className="flex-1 mx-auto w-full max-w-5xl px-6 py-12 space-y-12">
+                <header className="space-y-4 border-b border-white/10 pb-8">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/15 px-3 py-1 text-xs font-medium text-purple-200">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-300" />
+                        How TwinGenie Works
                     </div>
-                    <h1 className="text-3xl font-semibold tracking-tight text-[#F4F2EC] sm:text-5xl">
-                        How TwinGenie calibrates a{' '}
-                        <span className="font-serif italic font-normal text-[#E7C891]">
-                            non-sycophantic
-                        </span>{' '}
-                        digital twin.
+                    <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+                        An AI companion built around{' '}
+                        <span className="gradient-text">who you actually are.</span>
                     </h1>
-                    <p className="max-w-3xl text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        Most conversational AI tools initialize from an empty system prompt and optimize for
-                        agreeableness. TwinGenie establishes a measurable behavioral baseline across 35
-                        questions before your first message, attaches longitudinal 1536-dimensional vector
-                        memory, and routes every question through four distinct cognitive perspectives.
+                    <p className="max-w-3xl text-sm leading-relaxed text-gray-300 sm:text-base">
+                        Most chatbots start blank and tell you what sounds pleasant in the moment.
+                        TwinGenie learns your personality through 35 quick questions, remembers your
+                        ongoing story across weeks, and lets you talk through real decisions using
+                        four distinct perspectives.
                     </p>
                 </header>
 
                 <section className="grid gap-6 md:grid-cols-3">
-                    <article className="enterprise-panel p-6 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <span className="font-mono text-[11px] text-[#D9A760]">LAYER 01</span>
-                            <Layers className="h-4 w-4 text-neutral-400" />
-                        </div>
-                        <h2 className="text-lg font-semibold">35-Question 5-Screen Baseline</h2>
-                        <p className="text-xs leading-relaxed text-neutral-400 sm:text-sm">
-                            Five structured onboarding stages evaluate Big Five dimensions alongside
-                            decision speed, conflict avoidance, stress reactivity, and relational trust.
-                            Numeric trait weights shape system framing from turn one.
+                    <article className="glass-card p-6 space-y-3">
+                        <Layers className="h-6 w-6 text-purple-300" />
+                        <h2 className="text-lg font-bold">1. 35-Question Setup</h2>
+                        <p className="text-sm leading-relaxed text-gray-300">
+                            Five brief onboarding screens capture how you handle stress, make decisions,
+                            build trust, and respond to conflict—so your Twin knows your style before your
+                            first message.
                         </p>
                     </article>
 
-                    <article className="enterprise-panel p-6 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <span className="font-mono text-[11px] text-[#D9A760]">LAYER 02</span>
-                            <Database className="h-4 w-4 text-neutral-400" />
-                        </div>
-                        <h2 className="text-lg font-semibold">1536-Dim Episodic pgvector Memory</h2>
-                        <p className="text-xs leading-relaxed text-neutral-400 sm:text-sm">
-                            Reflections, stated commitments, and unresolved dilemmas are embedded into
-                            1536-dimensional vectors stored in Row-Level Security (RLS) PostgreSQL namespaces
-                            so past patterns resurface across weeks.
+                    <article className="glass-card p-6 space-y-3">
+                        <MessageCircle className="h-6 w-6 text-pink-300" />
+                        <h2 className="text-lg font-bold">2. Memory That Sticks</h2>
+                        <p className="text-sm leading-relaxed text-gray-300">
+                            Your goals, breakthroughs, and recurring patterns stay connected across
+                            conversations, so you never have to re-explain your whole life story.
                         </p>
                     </article>
 
-                    <article className="enterprise-panel p-6 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <span className="font-mono text-[11px] text-[#D9A760]">LAYER 03</span>
-                            <Eye className="h-4 w-4 text-neutral-400" />
-                        </div>
-                        <h2 className="text-lg font-semibold">Four-Mode Perspective Router</h2>
-                        <p className="text-xs leading-relaxed text-neutral-400 sm:text-sm">
-                            Rather than outputting one polite paragraph, TwinGenie lets you examine the
-                            same situation via Normal Twin, Future Twin (5-year horizon), Honest Twin
-                            (anti-bias reality check), and Reflective Coach.
+                    <article className="glass-card p-6 space-y-3">
+                        <Eye className="h-6 w-6 text-blue-300" />
+                        <h2 className="text-lg font-bold">3. Four Chat Perspectives</h2>
+                        <p className="text-sm leading-relaxed text-gray-300">
+                            Switch between Normal Twin, Future Twin, Honest Twin, and Reflective Coach
+                            inside chat whenever you want support, long-term perspective, or a reality check.
                         </p>
                     </article>
                 </section>
 
-                <section className="enterprise-panel p-6 sm:p-8 space-y-6">
-                    <h2 className="text-2xl font-semibold">The Four Calibrated Perspectives</h2>
+                <section className="glass-card p-6 sm:p-8 space-y-6">
+                    <h2 className="text-2xl font-bold">Explore All 4 Perspectives</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="rounded-xl border border-white/[0.08] bg-[#0B0D12] p-5 space-y-2">
-                            <div className="font-mono text-[11px] uppercase tracking-wider text-sky-300">
-                                01 / Normal Twin — Core Reflection
-                            </div>
-                            <p className="text-xs leading-relaxed text-neutral-300 sm:text-sm">
-                                Balanced everyday mirror grounded in your 35-trait scoring and active life
-                                priorities. Best for daily journaling, planning, and structured thinking.
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-1.5">
+                            <div className="text-sm font-bold text-green-300">Normal Twin</div>
+                            <p className="text-sm text-gray-300">
+                                Your balanced everyday mirror—warm, thoughtful, and grounded in your real personality.
                             </p>
                         </div>
-                        <div className="rounded-xl border border-[#D9A760]/30 bg-[#D9A760]/[0.05] p-5 space-y-2">
-                            <div className="font-mono text-[11px] uppercase tracking-wider text-[#E7C891]">
-                                02 / Future Twin — 5-Year Horizon
-                            </div>
-                            <p className="text-xs leading-relaxed text-neutral-300 sm:text-sm">
-                                Evaluates present excuses and trade-offs through long-term compounding
-                                consequences—exposing short-term comfort traps that erode future optionality.
+                        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-5 space-y-1.5">
+                            <div className="text-sm font-bold text-blue-300">Future Twin</div>
+                            <p className="text-sm text-gray-300">
+                                Speaks as your wiser self five years ahead so short-term anxiety does not steer big choices.
                             </p>
                         </div>
-                        <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.05] p-5 space-y-2">
-                            <div className="font-mono text-[11px] uppercase tracking-wider text-rose-300">
-                                03 / Honest Twin — Anti-Sycophancy Reality Check
-                            </div>
-                            <p className="text-xs leading-relaxed text-neutral-300 sm:text-sm">
-                                Explicitly overrides agreeable AI flattery to confront procrastination,
-                                rationalizations, and repeated behavioral loops without hostility.
+                        <div className="rounded-2xl border border-pink-500/30 bg-pink-500/10 p-5 space-y-1.5">
+                            <div className="text-sm font-bold text-pink-300">Honest Twin</div>
+                            <p className="text-sm text-gray-300">
+                                Direct, constructive truth with zero sugarcoating—calling out excuses and blindspots kindly but clearly.
                             </p>
                         </div>
-                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.05] p-5 space-y-2">
-                            <div className="font-mono text-[11px] uppercase tracking-wider text-emerald-300">
-                                04 / Reflective Coach — Socratic Clarity
-                            </div>
-                            <p className="text-xs leading-relaxed text-neutral-300 sm:text-sm">
-                                Calm Socratic inquiry focused on de-escalating emotional overwhelm and
-                                isolating one clear, low-friction next step.
+                        <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-5 space-y-1.5">
+                            <div className="text-sm font-bold text-purple-300">Reflective Coach</div>
+                            <p className="text-sm text-gray-300">
+                                Gentle, calming reflection focused on understanding emotions and taking one practical next step.
                             </p>
                         </div>
                     </div>
                 </section>
 
-                <section className="enterprise-panel p-6 sm:p-8 space-y-4">
-                    <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-emerald-300">
+                <section className="glass-card p-6 sm:p-8 space-y-3">
+                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-green-300">
                         <ShieldCheck className="h-4 w-4" />
-                        Privacy, Storage &amp; Clinical Boundaries
+                        Private &amp; Under Your Control
                     </div>
-                    <h2 className="text-2xl font-semibold">Governance guarantees</h2>
-                    <ul className="space-y-2.5 text-sm text-neutral-300">
-                        <li className="flex items-start gap-2.5">
-                            <Lock className="mt-1 h-4 w-4 shrink-0 text-[#D9A760]" />
-                            <span>
-                                <strong className="text-white">Zero Public Model Training:</strong>{' '}
-                                Personal reflections, audio entries, and trait profiles are never sold or used
-                                to train public base AI models.
-                            </span>
-                        </li>
-                        <li className="flex items-start gap-2.5">
-                            <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-emerald-400" />
-                            <span>
-                                <strong className="text-white">Row-Level Security + Erasure:</strong>{' '}
-                                Isolated PostgreSQL storage with self-serve slice deletion on{' '}
-                                <Link href="/delete-data" className="text-[#E7C891] hover:underline">
-                                    /delete-data
-                                </Link>{' '}
-                                and full account deletion on{' '}
-                                <Link href="/delete-account" className="text-[#E7C891] hover:underline">
-                                    /delete-account
-                                </Link>
-                                .
-                            </span>
-                        </li>
-                    </ul>
-                    <p className="pt-2 text-xs text-neutral-400">
-                        Note: TwinGenie is a personal reflection and self-coaching application and is not a
-                        clinical healthcare provider, licensed therapist, or medical diagnostic device.
+                    <p className="text-sm text-gray-300 leading-relaxed">
+                        Your private chats and voice reflections are isolated to your personal account and
+                        are never sold or used to train public AI models. You can delete specific memories on{' '}
+                        <Link href="/delete-data" className="text-purple-300 underline">
+                            Data Deletion
+                        </Link>{' '}
+                        or remove your entire account on{' '}
+                        <Link href="/delete-account" className="text-purple-300 underline">
+                            Account Deletion
+                        </Link>
+                        . TwinGenie is a personal growth and self-reflection tool, not medical or clinical therapy.
                     </p>
                 </section>
 
-                <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <Link href="/onboarding" className="btn-primary-ivory px-6 py-3.5 text-sm">
-                        <span>Start 35-Trait Assessment</span>
+                <section className="flex flex-wrap gap-4 items-center">
+                    <Link
+                        href="/onboarding"
+                        className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 font-semibold text-white shadow-lg shadow-purple-500/25 hover:scale-105 transition-all"
+                    >
+                        <span>Create Your Twin</span>
                         <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link href="/login" className="glass-button text-sm">
+                        Sign In to Chat
                     </Link>
                     <a
                         href={PLAY_STORE_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-secondary-obsidian px-5 py-3.5 text-sm"
+                        className="inline-flex items-center gap-2 text-sm text-purple-300 hover:text-white px-3 py-2"
                     >
-                        <Smartphone className="h-4 w-4 text-emerald-400" />
-                        <span>Get TwinGenie on Google Play</span>
+                        <Smartphone className="h-4 w-4" />
+                        <span>Get Android App</span>
                     </a>
-                    <Link
-                        href="/compare"
-                        className="px-4 py-3 text-xs font-medium text-[#E7C891] hover:underline"
-                    >
-                        Compare TwinGenie vs ChatGPT &rarr;
-                    </Link>
                 </section>
             </main>
-
-            <SiteFooter />
         </div>
     )
 }

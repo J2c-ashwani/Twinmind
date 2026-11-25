@@ -19,10 +19,10 @@ export async function middleware(req: NextRequest) {
 
     // Direct redirects for landing page sections
     if (pathname === '/pricing') {
-        return NextResponse.redirect(new URL('/#pricing', req.url))
+        return NextResponse.redirect(new URL('/subscription', req.url))
     }
     if (pathname === '/coaching') {
-        return NextResponse.redirect(new URL('/#coaching', req.url))
+        return NextResponse.redirect(new URL('/life-coach', req.url))
     }
 
     // Public paths that don't require authentication
@@ -30,6 +30,7 @@ export async function middleware(req: NextRequest) {
         '/',
         '/login',
         '/signup',
+        '/auth/callback',
         '/privacy',
         '/terms',
         '/delete-account',

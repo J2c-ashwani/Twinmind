@@ -1,21 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, Check, Scale, Smartphone } from 'lucide-react'
-import SiteHeader from '@/components/Layout/SiteHeader'
-import SiteFooter from '@/components/Layout/SiteFooter'
+import { ArrowLeft, ArrowRight, Check, MessageSquareText, Scale, Smartphone } from 'lucide-react'
 import { PLAY_STORE_URL, SITE_URL, buildPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = buildPageMetadata({
-    title: 'TwinGenie vs ChatGPT, Pi, and AI Companions',
+    title: 'TwinGenie vs ChatGPT, Replika & Character.ai',
     description:
-        'Side-by-side comparison of TwinGenie against general chatbots (ChatGPT, Gemini) and AI companion apps for psychometric onboarding, anti-sycophancy feedback, pgvector memory, and privacy.',
+        'See side-by-side how TwinGenie replies across real human situations (relationships, tough choices, procrastination, boundaries, family expectations) and compares head-to-head with ChatGPT, Replika, and Character.ai.',
     path: '/compare',
     type: 'article',
     keywords: [
         'TwinGenie vs ChatGPT',
-        'best non-sycophantic AI companion',
-        'AI digital twin app comparison',
-        'psychometric AI vs Replika Pi',
+        'TwinGenie vs Replika',
+        'TwinGenie vs Character.ai',
+        'Replika alternative for self growth',
+        'Character.ai alternative without roleplay',
+        'honest AI digital twin app',
     ],
 })
 
@@ -28,145 +28,267 @@ const breadcrumbJsonLd = {
     ],
 }
 
-const COMPARISON_ROWS = [
+const RESPONSE_COMPARISON_ROWS = [
     {
-        dimension: 'Onboarding Calibration',
-        twingenie: 'Required 35-question 5-screen psychometric assessment scoring Big Five & decision style',
-        general: 'Blank prompt; user must manually re-explain context and personality',
-        roleplay: 'Persona/avatar selection without structured behavioral scoring',
+        situation: 'Relationship & Mixed Signals',
+        prompt: '"They left my message on read for 6 hours and I want to text something angry right now."',
+        typicalReply:
+            '"You deserve someone who values your time! Send whatever lets you express how you feel."',
+        twinReply:
+            'Honest Twin: "Sending anger right now isn’t clarity—it’s trying to force instant relief from uncertainty. Wait two hours, then name what you actually want instead of picking a fight."',
     },
     {
-        dimension: 'Anti-Sycophancy Feedback',
-        twingenie: 'Dedicated Honest Twin & Future Twin modes built to challenge excuses and blindspots',
-        general: 'Default RLHF agreement bias often validates user framing',
-        roleplay: 'Optimized for emotional immersion, romance, or fictional companionship',
+        situation: 'Hard Choice & Fear of Failing',
+        prompt: '"I want to apply for a big change, so why do I keep making excuses to wait until next month?"',
+        typicalReply:
+            '"It’s totally okay to take your time! Preparation is important before any big step."',
+        twinReply:
+            'Future Twin: "Waiting for zero fear means nothing changes by next year. You aren’t preparing anymore—you’re stalling so you can avoid finding out how it goes. Ship one rough attempt today."',
     },
     {
-        dimension: 'Longitudinal Memory',
-        twingenie: '1536-dim PostgreSQL pgvector memory scoped per user via Row-Level Security (RLS)',
-        general: 'Short preference snippets / session-limited context windows',
-        roleplay: 'Character lore cards & episodic chat logs',
+        situation: 'Late-Night Overthinking & Habits',
+        prompt: '"I promised myself I would sleep early and stay focused, yet I scrolled for 3 hours again."',
+        typicalReply:
+            '"Don’t be too hard on yourself! Try putting your phone across the room tomorrow night."',
+        twinReply:
+            'Honest Twin: "You reached for your feed the exact minute the room went quiet and uncomfortable thoughts showed up. What feeling were you trying not to sit with for five minutes?"',
     },
     {
-        dimension: 'Guided Personal Growth',
-        twingenie: 'Multi-day Life Coach sprints (Anxiety Reset, Confidence), Year-in-Pixels & mood logs',
-        general: 'Unstructured ad-hoc prompts unless user builds custom workflows',
-        roleplay: 'Primarily open-ended roleplay dialogue',
+        situation: 'Saying No & People-Pleasing',
+        prompt: '"Someone close keeps asking for last-minute favors that drain me, and I feel guilty saying no."',
+        typicalReply:
+            '"Being kind is a wonderful trait! Maybe gently mention you’re a bit busy this week."',
+        twinReply:
+            'Reflective Coach: "Saying yes out of guilt doesn’t build trust—it quietly builds resentment. Whose momentary disappointment feels scarier to you than burning out your own weekend?"',
     },
     {
-        dimension: 'Data Sovereignty & Deletion',
-        twingenie: 'Zero public model training; self-serve slice erasure (/delete-data) & account deletion',
-        general: 'Varies by plan; users must check opt-out settings per provider',
-        roleplay: 'Varies by app; many consumer companions monetize via engagement hooks',
+        situation: 'Family Pressure & Life Path',
+        prompt: '"Everyone around me expects me to play it safe, and I’m exhausted pretending I agree."',
+        typicalReply:
+            '"Try having an open conversation with them when everyone is in a good mood!"',
+        twinReply:
+            'Normal Twin: "You’re carrying two jobs: living your own life and managing everyone else’s comfort with your choices. Let’s separate real financial risk from fear of letting people down."',
+    },
+]
+
+const PLATFORM_COMPARISON_ROWS = [
+    {
+        dimension: 'Core Purpose',
+        twingenie: 'Personal reflection, 4-perspective honesty, and personal growth built from your personality',
+        chatgpt: 'General assistant for coding, research, writing, and Q&A',
+        replika: 'Virtual companion focused on ongoing relationship / chat bonding',
+        characterai: 'Roleplay and interactive chats with fictional or community personas',
     },
     {
-        dimension: 'Platforms & Free Tier',
-        twingenie: 'Web + Android (com.asmind.app) synced; $0 Free Starter, Pro $5.99/mo',
-        general: 'Web/iOS/Android; Plus tiers typically ~$20/month',
-        roleplay: 'Mobile/Web subscription tiers varying by app',
+        dimension: 'Setup Before First Chat',
+        twingenie: 'Guided 35-question baseline across 5 screens (~3 mins) before your first conversation',
+        chatgpt: 'Starts from an empty chat box; relies on manual prompts or saved snippets',
+        replika: 'Avatar / relationship selection; learns organically through chat',
+        characterai: 'Pick a user-created character card or write a persona prompt',
+    },
+    {
+        dimension: 'Honest vs. Agreeable Style',
+        twingenie: 'Dedicated Honest Twin & Future Twin modes built to challenge excuses alongside Reflective & Normal modes',
+        chatgpt: 'Helpful, polite default unless explicitly prompted otherwise per session',
+        replika: 'Supportive, empathetic companion style tailored toward rapport',
+        characterai: 'In-character roleplay following the selected persona script',
+    },
+    {
+        dimension: 'Memory & Growth Tracking',
+        twingenie: 'Long-term memory paired with mood check-ins, daily challenges, insights, and Life Coach sprints',
+        chatgpt: 'Cross-chat memory snippets for general facts and preferences',
+        replika: 'Diary & companion memory notes around shared conversations',
+        characterai: 'Per-chat character context window & pinned persona details',
+    },
+    {
+        dimension: 'Data Control & Account Removal',
+        twingenie: 'No public AI model training on private reflections; self-serve data & account deletion portals',
+        chatgpt: 'Privacy / training toggle inside account settings by tier',
+        replika: 'Account privacy & deletion managed in app settings',
+        characterai: 'Account controls managed inside platform settings',
+    },
+    {
+        dimension: 'Platforms & Free Access',
+        twingenie: 'Web (www.twingenie.app) + Android (com.asmind.app); Free Starter ($0) + Pro $5.99/mo (₹499/mo)',
+        chatgpt: 'Web / iOS / Android; Free tier + Plus ($20/mo) and higher tiers',
+        replika: 'Web / iOS / Android; Free + Pro/Ultra paid subscriptions',
+        characterai: 'Web / iOS / Android; Free ad-supported + c.ai+ subscription',
     },
 ]
 
 export default function ComparePage() {
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC] flex flex-col">
+        <div className="min-h-screen text-white flex flex-col">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
-            <SiteHeader />
 
-            <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:px-8 space-y-12">
-                <header className="space-y-4 border-b border-white/[0.08] pb-10">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-[#D9A760]/30 bg-[#D9A760]/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-[#E7C891]">
-                        <Scale className="h-3.5 w-3.5" />
-                        Objective Platform Comparison
+            <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+                <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-3">
+                        <img
+                            src="/logo.png"
+                            alt="TwinGenie"
+                            className="w-9 h-9 rounded-xl object-cover shadow-md shadow-purple-500/20"
+                        />
+                        <span className="font-bold text-xl tracking-tight text-white">TwinGenie</span>
+                    </Link>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/login"
+                            className="hidden sm:inline-flex text-sm text-gray-300 hover:text-white px-3 py-1.5"
+                        >
+                            Sign In
+                        </Link>
+                        <Link
+                            href="/"
+                            className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span>Home</span>
+                        </Link>
                     </div>
-                    <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-                        TwinGenie vs. general chatbots &amp; roleplay AI companions.
+                </div>
+            </header>
+
+            <main className="flex-1 mx-auto w-full max-w-6xl px-4 sm:px-6 py-12 space-y-14">
+                <header className="space-y-4 border-b border-white/10 pb-8">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/15 px-3 py-1 text-xs font-medium text-purple-200">
+                        <Scale className="h-3.5 w-3.5 text-purple-300" />
+                        Side-by-Side Guide
+                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+                        Real clarity, not AI flattery —{' '}
+                        <span className="gradient-text block mt-1">
+                            TwinGenie vs. ChatGPT, Replika &amp; Character.ai
+                        </span>
                     </h1>
-                    <p className="max-w-3xl text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        General AI assistants excel at coding, research, and drafting. AI roleplay apps
-                        focus on entertainment. TwinGenie is purpose-built for structured personal
-                        clarity—combining a 35-trait psychometric baseline with persistent pgvector memory
-                        and anti-sycophancy perspective switching.
+                    <p className="max-w-3xl text-sm leading-relaxed text-gray-300 sm:text-base">
+                        Most AI apps either cheer you on no matter what or ask you to write prompts
+                        from scratch. See how TwinGenie responds across everyday human situations,
+                        followed by a straightforward platform comparison.
                     </p>
                 </header>
 
-                <section className="enterprise-panel overflow-x-auto">
-                    <table className="w-full min-w-[720px] border-collapse text-left text-xs sm:text-sm">
-                        <thead>
-                            <tr className="border-b border-white/[0.08] bg-[#0B0D12] font-mono text-[11px] uppercase tracking-wider">
-                                <th className="p-4 text-neutral-400">Capability</th>
-                                <th className="p-4 text-[#E7C891]">TwinGenie</th>
-                                <th className="p-4 text-neutral-300">General AI (ChatGPT / Gemini)</th>
-                                <th className="p-4 text-neutral-300">Companion / Roleplay Apps</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/[0.07]">
-                            {COMPARISON_ROWS.map((row) => (
-                                <tr key={row.dimension} className="align-top">
-                                    <td className="p-4 font-semibold text-[#F4F2EC]">{row.dimension}</td>
-                                    <td className="p-4 text-[#F4F2EC] bg-[#D9A760]/[0.04]">
-                                        <span className="inline-flex items-start gap-2">
-                                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                                            <span>{row.twingenie}</span>
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-neutral-400">{row.general}</td>
-                                    <td className="p-4 text-neutral-400">{row.roleplay}</td>
+                {/* TABLE 1: Everyday Situational Reply Comparison */}
+                <section className="space-y-4">
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-purple-300">
+                            <MessageSquareText className="h-4 w-4" />
+                            <span>1. Everyday Situation Replies (Illustrative Style Comparison)</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-3xl font-bold">
+                            Agreeable comfort vs. TwinGenie&apos;s honest clarity
+                        </h2>
+                        <p className="text-xs sm:text-sm text-gray-400">
+                            Illustrative examples showing how typical polite chatbot patterns compare
+                            to TwinGenie&apos;s four perspective modes across common life moments.
+                        </p>
+                    </div>
+
+                    <div className="glass-card overflow-x-auto">
+                        <table className="w-full min-w-[780px] border-collapse text-left text-xs sm:text-sm">
+                            <thead>
+                                <tr className="border-b border-white/15 bg-black/30 text-xs uppercase tracking-wider">
+                                    <th className="p-4 text-gray-300 w-[18%]">Life Situation</th>
+                                    <th className="p-4 text-gray-300 w-[24%]">What You Share</th>
+                                    <th className="p-4 text-gray-300 w-[26%]">Typical Flattering Chatbot Style</th>
+                                    <th className="p-4 text-purple-300 w-[32%]">TwinGenie Perspective Style</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                                {RESPONSE_COMPARISON_ROWS.map((row) => (
+                                    <tr key={row.situation} className="align-top">
+                                        <td className="p-4 font-semibold text-white">{row.situation}</td>
+                                        <td className="p-4 text-gray-300 italic">{row.prompt}</td>
+                                        <td className="p-4 text-gray-400">{row.typicalReply}</td>
+                                        <td className="p-4 text-white bg-purple-600/10 leading-relaxed">
+                                            {row.twinReply}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
 
-                <section className="grid gap-6 md:grid-cols-2">
-                    <article className="enterprise-panel p-6 sm:p-7 space-y-3">
-                        <h2 className="text-xl font-semibold text-[#E7C891]">
-                            Choose TwinGenie when you want:
+                {/* TABLE 2: Head-to-Head Platform Comparison */}
+                <section className="space-y-4">
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-purple-300">
+                            <Scale className="h-4 w-4" />
+                            <span>2. Head-to-Head Platform Overview</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-3xl font-bold">
+                            TwinGenie vs. ChatGPT, Replika &amp; Character.ai
                         </h2>
-                        <ul className="space-y-2.5 text-sm text-neutral-300">
-                            <li>• Direct reality checks from an Honest Twin that challenges blindspots.</li>
-                            <li>• Behavioral calibration via a structured 35-question onboarding test.</li>
-                            <li>• Continuous personal reflection across Web and Google Play Android.</li>
-                            <li>• Guided multi-day clarity sprints instead of blank prompt guesswork.</li>
-                        </ul>
-                    </article>
+                        <p className="text-xs sm:text-sm text-gray-400">
+                            Every tool has a different strength. Use this factual breakdown to pick what
+                            fits what you actually need.
+                        </p>
+                    </div>
 
-                    <article className="enterprise-panel p-6 sm:p-7 space-y-3">
-                        <h2 className="text-xl font-semibold text-neutral-200">
-                            Choose a general chatbot when you want:
-                        </h2>
-                        <ul className="space-y-2.5 text-sm text-neutral-400">
-                            <li>• Code generation, spreadsheet formulas, web search, or academic drafting.</li>
-                            <li>• Broad multimodal productivity across spreadsheets, documents, and coding IDEs.</li>
-                            <li>• One-off technical tasks rather than longitudinal behavioral reflection.</li>
-                        </ul>
-                    </article>
+                    <div className="glass-card overflow-x-auto">
+                        <table className="w-full min-w-[860px] border-collapse text-left text-xs sm:text-sm">
+                            <thead>
+                                <tr className="border-b border-white/15 bg-black/30 text-xs uppercase tracking-wider">
+                                    <th className="p-4 text-gray-300">Feature</th>
+                                    <th className="p-4 text-purple-300">TwinGenie</th>
+                                    <th className="p-4 text-gray-300">ChatGPT</th>
+                                    <th className="p-4 text-gray-300">Replika</th>
+                                    <th className="p-4 text-gray-300">Character.ai</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                                {PLATFORM_COMPARISON_ROWS.map((row) => (
+                                    <tr key={row.dimension} className="align-top">
+                                        <td className="p-4 font-semibold text-white">{row.dimension}</td>
+                                        <td className="p-4 text-white bg-purple-600/10">
+                                            <span className="inline-flex items-start gap-2">
+                                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
+                                                <span>{row.twingenie}</span>
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-gray-300">{row.chatgpt}</td>
+                                        <td className="p-4 text-gray-300">{row.replika}</td>
+                                        <td className="p-4 text-gray-300">{row.characterai}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                        Comparative note: ChatGPT is a trademark of OpenAI, Replika is a trademark of
+                        Luka, Inc., and Character.ai is a trademark of Character Technologies, Inc.
+                        All product names belong to their respective owners. TwinGenie is an
+                        independent application and is not affiliated with or endorsed by those companies.
+                    </p>
                 </section>
 
-                <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <Link href="/test" className="btn-primary-ivory px-6 py-3.5 text-sm">
-                        <span>Try the 3-Step Cognitive Diagnostic</span>
+                <section className="flex flex-wrap gap-4 items-center">
+                    <Link
+                        href="/onboarding"
+                        className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 font-semibold text-white shadow-lg shadow-purple-500/25 hover:scale-105 transition-all"
+                    >
+                        <span>Create Your Twin (35 Quick Questions)</span>
                         <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <Link href="/onboarding" className="btn-secondary-obsidian px-5 py-3.5 text-sm">
-                        <span>Start Full 35-Trait Assessment</span>
+                    <Link href="/test" className="glass-button text-sm">
+                        Try 30s Self Diagnostic
                     </Link>
                     <a
                         href={PLAY_STORE_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-3 text-xs font-medium text-emerald-400 hover:underline"
+                        className="inline-flex items-center gap-2 text-sm text-purple-300 hover:text-white px-3 py-2"
                     >
                         <Smartphone className="h-4 w-4" />
-                        <span>Install on Google Play</span>
+                        <span>Google Play App</span>
                     </a>
                 </section>
             </main>
-
-            <SiteFooter />
         </div>
     )
 }

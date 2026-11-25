@@ -11,12 +11,12 @@ const nextConfig = {
         return [
             {
                 source: '/pricing',
-                destination: '/#pricing',
+                destination: '/subscription',
                 permanent: true,
             },
             {
                 source: '/coaching',
-                destination: '/#coaching',
+                destination: '/life-coach',
                 permanent: true,
             },
         ];

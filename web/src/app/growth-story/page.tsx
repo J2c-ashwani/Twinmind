@@ -1,32 +1,39 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import YearInPixels from '@/components/GrowthStory/YearInPixels'
 import InsightsSummary from '@/components/GrowthStory/InsightsSummary'
-import WorkspaceHeader from '@/components/Layout/WorkspaceHeader'
 
 export default function GrowthStoryPage() {
+    const router = useRouter()
+
     return (
-        <div className="min-h-screen bg-[#07080B] text-[#F4F2EC]">
-            <WorkspaceHeader />
+        <div className="min-h-screen p-6">
+            {/* Header */}
+            <header className="max-w-6xl mx-auto mb-8">
+                <button
+                    onClick={() => router.back()}
+                    className="flex items-center gap-2 text-white/70 hover:text-white transition-colors mb-4"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                </button>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Your Growth Story
+                </h1>
+                <p className="text-gray-400">Visualize your emotional journey</p>
+            </header>
 
-            <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-                <header className="mb-8 border-b border-white/[0.08] pb-6">
-                    <div className="font-mono text-[11px] uppercase tracking-wider text-[#D9A760]">
-                        Behavioral Archive
-                    </div>
-                    <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#F4F2EC]">
-                        Your Growth Story
-                    </h1>
-                    <p className="mt-1 text-sm text-neutral-400">
-                        Year-in-Pixels cadence and AI narrative synthesis.
-                    </p>
-                </header>
+            {/* Content */}
+            <div className="max-w-6xl mx-auto space-y-6">
+                {/* Year in Pixels */}
+                <YearInPixels />
 
-                <div className="space-y-6">
-                    <YearInPixels />
-                    <InsightsSummary />
-                </div>
-            </main>
+                {/* AI Insights */}
+                <InsightsSummary />
+            </div>
         </div>
     )
 }

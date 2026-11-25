@@ -243,7 +243,7 @@ class ApiClient {
     }
 
     async getMoodHistory(days?: number) {
-        return this.request(`/api/daily/mood/history?days=${days || 30}`);
+        return this.request(`/api/daily/mood/history?limit=${days || 30}`);
     }
 
     // Additional Insights endpoints

@@ -4,7 +4,7 @@
 
 ## Core Capabilities
 - [How TwinGenie Works (Methodology)](https://www.twingenie.app/methodology): Detailed breakdown of the 35-question 5-stage psychometric calibration, 1536-dim pgvector memory architecture, and multi-perspective prompt routing.
-- [TwinGenie vs General AI & Companions](https://www.twingenie.app/compare): Factual feature comparison against ChatGPT, Pi, Replika, and Kindroid for anti-sycophancy reflection, structured onboarding, and data sovereignty.
+- [TwinGenie vs ChatGPT, Replika & Character.ai](https://www.twingenie.app/compare): Illustrative side-by-side response style comparison across everyday life situations plus factual platform comparison against ChatGPT, Replika, and Character.ai.
 - [Frequently Asked Questions](https://www.twingenie.app/faq): Direct answers on psychometric onboarding, privacy, non-training guarantees, pricing, and cross-platform Web/Android sync.
 - [3-Step Cognitive Diagnostic](https://www.twingenie.app/test): Interactive 30-second self-diagnostic identifying personal avoidance and decision-making blindspots.
 - [35-Trait Digital Twin Calibration](https://www.twingenie.app/onboarding): Full 5-screen psychometric assessment that initializes a user's persistent digital twin.
