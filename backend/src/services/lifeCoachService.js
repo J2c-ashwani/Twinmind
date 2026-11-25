@@ -82,25 +82,28 @@ export async function getSession(userId, programId) {
 
         if (!progress) throw new Error('Program not started');
 
-        // Get day content
-        const { data: dayContent } = await supabaseAdmin
-            .from('program_days')
-            .select('*')
-            .eq('program_id', programId)
-            .eq('day_number', progress.current_day)
-            .single();
+        // Fetch day content and session chat history concurrently once progress is known
+        const [
+            { data: dayContent },
+            { data: sessionMessages }
+        ] = await Promise.all([
+            supabaseAdmin
+                .from('program_days')
+                .select('*')
+                .eq('program_id', programId)
+                .eq('day_number', progress.current_day)
+                .single(),
+            supabaseAdmin
+                .from('chat_history')
+                .select('sender, message, created_at')
+                .eq('user_id', userId)
+                .eq('mode', 'coaching')
+                .contains('metadata', { program_id: programId, day_number: progress.current_day })
+                .order('created_at', { ascending: false })
+                .limit(30)
+        ]);
 
         if (!dayContent) throw new Error('Day content not found');
-
-        // Load server-owned session history from chat_history for this program and day
-        const { data: sessionMessages } = await supabaseAdmin
-            .from('chat_history')
-            .select('sender, message, created_at')
-            .eq('user_id', userId)
-            .eq('mode', 'coaching')
-            .contains('metadata', { program_id: programId, day_number: progress.current_day })
-            .order('created_at', { ascending: false })
-            .limit(30);
 
         const orderedMessages = (sessionMessages || []).slice().reverse();
 
@@ -156,9 +159,9 @@ If the user seems ready to move on, suggest completing the daily exercise.
 
         const response = await aiService.generateChatResponse(
             userMessage,
-            session_history,
+            session_history.slice(-12),
             systemPrompt,
-            'coaching'
+            'emotional_support'
         );
 
         let replyText =

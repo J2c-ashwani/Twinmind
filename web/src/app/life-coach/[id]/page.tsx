@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { apiClient } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, CheckCircle, ChevronLeft, BookOpen, LayoutDashboard, MessageCircle } from 'lucide-react';
+import { Send, Loader2, CheckCircle, ChevronLeft, BookOpen, LayoutDashboard, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -28,7 +28,7 @@ export default function CoachingSessionPage() {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [messages, sending]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -231,6 +231,22 @@ export default function CoachingSessionPage() {
                         </div>
                     </motion.div>
                 ))}
+                {sending && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex justify-start"
+                    >
+                        <div className="bg-white/10 border border-white/15 rounded-2xl rounded-bl-none px-4 py-3.5 backdrop-blur-md flex items-center gap-3">
+                            <div className="flex items-center gap-1.5" aria-hidden="true">
+                                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
+                            </div>
+                            <span className="text-xs text-gray-300">Coach is thinking...</span>
+                        </div>
+                    </motion.div>
+                )}
                 {error && (
                     <div className="max-w-4xl mx-auto rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                         {error}
@@ -254,9 +270,10 @@ export default function CoachingSessionPage() {
                     <button
                         onClick={handleSend}
                         disabled={!input.trim() || sending}
+                        aria-label={sending ? 'Sending response' : 'Send response'}
                         className="p-3 bg-purple-600 text-white rounded-xl hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                        <Send className="w-6 h-6" />
+                        {sending ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
                     </button>
                 </div>
             </div>

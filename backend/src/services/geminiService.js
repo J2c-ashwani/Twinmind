@@ -4,8 +4,8 @@ import { logger } from '../config/logger.js';
 class GeminiService {
     constructor(apiKey) {
         this.apiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-        this.modelName = (process.env.GEMINI_MODEL || 'gemini-3.6-flash').replace(/^models\//, '');
-        this.fallbackModelName = (process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite').replace(/^models\//, '');
+        this.modelName = (process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite').replace(/^models\//, '');
+        this.fallbackModelName = (process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite').replace(/^models\//, '');
 
         if (this.apiKey) {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
@@ -35,6 +35,43 @@ class GeminiService {
             role: msg.sender_type === 'user' ? 'user' : 'model',
             parts: [{ text: msg.content || ' ' }],
         }));
+    }
+
+    /**
+     * Normalize non-system messages into valid alternating Gemini history
+     * starting with role 'user' (startChat rejects leading 'model' turns).
+     */
+    _normalizeGeminiHistory(finalHistory = []) {
+        const mapped = [];
+        for (const m of finalHistory) {
+            const role = m.role === 'user' ? 'user' : 'model';
+            const text = (m.content || ' ').trim() || ' ';
+            if (mapped.length === 0 && role !== 'user') {
+                // Gemini startChat requires history[0].role === 'user'
+                continue;
+            }
+            const prev = mapped[mapped.length - 1];
+            if (prev && prev.role === role) {
+                prev.parts[0].text += `\n${text}`;
+            } else {
+                mapped.push({ role, parts: [{ text }] });
+            }
+        }
+        return mapped;
+    }
+
+    _getThinkingConfigForModel(modelId, responseFormat = 'text') {
+        if (responseFormat === 'json') return undefined;
+        const minimalSupported = new Set([
+            'gemini-3.5-flash-lite',
+            'gemini-3.1-flash-lite',
+            'gemini-3.6-flash',
+            'gemini-3-flash-preview',
+        ]);
+        if (minimalSupported.has(modelId)) {
+            return { thinkingLevel: 'minimal' };
+        }
+        return undefined;
     }
 
     /**
@@ -77,19 +114,17 @@ class GeminiService {
                 currentPrompt = finalHistory.pop().content;
             }
 
-            const geminiHistory = finalHistory.map(m => ({
-                role: m.role === 'user' ? 'user' : 'model',
-                parts: [{ text: m.content || ' ' }],
-            }));
-
-            // Generation config with structured output support if JSON requested
-            const generationConfig = {
-                temperature: 0.7,
-                maxOutputTokens: 2048,
-                ...(responseFormat === 'json' ? { responseMimeType: 'application/json' } : {})
-            };
+            const geminiHistory = this._normalizeGeminiHistory(finalHistory);
 
             const sendWithModel = async (modelId) => {
+                const thinkingConfig = this._getThinkingConfigForModel(modelId, responseFormat);
+                const generationConfig = {
+                    temperature: 0.7,
+                    maxOutputTokens: 2048,
+                    ...(thinkingConfig ? { thinkingConfig } : {}),
+                    ...(responseFormat === 'json' ? { responseMimeType: 'application/json' } : {})
+                };
+
                 const model = this.genAI.getGenerativeModel({
                     model: modelId,
                     systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }], role: 'model' } : undefined,
@@ -98,7 +133,7 @@ class GeminiService {
 
                 const chat = model.startChat({ history: geminiHistory });
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Gemini API timeout')), 15000)
+                    setTimeout(() => reject(new Error('Gemini API timeout')), 7000)
                 );
 
                 const result = await Promise.race([
@@ -113,10 +148,9 @@ class GeminiService {
             const candidates = Array.from(new Set([
                 this.modelName,
                 this.fallbackModelName,
-                'gemini-3.6-flash',
                 'gemini-3.5-flash-lite',
-                'gemini-2.5-flash',
-                'gemini-2.5-flash-lite'
+                'gemini-3.1-flash-lite',
+                'gemini-3.6-flash'
             ].filter(Boolean)));
 
             let lastErr = null;
@@ -171,10 +205,8 @@ class GeminiService {
             currentPrompt = finalHistory.pop().content;
         }
 
-        const geminiHistory = finalHistory.map(m => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.content || ' ' }],
-        }));
+        const geminiHistory = this._normalizeGeminiHistory(finalHistory);
+        const thinkingConfig = this._getThinkingConfigForModel(this.modelName, 'text');
 
         const model = this.genAI.getGenerativeModel({
             model: this.modelName,
@@ -182,6 +214,7 @@ class GeminiService {
             generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 2048,
+                ...(thinkingConfig ? { thinkingConfig } : {}),
             },
         });
 

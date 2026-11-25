@@ -18,6 +18,7 @@ import {
 } from '../src/services/personalityStyleLayer.js';
 import { buildModePrompt } from '../src/services/modeManager.js';
 import { formatHistoryWithModeContext, MODE_TO_TASK_TYPE } from '../src/services/chatEngine.js';
+import geminiService from '../src/services/geminiService.js';
 
 test('emotionalStyleAdapter maps every twin mode without falling back to normal_twin', async () => {
     assert.equal(mapTwinModeToStyleMode('normal'), 'normal_twin');
@@ -98,4 +99,19 @@ test('modeManager prompts have clean switching instructions and MODE_TO_TASK_TYP
     assert.equal(MODE_TO_TASK_TYPE.dark, 'creative_writing');
     assert.equal(MODE_TO_TASK_TYPE.future, 'deep_reasoning');
     assert.equal(MODE_TO_TASK_TYPE.therapist, 'emotional_support');
+});
+
+test('geminiService._normalizeGeminiHistory strips leading model greetings and merges same roles', () => {
+    const history = geminiService._normalizeGeminiHistory([
+        { role: 'assistant', content: 'Welcome to Day 1!' },
+        { role: 'user', content: 'Sleep is messed up' },
+        { role: 'user', content: 'Any advice?' },
+        { role: 'assistant', content: 'Try setting a wake anchor.' },
+    ]);
+
+    assert.equal(history.length, 2);
+    assert.equal(history[0].role, 'user');
+    assert.match(history[0].parts[0].text, /Sleep is messed up/);
+    assert.match(history[0].parts[0].text, /Any advice\?/);
+    assert.equal(history[1].role, 'model');
 });
