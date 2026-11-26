@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface Stats {
   totalUsers: number;
@@ -64,6 +64,8 @@ interface User {
 
 export default function SecretAdminPanel() {
   const router = useRouter();
+  const supabase = useMemo(() => createClientComponentClient(), []);
+  const adminApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -89,7 +91,7 @@ export default function SecretAdminPanel() {
     try {
       const storedKey = typeof window !== 'undefined' ? sessionStorage.getItem('twinmind_admin_key') : null;
       if (storedKey) {
-        const verifyRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/verify-password`, {
+        const verifyRes = await fetch(`${adminApiUrl}/api/admin/verify-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password: storedKey })
@@ -103,11 +105,11 @@ export default function SecretAdminPanel() {
         }
       }
 
-      // Supabase user session check
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const token = (await supabase.auth.getSession()).data.session?.access_token;
-        const adminResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/me`, {
+      // Supabase user session check (shared cookie store with /login)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (token) {
+        const adminResponse = await fetch(`${adminApiUrl}/api/admin/me`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -142,7 +144,7 @@ export default function SecretAdminPanel() {
     setAuthError('');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/verify-password`, {
+      const res = await fetch(`${adminApiUrl}/api/admin/verify-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: trimmed })
@@ -196,7 +198,7 @@ export default function SecretAdminPanel() {
       }
 
       // 1. Fetch base stats
-      const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/stats`, { headers });
+      const statsRes = await fetch(`${adminApiUrl}/api/admin/stats`, { headers });
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats({
@@ -214,21 +216,21 @@ export default function SecretAdminPanel() {
       }
 
       // 2. Fetch full analytics (MRR, feature usage, health)
-      const analyticsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/analytics`, { headers });
+      const analyticsRes = await fetch(`${adminApiUrl}/api/admin/analytics`, { headers });
       if (analyticsRes.ok) {
         const analyticsData = await analyticsRes.json();
         setAnalytics(analyticsData);
       }
 
       // 3. Fetch AI Health
-      const aiHealthRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/ai-health`, { headers });
+      const aiHealthRes = await fetch(`${adminApiUrl}/api/admin/ai-health`, { headers });
       if (aiHealthRes.ok) {
         const aiHealthData = await aiHealthRes.json();
         setAiHealth(aiHealthData.stats);
       }
 
       // 4. Fetch recent users
-      const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/recent`, { headers });
+      const usersRes = await fetch(`${adminApiUrl}/api/admin/users/recent`, { headers });
       if (usersRes.ok) {
         const { users } = await usersRes.json();
         setRecentUsers(users?.map((u: any) => ({
