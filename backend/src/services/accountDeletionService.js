@@ -34,6 +34,85 @@ async function safeDeleteWhere(db, table, column, userId) {
     return { table, deleted: true };
 }
 
+async function deleteChildRowsByParentIds(db, childTable, childFkCol, parentIds) {
+    if (!Array.isArray(parentIds) || parentIds.length === 0) {
+        return { table: childTable, deleted: 0 };
+    }
+    for (let i = 0; i < parentIds.length; i += 500) {
+        const chunk = parentIds.slice(i, i + 500);
+        const { error } = await db.from(childTable).delete().in(childFkCol, chunk);
+        if (error) {
+            if (isMissingTableError(error)) {
+                return { table: childTable, skipped: true };
+            }
+            throw error;
+        }
+    }
+    return { table: childTable, deleted: parentIds.length };
+}
+
+async function selectOwnedIds(db, table, ownerCol, ownerId) {
+    const queryBuilder = db.from(table);
+    if (typeof queryBuilder?.select !== 'function') {
+        return null;
+    }
+    const { data, error } = await queryBuilder.select('id').eq(ownerCol, ownerId);
+    if (error) {
+        if (isMissingTableError(error)) {
+            return [];
+        }
+        throw error;
+    }
+    return (data || []).map((row) => row.id).filter(Boolean);
+}
+
+async function deleteChildRowsByParentOwner(db, parentTable, parentOwnerCol, ownerId, childTable, childFkCol) {
+    const parentIds = await selectOwnedIds(db, parentTable, parentOwnerCol, ownerId);
+    if (parentIds === null) {
+        return { table: childTable, skipped: true };
+    }
+    return await deleteChildRowsByParentIds(db, childTable, childFkCol, parentIds);
+}
+
+async function cleanupOwnedCircles(db, userId) {
+    const ownedCircleIds = await selectOwnedIds(db, 'growth_circles', 'created_by', userId);
+    if (ownedCircleIds === null || ownedCircleIds.length === 0) {
+        return;
+    }
+
+    for (const circleId of ownedCircleIds) {
+        const membersBuilder = db.from('circle_members');
+        let nextOwnerId = null;
+        if (typeof membersBuilder?.select === 'function') {
+            const { data: remainingMembers, error: memErr } = await membersBuilder
+                .select('user_id')
+                .eq('circle_id', circleId)
+                .neq('user_id', userId)
+                .limit(1);
+            if (memErr && !isMissingTableError(memErr)) {
+                throw memErr;
+            }
+            nextOwnerId = remainingMembers?.[0]?.user_id || null;
+        }
+
+        if (nextOwnerId && typeof db.from('growth_circles')?.update === 'function') {
+            const { error: updErr } = await db
+                .from('growth_circles')
+                .update({ created_by: nextOwnerId })
+                .eq('id', circleId);
+            if (updErr && !isMissingTableError(updErr)) {
+                throw updErr;
+            }
+        } else {
+            await safeDeleteWhere(db, 'circle_invitations', 'circle_id', circleId);
+            await safeDeleteWhere(db, 'circle_milestones', 'circle_id', circleId);
+            await safeDeleteWhere(db, 'circle_activity', 'circle_id', circleId);
+            await safeDeleteWhere(db, 'circle_members', 'circle_id', circleId);
+            await safeDeleteWhere(db, 'growth_circles', 'id', circleId);
+        }
+    }
+}
+
 async function listAllInPrefix(bucket, prefix) {
     const allEntries = [];
     const PAGE_SIZE = 1000;
@@ -128,8 +207,8 @@ export async function deleteSelectedUserData({
         } else if (category === 'memories') {
             await safeDeleteWhere(db, 'message_embeddings', 'user_id', userId);
             await safeDeleteWhere(db, 'memory_vectors', 'user_id', userId);
+            await deleteChildRowsByParentOwner(db, 'shared_memories', 'user_id', userId, 'memory_anniversaries', 'memory_id');
             await safeDeleteWhere(db, 'shared_memories', 'user_id', userId);
-            await safeDeleteWhere(db, 'memory_anniversaries', 'user_id', userId);
             await safeDeleteWhere(db, 'life_context', 'user_id', userId);
         } else if (category === 'voice') {
             deletedVoiceFiles = await deleteVoiceFilesForUser(userId, storage);
@@ -170,18 +249,32 @@ export async function deleteUserAccount({
         storage,
     });
 
+    await deleteChildRowsByParentOwner(db, 'user_program_progress', 'user_id', userId, 'user_daily_completions', 'progress_id');
+    await deleteChildRowsByParentOwner(db, 'motivation_cards', 'user_id', userId, 'motivation_card_shares', 'card_id');
+    await deleteChildRowsByParentOwner(db, 'twin_matches', 'user1_id', userId, 'twin_match_shares', 'match_id');
+    await deleteChildRowsByParentOwner(db, 'twin_matches', 'user2_id', userId, 'twin_match_shares', 'match_id');
+    await cleanupOwnedCircles(db, userId);
+
     const userScopedTables = [
         ['push_device_tokens', 'user_id'],
+        ['notifications', 'user_id'],
         ['proactive_messages', 'user_id'],
         ['relationship_milestones', 'user_id'],
         ['relationship_growth_metrics', 'user_id'],
         ['user_achievements', 'user_id'],
         ['user_streaks', 'user_id'],
+        ['streak_freeze_purchases', 'user_id'],
         ['user_levels', 'user_id'],
         ['user_engagement', 'user_id'],
         ['daily_activity', 'user_id'],
+        ['user_activity_patterns', 'user_id'],
+        ['user_profiles', 'user_id'],
+        ['user_program_progress', 'user_id'],
+        ['motivation_cards', 'user_id'],
         ['behavioral_triggers', 'user_id'],
         ['usage_tracking', 'user_id'],
+        ['circle_activity', 'user_id'],
+        ['circle_invitations', 'invited_by'],
         ['circle_members', 'user_id'],
         ['twin_match_invitations', 'requester_id'],
         ['twin_match_invitations', 'recipient_id'],

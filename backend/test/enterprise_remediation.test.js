@@ -867,4 +867,55 @@ test('Scaling, Pagination & Bounded Cache', async (t) => {
         assert.ok(allowHeaders.includes('x-admin-password'), `expected x-admin-password in ${allowHeaders}`);
         assert.ok(allowHeaders.includes('x-admin-secret'), `expected x-admin-secret in ${allowHeaders}`);
     });
+
+    await t.test('deleteUserAccount cascades memory_anniversaries by memory_id without 42703 user_id error', async () => {
+        const { deleteUserAccount } = await import('../src/services/accountDeletionService.js');
+        const ops = [];
+        const db = {
+            from(table) {
+                return {
+                    select() {
+                        return {
+                            eq(col, val) {
+                                ops.push({ op: 'select', table, col, val });
+                                if (table === 'shared_memories') {
+                                    return Promise.resolve({ data: [{ id: 'mem-1' }], error: null });
+                                }
+                                if (table === 'memory_anniversaries') {
+                                    throw new Error('Should not select memory_anniversaries');
+                                }
+                                return Promise.resolve({ data: [], error: null });
+                            },
+                        };
+                    },
+                    delete() {
+                        return {
+                            eq(col, val) {
+                                ops.push({ op: 'delete_eq', table, col, val });
+                                if (table === 'memory_anniversaries' && col === 'user_id') {
+                                    return Promise.resolve({
+                                        error: { code: '42703', message: 'column memory_anniversaries.user_id does not exist' },
+                                    });
+                                }
+                                return Promise.resolve({ error: null });
+                            },
+                            in(col, vals) {
+                                ops.push({ op: 'delete_in', table, col, vals });
+                                return Promise.resolve({ error: null });
+                            },
+                        };
+                    },
+                };
+            },
+        };
+        const storage = { from: () => ({ list: async () => ({ data: [], error: null }), remove: async () => ({ error: null }) }) };
+        const authAdmin = { async deleteUser() { return { error: null }; } };
+
+        const res = await deleteUserAccount({ userId: 'user-cascade-test', db, storage, authAdmin });
+        assert.equal(res.success, true);
+        assert.ok(
+            ops.some((o) => o.op === 'delete_in' && o.table === 'memory_anniversaries' && o.col === 'memory_id' && o.vals.includes('mem-1'))
+        );
+        assert.equal(ops.some((o) => o.table === 'memory_anniversaries' && o.col === 'user_id'), false);
+    });
 });
