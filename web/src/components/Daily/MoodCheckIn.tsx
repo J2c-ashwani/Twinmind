@@ -74,89 +74,93 @@ export default function MoodCheckIn({ isOpen, onClose, onSuccess }: MoodCheckInP
                     />
 
                     {/* Modal */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md bg-[#161224] border border-white/15 text-white rounded-2xl shadow-2xl z-50 p-6"
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto pointer-events-none"
                     >
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-white">How are you feeling?</h2>
-                            <button
-                                onClick={onClose}
-                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Mood selector */}
-                        <div className="space-y-3 mb-6">
-                            {MOODS.map((mood) => (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                            className="pointer-events-auto w-full max-w-md max-h-[90vh] overflow-y-auto bg-[#161224] border border-white/15 text-white rounded-2xl shadow-2xl p-6"
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-2xl font-bold text-white">How are you feeling?</h2>
                                 <button
-                                    key={mood.value}
-                                    onClick={() => setSelectedMood(mood.value)}
-                                    className={`w-full p-4 rounded-xl border transition-all ${selectedMood === mood.value
-                                        ? `border-transparent bg-gradient-to-r ${mood.color} text-white shadow-lg`
-                                        : 'border-white/10 hover:border-white/25 bg-white/5 text-white'
-                                        }`}
+                                    onClick={onClose}
+                                    className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-4xl">{mood.emoji}</span>
-                                        <div className="flex-1 text-left">
-                                            <div className="font-semibold text-white">
-                                                {mood.label}
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Mood selector */}
+                            <div className="space-y-3 mb-6">
+                                {MOODS.map((mood) => (
+                                    <button
+                                        key={mood.value}
+                                        onClick={() => setSelectedMood(mood.value)}
+                                        className={`w-full p-4 rounded-xl border transition-all ${selectedMood === mood.value
+                                            ? `border-transparent bg-gradient-to-r ${mood.color} text-white shadow-lg`
+                                            : 'border-white/10 hover:border-white/25 bg-white/5 text-white'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-4xl">{mood.emoji}</span>
+                                            <div className="flex-1 text-left">
+                                                <div className="font-semibold text-white">
+                                                    {mood.label}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Optional note */}
-                        {selectedMood !== null && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="mb-6"
-                            >
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Want to share more? (optional)
-                                </label>
-                                <textarea
-                                    value={note}
-                                    onChange={(e) => setNote(e.target.value)}
-                                    placeholder="What's on your mind?"
-                                    className="w-full p-3 bg-white/5 border border-white/15 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none outline-none"
-                                    rows={3}
-                                />
-                            </motion.div>
-                        )}
-
-                        {error && (
-                            <div className="mb-4 rounded-xl bg-red-500/20 border border-red-500/40 px-3 py-2 text-sm text-red-200">
-                                {error}
+                                    </button>
+                                ))}
                             </div>
-                        )}
 
-                        {/* Submit button */}
-                        <button
-                            onClick={handleSubmit}
-                            disabled={selectedMood === null || submitting}
-                            className={`w-full py-3 rounded-xl font-semibold transition-all ${selectedMood === null || submitting
-                                ? 'bg-white/10 text-gray-500 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
-                                }`}
-                        >
-                            {submitting ? 'Submitting...' : 'Submit Check-In'}
-                        </button>
+                            {/* Optional note */}
+                            {selectedMood !== null && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="mb-6"
+                                >
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Want to share more? (optional)
+                                    </label>
+                                    <textarea
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                        placeholder="What's on your mind?"
+                                        className="w-full p-3 bg-white/5 border border-white/15 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none outline-none"
+                                        rows={3}
+                                    />
+                                </motion.div>
+                            )}
 
-                        {/* Streak info */}
-                        <p className="text-center text-sm text-gray-400 mt-4">
-                            ✨ Daily check-ins help track your emotional journey
-                        </p>
-                    </motion.div>
+                            {error && (
+                                <div className="mb-4 rounded-xl bg-red-500/20 border border-red-500/40 px-3 py-2 text-sm text-red-200">
+                                    {error}
+                                </div>
+                            )}
+
+                            {/* Submit button */}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={selectedMood === null || submitting}
+                                className={`w-full py-3 rounded-xl font-semibold transition-all ${selectedMood === null || submitting
+                                    ? 'bg-white/10 text-gray-500 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
+                                    }`}
+                            >
+                                {submitting ? 'Submitting...' : 'Submit Check-In'}
+                            </button>
+
+                            {/* Streak info */}
+                            <p className="text-center text-sm text-gray-400 mt-4">
+                                ✨ Daily check-ins help track your emotional journey
+                            </p>
+                        </motion.div>
+                    </div>
                 </>
             )}
         </AnimatePresence>

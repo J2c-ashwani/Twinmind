@@ -14,7 +14,7 @@ interface Streak {
     freeze_used_at?: string;
 }
 
-export default function StreakWidget() {
+export default function StreakWidget({ refreshKey = 0 }: { refreshKey?: number }) {
     const [streak, setStreak] = useState<Streak | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showFreezeModal, setShowFreezeModal] = useState(false);
@@ -33,7 +33,7 @@ export default function StreakWidget() {
             }
         };
         init();
-    }, []);
+    }, [refreshKey]);
 
     const loadStreak = async () => {
         try {

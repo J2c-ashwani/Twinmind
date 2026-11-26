@@ -48,7 +48,7 @@ export default function MoodHistory({ refreshKey = 0 }: { refreshKey?: number })
 
             <div className="h-32 flex items-end justify-between gap-2">
                 {history.map((entry, index) => (
-                    <div key={entry.id} className="flex flex-col items-center flex-1 group relative">
+                    <div key={entry.id} className="flex flex-col items-center justify-end h-full flex-1 group relative">
                         {/* Tooltip */}
                         <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-xs p-2 rounded whitespace-nowrap z-10 pointer-events-none">
                             <p>{new Date(entry.created_at).toLocaleDateString()}</p>
@@ -57,13 +57,16 @@ export default function MoodHistory({ refreshKey = 0 }: { refreshKey?: number })
                         </div>
 
                         {/* Bar */}
-                        <div
-                            className="w-full max-w-[20px] rounded-t-lg transition-all duration-500 hover:brightness-110 cursor-pointer"
-                            style={{
-                                height: `${(entry.mood / 5) * 100}%`,
-                                backgroundColor: getMoodColor(entry.mood)
-                            }}
-                        />
+                        <div className="w-full flex-1 flex items-end justify-center">
+                            <div
+                                className="w-full max-w-[20px] rounded-t-lg transition-all duration-500 hover:brightness-110 cursor-pointer"
+                                style={{
+                                    height: `${(entry.mood / 5) * 100}%`,
+                                    minHeight: '8px',
+                                    backgroundColor: getMoodColor(entry.mood)
+                                }}
+                            />
+                        </div>
 
                         {/* Label */}
                         <span className="text-xs text-gray-400 mt-2">

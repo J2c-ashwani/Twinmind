@@ -54,52 +54,52 @@ export default function DashboardPage() {
     return (
         <div className="min-h-screen p-6">
             {/* Header */}
-            <header className="max-w-6xl mx-auto mb-8 flex items-center justify-between">
+            <header className="max-w-6xl mx-auto mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
                         Your Dashboard
                     </h1>
                     <p className="text-gray-400">Track your progress and emotional journey</p>
                 </div>
-                <div className="flex gap-3 flex-wrap justify-end">
+                <div className="flex gap-2 flex-wrap lg:flex-nowrap justify-end">
                     <button
                         onClick={() => router.push('/achievements')}
-                        className="glass-button flex items-center gap-2 px-4 py-2"
+                        className="glass-button flex items-center gap-2 px-3.5 py-2 text-sm whitespace-nowrap shrink-0"
                     >
                         <Trophy className="w-5 h-5 text-yellow-500" />
                         <span className="hidden md:inline">Achievements</span>
                     </button>
                     <button
                         onClick={() => router.push('/challenges')}
-                        className="glass-button flex items-center gap-2 px-4 py-2"
+                        className="glass-button flex items-center gap-2 px-3.5 py-2 text-sm whitespace-nowrap shrink-0"
                     >
                         <Sparkles className="w-5 h-5 text-pink-500" />
                         <span className="hidden md:inline">Challenges</span>
                     </button>
                     <button
                         onClick={() => router.push('/memories')}
-                        className="glass-button flex items-center gap-2 px-4 py-2"
+                        className="glass-button flex items-center gap-2 px-3.5 py-2 text-sm whitespace-nowrap shrink-0"
                     >
                         <Brain className="w-5 h-5 text-purple-500" />
                         <span className="hidden md:inline">Memories</span>
                     </button>
                     <button
                         onClick={() => setTwinMatchOpen(true)}
-                        className="glass-button flex items-center gap-2 px-4 py-2"
+                        className="glass-button flex items-center gap-2 px-3.5 py-2 text-sm whitespace-nowrap shrink-0"
                     >
                         <Users className="w-5 h-5" />
                         <span className="hidden md:inline">Twin Match</span>
                     </button>
                     <button
                         onClick={() => router.push('/growth-story')}
-                        className="glass-button flex items-center gap-2 px-4 py-2"
+                        className="glass-button flex items-center gap-2 px-3.5 py-2 text-sm whitespace-nowrap shrink-0"
                     >
                         <TrendingUp className="w-5 h-5" />
                         <span className="hidden md:inline">Growth</span>
                     </button>
                     <button
                         onClick={() => router.push('/chat')}
-                        className="glass-button flex items-center gap-2 px-4 py-2"
+                        className="glass-button flex items-center gap-2 px-3.5 py-2 text-sm whitespace-nowrap shrink-0"
                     >
                         <MessageCircle className="w-5 h-5" />
                         <span className="hidden md:inline">Chat</span>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                 >
-                    <StreakWidget />
+                    <StreakWidget refreshKey={moodRefreshKey} />
                 </motion.div>
 
                 <motion.div

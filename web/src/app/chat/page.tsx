@@ -205,6 +205,22 @@ function ChatContent() {
         }
     }
 
+    const ensureConversationId = async (token: string, titleHint: string): Promise<string | null> => {
+        if (currentConversationId) return currentConversationId;
+        try {
+            apiClient.setToken(token);
+            const convTitle = titleHint.replace(/\s+/g, ' ').trim().slice(0, 48) || 'New Conversation';
+            const convRes = await apiClient.createConversation(convTitle) as { conversation?: { id: string } };
+            if (convRes?.conversation?.id) {
+                setCurrentConversationId(convRes.conversation.id);
+                return convRes.conversation.id;
+            }
+        } catch (convErr) {
+            console.warn('Could not pre-create conversation, falling back to server default:', convErr);
+        }
+        return null;
+    }
+
     const handleSend = async () => {
         if (!input.trim() || loading) return
 
@@ -233,7 +249,8 @@ function ChatContent() {
                 return;
             }
 
-            const response = await api.sendMessage(userMessage.message, currentMode, token, currentConversationId || undefined)
+            const targetConversationId = await ensureConversationId(token, userMessage.message);
+            const response = await api.sendMessage(userMessage.message, currentMode, token, targetConversationId || undefined)
 
             if (response.conversation_id) {
                 setCurrentConversationId(response.conversation_id)
@@ -312,8 +329,9 @@ function ChatContent() {
                 return;
             }
 
+            const targetConversationId = await ensureConversationId(token, 'Voice Chat');
             const response = await api.sendVoiceMessage(
-                currentConversationId,
+                targetConversationId,
                 audioBlob,
                 currentMode,
                 token

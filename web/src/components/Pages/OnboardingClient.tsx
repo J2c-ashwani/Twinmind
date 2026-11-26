@@ -111,7 +111,7 @@ export default function OnboardingPage() {
                     .from('personality_profiles')
                     .select('personality_json')
                     .eq('user_id', session.user.id)
-                    .single()
+                    .maybeSingle()
 
                 // If profile exists AND has personality data, they've completed onboarding
                 if (profile && profile.personality_json) {
