@@ -13,15 +13,20 @@ import logger from '../config/logger.js';
 /**
  * Generate embedding + provider metadata safely through aiService
  */
-export async function generateEmbeddingWithMeta(text) {
+export async function generateEmbeddingWithMeta(text, options = {}) {
     try {
         if (!text || text.trim().length === 0) {
             throw new Error("Cannot generate embedding for empty text.");
         }
 
         const result = typeof aiService.generateEmbeddingWithMeta === 'function'
-            ? await aiService.generateEmbeddingWithMeta(text)
-            : { vector: await aiService.generateEmbedding(text), provider: 'unknown', model: 'unknown' };
+            ? await aiService.generateEmbeddingWithMeta(text, options)
+            : {
+                vector: await aiService.generateEmbedding(text, options),
+                provider: 'unknown',
+                model: 'unknown',
+                dimensions: 1536,
+            };
 
         if (!result?.vector || !Array.isArray(result.vector) || !result.vector.some((v) => v !== 0)) {
             throw new Error("Invalid or zero embedding returned by provider.");
@@ -37,8 +42,8 @@ export async function generateEmbeddingWithMeta(text) {
 /**
  * Generate embedding safely through aiService
  */
-export async function generateEmbedding(text) {
-    const { vector } = await generateEmbeddingWithMeta(text);
+export async function generateEmbedding(text, options = {}) {
+    const { vector } = await generateEmbeddingWithMeta(text, options);
     return vector;
 }
 
@@ -81,11 +86,13 @@ export async function storeMemory(userId, content, metadata = {}) {
 
         let embeddingResult;
         try {
-            embeddingResult = await generateEmbeddingWithMeta(content);
+            embeddingResult = await generateEmbeddingWithMeta(content, { taskType: 'RETRIEVAL_DOCUMENT' });
         } catch (embErr) {
             logger.warn(`⚠️ Skipping vector memory insert due to embedding failure: ${embErr.message}`);
             return null;
         }
+
+        const dimensions = embeddingResult.dimensions || embeddingResult.vector.length;
 
         const { data, error } = await supabaseAdmin
             .from("memory_vectors")
@@ -97,6 +104,8 @@ export async function storeMemory(userId, content, metadata = {}) {
                     ...metadata,
                     embedding_provider: embeddingResult.provider,
                     embedding_model: embeddingResult.model,
+                    embedding_dimensions: dimensions,
+                    vector_version: `${embeddingResult.provider}:${embeddingResult.model}:${dimensions}`,
                     stored_at: new Date().toISOString(),
                 }
             })
@@ -123,10 +132,16 @@ export async function storeMemory(userId, content, metadata = {}) {
 /**
  * Filter matched vector results for matching embedding space & optional conversation metadata
  */
-export function filterRetrievedMemories(results = [], { queryProvider = null, scopeConversationId = null } = {}) {
+export function filterRetrievedMemories(results = [], { queryProvider = null, queryModel = null, scopeConversationId = null } = {}) {
     return (results || []).filter((m) => {
-        const storedProvider = m?.metadata?.embedding_provider;
-        if (queryProvider && queryProvider !== 'unknown' && storedProvider && storedProvider !== queryProvider) {
+        // Legacy untagged rows predating metadata tagging came from OpenAI text-embedding-3-small.
+        const storedProvider = m?.metadata?.embedding_provider || 'openai';
+        const storedModel = m?.metadata?.embedding_model || null;
+
+        if (queryProvider && queryProvider !== 'unknown' && storedProvider !== queryProvider) {
+            return false;
+        }
+        if (queryModel && queryModel !== 'unknown' && storedModel && storedModel !== queryModel) {
             return false;
         }
         if (scopeConversationId) {
@@ -153,14 +168,18 @@ export async function retrieveMemories(userId, query, options = {}) {
 
         logger.info(`🔍 Retrieving memories for user ${userId}`);
 
-        const { vector: queryEmbedding, provider: queryProvider } = await generateEmbeddingWithMeta(query);
+        const {
+            vector: queryEmbedding,
+            provider: queryProvider,
+            model: queryModel,
+        } = await generateEmbeddingWithMeta(query, { taskType: 'RETRIEVAL_QUERY' });
 
-        // Call SQL function match_memories (over-fetch slightly to allow provider-space filtering)
+        // Call SQL function match_memories (over-fetch to allow strict vector-space filtering)
         let { data, error } = await supabaseAdmin.rpc("match_memories", {
             query_embedding: queryEmbedding,
             match_user_id: userId,
             match_threshold: threshold,
-            match_count: limit * 2
+            match_count: limit * 3
         });
 
         if (error) throw error;
@@ -168,6 +187,7 @@ export async function retrieveMemories(userId, query, options = {}) {
 
         const filtered = filterRetrievedMemories(data, {
             queryProvider,
+            queryModel,
             scopeConversationId,
         }).slice(0, limit);
 

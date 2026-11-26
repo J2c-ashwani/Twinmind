@@ -4,8 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { logger } from './config/logger.js';
+import { isAuthorizedAutomationRequest } from './utils/security.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,7 +96,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Admin-Key', 'X-Admin-Password', 'X-Admin-Secret']
 }));
 
 // ============================================
@@ -143,11 +144,10 @@ const standardLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   skip: (req) => {
-    // Whitelist administrative webhooks and growth automation from external schedulers
-    if (req.path.includes('/admin') || req.path.includes('/growth') || req.path.includes('/cron')) return true;
-    const adminSecret = process.env.ADMIN_API_KEY || 'tg_admin_sec_99482104921';
-    if (req.query?.secret === adminSecret || req.headers?.['x-admin-secret'] === adminSecret) return true;
-    return false;
+    // Never exempt unauthenticated admin login/password brute-force attempts
+    if (req.originalUrl?.startsWith('/api/admin/verify-password')) return false;
+    // Allow authenticated external schedulers/ops only when carrying a verified configured secret
+    return isAuthorizedAutomationRequest(req);
   },
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
@@ -156,6 +156,16 @@ const standardLimiter = rateLimit({
     logger.warn(`Rate limit exceeded: ${req.ip}`);
     res.status(429).json({ error: 'Too many requests, please try again later.' });
   }
+});
+
+// Dedicated strict rate limiting for admin password verification
+const adminVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many failed admin verification attempts, please try again later.' }
 });
 
 // Strict rate limiting for auth routes (prevent brute force)
@@ -175,9 +185,12 @@ const chatLimiter = rateLimit({
 
 // Rate Limiting (Re-enabled for Production)
 app.use('/api/', standardLimiter);
+app.use('/api/admin/verify-password', adminVerifyLimiter);
+app.use('/api/auth/signup', authLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/chat/message', chatLimiter);
+app.use('/api/chat/stream', chatLimiter);
 
 // ============================================
 // 📝 REQUEST LOGGING
@@ -361,92 +374,98 @@ app.use((err, req, res, next) => {
 // 🖥️ SERVER STARTUP
 // ============================================
 
-const server = app.listen(PORT, async () => {
-  logger.info(`🚀 TwinGenie API server running on port ${PORT}`);
-  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`⏱️ Request timeout: ${REQUEST_TIMEOUT}ms`);
+const isEntrypoint = Boolean(
+  process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+);
 
-  // 🔐 Prompt Governance: Log checksums for drift detection
-  try {
-    const { getPromptChecksums } = await import('./services/modeManager.js');
-    const checksums = getPromptChecksums();
-    logger.info(`🔐 Prompt checksums: ${JSON.stringify(checksums)}`);
-  } catch (e) {
-    logger.warn('Prompt checksum logging skipped:', e?.message);
-  }
+let server = null;
 
-  // Initialize cron jobs safely
-  try {
-    initJobs();
-  } catch (error) {
-    logger.error('Failed to initialize cron jobs:', error);
-    // Don't crash - jobs are non-critical
-  }
-});
+if (isEntrypoint && process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, async () => {
+    logger.info(`🚀 TwinGenie API server running on port ${PORT}`);
+    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`⏱️ Request timeout: ${REQUEST_TIMEOUT}ms`);
 
-// ============================================
-// 🛡️ PROCESS CRASH PROTECTION
-// ============================================
-
-// Handle uncaught exceptions - LOG but don't crash
-process.on('uncaughtException', (error) => {
-  logger.error('🔴 UNCAUGHT EXCEPTION:', {
-    message: error.message,
-    stack: error.stack
-  });
-  // In production, you might want to restart gracefully
-  // For now, we log and continue
-});
-
-// Handle unhandled promise rejections - LOG but don't crash
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('🔴 UNHANDLED REJECTION:', {
-    reason: reason?.message || reason,
-    stack: reason?.stack
-  });
-  // Don't crash - just log
-});
-
-// Graceful shutdown on SIGTERM
-process.on('SIGTERM', () => {
-  logger.info('📥 SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    logger.info('✅ Server closed');
-    process.exit(0);
-  });
-
-  // Force close after 10 seconds
-  setTimeout(() => {
-    logger.error('⚠️ Forced shutdown after timeout');
-    process.exit(1);
-  }, 10000);
-});
-
-// Graceful shutdown on SIGINT (Ctrl+C)
-process.on('SIGINT', () => {
-  logger.info('📥 SIGINT received, shutting down gracefully');
-  server.close(() => {
-    logger.info('✅ Server closed');
-    process.exit(0);
-  });
-});
-
-// Active Memory Safeguard for 512MB Render Container (Strict 180MB Cap)
-setInterval(() => {
-  const mem = process.memoryUsage();
-  const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
-  const rssMB = Math.round(mem.rss / 1024 / 1024);
-
-  if (global.gc && (rssMB > 180 || heapUsedMB > 120)) {
-    logger.warn(`⚠️ High memory detected (RSS: ${rssMB}MB, Heap: ${heapUsedMB}MB). Running V8 garbage collection...`);
+    // 🔐 Prompt Governance: Log checksums for drift detection
     try {
-      global.gc();
-      const postMem = process.memoryUsage();
-      logger.info(`✅ Memory reclaimed (New RSS: ${Math.round(postMem.rss / 1024 / 1024)}MB, New Heap: ${Math.round(postMem.heapUsed / 1024 / 1024)}MB)`);
+      const { getPromptChecksums } = await import('./services/modeManager.js');
+      const checksums = getPromptChecksums();
+      logger.info(`🔐 Prompt checksums: ${JSON.stringify(checksums)}`);
     } catch (e) {
-      logger.warn('Manual GC failed:', e.message);
+      logger.warn('Prompt checksum logging skipped:', e?.message);
     }
-  }
-}, 15000); // Check every 15 seconds
 
+    // Initialize cron jobs safely
+    try {
+      initJobs();
+    } catch (error) {
+      logger.error('Failed to initialize cron jobs:', error);
+      // Don't crash - jobs are non-critical
+    }
+  });
+
+  // ============================================
+  // 🛡️ PROCESS CRASH PROTECTION
+  // ============================================
+
+  // Handle uncaught exceptions - LOG but don't crash
+  process.on('uncaughtException', (error) => {
+    logger.error('🔴 UNCAUGHT EXCEPTION:', {
+      message: error.message,
+      stack: error.stack
+    });
+  });
+
+  // Handle unhandled promise rejections - LOG but don't crash
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('🔴 UNHANDLED REJECTION:', {
+      reason: reason?.message || reason,
+      stack: reason?.stack
+    });
+  });
+
+  // Graceful shutdown on SIGTERM
+  process.on('SIGTERM', () => {
+    logger.info('📥 SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      logger.info('✅ Server closed');
+      process.exit(0);
+    });
+
+    // Force close after 10 seconds
+    setTimeout(() => {
+      logger.error('⚠️ Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  });
+
+  // Graceful shutdown on SIGINT (Ctrl+C)
+  process.on('SIGINT', () => {
+    logger.info('📥 SIGINT received, shutting down gracefully');
+    server.close(() => {
+      logger.info('✅ Server closed');
+      process.exit(0);
+    });
+  });
+
+  // Active Memory Safeguard for 512MB Render Container (Strict 180MB Cap)
+  setInterval(() => {
+    const mem = process.memoryUsage();
+    const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
+    const rssMB = Math.round(mem.rss / 1024 / 1024);
+
+    if (global.gc && (rssMB > 180 || heapUsedMB > 120)) {
+      logger.warn(`⚠️ High memory detected (RSS: ${rssMB}MB, Heap: ${heapUsedMB}MB). Running V8 garbage collection...`);
+      try {
+        global.gc();
+        const postMem = process.memoryUsage();
+        logger.info(`✅ Memory reclaimed (New RSS: ${Math.round(postMem.rss / 1024 / 1024)}MB, New Heap: ${Math.round(postMem.heapUsed / 1024 / 1024)}MB)`);
+      } catch (e) {
+        logger.warn('Manual GC failed:', e.message);
+      }
+    }
+  }, 15000).unref();
+}
+
+export { app };
 export default app;

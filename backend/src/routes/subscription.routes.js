@@ -9,6 +9,7 @@ import {
     verifySubscriptionPurchase,
 } from '../services/googlePlayService.js';
 import { isEffectivePro } from '../middleware/subscriptionMiddleware.js';
+import { safeCompare, isValidPurchaseToken } from '../utils/security.js';
 
 const router = express.Router();
 const paymentProvider = process.env.PAYMENTS_PROVIDER || 'google_play';
@@ -220,31 +221,60 @@ router.post('/google-play/verify', authenticateUser, async (req, res) => {
 router.post('/google-play/rtdn', async (req, res) => {
     try {
         const expectedSecret = process.env.GOOGLE_PLAY_RTDN_SECRET;
-        if (expectedSecret) {
-            const supplied = req.headers['x-rtdn-secret'] || req.query.secret;
-            if (supplied !== expectedSecret) {
-                return res.status(401).json({ error: 'Unauthorized RTDN notification' });
-            }
+        if (!expectedSecret || typeof expectedSecret !== 'string' || expectedSecret.trim().length === 0) {
+            logger.error('[SECURITY] Google Play RTDN rejected: GOOGLE_PLAY_RTDN_SECRET is not configured.');
+            return res.status(503).json({ error: 'Google Play RTDN webhook is disabled until GOOGLE_PLAY_RTDN_SECRET is configured' });
+        }
+
+        const supplied = req.headers['x-rtdn-secret'] || req.query?.secret;
+        if (typeof supplied !== 'string' || !safeCompare(supplied, expectedSecret)) {
+            return res.status(401).json({ error: 'Unauthorized RTDN notification' });
         }
 
         const encodedData = req.body?.message?.data;
-        if (!encodedData) {
+        if (!encodedData || typeof encodedData !== 'string') {
             return res.status(400).json({ error: 'Missing Pub/Sub message data' });
         }
 
-        const decoded = JSON.parse(Buffer.from(encodedData, 'base64').toString('utf8'));
-        const subNotif = decoded.subscriptionNotification;
+        let decoded;
+        try {
+            decoded = JSON.parse(Buffer.from(encodedData, 'base64').toString('utf8'));
+        } catch {
+            return res.status(400).json({ error: 'Invalid Pub/Sub payload encoding' });
+        }
 
+        const subNotif = decoded?.subscriptionNotification;
         if (!subNotif?.purchaseToken) {
             return res.json({ received: true, ignored: true });
         }
 
         const purchaseToken = subNotif.purchaseToken;
-        const { data: subRow } = await supabaseAdmin
+        if (!isValidPurchaseToken(purchaseToken)) {
+            return res.status(400).json({ error: 'Invalid purchaseToken format' });
+        }
+
+        let { data: subRow, error: primaryLookupErr } = await supabaseAdmin
             .from('subscriptions')
             .select('user_id, google_play_product_id')
-            .or(`google_play_purchase_token.eq.${purchaseToken},google_play_linked_purchase_token.eq.${purchaseToken}`)
+            .eq('google_play_purchase_token', purchaseToken)
             .maybeSingle();
+
+        if (primaryLookupErr && primaryLookupErr.code !== 'PGRST116') {
+            throw primaryLookupErr;
+        }
+
+        if (!subRow) {
+            const { data: linkedRow, error: linkedLookupErr } = await supabaseAdmin
+                .from('subscriptions')
+                .select('user_id, google_play_product_id')
+                .eq('google_play_linked_purchase_token', purchaseToken)
+                .maybeSingle();
+
+            if (linkedLookupErr && linkedLookupErr.code !== 'PGRST116') {
+                throw linkedLookupErr;
+            }
+            subRow = linkedRow;
+        }
 
         const verified = await verifySubscriptionPurchase({
             productId: subNotif.subscriptionId || subRow?.google_play_product_id,
@@ -357,6 +387,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         if (paymentProvider !== 'stripe') {
             return res.status(410).json({
                 error: 'Stripe webhooks are disabled while Google Play billing is active.',
+            });
+        }
+
+        if (!isMockMode && !process.env.STRIPE_WEBHOOK_SECRET) {
+            return res.status(503).json({
+                error: 'Stripe webhook endpoint misconfigured: STRIPE_WEBHOOK_SECRET is missing.',
             });
         }
 

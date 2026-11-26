@@ -39,6 +39,192 @@ import logger from '../config/logger.js';
 const router = express.Router();
 
 /**
+ * Computes combined behavioral, emotional, personality, and mode style modifiers.
+ * Shared identically by synchronous (/message) and streaming (/stream) chat endpoints.
+ */
+async function buildChatPromptModifiers({ userId, message, mode }) {
+    let engagementState = await getUserEngagementState(userId);
+    if (!engagementState || engagementState.total_messages === 0) {
+        await initializeEngagement(userId);
+        engagementState = await getUserEngagementState(userId);
+    }
+
+    const isEmotional = detectEmotionalContent(message);
+    const hasGoals = detectGoalContent(message);
+
+    const [
+        _trackRes,
+        emotionalMetrics,
+        userContext,
+        personalityProfile,
+        styleMode,
+    ] = await Promise.all([
+        trackMessage(userId, message, isEmotional, hasGoals),
+        getEmotionalMetrics(userId),
+        getUserPersonalizationContext(userId),
+        getUserPersonalityProfile(userId),
+        getUserStyleMode(userId, mode),
+    ]);
+
+    const behavioralModifiers =
+        getBehavioralModifiers(engagementState) + generateStyleDirectives(mapTwinModeToStyleMode(mode));
+
+    const detectedEvents = detectEmotionalEvents(message);
+    const detectedIntensity = detectEmotionalIntensity(message);
+    let emotionalModifiers = getEmotionalBehaviorModifiers(
+        emotionalMetrics,
+        detectedEvents,
+        detectedIntensity,
+        userContext,
+        mode
+    );
+
+    const emotionalState = detectEmotionalState(detectedEvents);
+    const intensityLevel = getIntensityLevel(detectedIntensity);
+    emotionalModifiers += generatePersonalityDirectives(
+        personalityProfile,
+        emotionalState,
+        intensityLevel,
+        emotionalMetrics.trust_level,
+        mode
+    );
+    emotionalModifiers = adjustModifiersForStyle(emotionalModifiers, styleMode);
+
+    return {
+        engagementState,
+        isEmotional,
+        hasGoals,
+        combinedModifiers: behavioralModifiers + emotionalModifiers,
+    };
+}
+
+/**
+ * Durably stores a user + AI turn in chat_history, bumps conversations.updated_at,
+ * and dispatches non-blocking post-processing (embeddings, emotional metrics, achievements, funnel).
+ */
+async function persistAndScheduleChatTurn({
+    userId,
+    conversationId,
+    userMessage,
+    aiMessage,
+    mode,
+    engagementState,
+    isEmotional,
+    hasGoals,
+    starterPromptVariant = null,
+}) {
+    const userTime = new Date();
+    const aiTime = new Date(userTime.getTime() + 100);
+
+    const { data: insertedRows, error: historyInsertError } = await supabaseAdmin
+        .from('chat_history')
+        .insert([
+            {
+                user_id: userId,
+                conversation_id: conversationId,
+                message: userMessage,
+                sender: 'user',
+                mode,
+                created_at: userTime.toISOString(),
+            },
+            {
+                user_id: userId,
+                conversation_id: conversationId,
+                message: aiMessage,
+                sender: 'ai',
+                mode,
+                created_at: aiTime.toISOString(),
+            },
+        ])
+        .select('id, sender, message');
+
+    if (historyInsertError) {
+        throw new Error(`Failed to persist chat history: ${historyInsertError.message}`);
+    }
+
+    const { error: convUpdateError } = await supabaseAdmin
+        .from('conversations')
+        .update({ updated_at: aiTime.toISOString() })
+        .eq('id', conversationId)
+        .eq('user_id', userId);
+
+    if (convUpdateError) {
+        logger.warn('Failed to update conversation timestamp:', convUpdateError.message);
+    }
+
+    setImmediate(async () => {
+        try {
+            const Tbg = Date.now();
+            await Promise.all([
+                (async () => {
+                    if (insertedRows && insertedRows.length > 0) {
+                        for (const row of insertedRows) {
+                            if (row.sender === 'user' && row.message) {
+                                await storeMessageWithEmbedding(row.id, userId, row.message, conversationId);
+                            }
+                        }
+                    }
+                })().catch((e) => logger.warn('storeMessageWithEmbedding bg error:', e.message)),
+
+                updateEmotionalMetrics(
+                    userId,
+                    userMessage,
+                    isEmotional,
+                    hasGoals,
+                    engagementState?.total_messages || 0,
+                    aiMessage
+                ).catch((e) => logger.warn('updateEmotionalMetrics bg error:', e.message)),
+
+                checkAndAwardAchievements(userId)
+                    .catch((e) => logger.warn('checkAndAwardAchievements bg error:', e.message)),
+
+                (async () => {
+                    const { count: totalUserMessages } = await supabaseAdmin
+                        .from('chat_history')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', userId)
+                        .eq('sender', 'user');
+
+                    if (totalUserMessages === 1) {
+                        await supabaseAdmin.from('metric_events').insert({
+                            user_id: userId,
+                            event_type: 'first_message_sent',
+                            metric_type: 'funnel',
+                            metadata: {
+                                source: starterPromptVariant ? 'starter_prompt' : 'custom_input',
+                                variant: starterPromptVariant || null,
+                            },
+                            created_at: new Date().toISOString(),
+                        });
+                    } else if (totalUserMessages === 2) {
+                        await supabaseAdmin.from('metric_events').insert({
+                            user_id: userId,
+                            event_type: 'second_message_sent',
+                            metric_type: 'funnel',
+                            metadata: {},
+                            created_at: new Date().toISOString(),
+                        });
+                    } else if (totalUserMessages === 5) {
+                        await supabaseAdmin.from('metric_events').insert({
+                            user_id: userId,
+                            event_type: 'conversation_completed',
+                            metric_type: 'funnel',
+                            metadata: { total_messages: totalUserMessages },
+                            created_at: new Date().toISOString(),
+                        });
+                    }
+                })().catch((e) => logger.warn('Funnel metric tracking error:', e.message)),
+            ]);
+            logger.info(`⏱ [LATENCY] background_postprocess: ${Date.now() - Tbg}ms`);
+        } catch (bgErr) {
+            logger.error('Background post-process error (non-blocking):', bgErr.message);
+        }
+    });
+
+    return aiTime;
+}
+
+/**
  * POST /api/chat/message
  * Send a message and get AI twin response with behavioral engagement tracking
  */
@@ -46,7 +232,7 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
     const T1 = Date.now(); // T1: request received by backend
     let responseSent = false;
     try {
-        const { message, mode = 'normal', conversation_id } = req.body;
+        const { message, mode = 'normal', conversation_id, starter_prompt_variant } = req.body;
         const userId = req.userId;
 
         // Validate message length
@@ -72,57 +258,15 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
         logger.info(`⏱ [LATENCY] T1→T2 conversation_resolve: ${T2 - T1}ms`);
 
         try {
-            // Initialize engagement targeting if first message
-            let engagementState = await getUserEngagementState(userId);
-            if (!engagementState || engagementState.total_messages === 0) {
-                await initializeEngagement(userId);
-                engagementState = await getUserEngagementState(userId);
-            }
-
-            // Detect message characteristics for behavioral tracking
-            const isEmotional = detectEmotionalContent(message);
-            const hasGoals = detectGoalContent(message);
-
             const T3start = Date.now();
-            // Execute independent database queries Concurrently in parallel via Promise.all
-            const [
-                _trackRes,
-                emotionalMetrics,
-                userContext,
-                personalityProfile,
-                styleMode
-            ] = await Promise.all([
-                trackMessage(userId, message, isEmotional, hasGoals),
-                getEmotionalMetrics(userId),
-                getUserPersonalizationContext(userId),
-                getUserPersonalityProfile(userId),
-                getUserStyleMode(userId, mode)
-            ]);
+            const {
+                engagementState,
+                isEmotional,
+                hasGoals,
+                combinedModifiers,
+            } = await buildChatPromptModifiers({ userId, message, mode });
             const T3 = Date.now();
             logger.info(`⏱ [LATENCY] T2→T3 parallel_db_fetches: ${T3 - T3start}ms`);
-
-            // Get behavioral modifiers based on user's psychological state
-            const behavioralModifiers = getBehavioralModifiers(engagementState) + generateStyleDirectives(mapTwinModeToStyleMode(mode));
-
-            // Detect emotional events from message (before generating response)
-            const detectedEvents = detectEmotionalEvents(message);
-            const detectedIntensity = detectEmotionalIntensity(message);
-
-            // Get emotional behavior modifiers with detected events, intensity, and personalization
-            let emotionalModifiers = getEmotionalBehaviorModifiers(emotionalMetrics, detectedEvents, detectedIntensity, userContext, mode);
-
-            // Apply personality style layer
-            const emotionalState = detectEmotionalState(detectedEvents);
-            const intensityLevel = getIntensityLevel(detectedIntensity);
-            const personalityDirectives = generatePersonalityDirectives(personalityProfile, emotionalState, intensityLevel, emotionalMetrics.trust_level, mode);
-
-            emotionalModifiers += personalityDirectives;
-
-            // Apply emotional style adapter aligned with active twin mode
-            emotionalModifiers = adjustModifiersForStyle(emotionalModifiers, styleMode);
-
-            // Combine both behavioral and emotional modifiers
-            const combinedModifiers = behavioralModifiers + emotionalModifiers;
 
             // Generate AI response with complete psychological context
             const T4 = Date.now();
@@ -155,42 +299,17 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             const T5 = Date.now();
             logger.info(`⏱ [LATENCY] T4→T5 llm_generation: ${T5 - T4}ms  ← AI provider time`);
 
-            // ─── PERSIST CHAT TURN DURABLY BEFORE RESPONDING ─────────────
-            const userTime = new Date();
-            const aiTime = new Date(userTime.getTime() + 100);
-
-            const { data: insertedRows, error: historyInsertError } = await supabaseAdmin.from('chat_history').insert([
-                {
-                    user_id: userId,
-                    conversation_id: targetConversationId,
-                    message,
-                    sender: 'user',
-                    mode,
-                    created_at: userTime.toISOString(),
-                },
-                {
-                    user_id: userId,
-                    conversation_id: targetConversationId,
-                    message: aiMessageString,
-                    sender: 'ai',
-                    mode,
-                    created_at: aiTime.toISOString(),
-                },
-            ]).select('id, sender, message');
-
-            if (historyInsertError) {
-                throw new Error(`Failed to persist chat history: ${historyInsertError.message}`);
-            }
-
-            const { error: convUpdateError } = await supabaseAdmin
-                .from('conversations')
-                .update({ updated_at: aiTime.toISOString() })
-                .eq('id', targetConversationId)
-                .eq('user_id', userId);
-
-            if (convUpdateError) {
-                logger.warn('Failed to update conversation timestamp:', convUpdateError.message);
-            }
+            const aiTime = await persistAndScheduleChatTurn({
+                userId,
+                conversationId: targetConversationId,
+                userMessage: message,
+                aiMessage: aiMessageString,
+                mode,
+                engagementState,
+                isEmotional,
+                hasGoals,
+                starterPromptVariant: starter_prompt_variant,
+            });
 
             responseSent = true;
             res.json({
@@ -201,75 +320,6 @@ router.post('/message', authenticateUser, checkSubscription, checkUsageLimits, a
             });
             logger.info(`⏱ [LATENCY] T5→RESPONSE (saved & delivered): ${Date.now() - T5}ms`);
             logger.info(`⏱ [LATENCY] TOTAL T1→RESPONSE: ${Date.now() - T1}ms  (userId=${userId})`);
-
-            // ─── BACKGROUND NON-CRITICAL ANALYTICS & ENGAGEMENT ──────────
-            setImmediate(async () => {
-                try {
-                    const Tbg = Date.now();
-
-                    await Promise.all([
-                        // Populate secondary semantic recall vector store (message_embeddings)
-                        (async () => {
-                            if (insertedRows && insertedRows.length > 0) {
-                                for (const row of insertedRows) {
-                                    if (row.sender === 'user' && row.message) {
-                                        await storeMessageWithEmbedding(row.id, userId, row.message, targetConversationId);
-                                    }
-                                }
-                            }
-                        })().catch(e => logger.warn('storeMessageWithEmbedding bg error:', e.message)),
-
-                        updateEmotionalMetrics(
-                            userId, message, isEmotional, hasGoals,
-                            engagementState.total_messages, aiMessageString
-                        ).catch(e => logger.warn('updateEmotionalMetrics bg error:', e.message)),
-
-                        checkAndAwardAchievements(userId)
-                            .catch(e => logger.warn('checkAndAwardAchievements bg error:', e.message)),
-
-                        (async () => {
-                            const { count: totalUserMessages } = await supabaseAdmin
-                                .from('chat_history')
-                                .select('*', { count: 'exact', head: true })
-                                .eq('user_id', userId)
-                                .eq('sender', 'user');
-
-                            if (totalUserMessages === 1) {
-                                await supabaseAdmin.from('metric_events').insert({
-                                    user_id: userId,
-                                    event_type: 'first_message_sent',
-                                    metric_type: 'funnel',
-                                    metadata: {
-                                        source: req.body.starter_prompt_variant ? 'starter_prompt' : 'custom_input',
-                                        variant: req.body.starter_prompt_variant || null,
-                                    },
-                                    created_at: new Date().toISOString(),
-                                });
-                            } else if (totalUserMessages === 2) {
-                                await supabaseAdmin.from('metric_events').insert({
-                                    user_id: userId,
-                                    event_type: 'second_message_sent',
-                                    metric_type: 'funnel',
-                                    metadata: {},
-                                    created_at: new Date().toISOString(),
-                                });
-                            } else if (totalUserMessages === 5) {
-                                await supabaseAdmin.from('metric_events').insert({
-                                    user_id: userId,
-                                    event_type: 'conversation_completed',
-                                    metric_type: 'funnel',
-                                    metadata: { total_messages: totalUserMessages },
-                                    created_at: new Date().toISOString(),
-                                });
-                            }
-                        })().catch(e => logger.warn('Funnel metric tracking error:', e.message)),
-                    ]);
-
-                    logger.info(`⏱ [LATENCY] background_postprocess: ${Date.now() - Tbg}ms`);
-                } catch (bgErr) {
-                    logger.error('Background post-process error (non-blocking):', bgErr.message);
-                }
-            });
 
         } catch (innerError) {
             logger.error('Chat services critical failure:', innerError);
@@ -413,6 +463,7 @@ router.get('/modes', authenticateUser, checkSubscription, async (req, res) => {
  */
 router.post('/stream', authenticateUser, checkSubscription, checkUsageLimits, async (req, res) => {
     let headersSent = false;
+    let turnPersisted = false;
     try {
         const { message, mode = 'normal', conversation_id } = req.body || {};
         const userId = req.userId;
@@ -434,17 +485,12 @@ router.post('/stream', authenticateUser, checkSubscription, checkUsageLimits, as
             return res.status(convErr.statusCode || 500).json({ error: convErr.message || 'Failed to resolve conversation' });
         }
 
-        let engagementState = await getUserEngagementState(userId);
-        if (!engagementState || engagementState.total_messages === 0) {
-            await initializeEngagement(userId);
-            engagementState = await getUserEngagementState(userId);
-        }
-
-        const isEmotional = detectEmotionalContent(message);
-        const hasGoals = detectGoalContent(message);
-        trackMessage(userId, message, isEmotional, hasGoals).catch(() => {});
-
-        const behavioralModifiers = getBehavioralModifiers(engagementState) + generateStyleDirectives(mapTwinModeToStyleMode(mode));
+        const {
+            engagementState,
+            isEmotional,
+            hasGoals,
+            combinedModifiers,
+        } = await buildChatPromptModifiers({ userId, message, mode });
 
         // SSE Headers
         res.writeHead(200, {
@@ -459,18 +505,58 @@ router.post('/stream', authenticateUser, checkSubscription, checkUsageLimits, as
             userId,
             message,
             mode,
-            behavioralModifiers,
+            combinedModifiers,
             targetConversationId
         );
 
+        let fullMessage = '';
+        let turnPersisted = false;
+
         for await (const chunk of stream) {
-            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            if (chunk?.type === 'chunk' && chunk.text) {
+                fullMessage += chunk.text;
+            }
+            if (chunk?.type === 'done') {
+                const finalMessage = chunk.fullMessage || fullMessage;
+                if (finalMessage && !turnPersisted) {
+                    await persistAndScheduleChatTurn({
+                        userId,
+                        conversationId: targetConversationId,
+                        userMessage: message,
+                        aiMessage: finalMessage,
+                        mode,
+                        engagementState,
+                        isEmotional,
+                        hasGoals,
+                        starterPromptVariant: req.body?.starter_prompt_variant,
+                    });
+                    turnPersisted = true;
+                }
+                res.write(`data: ${JSON.stringify({ ...chunk, conversation_id: targetConversationId })}\n\n`);
+            } else {
+                res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            }
+        }
+
+        if (fullMessage && !turnPersisted) {
+            await persistAndScheduleChatTurn({
+                userId,
+                conversationId: targetConversationId,
+                userMessage: message,
+                aiMessage: fullMessage,
+                mode,
+                engagementState,
+                isEmotional,
+                hasGoals,
+                starterPromptVariant: req.body?.starter_prompt_variant,
+            });
+            turnPersisted = true;
         }
 
         res.end();
 
     } catch (error) {
-        if (!headersSent && req.reservedQuota) {
+        if (!turnPersisted && req.reservedQuota) {
             await releaseDailyQuota(req.reservedQuota.userId, req.reservedQuota.actionType);
         }
         logger.error('Error in streaming chat:', error);

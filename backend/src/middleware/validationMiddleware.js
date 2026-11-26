@@ -56,6 +56,17 @@ export function isValidUUID(uuid) {
 }
 
 /**
+ * Validate UUID route parameter
+ */
+export const validateUuidParam = (paramName = 'id') => (req, res, next) => {
+    const value = req.params?.[paramName];
+    if (!value || !isValidUUID(String(value))) {
+        return res.status(400).json({ error: `Invalid ${paramName} format` });
+    }
+    next();
+};
+
+/**
  * Request body sanitization middleware
  */
 export const sanitizeRequestBody = (req, res, next) => {
@@ -227,6 +238,7 @@ export default {
     sanitizeObject,
     isValidEmail,
     isValidUUID,
+    validateUuidParam,
     validateChatMessage,
     validateAuthInput,
     validatePersonalityAnswers,

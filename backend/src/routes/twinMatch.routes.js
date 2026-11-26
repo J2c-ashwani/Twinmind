@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { validateUuidParam } from '../middleware/validationMiddleware.js';
 import {
     comparePersonalities,
     getComparison,
@@ -56,7 +57,7 @@ router.get('/invitations', authenticateUser, async (req, res) => {
 /**
  * POST /api/twin-match/invitations/:id/accept
  */
-router.post('/invitations/:id/accept', authenticateUser, async (req, res) => {
+router.post('/invitations/:id/accept', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const result = await respondToMatchInvitation(req.params.id, req.userId, 'accept');
         res.json({ success: true, ...result });
@@ -69,7 +70,7 @@ router.post('/invitations/:id/accept', authenticateUser, async (req, res) => {
 /**
  * POST /api/twin-match/invitations/:id/decline
  */
-router.post('/invitations/:id/decline', authenticateUser, async (req, res) => {
+router.post('/invitations/:id/decline', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const result = await respondToMatchInvitation(req.params.id, req.userId, 'decline');
         res.json({ success: true, ...result });
@@ -116,7 +117,7 @@ router.post('/compare', authenticateUser, async (req, res) => {
  * GET /api/twin-match/:id
  * Get comparison by ID (restricted to comparison participants)
  */
-router.get('/:id', authenticateUser, async (req, res) => {
+router.get('/:id', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const comparison = await getComparison(req.params.id, req.userId);
         res.json(comparison);
@@ -130,7 +131,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
  * DELETE /api/twin-match/:id
  * Revoke sharing consent & remove comparison
  */
-router.delete('/:id', authenticateUser, async (req, res) => {
+router.delete('/:id', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const result = await revokeComparisonSharing(req.params.id, req.userId);
         res.json({ success: true, ...result });

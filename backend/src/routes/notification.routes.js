@@ -1,5 +1,6 @@
 import express from 'express';
 import { verifyToken } from '../middleware/authMiddleware.js';
+import { validateUuidParam } from '../middleware/validationMiddleware.js';
 import reminderService from '../services/reminderService.js';
 
 const router = express.Router();
@@ -15,7 +16,7 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // Mark as read
-router.post('/:id/read', verifyToken, async (req, res) => {
+router.post('/:id/read', verifyToken, validateUuidParam('id'), async (req, res) => {
     try {
         const updated = await reminderService.markAsRead(req.params.id, req.user.userId);
         if (!updated) {
@@ -28,7 +29,7 @@ router.post('/:id/read', verifyToken, async (req, res) => {
 });
 
 // Delete notification
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', verifyToken, validateUuidParam('id'), async (req, res) => {
     try {
         const deleted = await reminderService.deleteNotification(req.params.id, req.user.userId);
         if (!deleted) {

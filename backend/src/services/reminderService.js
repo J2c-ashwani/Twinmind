@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase.js';
 import aiService from './aiService.js';
 import pushNotificationService from './pushNotificationService.js';
 import logger from '../config/logger.js';
+import { forEachPage } from '../utils/supabasePagination.js';
 
 /**
  * Reminder Service - Generates smart, context-aware reminders
@@ -15,25 +16,18 @@ export async function generateSmartReminders() {
     try {
         logger.info('Starting smart reminder generation for all users...');
 
-        // 1. Get all candidate users (users with push tokens or in users table)
-        const { data: tokenUsers } = await supabaseAdmin
-            .from('push_device_tokens')
-            .select('user_id')
-            .eq('enabled', true);
-
-        const { data: registeredUsers } = await supabaseAdmin
-            .from('users')
-            .select('id, fcm_token');
-
+        // 1. Get all candidate users (paginated so >1,000 users are never truncated)
         const allUserIds = new Set();
-        if (tokenUsers) {
-            tokenUsers.forEach(t => t.user_id && allUserIds.add(t.user_id));
-        }
-        if (registeredUsers) {
-            registeredUsers.forEach(u => {
-                if (u.id) allUserIds.add(u.id);
-            });
-        }
+        await Promise.all([
+            forEachPage(
+                () => supabaseAdmin.from('push_device_tokens').select('user_id').eq('enabled', true).order('user_id', { ascending: true }),
+                (rows) => rows.forEach((t) => t.user_id && allUserIds.add(t.user_id))
+            ),
+            forEachPage(
+                () => supabaseAdmin.from('users').select('id').order('id', { ascending: true }),
+                (rows) => rows.forEach((u) => u.id && allUserIds.add(u.id))
+            ),
+        ]);
 
         logger.info(`Found ${allUserIds.size} total registered/token users for reminders.`);
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { validateUuidParam } from '../middleware/validationMiddleware.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { verifyConversationOwnership } from '../services/conversationAccess.js';
 import logger from '../config/logger.js';
@@ -62,7 +63,7 @@ router.post('/', authenticateUser, async (req, res) => {
  * GET /api/conversations/:id
  * Get messages for a specific conversation
  */
-router.get('/:id', authenticateUser, async (req, res) => {
+router.get('/:id', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
@@ -102,7 +103,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
  * DELETE /api/conversations/:id
  * Delete a conversation
  */
-router.delete('/:id', authenticateUser, async (req, res) => {
+router.delete('/:id', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
@@ -139,7 +140,7 @@ router.delete('/:id', authenticateUser, async (req, res) => {
  * PATCH /api/conversations/:id
  * Update conversation title
  */
-router.patch('/:id', authenticateUser, async (req, res) => {
+router.patch('/:id', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const userId = req.userId;
         const { id } = req.params;

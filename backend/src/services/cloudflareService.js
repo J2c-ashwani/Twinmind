@@ -4,7 +4,7 @@ class CloudflareService {
     constructor() {
         this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
         this.apiToken = process.env.CLOUDFLARE_API_TOKEN;
-        this.model = process.env.CLOUDFLARE_MODEL || '@cf/meta/llama-3-8b-instruct';
+        this.model = process.env.CLOUDFLARE_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
         if (this.accountId && this.apiToken) {
             console.log(`✅ Cloudflare Service initialized (Model: ${this.model})`);

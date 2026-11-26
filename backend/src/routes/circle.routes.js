@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { validateUuidParam } from '../middleware/validationMiddleware.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import {
     createCircle,
@@ -56,7 +57,7 @@ router.get('/my', authenticateUser, async (req, res) => {
  * GET /api/circles/:id/progress
  * Get circle progress and stats
  */
-router.get('/:id/progress', authenticateUser, async (req, res) => {
+router.get('/:id/progress', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const { id } = req.params;
         const member = await isCircleMember(id, req.userId);
@@ -77,7 +78,7 @@ router.get('/:id/progress', authenticateUser, async (req, res) => {
  * POST /api/circles/:id/invite
  * Create invitation for circle
  */
-router.post('/:id/invite', authenticateUser, async (req, res) => {
+router.post('/:id/invite', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
@@ -178,7 +179,7 @@ router.get('/preview/:code', async (req, res) => {
  * POST /api/circles/:id/leave
  * Leave a circle
  */
-router.post('/:id/leave', authenticateUser, async (req, res) => {
+router.post('/:id/leave', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const userId = req.userId;
         const { id } = req.params;
@@ -196,7 +197,7 @@ router.post('/:id/leave', authenticateUser, async (req, res) => {
  * GET /api/circles/:id/milestones
  * Get unlocked milestones
  */
-router.get('/:id/milestones', authenticateUser, async (req, res) => {
+router.get('/:id/milestones', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const { id } = req.params;
         const member = await isCircleMember(id, req.userId);

@@ -139,37 +139,53 @@ export async function reserveDailyQuota(userId, actionType, dailyLimit, now = ne
             // Fall through cleanly if RPC is not deployed yet
         }
 
-        const { data: existing, error: fetchError } = await supabaseAdmin
-            .from('usage_tracking')
-            .select('id, count')
-            .eq('user_id', userId)
-            .eq('action_type', actionType)
-            .eq('period_start', start.toISOString())
-            .maybeSingle();
-
-        if (fetchError) throw fetchError;
-
-        const currentCount = existing?.count || 0;
-        if (currentCount >= dailyLimit) {
-            return {
-                allowed: false,
-                current: currentCount,
-                limit: dailyLimit,
-                remaining: 0,
-                resetTime: end.toISOString(),
-            };
-        }
-
-        const nextCount = currentCount + 1;
-        if (existing) {
-            const { error: updateErr } = await supabaseAdmin
+        const MAX_CAS_ATTEMPTS = 3;
+        for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+            const { data: existing, error: fetchError } = await supabaseAdmin
                 .from('usage_tracking')
-                .update({ count: nextCount })
-                .eq('id', existing.id)
-                .eq('count', currentCount);
+                .select('id, count')
+                .eq('user_id', userId)
+                .eq('action_type', actionType)
+                .eq('period_start', start.toISOString())
+                .maybeSingle();
 
-            if (updateErr) throw updateErr;
-        } else {
+            if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+            const currentCount = existing?.count || 0;
+            if (currentCount >= dailyLimit) {
+                return {
+                    allowed: false,
+                    current: currentCount,
+                    limit: dailyLimit,
+                    remaining: 0,
+                    resetTime: end.toISOString(),
+                };
+            }
+
+            const nextCount = currentCount + 1;
+            if (existing) {
+                const { data: updatedRow, error: updateErr } = await supabaseAdmin
+                    .from('usage_tracking')
+                    .update({ count: nextCount, period_end: end.toISOString() })
+                    .eq('id', existing.id)
+                    .eq('count', currentCount)
+                    .select('count')
+                    .maybeSingle();
+
+                if (updateErr) throw updateErr;
+                if (updatedRow) {
+                    return {
+                        allowed: true,
+                        current: updatedRow.count,
+                        limit: dailyLimit,
+                        remaining: Math.max(0, dailyLimit - updatedRow.count),
+                        resetTime: end.toISOString(),
+                    };
+                }
+                // CAS conflict (0 rows matched currentCount): retry loop cleanly
+                continue;
+            }
+
             const { error: insertErr } = await supabaseAdmin
                 .from('usage_tracking')
                 .insert({
@@ -180,16 +196,22 @@ export async function reserveDailyQuota(userId, actionType, dailyLimit, now = ne
                     period_end: end.toISOString(),
                 });
 
-            if (insertErr) throw insertErr;
+            if (!insertErr) {
+                return {
+                    allowed: true,
+                    current: 1,
+                    limit: dailyLimit,
+                    remaining: Math.max(0, dailyLimit - 1),
+                    resetTime: end.toISOString(),
+                };
+            }
+
+            if (insertErr.code !== '23505') {
+                throw insertErr;
+            }
         }
 
-        return {
-            allowed: true,
-            current: nextCount,
-            limit: dailyLimit,
-            remaining: Math.max(0, dailyLimit - nextCount),
-            resetTime: end.toISOString(),
-        };
+        throw new Error('Concurrent daily quota update conflict; please retry');
     });
 }
 
@@ -291,34 +313,7 @@ export const checkVoiceLimits = createQuotaMiddleware(
  */
 export async function trackUsage(userId, actionType = 'chat_message') {
     try {
-        const now = new Date();
-        const { start: periodStart, end: periodEnd } = getUtcDayBounds(now);
-
-        const { data: existing } = await supabaseAdmin
-            .from('usage_tracking')
-            .select('id, count')
-            .eq('user_id', userId)
-            .eq('action_type', actionType)
-            .eq('period_start', periodStart.toISOString())
-            .maybeSingle();
-
-        if (existing) {
-            await supabaseAdmin
-                .from('usage_tracking')
-                .update({ count: existing.count + 1 })
-                .eq('id', existing.id);
-        } else {
-            await supabaseAdmin
-                .from('usage_tracking')
-                .insert({
-                    user_id: userId,
-                    action_type: actionType,
-                    count: 1,
-                    period_start: periodStart.toISOString(),
-                    period_end: periodEnd.toISOString(),
-                });
-        }
-
+        await reserveDailyQuota(userId, actionType, Number.MAX_SAFE_INTEGER);
         return true;
     } catch (error) {
         logger.error('Error tracking usage:', error.message);

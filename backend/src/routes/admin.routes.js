@@ -1,6 +1,7 @@
 import express from 'express';
-import crypto from 'crypto';
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { safeCompare, getConfiguredAdminSecrets } from '../utils/security.js';
+import { forEachPage, forEachAuthUserPage } from '../utils/supabasePagination.js';
 import { calculateDeterministicPersonality } from '../services/deterministicPersonality.js';
 import { sendRecoveryEmail, sendProductUpdateEmail } from '../services/emailService.js';
 import acquisitionCampaignService from '../services/acquisitionCampaignService.js';
@@ -10,26 +11,9 @@ import aiService from '../services/aiService.js';
 const router = express.Router();
 
 /**
- * Constant-time string comparison to prevent timing attacks
- */
-const safeCompare = (a, b) => {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    const bufA = Buffer.from(a);
-    const bufB = Buffer.from(b);
-    if (bufA.length !== bufB.length) return false;
-    return crypto.timingSafeEqual(bufA, bufB);
-};
-
-/**
  * Returns all active admin secrets configured in the server environment
  */
-const getValidAdminSecrets = () => {
-    return [
-        process.env.ADMIN_PASSWORD,
-        process.env.ADMIN_API_KEY,
-        process.env.ADMIN_SECRET_KEY
-    ].filter(Boolean);
-};
+const getValidAdminSecrets = () => getConfiguredAdminSecrets();
 
 /**
  * Master Admin Authentication Middleware.
@@ -37,7 +21,7 @@ const getValidAdminSecrets = () => {
  * Supports:
  *   1) Direct Admin Password / Key via X-Admin-Key or X-Admin-Password header
  *   2) Bearer token matching the Admin Password / Key
- *   3) Supabase JWT where user email matches ADMIN_EMAIL or personality_profiles metadata has role: 'admin'
+ *   3) Supabase JWT where user email matches ADMIN_EMAIL or app_metadata.role === 'admin'
  */
 const requireAdminAuth = async (req, res, next) => {
     try {
@@ -83,14 +67,14 @@ const requireAdminAuth = async (req, res, next) => {
                 try {
                     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
                     if (!error && user) {
-                        const { data: profile } = await supabaseAdmin
-                            .from('personality_profiles')
-                            .select('metadata')
-                            .eq('user_id', user.id)
-                            .maybeSingle();
-
-                        const isEmailAdmin = adminEmail && user.email && user.email.toLowerCase() === adminEmail.toLowerCase();
-                        const isRoleAdmin = profile?.metadata?.role === 'admin';
+                        const isEmailAdmin = Boolean(
+                            adminEmail &&
+                            user.email &&
+                            user.email.toLowerCase() === adminEmail.trim().toLowerCase() &&
+                            Boolean(user.email_confirmed_at)
+                        );
+                        // Only trust server-controlled app_metadata (never user-writable user_metadata)
+                        const isRoleAdmin = user.app_metadata?.role === 'admin';
 
                         if (isEmailAdmin || isRoleAdmin) {
                             req.userId = user.id;
@@ -202,22 +186,22 @@ router.get('/stats', requireAdminAuth, async (req, res) => {
             .select('*', { count: 'exact', head: true })
             .eq('sender', 'ai');
 
-        // Distinct activated users (sent >= 1 message)
-        const { data: userAuthors } = await supabaseAdmin
-            .from('chat_history')
-            .select('user_id')
-            .eq('sender', 'user');
+        // Distinct activated users (sent >= 1 message) — paginated to avoid PostgREST 1,000-row cap
+        const activatedUsers = new Set();
+        await forEachPage(
+            () => supabaseAdmin.from('chat_history').select('user_id').eq('sender', 'user').order('id', { ascending: true }),
+            (rows) => rows.forEach((m) => m.user_id && activatedUsers.add(m.user_id))
+        );
+        const activatedUserCount = activatedUsers.size;
 
-        const activatedUserCount = new Set((userAuthors || []).map(m => m.user_id)).size;
-
-        // 24h active user-authored chatters
+        // 24h active user-authored chatters — paginated
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: recentUserAuthors } = await supabaseAdmin
-            .from('chat_history')
-            .select('user_id')
-            .eq('sender', 'user')
-            .gte('created_at', oneDayAgo);
-        const active24hCount = new Set((recentUserAuthors || []).map(m => m.user_id)).size;
+        const active24hUsers = new Set();
+        await forEachPage(
+            () => supabaseAdmin.from('chat_history').select('user_id').eq('sender', 'user').gte('created_at', oneDayAgo).order('id', { ascending: true }),
+            (rows) => rows.forEach((m) => m.user_id && active24hUsers.add(m.user_id))
+        );
+        const active24hCount = active24hUsers.size;
 
         // Total conversations
         const { count: conversationCount } = await supabaseAdmin
@@ -315,17 +299,20 @@ router.get('/health', requireAdminAuth, async (req, res) => {
 // Trigger recovery for users who completed 35 questions without a profile
 router.post('/recover-stuck-users', requireAdminAuth, requireAdminSecret, async (req, res) => {
     try {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-        if (authError) throw authError;
+        const allAuthUsers = [];
+        await forEachAuthUserPage((users) => {
+            allAuthUsers.push(...users);
+        });
 
-        const { data: existingProfiles } = await supabaseAdmin
-            .from('personality_profiles')
-            .select('user_id');
+        const existingSet = new Set();
+        await forEachPage(
+            () => supabaseAdmin.from('personality_profiles').select('user_id').order('user_id', { ascending: true }),
+            (rows) => rows.forEach((p) => p.user_id && existingSet.add(p.user_id))
+        );
 
-        const existingSet = new Set((existingProfiles || []).map(p => p.user_id));
         const recovered = [];
 
-        for (const user of authData.users) {
+        for (const user of allAuthUsers) {
             if (existingSet.has(user.id)) continue;
 
             const { data: answers } = await supabaseAdmin
@@ -438,28 +425,27 @@ router.post('/broadcast-email', requireAdminAuth, requireAdminSecret, async (req
 // Seed proactive AI greeting for all users who completed onboarding but haven't started chatting
 router.post('/seed-proactive-greetings', requireAdminAuth, requireAdminSecret, async (req, res) => {
     try {
-        const { data: profiles, error: pError } = await supabaseAdmin
-            .from('personality_profiles')
-            .select('user_id, twin_name, twin_summary, personality_json');
+        const profiles = [];
+        await forEachPage(
+            () => supabaseAdmin.from('personality_profiles').select('user_id, twin_name, twin_summary, personality_json').order('user_id', { ascending: true }),
+            (rows) => profiles.push(...rows)
+        );
 
-        if (pError) throw pError;
+        const usersWithMessages = new Set();
+        await forEachPage(
+            () => supabaseAdmin.from('chat_history').select('user_id').order('id', { ascending: true }),
+            (rows) => rows.forEach((m) => m.user_id && usersWithMessages.add(m.user_id))
+        );
 
-        const userIds = (profiles || []).map(p => p.user_id);
-        const { data: messages, error: mError } = await supabaseAdmin
-            .from('chat_history')
-            .select('user_id')
-            .in('user_id', userIds);
-
-        if (mError) throw mError;
-
-        const usersWithMessages = new Set((messages || []).map(m => m.user_id));
-        const usersToSeed = (profiles || []).filter(p => !usersWithMessages.has(p.user_id));
+        const usersToSeed = profiles.filter(p => !usersWithMessages.has(p.user_id));
 
         const seededUsers = [];
 
-        // Fetch auth user details for display names
-        const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
-        const userMap = new Map((authData?.users || []).map(u => [u.id, u]));
+        // Fetch auth user details across all pages for display names
+        const userMap = new Map();
+        await forEachAuthUserPage((users) => {
+            for (const u of users) userMap.set(u.id, u);
+        });
 
         for (const prof of usersToSeed) {
             const authUser = userMap.get(prof.user_id);

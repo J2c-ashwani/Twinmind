@@ -4,8 +4,11 @@ import { logger } from '../config/logger.js';
 import { recordReferral } from '../services/referralService.js';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { deleteSelectedUserData, deleteUserAccount } from '../services/accountDeletionService.js';
+import { validateUuidParam, sanitizeString } from '../middleware/validationMiddleware.js';
+import { pickAllowlistedFields } from '../utils/security.js';
 
 const router = express.Router();
+const ALLOWED_PROFILE_UPDATE_FIELDS = ['full_name', 'country', 'avatar_url'];
 
 /**
  * POST /api/auth/signup
@@ -90,7 +93,7 @@ router.post('/signup', async (req, res) => {
  * GET /api/auth/profile
  * Get user profile (requires authentication via Supabase RLS)
  */
-router.get('/profile/:userId', authenticateUser, async (req, res) => {
+router.get('/profile/:userId', authenticateUser, validateUuidParam('userId'), async (req, res) => {
     try {
         const { userId } = req.params;
 
@@ -116,16 +119,74 @@ router.get('/profile/:userId', authenticateUser, async (req, res) => {
 
 /**
  * PUT /api/auth/profile/:userId
- * Update user profile
+ * Update user profile with explicit field allowlist
  */
-router.put('/profile/:userId', authenticateUser, async (req, res) => {
+router.put('/profile/:userId', authenticateUser, validateUuidParam('userId'), async (req, res) => {
     try {
         const { userId } = req.params;
-        const updates = req.body;
 
         if (req.userId !== userId) {
             return res.status(403).json({ error: 'Cannot update another user profile' });
         }
+
+        const { updates: rawUpdates, rejectedKeys } = pickAllowlistedFields(req.body, ALLOWED_PROFILE_UPDATE_FIELDS);
+        if (rejectedKeys.length > 0) {
+            return res.status(400).json({
+                error: `Disallowed profile fields: ${rejectedKeys.join(', ')}`
+            });
+        }
+
+        const updates = {};
+        if ('full_name' in rawUpdates) {
+            if (typeof rawUpdates.full_name !== 'string') {
+                return res.status(400).json({ error: 'full_name must be a string' });
+            }
+            const cleanName = sanitizeString(rawUpdates.full_name).trim();
+            if (!cleanName || cleanName.length > 120) {
+                return res.status(400).json({ error: 'full_name must be between 1 and 120 characters' });
+            }
+            updates.full_name = cleanName;
+        }
+
+        if ('country' in rawUpdates) {
+            if (rawUpdates.country === null || rawUpdates.country === '') {
+                updates.country = null;
+            } else if (typeof rawUpdates.country === 'string') {
+                const cleanCountry = sanitizeString(rawUpdates.country).trim();
+                if (cleanCountry.length > 100) {
+                    return res.status(400).json({ error: 'country must be 100 characters or fewer' });
+                }
+                updates.country = cleanCountry;
+            } else {
+                return res.status(400).json({ error: 'country must be a string or null' });
+            }
+        }
+
+        if ('avatar_url' in rawUpdates) {
+            if (rawUpdates.avatar_url === null || rawUpdates.avatar_url === '') {
+                updates.avatar_url = null;
+            } else if (typeof rawUpdates.avatar_url === 'string') {
+                const trimmedUrl = rawUpdates.avatar_url.trim();
+                let parsedUrl;
+                try {
+                    parsedUrl = new URL(trimmedUrl);
+                } catch {
+                    return res.status(400).json({ error: 'avatar_url must be a valid URL' });
+                }
+                if (parsedUrl.protocol !== 'https:' || trimmedUrl.length > 1000) {
+                    return res.status(400).json({ error: 'avatar_url must be a valid https:// URL' });
+                }
+                updates.avatar_url = trimmedUrl;
+            } else {
+                return res.status(400).json({ error: 'avatar_url must be a string or null' });
+            }
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: 'No valid editable profile fields provided' });
+        }
+
+        updates.updated_at = new Date().toISOString();
 
         const { data, error } = await supabaseAdmin
             .from('users')

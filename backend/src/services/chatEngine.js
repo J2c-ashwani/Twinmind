@@ -207,8 +207,8 @@ export async function generateChatResponse(
             logCrisisEvent(userId, userMessage).catch(() => { });
 
             // 2. Store the exchange for safety audit trail
-            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
-            storeChatMemory(userId, CRISIS_RESPONSE, "ai", mode).catch(() => { });
+            storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+            storeChatMemory(userId, CRISIS_RESPONSE, "ai", mode, conversationId).catch(() => { });
 
             // 3. Return FIXED response — NO LLM, NO personalization, NO dynamic content
             return {
@@ -224,8 +224,8 @@ export async function generateChatResponse(
         /* 0a. MD RULE 2: IDENTITY QUESTION INTERCEPTOR */
         if (detectIdentityQuestion(userMessage)) {
             const honestReply = IDENTITY_RESPONSES[Math.floor(Math.random() * IDENTITY_RESPONSES.length)];
-            storeChatMemory(userId, userMessage, "user", mode).catch(() => { });
-            storeChatMemory(userId, honestReply, "ai", mode).catch(() => { });
+            storeChatMemory(userId, userMessage, "user", mode, conversationId).catch(() => { });
+            storeChatMemory(userId, honestReply, "ai", mode, conversationId).catch(() => { });
             return {
                 message: honestReply,
                 mode,

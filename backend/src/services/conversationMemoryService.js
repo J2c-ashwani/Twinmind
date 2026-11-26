@@ -12,13 +12,22 @@ import aiService from "./aiService.js";
 /* --------------------------------------------------------
    1. Generate Embedding
 -------------------------------------------------------- */
-export async function generateEmbedding(text) {
+export async function generateEmbeddingWithMeta(text, options = {}) {
     try {
-        return await aiService.generateEmbedding(text);
+        if (typeof aiService.generateEmbeddingWithMeta === 'function') {
+            return await aiService.generateEmbeddingWithMeta(text, options);
+        }
+        const vector = await aiService.generateEmbedding(text, options);
+        return { vector, provider: 'unknown', model: 'unknown', dimensions: vector?.length || 1536 };
     } catch (error) {
         logger.error("❌ Error generating embedding:", error.message);
         throw error;
     }
+}
+
+export async function generateEmbedding(text, options = {}) {
+    const { vector } = await generateEmbeddingWithMeta(text, options);
+    return vector;
 }
 
 /* --------------------------------------------------------
@@ -26,21 +35,33 @@ export async function generateEmbedding(text) {
 -------------------------------------------------------- */
 export async function storeMessageWithEmbedding(messageId, userId, content, conversationId = null) {
     try {
-        const embedding = await generateEmbedding(content);
+        if (!userId || !content || !String(content).trim()) return;
+        const emb = await generateEmbeddingWithMeta(content, { taskType: 'RETRIEVAL_DOCUMENT' });
 
-        const { error } = await supabaseAdmin
+        const basePayload = {
+            message_id: messageId,
+            user_id: userId,
+            conversation_id: conversationId,
+            content,
+            embedding: emb.vector,
+        };
+
+        let { error } = await supabaseAdmin
             .from("message_embeddings")
             .insert({
-                message_id: messageId,
-                user_id: userId,
-                conversation_id: conversationId,
-                content,
-                embedding,
+                ...basePayload,
+                embedding_provider: emb.provider,
+                embedding_model: emb.model,
+                embedding_dimensions: emb.dimensions || emb.vector.length,
             });
+
+        if (error && (error.code === '42703' || error.code === 'PGRST204' || /embedding_(provider|model|dimensions)/i.test(error.message || ''))) {
+            ({ error } = await supabaseAdmin.from("message_embeddings").insert(basePayload));
+        }
 
         if (error) throw error;
 
-        logger.info(`✅ Stored embedding for message ${messageId}`);
+        logger.info(`✅ Stored embedding for message ${messageId} (${emb.provider}/${emb.model})`);
     } catch (error) {
         logger.error("❌ Error storing message embedding:", error.message);
     }
@@ -51,18 +72,41 @@ export async function storeMessageWithEmbedding(messageId, userId, content, conv
 -------------------------------------------------------- */
 export async function searchSimilarConversations(userId, query, limit = 5) {
     try {
-        const queryEmbedding = await generateEmbedding(query);
+        if (!userId || !query || !String(query).trim()) return [];
+        const queryEmb = await generateEmbeddingWithMeta(query, { taskType: 'RETRIEVAL_QUERY' });
 
-        const { data, error } = await supabaseAdmin.rpc("search_conversations", {
-            query_embedding: queryEmbedding,
+        let { data, error } = await supabaseAdmin.rpc("search_conversations", {
+            query_embedding: queryEmb.vector,
             match_threshold: 0.70,
             match_count: limit,
             p_user_id: userId,
+            p_embedding_provider: queryEmb.provider,
+            p_embedding_model: queryEmb.model,
         });
+
+        // Fallback if live database still runs pre-migration 4-arg search_conversations RPC
+        if (error && (error.code === 'PGRST202' || /search_conversations/i.test(error.message || ''))) {
+            ({ data, error } = await supabaseAdmin.rpc("search_conversations", {
+                query_embedding: queryEmb.vector,
+                match_threshold: 0.70,
+                match_count: limit * 3,
+                p_user_id: userId,
+            }));
+        }
 
         if (error) throw error;
 
-        return data || [];
+        return (data || [])
+            .filter((row) => {
+                if (row?.embedding_provider && queryEmb.provider !== 'unknown' && row.embedding_provider !== queryEmb.provider) {
+                    return false;
+                }
+                if (row?.embedding_model && queryEmb.model !== 'unknown' && row.embedding_model !== queryEmb.model) {
+                    return false;
+                }
+                return true;
+            })
+            .slice(0, limit);
     } catch (error) {
         logger.error("❌ Error searching conversations:", error.message);
         return [];
@@ -212,10 +256,15 @@ export async function getRecentConversationSummary(userId, days = 7) {
 -------------------------------------------------------- */
 export async function buildConversationHistory(userId, conversationId, limit = 20) {
     try {
+        if (!userId || !conversationId) {
+            return [];
+        }
+
         const { data, error } = await supabaseAdmin
             .from("chat_history")
             .select("message, sender, created_at")
             .eq("conversation_id", conversationId)
+            .eq("user_id", userId)
             .order("created_at", { ascending: true })
             .limit(limit);
 
@@ -232,20 +281,37 @@ export async function buildConversationHistory(userId, conversationId, limit = 2
 }
 
 /* --------------------------------------------------------
-   9. In-Memory Cache (5-minute auto-expire)
+   9. Bounded In-Memory Cache (5-minute auto-expire)
 -------------------------------------------------------- */
+const MAX_CONVERSATION_CACHE = 200;
 const conversationCache = new Map();
 
-export async function getCachedConversation(conversationId) {
-    if (conversationCache.has(conversationId)) {
-        return conversationCache.get(conversationId);
+export async function getCachedConversation(userId, conversationId) {
+    if (!userId || !conversationId) {
+        return [];
     }
 
-    const history = await buildConversationHistory(null, conversationId);
-    conversationCache.set(conversationId, history);
+    const cacheKey = `${userId}:${conversationId}`;
+    const existing = conversationCache.get(cacheKey);
+    if (existing) {
+        return existing.history;
+    }
 
-    setTimeout(() => conversationCache.delete(conversationId), 5 * 60 * 1000);
+    const history = await buildConversationHistory(userId, conversationId);
 
+    if (conversationCache.size >= MAX_CONVERSATION_CACHE) {
+        const oldestKey = conversationCache.keys().next().value;
+        const oldest = conversationCache.get(oldestKey);
+        if (oldest?.timer) clearTimeout(oldest.timer);
+        conversationCache.delete(oldestKey);
+    }
+
+    const timer = setTimeout(() => {
+        conversationCache.delete(cacheKey);
+    }, 5 * 60 * 1000);
+    if (typeof timer.unref === 'function') timer.unref();
+
+    conversationCache.set(cacheKey, { history, timer });
     return history;
 }
 

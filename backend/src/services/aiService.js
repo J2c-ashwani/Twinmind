@@ -165,19 +165,26 @@ class AIService {
         const msg = (status.lastError).toLowerCase();
 
         // Sensible, operational cooldowns (never 30-day memory lock)
-        if (msg.includes('402') || msg.includes('insufficient balance')) {
+        if (
+            msg.includes('402') ||
+            msg.includes('insufficient balance') ||
+            msg.includes('credit balance is too low') ||
+            msg.includes('no credits remaining') ||
+            msg.includes('pre-paid credits') ||
+            msg.includes('billing_no_api_budget')
+        ) {
             // 30 Minutes lockout for billing issues (gives admin time to refill or auto-recharge)
             status.isExhausted = true;
             status.cooldownUntil = new Date(Date.now() + 30 * 60 * 1000);
-            console.warn(`💸 Provider ${providerName} DISABLED (Insufficient Balance) - Cooldown 30m`);
+            console.warn(`💸 Provider ${providerName} DISABLED (Insufficient Balance / Credits) - Cooldown 30m`);
         }
-        else if (msg.includes('401') || msg.includes('invalid') || msg.includes('unauthorized')) {
+        else if (msg.includes('401') || msg.includes('invalid') || msg.includes('unauthorized') || msg.includes('authentication error')) {
             // 15 Minutes lockout for config issues
             status.isExhausted = true;
             status.cooldownUntil = new Date(Date.now() + 15 * 60 * 1000);
             console.warn(`🔑 Provider ${providerName} DISABLED (Auth Failed) - Cooldown 15m`);
         }
-        else if (msg.includes('404') || msg.includes('not found') || msg.includes('deprecated')) {
+        else if (msg.includes('404') || msg.includes('not found') || msg.includes('deprecated') || msg.includes('5028')) {
             // 15 Minutes lockout for Model Not Found / Deprecated
             status.isExhausted = true;
             status.cooldownUntil = new Date(Date.now() + 15 * 60 * 1000);
@@ -515,34 +522,84 @@ class AIService {
     async analyzeEmotion(text) { return await geminiService.analyzeEmotion(text); }
     async extractEntities(text) { return await geminiService.extractEntities(text); }
     async detectMemorableMoment(text) { return await geminiService.detectMemorableMoment(text); }
-    async generateEmbeddingWithMeta(text) {
-        if (openaiService && openaiService.isConfigured) {
-            try {
-                const vector = await openaiService.generateEmbedding(text);
-                if (Array.isArray(vector) && vector.some((v) => v !== 0)) {
-                    return {
-                        vector,
-                        provider: 'openai',
-                        model: 'text-embedding-3-small',
-                    };
-                }
-            } catch (err) {
-                // OpenAI embedding failed, proceed to Gemini fallback
-            }
+    /**
+     * Single source of truth for active embedding provider/model so writes, queries,
+     * and offline backfills stay strictly aligned on the same vector space.
+     */
+    getActiveEmbeddingTarget() {
+        const requested = String(process.env.EMBEDDING_PROVIDER || '').trim().toLowerCase();
+        if (requested === 'openai' && openaiService && openaiService.isConfigured && !openaiService.embeddingDisabled) {
+            return { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
         }
-        const vector = await geminiService.generateEmbedding(text);
-        if (!Array.isArray(vector) || !vector.some((v) => v !== 0)) {
-            throw new Error('Embedding provider returned invalid or zero vector');
+        if (requested === 'gemini' || (geminiService && geminiService.isConfigured)) {
+            return {
+                provider: 'gemini',
+                model: geminiService.embeddingModelName || 'gemini-embedding-001',
+                dimensions: geminiService.embeddingDimensions || 1536,
+            };
+        }
+        if (openaiService && openaiService.isConfigured && !openaiService.embeddingDisabled) {
+            return { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
         }
         return {
-            vector,
             provider: 'gemini',
-            model: 'text-embedding-004',
+            model: geminiService?.embeddingModelName || 'gemini-embedding-001',
+            dimensions: geminiService?.embeddingDimensions || 1536,
         };
     }
 
-    async generateEmbedding(text) {
-        const { vector } = await this.generateEmbeddingWithMeta(text);
+    async generateEmbeddingWithMeta(text, options = {}) {
+        const target = this.getActiveEmbeddingTarget();
+
+        const tryGemini = async () => {
+            const vector = await geminiService.generateEmbedding(text, options);
+            if (!Array.isArray(vector) || !vector.some((v) => v !== 0)) {
+                throw new Error('Embedding provider returned invalid or zero vector');
+            }
+            return {
+                vector,
+                provider: 'gemini',
+                model: geminiService.embeddingModelName || 'gemini-embedding-001',
+                dimensions: vector.length,
+            };
+        };
+
+        const tryOpenAI = async () => {
+            if (!openaiService || !openaiService.isConfigured || openaiService.embeddingDisabled) {
+                throw new Error('OpenAI embeddings unavailable');
+            }
+            const vector = await openaiService.generateEmbedding(text);
+            if (!Array.isArray(vector) || !vector.some((v) => v !== 0)) {
+                throw new Error('OpenAI returned invalid or zero embedding vector');
+            }
+            return {
+                vector,
+                provider: 'openai',
+                model: 'text-embedding-3-small',
+                dimensions: vector.length,
+            };
+        };
+
+        if (target.provider === 'gemini') {
+            try {
+                return await tryGemini();
+            } catch (geminiErr) {
+                if (openaiService && openaiService.isConfigured && !openaiService.embeddingDisabled) {
+                    return await tryOpenAI();
+                }
+                throw geminiErr;
+            }
+        }
+
+        try {
+            return await tryOpenAI();
+        } catch (openaiErr) {
+            return await tryGemini();
+        }
+    }
+
+    async generateEmbedding(text, options = {}) {
+        const { vector } = await this.generateEmbeddingWithMeta(text, options);
         return vector;
     }
 

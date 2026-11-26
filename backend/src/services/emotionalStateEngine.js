@@ -202,14 +202,12 @@ export async function getEmotionalMetrics(userId) {
             .from('emotional_metrics')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (error && error.code !== 'PGRST116') throw error;
 
         if (!data) {
-            // Initialize new user metrics
-            await initializeEmotionalMetrics(userId);
-            return await getEmotionalMetrics(userId);
+            return await initializeEmotionalMetrics(userId);
         }
 
         return data;
@@ -224,9 +222,9 @@ export async function getEmotionalMetrics(userId) {
  */
 export async function initializeEmotionalMetrics(userId) {
     try {
-        const { error } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
             .from('emotional_metrics')
-            .insert({
+            .upsert({
                 user_id: userId,
                 trust_level: 0,
                 openness_level: 0,
@@ -236,12 +234,17 @@ export async function initializeEmotionalMetrics(userId) {
                 goal_progress: 0,
                 emotional_valence: 50, // Start neutral
                 relationship_depth: 0,
-                emotional_state: 'new_user'
-            });
+                emotional_state: 'new_user',
+                weighted_score: 0,
+            }, { onConflict: 'user_id' })
+            .select('*')
+            .maybeSingle();
 
         if (error) throw error;
+        return data || getDefaultMetrics();
     } catch (error) {
         logger.error('Error initializing emotional metrics:', error);
+        return getDefaultMetrics();
     }
 }
 
@@ -884,45 +887,43 @@ export async function updateEmotionalMetrics(userId, message, isEmotional, hasGo
             metricChanges.engagement_frequency = 1; // At minimum, every message counts
         }
 
-        // Add server-side scoring rules
+        // Add server-side scoring rules in parallel using verified schema & RPCs
+        const todayDate = new Date().toISOString().split('T')[0];
+        const [{ data: engagementData, error: engErr }, { data: engStateRows }, { data: todayMessages, error: msgErr }] = await Promise.all([
+            supabaseAdmin
+                .from('user_engagement')
+                .select('last_active_date')
+                .eq('user_id', userId)
+                .maybeSingle(),
+            supabaseAdmin.rpc('get_engagement_state', { p_user_id: userId }),
+            supabaseAdmin
+                .from('chat_history')
+                .select('id, created_at')
+                .eq('user_id', userId)
+                .eq('sender', 'user')
+                .gte('created_at', todayDate)
+                .order('created_at', { ascending: false })
+                .limit(10),
+        ]);
 
-        // User returns next day (+2 trust for consistent usage)
-        const { data: engagementData } = await supabaseAdmin
-            .from('user_engagement')
-            .select('last_active_date, consecutive_days')
-            .eq('user_id', userId)
-            .single();
+        if (engErr) logger.warn('user_engagement lookup warning:', engErr.message);
+        if (msgErr) logger.warn('chat_history session lookup warning:', msgErr.message);
 
-        if (engagementData) {
-            const today = new Date().toISOString().split('T')[0];
-            const lastActive = engagementData.last_active_date;
-
-            if (lastActive && lastActive !== today) {
-                // User returned on a new day
-                metricChanges.trust_level = (metricChanges.trust_level || 0) + 2;
-            }
-
-            // Daily use (+3 engagement frequency for consecutive days)
-            if (engagementData.consecutive_days >= 1) {
-                metricChanges.engagement_frequency = (metricChanges.engagement_frequency || 0) + 3;
-            }
+        const lastActive = engagementData?.last_active_date;
+        if (lastActive && lastActive !== todayDate) {
+            metricChanges.trust_level = (metricChanges.trust_level || 0) + 2;
         }
 
-        // Check for multiple sessions per day (+4 dependency)
-        const { data: todaySessions } = await supabaseAdmin
-            .from('chat_messages')
-            .select('id, created_at')
-            .eq('user_id', userId)
-            .gte('created_at', new Date().toISOString().split('T')[0])
-            .order('created_at', { ascending: false })
-            .limit(10);
+        const consecutiveDays = engStateRows?.[0]?.consecutive_days || 0;
+        if (consecutiveDays >= 1) {
+            metricChanges.engagement_frequency = (metricChanges.engagement_frequency || 0) + 3;
+        }
 
-        if (todaySessions && todaySessions.length >= 5) {
-            // Multiple sessions indicate high dependency
+        if (todayMessages && todayMessages.length >= 5) {
             metricChanges.dependency_score = (metricChanges.dependency_score || 0) + 4;
         }
 
-        // Update metrics using database function
+        // Update metrics using database RPC when deployed, otherwise direct row update
         const { error } = await supabaseAdmin
             .rpc('update_emotional_metrics', {
                 p_user_id: userId,
@@ -930,8 +931,9 @@ export async function updateEmotionalMetrics(userId, message, isEmotional, hasGo
             });
 
         if (error) {
-            // Fallback: manual update if function not available
-            logger.warn('Database function not available, using manual update');
+            if (error.code !== 'PGRST202' && error.code !== '42883') {
+                logger.warn('update_emotional_metrics RPC error, using manual update:', error.message);
+            }
             await manualUpdateMetrics(userId, metricChanges);
         }
 
@@ -944,13 +946,19 @@ export async function updateEmotionalMetrics(userId, message, isEmotional, hasGo
  * Manual metric update (fallback)
  */
 async function manualUpdateMetrics(userId, changes) {
-    const { data: current } = await supabaseAdmin
+    let { data: current, error: fetchErr } = await supabaseAdmin
         .from('emotional_metrics')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-    if (!current) return;
+    if (fetchErr && fetchErr.code !== 'PGRST116') {
+        throw fetchErr;
+    }
+
+    if (!current) {
+        current = await initializeEmotionalMetrics(userId);
+    }
 
     const updated = {
         trust_level: Math.max(0, Math.min(100, (current.trust_level || 0) + (changes.trust_level || 0))),
@@ -963,21 +971,23 @@ async function manualUpdateMetrics(userId, changes) {
         relationship_depth: Math.max(0, Math.min(100, (current.relationship_depth || 0) + (changes.relationship_depth || 0)))
     };
 
-    // Calculate weighted score
     const weightedScore = calculateWeightedScore(updated);
-
-    // Determine state with transitions
     const emotionalState = determineEmotionalState(updated, current.emotional_state);
+    const nowIso = new Date().toISOString();
 
-    await supabaseAdmin
+    const { error: updateErr } = await supabaseAdmin
         .from('emotional_metrics')
         .update({
             ...updated,
             emotional_state: emotionalState,
             weighted_score: weightedScore,
-            last_updated: new Date().toISOString()
+            updated_at: nowIso
         })
         .eq('user_id', userId);
+
+    if (updateErr) {
+        throw updateErr;
+    }
 }
 
 /**
@@ -1223,14 +1233,30 @@ export async function createDailySnapshot(userId) {
         const metrics = await getEmotionalMetrics(userId);
         const today = new Date().toISOString().split('T')[0];
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
             .from('emotional_history')
             .upsert({
                 user_id: userId,
                 snapshot_date: today,
-                ...metrics
+                trust_level: metrics.trust_level ?? 0,
+                openness_level: metrics.openness_level ?? 0,
+                dependency_score: metrics.dependency_score ?? 0,
+                vulnerability_level: metrics.vulnerability_level ?? 0,
+                engagement_frequency: metrics.engagement_frequency ?? 0,
+                goal_progress: metrics.goal_progress ?? 0,
+                emotional_valence: metrics.emotional_valence ?? 50,
+                relationship_depth: metrics.relationship_depth ?? 0,
+                emotional_state: metrics.emotional_state || 'new_user',
+                weighted_score: metrics.weighted_score ?? 0,
             }, { onConflict: 'user_id,snapshot_date' });
 
+        if (error) {
+            if (error.code === '42P01' || error.code === 'PGRST205') {
+                logger.warn('emotional_history table not migrated yet; skipping daily snapshot');
+                return;
+            }
+            throw error;
+        }
     } catch (error) {
         logger.error('Error creating daily snapshot:', error);
     }

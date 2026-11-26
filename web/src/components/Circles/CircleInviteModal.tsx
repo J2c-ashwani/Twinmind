@@ -123,7 +123,7 @@ export default function CircleInviteModal({ isOpen, onClose, circleId, circleNam
                             </div>
 
                             {/* Share Button */}
-                            {navigator.share && (
+                            {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                                 <button
                                     onClick={shareNative}
                                     className="w-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 text-white py-3 px-6 rounded-lg font-medium hover:border-purple-500/50 transition-all flex items-center justify-center gap-2"

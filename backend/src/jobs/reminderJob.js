@@ -101,24 +101,26 @@ export function initJobs() {
         }, 10000);
     }
 
-    // Keep-Alive every 5 minutes (valid standard cron step)
-    const primaryRenderUrl = process.env.RENDER_EXTERNAL_URL || 'https://twingenie.app';
-    const fallbackRenderUrl = 'https://twinmind-9l6x.onrender.com';
+    // Keep-Alive every 5 minutes in production only (prevents local/dev processes pinging production URLs)
+    if (process.env.NODE_ENV === 'production' && process.env.DISABLE_KEEP_ALIVE !== 'true') {
+        const primaryRenderUrl = process.env.RENDER_EXTERNAL_URL || 'https://twingenie.app';
+        const fallbackRenderUrl = 'https://twinmind-9l6x.onrender.com';
 
-    cron.schedule('*/5 * * * *', async () => {
-        try {
-            for (const u of [primaryRenderUrl, fallbackRenderUrl]) {
-                try {
-                    const res = await fetch(`${u}/health`, { signal: AbortSignal.timeout(10000) });
-                    logger.info(`🏓 [KEEP-ALIVE] Ping to ${u}/health: ${res.status}`);
-                } catch (err) {
-                    logger.warn(`[KEEP-ALIVE] Ping to ${u} failed: ${err.message}`);
+        cron.schedule('*/5 * * * *', async () => {
+            try {
+                for (const u of [primaryRenderUrl, fallbackRenderUrl]) {
+                    try {
+                        const res = await fetch(`${u}/health`, { signal: AbortSignal.timeout(10000) });
+                        logger.info(`🏓 [KEEP-ALIVE] Ping to ${u}/health: ${res.status}`);
+                    } catch (err) {
+                        logger.warn(`[KEEP-ALIVE] Ping to ${u} failed: ${err.message}`);
+                    }
                 }
+            } catch (e) {
+                logger.warn('[KEEP-ALIVE] Keep-alive routine error:', e?.message);
             }
-        } catch (e) {
-            logger.warn('[KEEP-ALIVE] Keep-alive routine error:', e?.message);
-        }
-    }, { timezone: DEFAULT_TIMEZONE });
+        }, { timezone: DEFAULT_TIMEZONE });
+    }
 
     // Outreach internal backup ticks (using exact ms intervals instead of invalid/skewed */45, */50, */75 cron syntax)
     if (process.env.ENABLE_INTERNAL_OUTREACH_TIMERS !== 'false') {

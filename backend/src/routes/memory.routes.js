@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { validateUuidParam } from '../middleware/validationMiddleware.js';
 import { getMemoryCount } from '../services/memoryEngine.js';
 import {
     createMemory,
@@ -94,7 +95,7 @@ router.post('/', authenticateUser, async (req, res) => {
  * POST /api/memory/:id/favorite
  * Toggle favorite status
  */
-router.post('/:id/favorite', authenticateUser, async (req, res) => {
+router.post('/:id/favorite', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const memory = await toggleMemoryFavorite(req.userId, req.params.id);
         res.json({ success: true, memory });

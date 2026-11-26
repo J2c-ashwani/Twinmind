@@ -17,6 +17,7 @@ import growthDashboardService from '../services/growth/growthDashboardService.js
 import smartRouterService from '../services/growth/smartRouterService.js';
 import logger from '../config/logger.js';
 import talkingReelService from '../services/growth/talkingReelService.js';
+import { safeCompare } from '../utils/security.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +42,7 @@ const requireAdminSecret = (req, res, next) => {
         process.env.ADMIN_SECRET_KEY,
         process.env.CRONJOB_API_KEY,
         process.env.CRON_JOB_API_KEY
-    ].filter(Boolean);
+    ].filter((v) => typeof v === 'string' && v.trim().length > 0);
 
     if (validKeys.length === 0) {
         return res.status(503).json({ 
@@ -49,7 +50,7 @@ const requireAdminSecret = (req, res, next) => {
         });
     }
 
-    if (!adminKey || !validKeys.includes(adminKey)) {
+    if (typeof adminKey !== 'string' || !validKeys.some((secret) => safeCompare(adminKey, secret))) {
         return res.status(401).json({ error: 'Unauthorized: Invalid or missing secret key' });
     }
 

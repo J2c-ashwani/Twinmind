@@ -1,5 +1,6 @@
 import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import { isEffectivePro } from '../middleware/subscriptionMiddleware.js';
 
 /**
  * Admin Analytics Service
@@ -11,42 +12,36 @@ import { supabaseAdmin } from '../config/supabase.js';
  */
 export async function getUserMetrics() {
     try {
-        // Total users
-        const { count: totalUsers } = await supabaseAdmin
-            .from('users')
-            .select('*', { count: 'exact', head: true });
+        const sevenDaysAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const sevenDaysIso = sevenDaysAgoDate.toISOString();
+        const sevenDaysDate = sevenDaysIso.split('T')[0];
 
-        // Active users (logged in last 7 days)
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const { count: activeUsers } = await supabaseAdmin
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .gte('last_login', sevenDaysAgo);
+        const [
+            { count: totalUsers, error: totalErr },
+            { count: activeUsers, error: activeErr },
+            { data: proRows, error: proErr },
+            { count: newUsers, error: newErr },
+        ] = await Promise.all([
+            supabaseAdmin.from('users').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('user_engagement').select('*', { count: 'exact', head: true }).gte('last_active_date', sevenDaysDate),
+            supabaseAdmin.from('subscriptions').select('plan_type, status, current_period_end').eq('plan_type', 'pro'),
+            supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysIso),
+        ]);
 
-        // Premium users
-        const { count: premiumUsers } = await supabaseAdmin
-            .from('subscriptions')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'active');
+        if (totalErr) throw totalErr;
+        if (activeErr) throw activeErr;
+        if (proErr) throw proErr;
+        if (newErr) throw newErr;
 
-        // Free users
-        const freeUsers = (totalUsers || 0) - (premiumUsers || 0);
-
-        // Conversion rate
-        const conversionRate = totalUsers > 0
-            ? ((premiumUsers || 0) / totalUsers * 100).toFixed(2)
-            : 0;
-
-        // New users (last 7 days)
-        const { count: newUsers } = await supabaseAdmin
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', sevenDaysAgo);
+        const premiumUsers = (proRows || []).filter((s) => isEffectivePro(s)).length;
+        const total = totalUsers || 0;
+        const freeUsers = Math.max(0, total - premiumUsers);
+        const conversionRate = total > 0 ? ((premiumUsers / total) * 100).toFixed(2) : 0;
 
         return {
-            totalUsers: totalUsers || 0,
+            totalUsers: total,
             activeUsers: activeUsers || 0,
-            premiumUsers: premiumUsers || 0,
+            premiumUsers,
             freeUsers,
             conversionRate: parseFloat(conversionRate),
             newUsers: newUsers || 0
@@ -58,35 +53,39 @@ export async function getUserMetrics() {
 }
 
 /**
- * Get revenue metrics
+ * Get revenue metrics using live subscription state and configured base USD pricing
  */
 export async function getRevenueMetrics() {
     try {
-        // Get all active subscriptions
-        const { data: subscriptions } = await supabaseAdmin
+        const monthlyPriceUsd = Number(process.env.PRO_MONTHLY_PRICE_USD || 4.99);
+        const yearlyMonthlyEquivUsd = Number(process.env.PRO_YEARLY_PRICE_USD || 49.99) / 12;
+
+        const { data: subscriptions, error: subErr } = await supabaseAdmin
             .from('subscriptions')
-            .select('amount, currency, created_at')
-            .eq('status', 'active');
+            .select('plan_type, status, current_period_end, google_play_product_id, created_at')
+            .eq('plan_type', 'pro');
 
-        // Calculate MRR (assuming most are monthly)
-        const mrr = (subscriptions || []).reduce((sum, sub) => sum + (sub.amount || 0), 0);
+        if (subErr) throw subErr;
 
-        // Growth (compare to last month)
+        const activeSubs = (subscriptions || []).filter((s) => isEffectivePro(s));
+        const mrr = activeSubs.reduce((sum, sub) => {
+            const isYearly = String(sub.google_play_product_id || '').toLowerCase().includes('year');
+            return sum + (isYearly ? yearlyMonthlyEquivUsd : monthlyPriceUsd);
+        }, 0);
+
         const lastMonthStart = new Date();
         lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
         lastMonthStart.setDate(1);
-
-        const { count: newSubsThisMonth } = await supabaseAdmin
-            .from('subscriptions')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'active')
-            .gte('created_at', lastMonthStart.toISOString());
+        const newSubsThisMonth = activeSubs.filter(
+            (s) => s.created_at && new Date(s.created_at) >= lastMonthStart
+        ).length;
 
         return {
-            mrr: mrr || 0,
-            activeSubscriptions: subscriptions?.length || 0,
-            newSubscriptionsThisMonth: newSubsThisMonth || 0,
-            currency: 'USD'
+            mrr: Number(mrr.toFixed(2)),
+            activeSubscriptions: activeSubs.length,
+            newSubscriptionsThisMonth: newSubsThisMonth,
+            currency: 'USD',
+            mrrBasis: 'estimated_from_plan_pricing',
         };
     } catch (error) {
         logger.error('Error getting revenue metrics:', error);
@@ -99,58 +98,41 @@ export async function getRevenueMetrics() {
  */
 export async function getFeatureUsageStats() {
     try {
-        // Streak stats
-        const { data: streakData } = await supabaseAdmin
-            .from('user_streaks')
-            .select('current_streak, freeze_tokens');
+        const [
+            { data: streakData, error: streakErr },
+            { count: activeCircles, error: circleErr },
+            { data: circleMembers, error: memberErr },
+            { count: totalMatches, error: matchErr },
+            { data: sharedMatchRows, error: shareErr },
+            { count: totalCards, error: cardErr },
+            { count: sharedCards, error: cardShareErr },
+        ] = await Promise.all([
+            supabaseAdmin.from('user_streaks').select('current_streak, freeze_tokens'),
+            supabaseAdmin.from('growth_circles').select('*', { count: 'exact', head: true }).eq('is_active', true),
+            supabaseAdmin.from('circle_members').select('circle_id'),
+            supabaseAdmin.from('twin_matches').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('twin_match_shares').select('match_id'),
+            supabaseAdmin.from('motivation_cards').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('motivation_cards').select('*', { count: 'exact', head: true }).eq('is_shared', true),
+        ]);
+
+        if (streakErr) throw streakErr;
+        if (circleErr) throw circleErr;
+        if (memberErr) throw memberErr;
+        if (matchErr) throw matchErr;
+        if (shareErr && shareErr.code !== '42P01' && shareErr.code !== 'PGRST205') throw shareErr;
+        if (cardErr) throw cardErr;
+        if (cardShareErr) throw cardShareErr;
 
         const avgStreak = streakData?.length > 0
             ? (streakData.reduce((sum, s) => sum + (s.current_streak || 0), 0) / streakData.length).toFixed(1)
             : 0;
-
         const totalFreezeTokens = streakData?.reduce((sum, s) => sum + (s.freeze_tokens || 0), 0) || 0;
+        const avgMembersPerCircle = activeCircles > 0 ? (circleMembers?.length || 0) / activeCircles : 0;
 
-        // Growth Circles
-        const { count: activeCircles } = await supabaseAdmin
-            .from('growth_circles')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_active', true);
-
-        const { data: circleMembers } = await supabaseAdmin
-            .from('circle_members')
-            .select('circle_id');
-
-        const avgMembersPerCircle = activeCircles > 0
-            ? (circleMembers?.length || 0) / activeCircles
-            : 0;
-
-        // Twin Matches
-        const { count: totalMatches } = await supabaseAdmin
-            .from('twin_matches')
-            .select('*', { count: 'exact', head: true });
-
-        const { count: sharedMatches } = await supabaseAdmin
-            .from('twin_matches')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_shared', true);
-
-        const matchShareRate = totalMatches > 0
-            ? ((sharedMatches || 0) / totalMatches * 100).toFixed(1)
-            : 0;
-
-        // Motivation Cards
-        const { count: totalCards } = await supabaseAdmin
-            .from('motivation_cards')
-            .select('*', { count: 'exact', head: true });
-
-        const { count: sharedCards } = await supabaseAdmin
-            .from('motivation_cards')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_shared', true);
-
-        const cardShareRate = totalCards > 0
-            ? ((sharedCards || 0) / totalCards * 100).toFixed(1)
-            : 0;
+        const sharedMatches = new Set((sharedMatchRows || []).map((r) => r.match_id)).size;
+        const matchShareRate = totalMatches > 0 ? ((sharedMatches / totalMatches) * 100).toFixed(1) : 0;
+        const cardShareRate = totalCards > 0 ? (((sharedCards || 0) / totalCards) * 100).toFixed(1) : 0;
 
         return {
             streaks: {

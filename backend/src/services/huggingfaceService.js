@@ -7,30 +7,49 @@ class HuggingFaceService {
     }
 
     /**
-     * Generate chat response using Hugging Face
+     * Unified generateChatResponse accepting object contract or legacy positional arguments
      */
-    async generateChatResponse(messagesArray, userMessage, conversationHistory) {
+    async generateChatResponse(input, legacyUserMessage, legacyHistory) {
         if (!this.isEnabled) {
             throw new Error('Hugging Face API key not configured');
         }
 
-        try {
-            // Build conversation context string from messages array
-            let context = '';
+        let messagesArray = [];
+        let userMessage = '';
 
-            messagesArray.forEach(msg => {
-                if (msg.role === 'system') {
-                    context += `System: ${msg.content}\n\n`;
-                } else {
-                    const role = msg.role === 'user' ? 'User' : 'Assistant';
-                    context += `${role}: ${msg.content}\n`;
+        if (input && typeof input === 'object' && !Array.isArray(input)) {
+            messagesArray = Array.isArray(input.messages) ? input.messages : [];
+            userMessage = input.userMessage || '';
+            if (messagesArray.length === 0 && (input.systemPrompt || userMessage)) {
+                if (input.systemPrompt) {
+                    messagesArray.push({ role: 'system', content: input.systemPrompt });
                 }
-            });
+                if (userMessage) {
+                    messagesArray.push({ role: 'user', content: userMessage });
+                }
+            }
+        } else if (Array.isArray(input)) {
+            messagesArray = input;
+            userMessage = legacyUserMessage || '';
+        } else if (typeof input === 'string') {
+            userMessage = input;
+            const history = Array.isArray(legacyHistory) ? legacyHistory : [];
+            messagesArray = [
+                ...history.map((m) => ({
+                    role: m.sender_type === 'user' || m.role === 'user' ? 'user' : 'assistant',
+                    content: m.content || m.message || '',
+                })),
+                { role: 'user', content: input },
+            ];
+        }
 
-            const formattedMessages = messagesArray.length > 0 ? messagesArray.map(m => ({
-                role: m.role === 'system' ? 'system' : (m.role === 'user' ? 'user' : 'assistant'),
-                content: m.content || userMessage || ''
-            })) : [{ role: 'user', content: userMessage || 'Hello' }];
+        try {
+            const formattedMessages = messagesArray.length > 0
+                ? messagesArray.map((m) => ({
+                    role: m.role === 'system' ? 'system' : (m.role === 'user' ? 'user' : 'assistant'),
+                    content: m.content || userMessage || '',
+                }))
+                : [{ role: 'user', content: userMessage || 'Hello' }];
 
             const response = await this.hf.chatCompletion({
                 model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.2-3B-Instruct',

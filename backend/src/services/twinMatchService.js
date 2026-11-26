@@ -2,6 +2,20 @@ import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import aiService from './aiService.js';
 
+const pairMatchLocks = new Map();
+
+function withPairLock(key, task) {
+    const prev = pairMatchLocks.get(key) || Promise.resolve();
+    const next = prev.then(task, task);
+    const settled = next.finally(() => {
+        if (pairMatchLocks.get(key) === settled) {
+            pairMatchLocks.delete(key);
+        }
+    });
+    pairMatchLocks.set(key, settled);
+    return next;
+}
+
 /**
  * Twin Match Service
  * Compare personality profiles between users
@@ -226,33 +240,112 @@ export async function comparePersonalities(userId1, userId2, { bypassConsentChec
         // Generate AI insights
         const insights = await generateComparisonInsights(profile1, profile2, compatibility);
 
-        // Create comparison record with fallback resilience if table does not exist
+        // Persist comparison cleanly across both pre- and post-migration twin_matches schemas
         let comparison = null;
+        const baseMatchPayload = {
+            user1_id: userId1,
+            user2_id: userId2,
+            compatibility_score: compatibility.score,
+            insights,
+            traits_comparison: compatibility.traits,
+        };
+
+        const saveComparison = async () => withPairLock(`${userId1}:${userId2}`, async () => {
+            const upsertMatch = async (payload) => {
+                let res = await supabaseAdmin
+                    .from('twin_matches')
+                    .upsert(payload, { onConflict: 'user1_id,user2_id' })
+                    .select()
+                    .maybeSingle();
+
+                if (res.error && (res.error.code === '42703' || res.error.code === 'PGRST204' || /is_shared/i.test(res.error.message || ''))) {
+                    const { is_shared: _ignored, ...withoutIsShared } = payload;
+                    res = await supabaseAdmin
+                        .from('twin_matches')
+                        .upsert(withoutIsShared, { onConflict: 'user1_id,user2_id' })
+                        .select()
+                        .maybeSingle();
+                    return { ...res, strippedIsShared: true };
+                }
+                return { ...res, strippedIsShared: false };
+            };
+
+            let res = await upsertMatch({ ...baseMatchPayload, is_shared: true });
+            const effectivePayload = res.strippedIsShared ? baseMatchPayload : { ...baseMatchPayload, is_shared: true };
+
+            if (res.error && res.error.code === '42P10') {
+                // Legacy unindexed schema fallback: update newest existing row or insert & consolidate duplicates
+                const { data: existingRows, error: listErr } = await supabaseAdmin
+                    .from('twin_matches')
+                    .select('id')
+                    .eq('user1_id', userId1)
+                    .eq('user2_id', userId2)
+                    .order('created_at', { ascending: false });
+
+                if (listErr) throw listErr;
+
+                if (existingRows && existingRows.length > 0) {
+                    const keeperId = existingRows[0].id;
+                    res = await supabaseAdmin
+                        .from('twin_matches')
+                        .update(effectivePayload)
+                        .eq('id', keeperId)
+                        .select()
+                        .single();
+
+                    if (!res.error && existingRows.length > 1) {
+                        const duplicateIds = existingRows.slice(1).map((r) => r.id);
+                        await supabaseAdmin.from('twin_matches').delete().in('id', duplicateIds);
+                    }
+                } else {
+                    res = await supabaseAdmin
+                        .from('twin_matches')
+                        .insert(effectivePayload)
+                        .select()
+                        .single();
+
+                    // Reconcile concurrent cross-process inserts so idx_twin_matches_pair_unique stays clean
+                    if (!res.error) {
+                        const { data: postRows } = await supabaseAdmin
+                            .from('twin_matches')
+                            .select('id')
+                            .eq('user1_id', userId1)
+                            .eq('user2_id', userId2)
+                            .order('created_at', { ascending: true });
+                        if (postRows && postRows.length > 1) {
+                            const extraIds = postRows.filter((r) => r.id !== postRows[0].id).map((r) => r.id);
+                            if (extraIds.length > 0) {
+                                await supabaseAdmin.from('twin_matches').delete().in('id', extraIds);
+                            }
+                            if (res.data?.id !== postRows[0].id) {
+                                res = await supabaseAdmin
+                                    .from('twin_matches')
+                                    .update(effectivePayload)
+                                    .eq('id', postRows[0].id)
+                                    .select()
+                                    .single();
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (res.error) throw res.error;
+            return res.data;
+        });
+
         try {
-            const { data: comp } = await supabaseAdmin
-                .from('twin_matches')
-                .upsert({
-                    user1_id: userId1,
-                    user2_id: userId2,
-                    compatibility_score: compatibility.score,
-                    insights: insights,
-                    traits_comparison: compatibility.traits,
-                    is_shared: true,
-                }, { onConflict: 'user1_id,user2_id' })
-                .select()
-                .single();
-            comparison = comp;
+            comparison = await saveComparison();
         } catch (compErr) {
-            logger.warn('twin_matches insert warning:', compErr.message);
-            try {
-                await supabaseAdmin.from('metric_events').insert({
-                    user_id: userId1,
-                    event_type: 'twin_match_performed',
-                    event_value: compatibility.score,
-                    metric_type: 'twin_match',
-                    metadata: { user2_id: userId2, compatibility_score: compatibility.score }
-                });
-            } catch (fallbackErr) {
+            logger.warn('twin_matches save failed, recording fallback metric event:', compErr.message);
+            const { error: fallbackErr } = await supabaseAdmin.from('metric_events').insert({
+                user_id: userId1,
+                event_type: 'twin_match_performed',
+                event_value: compatibility.score,
+                metric_type: 'twin_match',
+                metadata: { user2_id: userId2, compatibility_score: compatibility.score }
+            });
+            if (fallbackErr) {
                 logger.warn('metric_events fallback warning:', fallbackErr.message);
             }
         }

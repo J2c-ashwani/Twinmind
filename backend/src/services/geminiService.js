@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, TaskType } from '@google/generative-ai';
 import { logger } from '../config/logger.js';
 
 class GeminiService {
@@ -6,6 +6,8 @@ class GeminiService {
         this.apiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
         this.modelName = (process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite').replace(/^models\//, '');
         this.fallbackModelName = (process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite').replace(/^models\//, '');
+        this.embeddingModelName = (process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001').replace(/^models\//, '');
+        this.embeddingDimensions = parseInt(process.env.EMBEDDING_DIMENSIONS, 10) || 1536;
 
         if (this.apiKey) {
             this.genAI = new GoogleGenerativeAI(this.apiKey);
@@ -16,8 +18,8 @@ class GeminiService {
                     maxOutputTokens: 2048,
                 },
             });
-            this.embeddingModel = this.genAI.getGenerativeModel({ model: "text-embedding-004" });
-            console.log(`✅ Gemini Service initialized (Configured model: ${this.modelName})`);
+            this.embeddingModel = this.genAI.getGenerativeModel({ model: this.embeddingModelName });
+            console.log(`✅ Gemini Service initialized (Configured model: ${this.modelName}, Embeddings: ${this.embeddingModelName})`);
         } else {
             console.log('⚠️  Gemini API key not found');
         }
@@ -355,22 +357,41 @@ Return only the JSON object.`;
     }
 
     /**
-     * Generate embeddings for semantic search
+     * Generate 1536-dim pgvector-compatible embeddings for semantic search using gemini-embedding-001
      */
-    async generateEmbedding(text) {
+    async generateEmbedding(text, options = {}) {
+        if (!this.genAI || !this.embeddingModel) {
+            throw new Error('Gemini API key not configured for embeddings');
+        }
+
+        const cleanText = String(text || '').trim();
+        if (!cleanText) {
+            throw new Error('Cannot generate embedding for empty text');
+        }
+
+        const requestedTask = String(options.taskType || 'RETRIEVAL_DOCUMENT').toUpperCase();
+        const taskType = TaskType[requestedTask] || TaskType.RETRIEVAL_DOCUMENT;
+        const dimensions = Number(options.outputDimensionality) || this.embeddingDimensions || 1536;
+
         try {
-            const result = await this.embeddingModel.embedContent(text);
-            const embedding = result.embedding.values;
-            if (!Array.isArray(embedding) || embedding.length === 0) {
-                throw new Error('Gemini returned empty embedding vector');
+            const result = await this.embeddingModel.embedContent({
+                content: { parts: [{ text: cleanText }] },
+                taskType,
+                outputDimensionality: dimensions,
+            });
+            const embedding = result?.embedding?.values;
+            if (!Array.isArray(embedding) || embedding.length === 0 || !embedding.some((v) => v !== 0)) {
+                throw new Error('Gemini returned empty or zero embedding vector');
             }
-            // Gemini text-embedding-004 returns 768 dims; zero-pad to 1536 for pgvector compat with explicit provider tagging
-            if (embedding.length === 768) {
+            if (embedding.length === 768 && dimensions === 1536) {
                 return [...embedding, ...Array(768).fill(0)];
+            }
+            if (embedding.length !== dimensions) {
+                throw new Error(`Unexpected embedding dimensionality ${embedding.length}, expected ${dimensions}`);
             }
             return embedding;
         } catch (error) {
-            logger.warn(`Embedding failed (${error.status ?? error.code ?? 'unknown'}): ${error.message?.slice(0, 80)}`);
+            logger.warn(`Embedding failed (${error.status ?? error.code ?? 'unknown'}): ${error.message?.slice(0, 120)}`);
             throw error;
         }
     }

@@ -1,6 +1,7 @@
 import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import pushNotificationService from './pushNotificationService.js';
+import { forEachPage } from '../utils/supabasePagination.js';
 
 /**
  * Proactive Message Service
@@ -394,19 +395,18 @@ async function recordUserResponse(messageId, responseTime) {
  */
 async function runProactiveMessageCheck() {
     try {
-        // Get all users from users table and push tokens
-        const { data: users } = await supabaseAdmin
-            .from('users')
-            .select('id');
-
-        const { data: tokenUsers } = await supabaseAdmin
-            .from('push_device_tokens')
-            .select('user_id')
-            .eq('enabled', true);
-
+        // Paginate candidate users so >1,000 users are never silently truncated
         const allUserIds = new Set();
-        if (users) users.forEach(u => u.id && allUserIds.add(u.id));
-        if (tokenUsers) tokenUsers.forEach(t => t.user_id && allUserIds.add(t.user_id));
+        await Promise.all([
+            forEachPage(
+                () => supabaseAdmin.from('users').select('id').order('id', { ascending: true }),
+                (rows) => rows.forEach((u) => u.id && allUserIds.add(u.id))
+            ),
+            forEachPage(
+                () => supabaseAdmin.from('push_device_tokens').select('user_id').eq('enabled', true).order('user_id', { ascending: true }),
+                (rows) => rows.forEach((t) => t.user_id && allUserIds.add(t.user_id))
+            ),
+        ]);
 
         if (allUserIds.size === 0) return;
 

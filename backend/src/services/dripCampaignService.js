@@ -2,6 +2,7 @@ import logger from '../config/logger.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { sendEmail } from './emailService.js';
 import { sendPushNotification } from './pushNotificationService.js';
+import { forEachPage, forEachAuthUserPage } from '../utils/supabasePagination.js';
 
 const PLAY_STORE_URL = process.env.APP_DOWNLOAD_URL || 'https://twingenie.app/open';
 
@@ -420,33 +421,24 @@ export async function executeDripCampaignCheck(options = {}) {
     };
 
     try {
-        // 1. Fetch all users from Supabase Auth
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-        if (authError) throw authError;
+        // 1. Collect distinct user IDs who have authored at least one message (paginated past 1,000 rows)
+        const engagedUserIds = new Set();
+        await forEachPage(
+            () => supabaseAdmin.from('chat_history').select('user_id').eq('sender', 'user').order('id', { ascending: true }),
+            (rows) => rows.forEach((c) => c.user_id && engagedUserIds.add(c.user_id))
+        );
 
-        const users = authData.users || [];
-
-        // 2. Fetch all user-authored messages from chat_history
-        const { data: userChats, error: chatError } = await supabaseAdmin
-            .from('chat_history')
-            .select('user_id')
-            .eq('sender', 'user');
-
-        if (chatError) throw chatError;
-
-        // Set of user IDs who have actively sent at least one message
-        const engagedUserIds = new Set((userChats || []).map(c => c.user_id));
-
-        // 3. Fetch personality profiles
-        const { data: profiles, error: profileError } = await supabaseAdmin
-            .from('personality_profiles')
-            .select('user_id, twin_name, twin_summary');
-
-        if (profileError) throw profileError;
-        const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+        // 2. Collect personality profiles (paginated)
+        const profileMap = new Map();
+        await forEachPage(
+            () => supabaseAdmin.from('personality_profiles').select('user_id, twin_name, twin_summary').order('user_id', { ascending: true }),
+            (rows) => rows.forEach((p) => profileMap.set(p.user_id, p))
+        );
 
         const now = new Date();
 
+        // 3. Stream through all Supabase Auth user pages safely
+        await forEachAuthUserPage(async (users) => {
         for (const user of users) {
             summary.totalEvaluated++;
 
@@ -649,6 +641,7 @@ export async function executeDripCampaignCheck(options = {}) {
             // 400ms pause to respect Resend rate limits
             await new Promise(r => setTimeout(r, 400));
         }
+        });
 
         logger.info(`Drip Campaign Check finished: ${summary.sentCount} sent, ${summary.skippedEngaged} skipped (engaged), ${summary.errors} errors.`);
         return summary;

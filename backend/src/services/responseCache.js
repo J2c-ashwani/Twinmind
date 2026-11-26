@@ -13,7 +13,8 @@ class ResponseCache {
             this.getAsync = promisify(this.client.get).bind(this.client);
             this.setAsync = promisify(this.client.setex).bind(this.client);
         } else {
-            // In-memory cache (for development)
+            // Bounded in-memory cache to protect low-memory containers when Redis is disabled
+            this.maxEntries = parseInt(process.env.RESPONSE_CACHE_MAX_ENTRIES, 10) || 250;
             this.cache = new Map();
         }
 
@@ -35,8 +36,12 @@ class ResponseCache {
                 value = await this.getAsync(key);
             } else {
                 const cached = this.cache.get(key);
-                if (cached && cached.expires > Date.now()) {
-                    value = cached.value;
+                if (cached) {
+                    if (cached.expires > Date.now()) {
+                        value = cached.value;
+                    } else {
+                        this.cache.delete(key);
+                    }
                 }
             }
 
@@ -63,9 +68,21 @@ class ResponseCache {
             if (this.useRedis) {
                 await this.setAsync(key, ttl, stringValue);
             } else {
+                const now = Date.now();
+                if (this.cache.has(key)) {
+                    this.cache.delete(key);
+                } else if (this.cache.size >= this.maxEntries) {
+                    for (const [k, entry] of this.cache.entries()) {
+                        if (entry.expires <= now) this.cache.delete(k);
+                    }
+                    while (this.cache.size >= this.maxEntries) {
+                        const oldestKey = this.cache.keys().next().value;
+                        this.cache.delete(oldestKey);
+                    }
+                }
                 this.cache.set(key, {
                     value: stringValue,
-                    expires: Date.now() + (ttl * 1000),
+                    expires: now + (ttl * 1000),
                 });
             }
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { validateUuidParam } from '../middleware/validationMiddleware.js';
 import {
     getPendingProactiveMessages,
     markMessageSent,
@@ -16,7 +17,7 @@ router.get('/messages', authenticateUser, async (req, res) => {
     }
 });
 
-router.post('/messages/:id/read', authenticateUser, async (req, res) => {
+router.post('/messages/:id/read', authenticateUser, validateUuidParam('id'), async (req, res) => {
     try {
         const updated = await markMessageSent(req.params.id, req.userId);
         if (!updated) {
