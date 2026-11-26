@@ -68,6 +68,9 @@ export default function SecretAdminPanel() {
   const adminApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authTab, setAuthTab] = useState<'email' | 'password'>('email');
+  const [emailInput, setEmailInput] = useState('');
+  const [emailPasswordInput, setEmailPasswordInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -132,6 +135,51 @@ export default function SecretAdminPanel() {
     }
   };
 
+  const handleUnlockWithEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = emailInput.trim();
+    if (!email || !emailPasswordInput) {
+      setAuthError('Please enter your admin email and password');
+      return;
+    }
+
+    setIsVerifying(true);
+    setAuthError('');
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: emailPasswordInput,
+      });
+
+      if (signInError || !data?.session?.access_token) {
+        setAuthError(signInError?.message || 'Invalid login credentials');
+        return;
+      }
+
+      const adminResponse = await fetch(`${adminApiUrl}/api/admin/me`, {
+        headers: {
+          'Authorization': `Bearer ${data.session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!adminResponse.ok) {
+        await supabase.auth.signOut();
+        const errData = await adminResponse.json().catch(() => ({}));
+        setAuthError(errData.error || `Account ${email} is not authorized for admin access.`);
+        return;
+      }
+
+      setIsAdmin(true);
+      await fetchAdminData();
+    } catch (err: any) {
+      setAuthError(err?.message || 'Network error verifying admin credentials');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleUnlockWithPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = passwordInput.trim();
@@ -173,11 +221,13 @@ export default function SecretAdminPanel() {
     }
   };
 
-  const handleLockPortal = () => {
+  const handleLockPortal = async () => {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('twinmind_admin_key');
     }
+    await supabase.auth.signOut().catch(() => {});
     setIsAdmin(false);
+    setEmailPasswordInput('');
     setPasswordInput('');
     setAuthError('');
   };
@@ -277,53 +327,142 @@ export default function SecretAdminPanel() {
             </div>
           )}
 
-          <form onSubmit={handleUnlockWithPassword} className="space-y-4">
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-medium">
-                Master Admin Password
-              </label>
-              <div className="relative">
+          {/* Auth Method Toggle */}
+          <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-xl bg-[#0F0F1E] border border-gray-800">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('email');
+                setAuthError('');
+              }}
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition ${
+                authTab === 'email'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Admin Email
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('password');
+                setAuthError('');
+              }}
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition ${
+                authTab === 'password'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Master Password
+            </button>
+          </div>
+
+          {authTab === 'email' ? (
+            <form onSubmit={handleUnlockWithEmail} className="space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-medium">
+                  Admin Email
+                </label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="Enter administrator password..."
-                  className="w-full px-4 py-3 bg-[#0F0F1E] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition pr-16"
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="ashwani@twingenie.app"
+                  className="w-full px-4 py-3 bg-[#0F0F1E] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
                   autoFocus
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 text-xs focus:outline-none px-1 py-0.5"
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isVerifying}
-              className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 font-medium rounded-xl text-white shadow-lg shadow-purple-900/30 transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isVerifying ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Verifying...</span>
-                </>
-              ) : (
-                <span>Unlock Control Center</span>
-              )}
-            </button>
-          </form>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-medium">
+                  Account Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={emailPasswordInput}
+                    onChange={(e) => setEmailPasswordInput(e.target.value)}
+                    placeholder="Enter your admin account password..."
+                    className="w-full px-4 py-3 bg-[#0F0F1E] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition pr-16"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 text-xs focus:outline-none px-1 py-0.5"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isVerifying}
+                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 font-medium rounded-xl text-white shadow-lg shadow-purple-900/30 transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isVerifying ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <span>Sign In to Admin Panel</span>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleUnlockWithPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-medium">
+                  Master Admin Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    placeholder="Enter Render ADMIN_PASSWORD..."
+                    className="w-full px-4 py-3 bg-[#0F0F1E] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition pr-16"
+                    autoFocus
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 text-xs focus:outline-none px-1 py-0.5"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isVerifying}
+                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 font-medium rounded-xl text-white shadow-lg shadow-purple-900/30 transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isVerifying ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Unlock Control Center</span>
+                )}
+              </button>
+            </form>
+          )}
 
           <div className="mt-6 pt-5 border-t border-gray-800 text-center">
             <p className="text-xs text-gray-500">
               Zero public access. Protected by fail-closed server authentication.
             </p>
             <p className="text-[11px] text-gray-600 mt-1">
-              To set or change your password, configure <code className="text-purple-400 bg-purple-950/60 px-1 py-0.5 rounded">ADMIN_PASSWORD</code> in your Render server environment.
+              Sign in with your authorized admin email or your Render <code className="text-purple-400 bg-purple-950/60 px-1 py-0.5 rounded">ADMIN_PASSWORD</code>.
             </p>
           </div>
         </div>

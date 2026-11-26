@@ -24,6 +24,9 @@ export async function middleware(req: NextRequest) {
     if (pathname === '/coaching') {
         return NextResponse.redirect(new URL('/life-coach', req.url))
     }
+    if (pathname === '/admin') {
+        return NextResponse.redirect(new URL('/secret-admin-x9k2p', req.url))
+    }
 
     // Public paths that don't require authentication
     const publicPaths = [
@@ -47,6 +50,7 @@ export async function middleware(req: NextRequest) {
         '/faq',
         '/pricing',
         '/coaching',
+        '/secret-admin-x9k2p',
         '/robots.txt',
         '/sitemap.xml',
         '/llms.txt',
